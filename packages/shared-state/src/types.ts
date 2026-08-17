@@ -1,0 +1,97 @@
+export type ConnectionStatus =
+  'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
+
+export interface Device {
+  id: string;
+  name: string;
+  groupId?: string;
+  groupName?: string;
+  online: boolean;
+  agentVersion?: string;
+  platform?: string;
+  lastSeenAt?: string;
+  raw?: unknown;
+}
+
+export interface DeviceGroup {
+  id: string;
+  name: string;
+  description?: string;
+  raw?: unknown;
+}
+
+export type GatewayEventType =
+  'deviceOnline' | 'deviceOffline' | 'deviceChanged' | 'deviceRemoved' | 'unknown';
+
+export interface GatewayEvent {
+  id: string;
+  type: GatewayEventType;
+  deviceId?: string;
+  message?: string;
+  occurredAt: string;
+  raw?: unknown;
+}
+
+export interface GatewaySnapshot {
+  devices: Device[];
+  groups: DeviceGroup[];
+}
+
+export type GatewayMutation =
+  | { type: 'snapshot'; snapshot: GatewaySnapshot }
+  | { type: 'devicesReplaced'; devices: Device[] }
+  | { type: 'groupsReplaced'; groups: DeviceGroup[] }
+  | { type: 'deviceUpserted'; device: Device; event?: GatewayEvent }
+  | { type: 'deviceStatusChanged'; deviceId: string; online: boolean; event: GatewayEvent }
+  | { type: 'deviceRemoved'; deviceId: string; event?: GatewayEvent }
+  | { type: 'eventReceived'; event: GatewayEvent };
+
+export interface GatewayState {
+  status: ConnectionStatus;
+  devices: Record<string, Device>;
+  groups: Record<string, DeviceGroup>;
+  events: GatewayEvent[];
+  reconnectAttempt: number;
+  lastConnectedAt?: string;
+  lastMessageAt?: string;
+  error?: string;
+  setConnectionStatus: (status: ConnectionStatus, error?: string) => void;
+  setError: (error?: string) => void;
+  setReconnectAttempt: (attempt: number) => void;
+  replaceDevices: (devices: Device[]) => void;
+  replaceGroups: (groups: DeviceGroup[]) => void;
+  upsertDevice: (device: Device) => void;
+  removeDevice: (deviceId: string) => void;
+  appendEvent: (event: GatewayEvent) => void;
+  touchMessage: () => void;
+  applyMutation: (mutation: GatewayMutation) => void;
+  reset: () => void;
+}
+
+export interface MessageEventLike {
+  data: unknown;
+}
+
+export interface CloseEventLike {
+  code?: number;
+  reason?: string;
+}
+
+export interface WebSocketLike {
+  readonly readyState: number;
+  onopen: (() => void) | null;
+  onmessage: ((event: MessageEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onclose: ((event: CloseEventLike) => void) | null;
+  send(data: string): void;
+  close(code?: number, reason?: string): void;
+}
+
+export type WebSocketFactory = (url: string) => WebSocketLike;
+
+export interface GatewayProtocolAdapter {
+  decode(payload: unknown): GatewayMutation[];
+  createAuthenticationMessage(token: string): unknown;
+  createSnapshotRequest(): unknown;
+  createHeartbeatMessage(): unknown;
+}

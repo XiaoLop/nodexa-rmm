@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+disallowWorkspaceCycles: true
+saveWorkspaceProtocol: rolling
+
+overrides:
+  '@react-native/metro-config': 0.86.2
+  react-native-worklets: 0.10.1

@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Mesh Console",
+    "slug": "mesh-console",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "meshconsole",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.meshcentral.console"
+    },
+    "android": {
+      "package": "com.meshcentral.console",
+      "adaptiveIcon": {
+        "backgroundColor": "#F4F7FA"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
