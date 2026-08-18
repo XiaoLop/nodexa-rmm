@@ -18,3 +18,4 @@ export type {
   WebSocketFactory,
   WebSocketLike,
 } from './types';
+export * from './types/events.type';

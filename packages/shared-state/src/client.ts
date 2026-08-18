@@ -195,7 +195,41 @@ export class GatewayClient {
 
   // 请求快照
   requestSnapshot(): void {
-    this.send(this.protocol.createSnapshotRequest());
+    const req = this.protocol.createSnapshotRequest();
+    if (Array.isArray(req)) {
+      for (const item of req) {
+        this.send(item);
+      }
+    } else {
+      this.send(req);
+    }
+  }
+
+  // 刷新设备与分组
+  refreshDevices(): void {
+    this.requestSnapshot();
+  }
+
+  // 更新设备属性
+  updateDevice(
+    deviceId: string,
+    updates: { name?: string; desc?: string; groupId?: string },
+  ): void {
+    const req = this.protocol.createChangeDeviceRequest?.(deviceId, updates);
+    if (req) {
+      this.send(req);
+    }
+  }
+
+  // 发送设备电源指令
+  sendPowerAction(
+    deviceId: string,
+    action: 'wake' | 'reset' | 'poweroff' | 'sleep',
+  ): void {
+    const req = this.protocol.createPowerActionRequest?.(deviceId, action);
+    if (req) {
+      this.send(req);
+    }
   }
 
   private async handleOpen(): Promise<void> {

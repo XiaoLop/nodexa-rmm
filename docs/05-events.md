@@ -8,51 +8,143 @@ MeshCentral 控制通道既能请求数据，也会推送实时事件。接收�
 
 连接成功后保持 WebSocket 打开即可接收事件。
 
-事件示例：
+### 常见事件结构
 
-```json
-{
-  "action": "event",
-  "event": {
-    "etype": "node",
-    "action": "nodeconnect",
-    "nodeid": "node//yyyyyyyy",
-    "meshid": "mesh//xxxxxxxx",
-    "domain": "",
-    "msg": "Agent connected"
+推送事件通常包含顶层 `"action": "event"`，内部 `"event"` 对象中按类别（`etype`）和具体操作（`action`）进行划分。
+
+## 常见实时事件类型
+
+根据实际服务端采集的事件推送，主要包含以下几大类事件：
+
+### 1. 设备与节点事件 (`etype: "node"`)
+
+- **`nodeconnect`（设备上线）**：设备 Agent 与服务端成功建立连接。
+
+  ```json
+  {
+    "action": "event",
+    "event": {
+      "action": "nodeconnect",
+      "meshid": "mesh//xxxx",
+      "nodeid": "node//yyyy",
+      "conn": 1,
+      "pwr": 1,
+      "ct": 1787033321015,
+      "nolog": 1
+    }
   }
-}
-```
+  ```
 
-离线事件可能类似：
+- **`changenode`（设备属性变更）**：设备的名称、操作系统、IP 地址、登录用户或配置发生了更新，事件附带最新的 `node` 详细对象。
 
-```json
-{
-  "action": "event",
-  "event": {
-    "etype": "node",
-    "action": "nodedisconnect",
-    "nodeid": "node//yyyyyyyy",
-    "meshid": "mesh//xxxxxxxx",
-    "domain": "",
-    "msg": "Agent disconnected"
+  ```json
+  {
+    "action": "event",
+    "event": {
+      "etype": "node",
+      "action": "changenode",
+      "nodeid": "node//yyyy",
+      "node": {
+        "_id": "node//yyyy",
+        "name": "机房53号",
+        "rname": "机房53号",
+        "meshid": "mesh//xxxx",
+        "osdesc": "Microsoft Windows 10 专业版 - 22H2/19045",
+        "host": "172.18.0.1",
+        "ip": "172.18.0.1",
+        "users": ["机房53号\\Administrator"],
+        "agent": { "id": 4, "ver": 0, "caps": 31, "root": true },
+        "lastbootuptime": 1786261684000
+      }
+    }
   }
-}
-```
+  ```
 
-设备变更事件：
+- **`devicesessions`（设备会话状态变更）**：该设备的远程会话状态（如桌面、文件、命令行会话）发生变化。
+- **`sysinfohash`（系统信息 Hash 更新）**：设备系统硬件与软件配置 Hash 更新，用于客户端判断是否需要重新拉取详细设备信息。
+- **`ifchange`（网络接口变更）**：设备的网卡、IP 地址或网络连接发生改变。
+- **`agentlog`（Agent 操作日志与行为审计）**：记录设备 Agent 执行的具体操作（如文件上传/下载、命令执行等）。
 
-```json
-{
-  "action": "event",
-  "event": {
-    "etype": "node",
-    "action": "changenode",
-    "nodeid": "node//yyyyyyyy",
-    "node": {}
+  ```json
+  {
+    "action": "event",
+    "event": {
+      "etype": "node",
+      "action": "agentlog",
+      "nodeid": "node//yyyy",
+      "domain": "",
+      "msg": "Upload: \"C:/autostart/AutoStartMonitor.exe\", Size: 11706388",
+      "msgid": 105,
+      "msgArgs": [
+        "C:/autostart/AutoStartMonitor.exe",
+        11706388
+      ],
+      "remoteaddr": "172.18.0.1",
+      "userid": "user//admin",
+      "username": "admin",
+      "sessionid": "user//admin/ea6067960206dde59c2224b8b3306a2fd9a45668",
+      "time": "2026-08-18T07:04:33.687Z"
+    }
   }
-}
-```
+  ```
+
+### 2. 用户与 WebSocket 会话事件
+
+- **`wssessioncount`（WebSocket 会话数变更）**：通知当前登录用户当前建立的 WebSocket 连接总数。
+
+  ```json
+  {
+    "action": "event",
+    "event": {
+      "action": "wssessioncount",
+      "userid": "user//admin",
+      "username": "admin",
+      "count": 6
+    }
+  }
+  ```
+
+### 3. 控制与中继审计事件 (`etype: "relay"`)
+
+- **`relaylog`（中继日志/远控会话统计）**：记录一次远程控制会话（如文件管理 `protocol: 5`、远程桌面 `protocol: 2`）结束时的审计日志与流量统计信息。
+
+  ```json
+  {
+    "action": "event",
+    "event": {
+      "etype": "relay",
+      "action": "relaylog",
+      "userid": "user//admin",
+      "username": "admin",
+      "protocol": 5,
+      "nodeid": "node//yyyy",
+      "msg": "Ended file management session \"678dmimiq09\" from 172.18.0.1 to 172.18.0.1, 60 second(s)",
+      "bytesin": 9682,
+      "bytesout": 8076,
+      "time": "2026-08-18T06:07:53.274Z"
+    }
+  }
+  ```
+
+### 4. 服务器性能监控统计事件
+
+- **`servertimelinestats`（服务器性能统计）**：定时推送 MeshCentral 服务端自身的内存使用量（RSS、Heap）、活跃连接数（`conn`）、协议网络流量（`traffic`）与 CPU 负载数据。
+
+  ```json
+  {
+    "action": "event",
+    "event": {
+      "action": "servertimelinestats",
+      "data": {
+        "time": "2026-08-18T06:08:28.133Z",
+        "mem": { "rss": 236351488, "heapUsed": 72789880 },
+        "conn": { "ca": 139, "cu": 1, "us": 6, "rs": 6 },
+        "traffic": { "httpRequestCount": 98, "httpIn": 90996, "httpOut": 5703209 },
+        "cpu": [0.01, 0.07, 0.04]
+      }
+    }
+  }
+  ```
 
 ## 过滤事件
 
@@ -61,7 +153,7 @@ MeshCtrl 的 `ShowEvents --filter` 是客户端过滤：收到事件后按 `even
 示例过滤逻辑：
 
 ```js
-const filters = new Set(['nodeconnect', 'nodedisconnect', 'changenode']);
+const filters = new Set(['nodeconnect', 'changenode']);
 
 client.on('message', (data) => {
   const action = data.event?.action ?? data.action;
@@ -115,7 +207,7 @@ client.on('message', (data) => {
 }
 ```
 
-## 接收设备离线消息
+## 接收设备与系统事件
 
 推荐封装：
 
@@ -125,21 +217,47 @@ client.events.on('deviceOffline', (event) => {
 });
 ```
 
-内部映射：
+内部标准化映射示例：
 
 ```js
 function normalizeEvent(data) {
   const event = data.event ?? data;
-  if (event.etype === 'node' && event.action === 'nodeconnect') {
-    return { type: 'deviceOnline', nodeid: event.nodeid, raw: event };
+  const action = event.action;
+
+  // 1. 节点与设备在线/离线/属性变更/Agent日志
+  if (event.etype === 'node') {
+    if (action === 'nodeconnect') {
+      const isOnline = typeof event.conn === 'number' && event.conn > 0;
+      return { type: isOnline ? 'deviceOnline' : 'deviceOffline', nodeid: event.nodeid, raw: event };
+    }
+    if (action === 'changenode') {
+      return { type: 'deviceChanged', nodeid: event.nodeid, node: event.node, raw: event };
+    }
+    if (action === 'sysinfohash') {
+      return { type: 'sysInfoHashUpdated', nodeid: event.nodeid, hash: event.hash, raw: event };
+    }
+    if (action === 'ifchange') {
+      return { type: 'networkInterfaceChanged', nodeid: event.nodeid, raw: event };
+    }
+    if (action === 'agentlog') {
+      return { type: 'agentLog', nodeid: event.nodeid, msg: event.msg, raw: event };
+    }
   }
-  if (event.etype === 'node' && event.action === 'nodedisconnect') {
-    return { type: 'deviceOffline', nodeid: event.nodeid, raw: event };
+
+  // 2. 远控/中继会话日志
+  if (event.etype === 'relay' && action === 'relaylog') {
+    return { type: 'relayLog', protocol: event.protocol, nodeid: event.nodeid, raw: event };
   }
-  if (event.etype === 'node' && event.action === 'changenode') {
-    return { type: 'deviceChanged', nodeid: event.nodeid, raw: event };
+
+  // 3. 用户 WebSocket 会话与服务器统计
+  if (action === 'wssessioncount') {
+    return { type: 'userSessionCount', count: event.count, raw: event };
   }
-  return { type: event.action, raw: event };
+  if (action === 'servertimelinestats') {
+    return { type: 'serverStats', data: event.data, raw: event };
+  }
+
+  return { type: action, raw: event };
 }
 ```
 

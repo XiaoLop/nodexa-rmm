@@ -29,6 +29,44 @@ describe('gateway store and protocol', () => {
     expect(store.getState().events[0]?.type).toBe('deviceOnline');
   });
 
+  it('parses MeshCentral real nodes response (Record<string, Device[]>) and _id field', () => {
+    const store = createGatewayStore();
+    const meshCentralNodesPayload = {
+      action: 'nodes',
+      responseid: 'req-nodes',
+      nodes: {
+        'mesh/domain/group1': [
+          { _id: 'node/domain/device1', name: 'Web Server', conn: 1 },
+          { _id: 'node/domain/device2', name: 'DB Server', conn: 0 },
+        ],
+      },
+    };
+    for (const mutation of meshCentralGatewayAdapter.decode(meshCentralNodesPayload)) {
+      store.getState().applyMutation(mutation);
+    }
+    const devices = gatewaySelectors.devices(store.getState());
+    expect(devices).toHaveLength(2);
+    expect(devices[0]).toMatchObject({ id: 'node/domain/device1', name: 'Web Server', online: true, groupId: 'mesh/domain/group1' });
+    expect(devices[1]).toMatchObject({ id: 'node/domain/device2', name: 'DB Server', online: false, groupId: 'mesh/domain/group1' });
+  });
+
+  it('parses MeshCentral real meshes response (DeviceGroup[]) and _id field', () => {
+    const store = createGatewayStore();
+    const meshCentralMeshesPayload = {
+      action: 'meshes',
+      responseid: 'req-groups',
+      meshes: [
+        { _id: 'mesh/domain/group1', name: 'Production', desc: 'Prod Servers' },
+      ],
+    };
+    for (const mutation of meshCentralGatewayAdapter.decode(meshCentralMeshesPayload)) {
+      store.getState().applyMutation(mutation);
+    }
+    const groups = gatewaySelectors.groups(store.getState());
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ id: 'mesh/domain/group1', name: 'Production', description: 'Prod Servers' });
+  });
+
   it('removes devices from remove events', () => {
     const store = createGatewayStore();
     store.getState().upsertDevice({ id: 'node-2', name: 'Server 2', online: true });

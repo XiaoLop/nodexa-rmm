@@ -53,6 +53,8 @@ describe('GatewayClient', () => {
 
     expect(socket.sent.map((item) => JSON.parse(item))).toEqual([
       { type: 'authenticate', token: 'token' },
+      { action: 'meshes', responseid: 'req-groups' },
+      { action: 'nodes', responseid: 'req-nodes' },
       { type: 'request', resource: 'snapshot' },
     ]);
 
@@ -105,6 +107,8 @@ describe('GatewayClient', () => {
     await connecting;
     expect(store.getState().status).toBe('connected');
     expect(socket.sent.map((item) => JSON.parse(item))).toEqual([
+      { action: 'meshes', responseid: 'req-groups' },
+      { action: 'nodes', responseid: 'req-nodes' },
       { type: 'request', resource: 'snapshot' },
     ]);
     client.destroy();

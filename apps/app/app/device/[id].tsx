@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, Card, IconTile, SectionHeader, StatusBadge } from '../../src/components/AppUi';
 import { Screen } from '../../src/components/Screen';
 import { demoDevices, eventPresentation, platformIcon } from '../../src/demoData';
@@ -20,10 +20,25 @@ const actions = [
 
 export default function DeviceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { devices, events } = useUiData();
+  const { devices, events, sendPowerAction } = useUiData();
   const device = devices.find((item) => item.id === id) ?? devices[0];
   if (!device) return null;
-  const relatedEvents = events.filter((event) => event.deviceId === device.id).slice(0, 3);
+  const relatedEvents = events.filter((event) => event.deviceId === device.id).slice(0, 5);
+
+  const handleActionPress = (label: string) => {
+    if (label === '电源') {
+      Alert.alert(
+        '设备电源管理',
+        `请选择要对 [${device.name}] 执行的操作：`,
+        [
+          { text: '重启设备', onPress: () => sendPowerAction(device.id, 'reset') },
+          { text: '唤醒设备 (WoL)', onPress: () => sendPowerAction(device.id, 'wake') },
+          { text: '关机', style: 'destructive', onPress: () => sendPowerAction(device.id, 'poweroff') },
+          { text: '取消', style: 'cancel' },
+        ],
+      );
+    }
+  };
 
   return (
     <Screen>
@@ -45,7 +60,7 @@ export default function DeviceDetailScreen() {
 
       <View style={styles.actionGrid}>
         {actions.map((action) => (
-          <Pressable key={action.label} style={styles.action}>
+          <Pressable key={action.label} style={styles.action} onPress={() => handleActionPress(action.label)}>
             <IconTile name={action.icon} tone={action.tone} size={44} />
             <Text style={styles.actionLabel}>{action.label}</Text>
           </Pressable>

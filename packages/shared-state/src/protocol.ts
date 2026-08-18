@@ -16,23 +16,36 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-function booleanValue(value: unknown, fallback = false): boolean {
-  return typeof value === 'boolean' ? value : fallback;
-}
-
-function normalizeDevice(value: unknown, fallbackId?: string): Device | undefined {
+function normalizeDevice(
+  value: unknown,
+  fallbackId?: string,
+  fallbackGroupId?: string,
+): Device | undefined {
   if (!isRecord(value)) return undefined;
-  const id = stringValue(value.id) ?? stringValue(value.nodeid) ?? fallbackId;
+  const id =
+    stringValue(value._id) ??
+    stringValue(value.id) ??
+    stringValue(value.nodeid) ??
+    fallbackId;
   if (!id) return undefined;
 
   const connectionState = typeof value.conn === 'number' ? value.conn : 0;
+
+  let agentVersion = stringValue(value.agentVersion) ?? stringValue(value.agentvers);
+  if (!agentVersion && isRecord(value.agent)) {
+    const ver = value.agent.ver;
+    if (typeof ver === 'number' || typeof ver === 'string') {
+      agentVersion = String(ver);
+    }
+  }
+
   return {
     id,
-    name: stringValue(value.name) ?? stringValue(value.host) ?? id,
-    groupId: stringValue(value.groupId) ?? stringValue(value.meshid),
+    name: stringValue(value.name) ?? stringValue(value.rname) ?? stringValue(value.host) ?? id,
+    groupId: stringValue(value.groupId) ?? stringValue(value.meshid) ?? fallbackGroupId,
     groupName: stringValue(value.groupName) ?? stringValue(value.meshname),
-    online: booleanValue(value.online, connectionState > 0),
-    agentVersion: stringValue(value.agentVersion) ?? stringValue(value.agentvers),
+    online: typeof value.online === 'boolean' ? value.online : connectionState > 0,
+    agentVersion,
     platform: stringValue(value.platform) ?? stringValue(value.osdesc),
     lastSeenAt: stringValue(value.lastSeenAt) ?? stringValue(value.lastconnect),
     raw: value,
@@ -41,7 +54,11 @@ function normalizeDevice(value: unknown, fallbackId?: string): Device | undefine
 
 function normalizeGroup(value: unknown, fallbackId?: string): DeviceGroup | undefined {
   if (!isRecord(value)) return undefined;
-  const id = stringValue(value.id) ?? stringValue(value.meshid) ?? fallbackId;
+  const id =
+    stringValue(value._id) ??
+    stringValue(value.id) ??
+    stringValue(value.meshid) ??
+    fallbackId;
   if (!id) return undefined;
   return {
     id,
@@ -51,19 +68,40 @@ function normalizeGroup(value: unknown, fallbackId?: string): DeviceGroup | unde
   };
 }
 
-function normalizeList<T>(
-  value: unknown,
-  normalizer: (item: unknown, fallbackId?: string) => T | undefined,
-): T[] {
+function normalizeDevicesList(value: unknown): Device[] {
   if (Array.isArray(value)) {
-    return value.map((item) => normalizer(item)).filter((item): item is T => Boolean(item));
+    return value
+      .map((item) => normalizeDevice(item))
+      .filter((item): item is Device => Boolean(item));
+  }
+  if (isRecord(value)) {
+    const result: Device[] = [];
+    for (const [key, item] of Object.entries(value)) {
+      if (Array.isArray(item)) {
+        for (const nested of item) {
+          const dev = normalizeDevice(nested, undefined, key);
+          if (dev) result.push(dev);
+        }
+      } else {
+        const dev = normalizeDevice(item, key);
+        if (dev) result.push(dev);
+      }
+    }
+    return result;
+  }
+  return [];
+}
+
+function normalizeGroupsList(value: unknown): DeviceGroup[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeGroup(item))
+      .filter((item): item is DeviceGroup => Boolean(item));
   }
   if (isRecord(value)) {
     return Object.entries(value)
-      .flatMap(([key, item]) =>
-        Array.isArray(item) ? item.map((nested) => normalizer(nested)) : [normalizer(item, key)],
-      )
-      .filter((item): item is T => Boolean(item));
+      .map(([key, item]) => normalizeGroup(item, key))
+      .filter((item): item is DeviceGroup => Boolean(item));
   }
   return [];
 }
@@ -168,8 +206,8 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
         {
           type: 'snapshot',
           snapshot: {
-            devices: normalizeList(payload.devices ?? payload.nodes, normalizeDevice),
-            groups: normalizeList(payload.groups ?? payload.meshes, normalizeGroup),
+            devices: normalizeDevicesList(payload.devices ?? payload.nodes),
+            groups: normalizeGroupsList(payload.groups ?? payload.meshes),
           },
         },
       ];
@@ -179,7 +217,7 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
       return [
         {
           type: 'devicesReplaced',
-          devices: normalizeList(payload.devices ?? payload.nodes, normalizeDevice),
+          devices: normalizeDevicesList(payload.devices ?? payload.nodes),
         },
       ];
     }
@@ -188,7 +226,7 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
       return [
         {
           type: 'groupsReplaced',
-          groups: normalizeList(payload.groups ?? payload.meshes, normalizeGroup),
+          groups: normalizeGroupsList(payload.groups ?? payload.meshes),
         },
       ];
     }
@@ -201,6 +239,31 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
     return rawEvent ? decodeEvent(rawEvent) : [];
   },
   createAuthenticationMessage: (token) => ({ type: 'authenticate', token }),
-  createSnapshotRequest: () => ({ type: 'request', resource: 'snapshot' }),
+  createSnapshotRequest: () => [
+    { action: 'meshes', responseid: 'req-groups' },
+    { action: 'nodes', responseid: 'req-nodes' },
+    { type: 'request', resource: 'snapshot' },
+  ],
   createHeartbeatMessage: () => ({ type: 'ping' }),
+  createChangeDeviceRequest: (deviceId, updates) => ({
+    action: 'changedevice',
+    nodeid: deviceId,
+    name: updates.name,
+    desc: updates.desc,
+    meshid: updates.groupId,
+    responseid: `req-changedevice-${Date.now()}`,
+  }),
+  createPowerActionRequest: (deviceId, action) =>
+    action === 'wake'
+      ? {
+          action: 'wakenode',
+          nodeid: deviceId,
+          responseid: `req-wakenode-${Date.now()}`,
+        }
+      : {
+          action: 'poweraction',
+          nodeid: deviceId,
+          subaction: action,
+          responseid: `req-poweraction-${Date.now()}`,
+        },
 };

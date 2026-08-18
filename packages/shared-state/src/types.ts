@@ -101,4 +101,12 @@ export interface GatewayProtocolAdapter {
   createAuthenticationMessage(token: string): unknown;
   createSnapshotRequest(): unknown;
   createHeartbeatMessage(): unknown;
+  createChangeDeviceRequest?(
+    deviceId: string,
+    updates: { name?: string; desc?: string; groupId?: string },
+  ): unknown;
+  createPowerActionRequest?(
+    deviceId: string,
+    action: 'wake' | 'reset' | 'poweroff' | 'sleep',
+  ): unknown;
 }

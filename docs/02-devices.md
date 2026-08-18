@@ -31,12 +31,18 @@
 }
 ```
 
-常见字段：
+常见字段说明：
 
 - `_id`：设备分组 ID，通常是 `mesh/<domain>/<id>` 或 `mesh//<id>`。
+- `type`：资源类型标识，固定为 `"mesh"`。
 - `name`：分组名称。
-- `mtype`：分组类型，`2` 通常是 Mesh Agent 设备组，`1` 是 AMT only，`3` 是 agentless/local。
-- `links`：用户或用户组权限关系。
+- `mtype`：分组类型，`1` 表示 Intel AMT only，`2` 表示 Mesh Agent 设备组，`3` 表示 agentless/local。
+- `desc`：分组描述信息。
+- `domain`：所属域/租户标识符。
+- `links`：用户或用户组关联关系与权限掩码对象（映射结构，包含 `name` 和 `rights`）。
+- `creation`：分组创建时间戳。
+- `creatorid`：创建者的用户 ID。
+- `creatorname`：创建者的显示名称。
 
 ## 获取设备列表
 
@@ -93,16 +99,37 @@
 }
 ```
 
-常见字段：
+常见字段说明（对应 `Device` 结构）：
 
-- `_id`：设备 ID，后续远控、命令、文件操作都使用它。
-- `meshid`：所属分组 ID。
-- `name`：MeshCentral 中显示的设备名。
-- `rname`：设备真实主机名。
-- `conn`：连接状态位。通常 `(conn & 1) != 0` 表示 Agent 在线。
-- `agent.id`：Agent 类型。
-- `agent.ver`：Agent 版本。
-- `osdesc`：操作系统描述。
+- `_id`：设备 ID（Node ID），后续远控、命令、文件操作等均使用它。
+- `type`：节点类型标识，固定为 `"node"`。
+- `mtype`：设备接入类型，`1` 为 Intel AMT，`2` 为 Mesh Agent，`3` 为 Agentless。
+- `icon`：设备图标类型编号，用于 UI 渲染操作系统/设备图标。
+- `name`：MeshCentral 中显示的设备名称/别名。
+- `rname`：设备首次注册时上报的真实/原始主机名（Real Name）。
+- `domain`：所属域/租户标识符。
+- `host`：设备主机名或域名（FQDN）。
+- `ip`：设备 IP 地址。
+- `osdesc`：操作系统详细描述（如 `"Windows 11"`、`"Ubuntu 22.04 LTS"`）。
+- `firstconnect`：首次连接时间戳。
+- `lastbootuptime`：系统上一次开机/启动的时间戳。
+- `conn`：连接状态掩码。通常 `(conn & 1) !== 0` 表示 Agent 当前在线。
+- `pwr`：电源状态代码。
+- `agct`：Agent 连接建立的时间戳。
+- `users`：拥有该设备管理权限的用户 ID 数组。
+- `lusers`：当前设备上已登录的本地操作系统用户列表。
+- `av`：已安装的防病毒软件列表。
+- `defender`：Windows Defender 状态与配置数据。
+- `agent`：Agent 客户端详细配置对象：
+  - `ver`：Agent 版本号。
+  - `id`：Agent 平台/架构 ID（如 `1`: Win32, `2`: Win64, `3`: Linux, `4`: macOS 等）。
+  - `caps`：Agent 能力特性掩码（Capabilities）。
+  - `core`：正在运行的 Agent 核心组件标识。
+  - `root`：Agent 是否以 Root/管理员权限运行。
+- `wsc`：Windows 安全中心（Windows Security Center）状态对象：
+  - `antiVirus`：杀毒软件开启状态。
+  - `autoUpdate`：自动更新功能状态。
+  - `firewall`：防火墙启用状态。
 
 ## 获取设备详情
 

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card, IconTile, SectionHeader } from '../../src/components/AppUi';
 import { Screen } from '../../src/components/Screen';
@@ -17,6 +18,20 @@ const quickActions = [
 export default function DashboardScreen() {
   const { devices, groups, events, status, isDemo } = useUiData();
   const online = devices.filter((device) => device.online).length;
+  const onlineRate = devices.length > 0 ? Math.round((online / devices.length) * 100) : 0;
+
+  useEffect(() => {
+    console.log('[DashboardScreen 首页渲染设备数据]', {
+      status,
+      isDemo,
+      deviceTotal: devices.length,
+      onlineCount: online,
+      offlineCount: devices.length - online,
+      groupCount: groups.length,
+      eventsCount: events.length,
+      onlineRate: `${onlineRate}%`,
+    });
+  }, [devices, groups, events, status, isDemo, online, onlineRate]);
 
   return (
     <Screen>
@@ -24,14 +39,14 @@ export default function DashboardScreen() {
         <View style={styles.identity}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>林</Text>
-            <View style={styles.avatarOnline} />
+            <View style={[styles.avatarOnline, status !== 'connected' && !isDemo && styles.avatarOffline]} />
           </View>
           <View>
             <Text style={styles.greeting}>下午好，林默</Text>
             <View style={styles.connectionRow}>
-              <View style={styles.connectionDot} />
+              <View style={[styles.connectionDot, status !== 'connected' && !isDemo && styles.connectionDotConnecting]} />
               <Text style={styles.connectionText}>
-                {isDemo ? '演示环境 · 上海节点' : status === 'connected' ? '网关已连接' : '正在连接网关'}
+                {isDemo ? '演示环境 · 上海节点' : status === 'connected' ? '网关已连接' : '正在连接网关...'}
               </Text>
             </View>
           </View>
@@ -46,16 +61,24 @@ export default function DashboardScreen() {
         <View style={styles.heroOrbLarge} />
         <View style={styles.heroOrbSmall} />
         <Text style={styles.heroEyebrow}>MESH OVERVIEW</Text>
-        <Text style={styles.heroTitle}>设备运行稳定</Text>
-        <Text style={styles.heroCopy}>全部 Agent 最近 5 分钟同步正常</Text>
+        <Text style={styles.heroTitle}>
+          {isDemo ? '设备运行稳定' : status === 'connected' ? '设备实时监控中' : '网关同步中'}
+        </Text>
+        <Text style={styles.heroCopy}>
+          {isDemo
+            ? '全部 Agent 最近 5 分钟同步正常'
+            : status === 'connected'
+              ? `已同步 ${devices.length} 台设备与 ${groups.length} 个分组`
+              : '正在建立 WebSocket 控制通道...'}
+        </Text>
         <View style={styles.heroFooter}>
           <View style={styles.heroMetric}>
-            <Text style={styles.heroMetricValue}>{Math.round((online / devices.length) * 100)}%</Text>
+            <Text style={styles.heroMetricValue}>{onlineRate}%</Text>
             <Text style={styles.heroMetricLabel}>在线率</Text>
           </View>
           <View style={styles.heroDivider} />
           <View style={styles.heroMetric}>
-            <Text style={styles.heroMetricValue}>38 ms</Text>
+            <Text style={styles.heroMetricValue}>{status === 'connected' || isDemo ? '38 ms' : '--'}</Text>
             <Text style={styles.heroMetricLabel}>网关延迟</Text>
           </View>
           <Pressable style={styles.heroAction} onPress={() => router.push('/devices')}>
@@ -130,9 +153,11 @@ const styles = StyleSheet.create({
   avatar: { width: 46, height: 46, borderRadius: 16, backgroundColor: colors.navy, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   avatarOnline: { position: 'absolute', right: -1, bottom: -1, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.success, borderWidth: 2, borderColor: colors.background },
+  avatarOffline: { backgroundColor: colors.subtle },
   greeting: { color: colors.text, fontSize: 17, fontWeight: '800' },
   connectionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   connectionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
+  connectionDotConnecting: { backgroundColor: colors.warning },
   connectionText: { color: colors.muted, fontSize: 11 },
   notification: { width: 43, height: 43, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   notificationDot: { position: 'absolute', right: 10, top: 9, width: 7, height: 7, borderRadius: 4, backgroundColor: colors.danger, borderWidth: 1.5, borderColor: colors.surface },

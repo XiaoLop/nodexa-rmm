@@ -67,21 +67,43 @@ export function createGatewayStore(): GatewayStore {
 function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
   switch (mutation.type) {
     case 'snapshot':
+      console.log('[GatewayStore] 收到全量快照:', {
+        devicesCount: mutation.snapshot.devices.length,
+        groupsCount: mutation.snapshot.groups.length,
+      });
       state.replaceDevices(mutation.snapshot.devices);
       state.replaceGroups(mutation.snapshot.groups);
       return;
-    case 'devicesReplaced':
+    case 'devicesReplaced': {
+      const onlineCount = mutation.devices.filter((d) => d.online).length;
+      console.log('[GatewayStore] 设备列表替换/全量同步:', {
+        total: mutation.devices.length,
+        online: onlineCount,
+        offline: mutation.devices.length - onlineCount,
+      });
       state.replaceDevices(mutation.devices);
       return;
+    }
     case 'groupsReplaced':
+      console.log('[GatewayStore] 设备组列表替换:', { total: mutation.groups.length });
       state.replaceGroups(mutation.groups);
       return;
     case 'deviceUpserted':
+      console.log('[GatewayStore] 设备数据更新/插入:', {
+        id: mutation.device.id,
+        name: mutation.device.name,
+        online: mutation.device.online,
+      });
       state.upsertDevice(mutation.device);
       if (mutation.event) state.appendEvent(mutation.event);
       return;
     case 'deviceStatusChanged': {
       const current = state.devices[mutation.deviceId];
+      console.log('[GatewayStore] 设备在线状态变更:', {
+        deviceId: mutation.deviceId,
+        name: current?.name ?? mutation.deviceId,
+        online: mutation.online,
+      });
       state.upsertDevice({
         id: mutation.deviceId,
         name: current?.name ?? mutation.deviceId,
@@ -92,10 +114,15 @@ function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
       return;
     }
     case 'deviceRemoved':
+      console.log('[GatewayStore] 设备已被移除:', { deviceId: mutation.deviceId });
       state.removeDevice(mutation.deviceId);
       if (mutation.event) state.appendEvent(mutation.event);
       return;
     case 'eventReceived':
+      console.log('[GatewayStore] 收到网关事件:', {
+        type: mutation.event.type,
+        message: mutation.event.message,
+      });
       state.appendEvent(mutation.event);
   }
 }

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppHeader, Card, IconTile, StatusBadge } from '../../src/components/AppUi';
 import { Screen } from '../../src/components/Screen';
 import { platformIcon } from '../../src/demoData';
@@ -10,9 +10,19 @@ import { useUiData } from '../../src/features/gateway/useUiData';
 import { colors } from '../../src/theme';
 
 export default function DevicesScreen() {
-  const { devices, groups } = useUiData();
+  const { devices, groups, refreshDevices } = useUiData();
   const [filter, setFilter] = useState<'全部' | '在线' | '离线'>('全部');
   const [query, setQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    refreshDevices();
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 800);
+  }, [refreshDevices]);
+
   const filtered = devices.filter((device) => {
     const matchesFilter = filter === '全部' || (filter === '在线' ? device.online : !device.online);
     const matchesQuery = `${device.name} ${device.platform} ${device.groupName}`.toLowerCase().includes(query.toLowerCase());
@@ -20,7 +30,11 @@ export default function DevicesScreen() {
   });
 
   return (
-    <Screen>
+    <Screen
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+      }
+    >
       <AppHeader
         title="设备"
         subtitle={`${devices.filter((device) => device.online).length} 台在线 · ${groups.length} 个设备组`}
