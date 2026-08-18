@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import { formatEventMessage } from '@meshcentral/shared-state';
 import { useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppHeader, Card, IconTile, SectionHeader, StatusBadge } from '../../src/components/AppUi';
+import { AppHeader, Card, IconTile, SectionHeader, StatusBadge, eventPresentation, platformIcon } from '../../src/components/AppUi';
 import { Screen } from '../../src/components/Screen';
-import { demoDevices, eventPresentation, platformIcon } from '../../src/demoData';
 import { useUiData } from '../../src/features/gateway/useUiData';
 import { colors } from '../../src/theme';
 
 export function generateStaticParams() {
-  return demoDevices.map((device) => ({ id: device.id }));
+  return [];
 }
 
 const actions = [
@@ -87,7 +87,7 @@ export default function DeviceDetailScreen() {
 
       <View style={styles.section}>
         <SectionHeader title="最近事件" />
-        <Card style={styles.eventCard}>{relatedEvents.map((event, index) => { const presentation = eventPresentation(event.type); return <View key={event.id} style={[styles.eventRow, index === relatedEvents.length - 1 && styles.lastRow]}><IconTile name={presentation.icon} tone={presentation.tone} size={36} /><View style={styles.eventCopy}><Text style={styles.eventTitle}>{event.message}</Text><Text style={styles.eventMeta}>今天 · {new Date(event.occurredAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</Text></View></View>; })}</Card>
+        <Card style={styles.eventCard}>{relatedEvents.map((event, index) => { const presentation = eventPresentation(event.type); const msg = formatEventMessage(event, devices); return <View key={event.id} style={[styles.eventRow, index === relatedEvents.length - 1 && styles.lastRow]}><IconTile name={presentation.icon} tone={presentation.tone} size={36} /><View style={styles.eventCopy}><Text style={styles.eventTitle}>{msg}</Text><Text style={styles.eventMeta}>今天 · {new Date(event.occurredAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</Text></View></View>; })}</Card>
       </View>
     </Screen>
   );

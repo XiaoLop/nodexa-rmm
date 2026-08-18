@@ -2,9 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { AppHeader, Card, IconTile, PrimaryButton } from '../src/components/AppUi';
+import { AppHeader, Card, IconTile, PrimaryButton, platformIcon } from '../src/components/AppUi';
 import { Screen } from '../src/components/Screen';
-import { platformIcon } from '../src/demoData';
 import { useUiData } from '../src/features/gateway/useUiData';
 import { colors } from '../src/theme';
 

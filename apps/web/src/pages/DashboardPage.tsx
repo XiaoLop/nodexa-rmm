@@ -4,11 +4,12 @@ import {
   DisconnectOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
+import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
 import { Alert, Button, Card, Col, Empty, List, Row, Space, Statistic, Typography } from 'antd';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
 export function DashboardPage() {
-  const { devices, events, configured, client, status, error } = useGatewayData();
+  const { devices, groups, events, configured, client, status, error } = useGatewayData();
   const online = devices.filter((device) => device.online).length;
 
   return (
@@ -71,15 +72,49 @@ export function DashboardPage() {
           <Empty description="等待网关推送事件" />
         ) : (
           <List
+            size="small"
             dataSource={events.slice(0, 8)}
-            renderItem={(event) => (
-              <List.Item>
-                <List.Item.Meta
-                  title={event.message || event.type}
-                  description={`${event.deviceId ?? '系统'} · ${new Date(event.occurredAt).toLocaleString()}`}
-                />
-              </List.Item>
-            )}
+            renderItem={(event) => {
+              const time = new Date(event.occurredAt);
+              const timeStr = isNaN(time.getTime())
+                ? '00:00:00'
+                : `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`;
+              const targetDevice = getEventTargetName(event, devices);
+              const displayMsg = formatEventMessage(event, devices, groups);
+
+              return (
+                <List.Item style={{ padding: '8px 0', fontSize: '13px' }}>
+                  <Space size={6} wrap>
+                    <Typography.Text type="secondary" style={{ fontFamily: 'monospace' }}>
+                      {timeStr}
+                    </Typography.Text>
+                    <Typography.Text type="secondary">-</Typography.Text>
+                    {event.user ? (
+                      <>
+                        <Typography.Link style={{ fontWeight: 600 }}>
+                          {event.user}
+                        </Typography.Link>
+                        <Typography.Text type="secondary">→</Typography.Text>
+                      </>
+                    ) : null}
+                    {targetDevice ? (
+                      <>
+                        <Typography.Link style={{ fontWeight: 600 }}>
+                          {targetDevice}
+                        </Typography.Link>
+                        <Typography.Text type="secondary">→</Typography.Text>
+                      </>
+                    ) : null}
+                    <Typography.Text>{displayMsg}</Typography.Text>
+                    {event.ip ? (
+                      <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                        ({event.ip})
+                      </Typography.Text>
+                    ) : null}
+                  </Space>
+                </List.Item>
+              );
+            }}
           />
         )}
       </Card>

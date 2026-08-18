@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, IconTile, SectionHeader } from '../../src/components/AppUi';
+import { Card, CompactEventRow, IconTile, SectionHeader } from '../../src/components/AppUi';
 import { Screen } from '../../src/components/Screen';
-import { eventPresentation } from '../../src/demoData';
 import { useUiData } from '../../src/features/gateway/useUiData';
 import { colors } from '../../src/theme';
 
@@ -16,22 +14,9 @@ const quickActions = [
 ];
 
 export default function DashboardScreen() {
-  const { devices, groups, events, status, isDemo } = useUiData();
+  const { devices, groups, events, status } = useUiData();
   const online = devices.filter((device) => device.online).length;
   const onlineRate = devices.length > 0 ? Math.round((online / devices.length) * 100) : 0;
-
-  useEffect(() => {
-    console.log('[DashboardScreen 首页渲染设备数据]', {
-      status,
-      isDemo,
-      deviceTotal: devices.length,
-      onlineCount: online,
-      offlineCount: devices.length - online,
-      groupCount: groups.length,
-      eventsCount: events.length,
-      onlineRate: `${onlineRate}%`,
-    });
-  }, [devices, groups, events, status, isDemo, online, onlineRate]);
 
   return (
     <Screen>
@@ -39,14 +24,14 @@ export default function DashboardScreen() {
         <View style={styles.identity}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>林</Text>
-            <View style={[styles.avatarOnline, status !== 'connected' && !isDemo && styles.avatarOffline]} />
+            <View style={[styles.avatarOnline, status !== 'connected' && styles.avatarOffline]} />
           </View>
           <View>
             <Text style={styles.greeting}>下午好，林默</Text>
             <View style={styles.connectionRow}>
-              <View style={[styles.connectionDot, status !== 'connected' && !isDemo && styles.connectionDotConnecting]} />
+              <View style={[styles.connectionDot, status !== 'connected' && styles.connectionDotConnecting]} />
               <Text style={styles.connectionText}>
-                {isDemo ? '演示环境 · 上海节点' : status === 'connected' ? '网关已连接' : '正在连接网关...'}
+                {status === 'connected' ? '网关已连接' : '正在连接网关...'}
               </Text>
             </View>
           </View>
@@ -62,14 +47,12 @@ export default function DashboardScreen() {
         <View style={styles.heroOrbSmall} />
         <Text style={styles.heroEyebrow}>MESH OVERVIEW</Text>
         <Text style={styles.heroTitle}>
-          {isDemo ? '设备运行稳定' : status === 'connected' ? '设备实时监控中' : '网关同步中'}
+          {status === 'connected' ? '设备实时监控中' : '网关同步中'}
         </Text>
         <Text style={styles.heroCopy}>
-          {isDemo
-            ? '全部 Agent 最近 5 分钟同步正常'
-            : status === 'connected'
-              ? `已同步 ${devices.length} 台设备与 ${groups.length} 个分组`
-              : '正在建立 WebSocket 控制通道...'}
+          {status === 'connected'
+            ? `已同步 ${devices.length} 台设备与 ${groups.length} 个分组`
+            : '正在建立 WebSocket 控制通道...'}
         </Text>
         <View style={styles.heroFooter}>
           <View style={styles.heroMetric}>
@@ -78,7 +61,7 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.heroDivider} />
           <View style={styles.heroMetric}>
-            <Text style={styles.heroMetricValue}>{status === 'connected' || isDemo ? '38 ms' : '--'}</Text>
+            <Text style={styles.heroMetricValue}>{status === 'connected' ? '38 ms' : '--'}</Text>
             <Text style={styles.heroMetricLabel}>网关延迟</Text>
           </View>
           <Pressable style={styles.heroAction} onPress={() => router.push('/devices')}>
@@ -113,19 +96,9 @@ export default function DashboardScreen() {
       <View style={styles.sectionBlock}>
         <SectionHeader title="最近事件" action={<Pressable onPress={() => router.push('/events')}><Text style={styles.link}>查看全部</Text></Pressable>} />
         <Card style={styles.eventsCard}>
-          {events.slice(0, 5).map((event, index) => {
-            const presentation = eventPresentation(event.type);
-            return (
-              <View key={event.id} style={[styles.eventRow, index === 4 && styles.lastRow]}>
-                <IconTile name={presentation.icon} tone={presentation.tone} size={38} />
-                <View style={styles.eventCopy}>
-                  <Text style={styles.eventTitle}>{event.message || event.type}</Text>
-                  <Text style={styles.eventMeta}>{formatEventTime(event.occurredAt)} · Mesh Agent</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
-              </View>
-            );
-          })}
+          {events.slice(0, 5).map((event, index) => (
+            <CompactEventRow key={event.id} event={event} isLast={index === 4 || index === Math.min(events.length, 5) - 1} />
+          ))}
         </Card>
       </View>
     </Screen>
@@ -140,11 +113,6 @@ function Metric({ label, value, icon, tone }: { label: string; value: number; ic
       <Text style={styles.metricLabel}>{label}</Text>
     </Card>
   );
-}
-
-function formatEventTime(value: string) {
-  const date = new Date(value);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({

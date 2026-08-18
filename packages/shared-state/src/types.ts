@@ -21,12 +21,22 @@ export interface DeviceGroup {
 }
 
 export type GatewayEventType =
-  'deviceOnline' | 'deviceOffline' | 'deviceChanged' | 'deviceRemoved' | 'unknown';
+  | 'deviceOnline'
+  | 'deviceOffline'
+  | 'deviceChanged'
+  | 'deviceRemoved'
+  | 'relayLog'
+  | 'agentLog'
+  | 'userSessionCount'
+  | 'unknown';
 
 export interface GatewayEvent {
   id: string;
   type: GatewayEventType;
   deviceId?: string;
+  deviceName?: string;
+  user?: string;
+  ip?: string;
   message?: string;
   occurredAt: string;
   raw?: unknown;

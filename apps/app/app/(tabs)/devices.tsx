@@ -3,9 +3,8 @@ import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
-import { AppHeader, Card, IconTile, StatusBadge } from '../../src/components/AppUi';
+import { AppHeader, Card, IconTile, StatusBadge, platformIcon } from '../../src/components/AppUi';
 import { Screen } from '../../src/components/Screen';
-import { platformIcon } from '../../src/demoData';
 import { useUiData } from '../../src/features/gateway/useUiData';
 import { colors } from '../../src/theme';
 

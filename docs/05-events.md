@@ -35,7 +35,7 @@ MeshCentral 控制通道既能请求数据，也会推送实时事件。接收�
   }
   ```
 
-- **`changenode`（设备属性变更）**：设备的名称、操作系统、IP 地址、登录用户或配置发生了更新，事件附带最新的 `node` 详细对象。
+- **`changenode`（设备属性变更）**：设备的名称、操作系统、IP 地址、登录用户或配置发生了更新，事件附带最新的 `node` 详细对象（注：用于同步更新本地设备属性，不单独存储至 `events` 列表）。
 
   ```json
   {
@@ -62,7 +62,7 @@ MeshCentral 控制通道既能请求数据，也会推送实时事件。接收�
 
 - **`devicesessions`（设备会话状态变更）**：该设备的远程会话状态（如桌面、文件、命令行会话）发生变化。
 - **`sysinfohash`（系统信息 Hash 更新）**：设备系统硬件与软件配置 Hash 更新，用于客户端判断是否需要重新拉取详细设备信息。
-- **`ifchange`（网络接口变更）**：设备的网卡、IP 地址或网络连接发生改变。
+- **`ifchange`（网络接口变更）**：设备的网卡、IP 地址或网络连接发生改变（注：此事件被忽略，不存入应用状态）。
 - **`agentlog`（Agent 操作日志与行为审计）**：记录设备 Agent 执行的具体操作（如文件上传/下载、命令执行等）。
 
   ```json
@@ -231,13 +231,15 @@ function normalizeEvent(data) {
       return { type: isOnline ? 'deviceOnline' : 'deviceOffline', nodeid: event.nodeid, raw: event };
     }
     if (action === 'changenode') {
-      return { type: 'deviceChanged', nodeid: event.nodeid, node: event.node, raw: event };
+      // 用于增量更新设备属性数据，不作为事件存入 state
+      return null;
     }
     if (action === 'sysinfohash') {
       return { type: 'sysInfoHashUpdated', nodeid: event.nodeid, hash: event.hash, raw: event };
     }
     if (action === 'ifchange') {
-      return { type: 'networkInterfaceChanged', nodeid: event.nodeid, raw: event };
+      // 忽略网卡接口变更事件，不存入状态
+      return null;
     }
     if (action === 'agentlog') {
       return { type: 'agentLog', nodeid: event.nodeid, msg: event.msg, raw: event };

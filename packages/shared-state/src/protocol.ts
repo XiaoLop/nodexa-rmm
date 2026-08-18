@@ -2,9 +2,11 @@ import type {
   Device,
   DeviceGroup,
   GatewayEvent,
+  GatewayEventType,
   GatewayMutation,
   GatewayProtocolAdapter,
 } from './types';
+import { isIdString } from './utils';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -29,7 +31,14 @@ function normalizeDevice(
     fallbackId;
   if (!id) return undefined;
 
-  const connectionState = typeof value.conn === 'number' ? value.conn : 0;
+  let online: boolean | undefined;
+  if (typeof value.online === 'boolean') {
+    online = value.online;
+  } else if (typeof value.conn === 'number') {
+    online = value.conn > 0;
+  } else if (typeof value.pwr === 'number') {
+    online = value.pwr > 0;
+  }
 
   let agentVersion = stringValue(value.agentVersion) ?? stringValue(value.agentvers);
   if (!agentVersion && isRecord(value.agent)) {
@@ -44,7 +53,7 @@ function normalizeDevice(
     name: stringValue(value.name) ?? stringValue(value.rname) ?? stringValue(value.host) ?? id,
     groupId: stringValue(value.groupId) ?? stringValue(value.meshid) ?? fallbackGroupId,
     groupName: stringValue(value.groupName) ?? stringValue(value.meshname),
-    online: typeof value.online === 'boolean' ? value.online : connectionState > 0,
+    online: online as boolean,
     agentVersion,
     platform: stringValue(value.platform) ?? stringValue(value.osdesc),
     lastSeenAt: stringValue(value.lastSeenAt) ?? stringValue(value.lastconnect),
@@ -113,21 +122,40 @@ function eventId(action: string, deviceId?: string): string {
 function normalizeEvent(raw: UnknownRecord): GatewayEvent {
   const action = stringValue(raw.action) ?? 'unknown';
   const deviceId = stringValue(raw.deviceId) ?? stringValue(raw.nodeid);
-  const eventType =
-    action === 'nodeconnect'
-      ? 'deviceOnline'
-      : action === 'nodedisconnect'
-        ? 'deviceOffline'
-        : action === 'changenode'
-          ? 'deviceChanged'
-          : action === 'removenode' || action === 'deletenode'
-            ? 'deviceRemoved'
-            : 'unknown';
+  const nodeObj = isRecord(raw.node) ? raw.node : undefined;
+  let deviceName = stringValue(raw.deviceName) ?? stringValue(raw.nodename) ?? (nodeObj ? stringValue(nodeObj.name) : undefined);
+  if (deviceName && isIdString(deviceName)) {
+    deviceName = undefined;
+  }
+  const user = stringValue(raw.username) ?? stringValue(raw.user) ?? stringValue(raw.userid)?.replace(/^user\/\//, '');
+  const ip = stringValue(raw.ip) ?? stringValue(raw.remoteaddr);
+  const conn = typeof raw.conn === 'number' ? raw.conn : (typeof raw.pwr === 'number' ? raw.pwr : undefined);
+
+  let eventType: GatewayEventType = 'unknown';
+
+  if (action === 'nodeconnect' || action === 'connect' || action === 'connected') {
+    eventType = conn !== undefined && conn <= 0 ? 'deviceOffline' : 'deviceOnline';
+  } else if (action === 'nodedisconnect' || action === 'disconnect' || action === 'disconnected') {
+    eventType = 'deviceOffline';
+  } else if (action === 'changenode') {
+    eventType = 'deviceChanged';
+  } else if (action === 'removenode' || action === 'deletenode') {
+    eventType = 'deviceRemoved';
+  } else if (action === 'relaylog' || raw.etype === 'relay') {
+    eventType = 'relayLog';
+  } else if (action === 'agentlog') {
+    eventType = 'agentLog';
+  } else if (action === 'wssessioncount') {
+    eventType = 'userSessionCount';
+  }
 
   return {
     id: stringValue(raw.id) ?? eventId(action, deviceId),
     type: eventType,
     deviceId,
+    deviceName,
+    user,
+    ip,
     message: stringValue(raw.message) ?? stringValue(raw.msg),
     occurredAt: stringValue(raw.occurredAt) ?? stringValue(raw.time) ?? new Date().toISOString(),
     raw,
@@ -135,7 +163,14 @@ function normalizeEvent(raw: UnknownRecord): GatewayEvent {
 }
 
 function decodeEvent(raw: UnknownRecord): GatewayMutation[] {
+  const innerEvent = isRecord(raw.event) ? raw.event : undefined;
+  const action = stringValue(innerEvent?.action) ?? stringValue(raw.action);
+  const etype = stringValue(innerEvent?.etype) ?? stringValue(raw.etype);
+  if (action === 'ifchange' || etype === 'ifchange') return [];
+
   const event = normalizeEvent(raw);
+  if (event.type === 'unknown') return [];
+
   if (!event.deviceId) return [{ type: 'eventReceived', event }];
 
   if (event.type === 'deviceRemoved') {
@@ -165,8 +200,8 @@ function decodeEvent(raw: UnknownRecord): GatewayMutation[] {
   if (event.type === 'deviceChanged') {
     const device = normalizeDevice(raw.node ?? raw.device, event.deviceId);
     return device
-      ? [{ type: 'deviceUpserted', device, event }]
-      : [{ type: 'eventReceived', event }];
+      ? [{ type: 'deviceUpserted', device }]
+      : [];
   }
 
   return [{ type: 'eventReceived', event }];
@@ -200,6 +235,11 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
   },
   decode(payload) {
     if (!isRecord(payload)) return [];
+
+    const innerEvent = isRecord(payload.event) ? payload.event : payload;
+    const payloadAction = stringValue(innerEvent.action) ?? stringValue(payload.action);
+    const payloadEtype = stringValue(innerEvent.etype) ?? stringValue(payload.etype);
+    if (payloadAction === 'ifchange' || payloadEtype === 'ifchange') return [];
 
     if (payload.type === 'snapshot' || payload.action === 'snapshot') {
       return [

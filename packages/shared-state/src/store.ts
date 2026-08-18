@@ -1,5 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { Device, DeviceGroup, GatewayEvent, GatewayMutation, GatewayState } from './types';
+import { isIdString } from './utils';
 
 const MAX_EVENTS = 100;
 
@@ -49,7 +50,38 @@ export function createGatewayStore(): GatewayStore {
     replaceDevices: (devices) => set({ devices: toRecord(devices) }),
     replaceGroups: (groups) => set({ groups: toRecord(groups) }),
     upsertDevice: (device) =>
-      set((state) => ({ devices: { ...state.devices, [device.id]: device } })),
+      set((state) => {
+        const existing = state.devices[device.id];
+        const isOnlineProvided = typeof device.online === 'boolean';
+        const online = isOnlineProvided
+          ? device.online
+          : (existing?.online ?? false);
+
+        const name =
+          device.name && !isIdString(device.name)
+            ? device.name
+            : (existing?.name ?? device.name ?? device.id);
+
+        const merged: Device = {
+          ...(existing ?? {}),
+          ...device,
+          name,
+          online,
+          groupId: device.groupId ?? existing?.groupId,
+          groupName: device.groupName ?? existing?.groupName,
+          agentVersion: device.agentVersion ?? existing?.agentVersion,
+          platform: device.platform ?? existing?.platform,
+          lastSeenAt: device.lastSeenAt ?? existing?.lastSeenAt,
+          raw:
+            typeof existing?.raw === 'object' &&
+            existing.raw !== null &&
+            typeof device.raw === 'object' &&
+            device.raw !== null
+              ? { ...existing.raw, ...device.raw }
+              : (device.raw ?? existing?.raw),
+        };
+        return { devices: { ...state.devices, [device.id]: merged } };
+      }),
     removeDevice: (deviceId) =>
       set((state) => {
         const devices = { ...state.devices };
@@ -57,7 +89,17 @@ export function createGatewayStore(): GatewayStore {
         return { devices };
       }),
     appendEvent: (event) =>
-      set((state) => ({ events: [event, ...state.events].slice(0, MAX_EVENTS) })),
+      set((state) => {
+        if (!event || event.type === 'unknown' || event.type === 'deviceChanged') return state;
+        let enhancedEvent = event;
+        if (event.deviceId && (!event.deviceName || isIdString(event.deviceName))) {
+          const dev = state.devices[event.deviceId];
+          if (dev?.name && !isIdString(dev.name)) {
+            enhancedEvent = { ...event, deviceName: dev.name };
+          }
+        }
+        return { events: [enhancedEvent, ...state.events].slice(0, MAX_EVENTS) };
+      }),
     touchMessage: () => set({ lastMessageAt: new Date().toISOString() }),
     applyMutation: (mutation) => applyMutation(get(), mutation),
     reset: () => set(initialData),
@@ -67,63 +109,37 @@ export function createGatewayStore(): GatewayStore {
 function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
   switch (mutation.type) {
     case 'snapshot':
-      console.log('[GatewayStore] 收到全量快照:', {
-        devicesCount: mutation.snapshot.devices.length,
-        groupsCount: mutation.snapshot.groups.length,
-      });
       state.replaceDevices(mutation.snapshot.devices);
       state.replaceGroups(mutation.snapshot.groups);
       return;
     case 'devicesReplaced': {
-      const onlineCount = mutation.devices.filter((d) => d.online).length;
-      console.log('[GatewayStore] 设备列表替换/全量同步:', {
-        total: mutation.devices.length,
-        online: onlineCount,
-        offline: mutation.devices.length - onlineCount,
-      });
       state.replaceDevices(mutation.devices);
       return;
     }
     case 'groupsReplaced':
-      console.log('[GatewayStore] 设备组列表替换:', { total: mutation.groups.length });
       state.replaceGroups(mutation.groups);
       return;
     case 'deviceUpserted':
-      console.log('[GatewayStore] 设备数据更新/插入:', {
-        id: mutation.device.id,
-        name: mutation.device.name,
-        online: mutation.device.online,
-      });
       state.upsertDevice(mutation.device);
       if (mutation.event) state.appendEvent(mutation.event);
       return;
     case 'deviceStatusChanged': {
       const current = state.devices[mutation.deviceId];
-      console.log('[GatewayStore] 设备在线状态变更:', {
-        deviceId: mutation.deviceId,
-        name: current?.name ?? mutation.deviceId,
-        online: mutation.online,
-      });
       state.upsertDevice({
         id: mutation.deviceId,
-        name: current?.name ?? mutation.deviceId,
-        ...current,
+        name: current?.name && !isIdString(current.name) ? current.name : mutation.deviceId,
         online: mutation.online,
       });
       state.appendEvent(mutation.event);
       return;
     }
     case 'deviceRemoved':
-      console.log('[GatewayStore] 设备已被移除:', { deviceId: mutation.deviceId });
       state.removeDevice(mutation.deviceId);
       if (mutation.event) state.appendEvent(mutation.event);
       return;
     case 'eventReceived':
-      console.log('[GatewayStore] 收到网关事件:', {
-        type: mutation.event.type,
-        message: mutation.event.message,
-      });
       state.appendEvent(mutation.event);
+      return;
   }
 }
 
