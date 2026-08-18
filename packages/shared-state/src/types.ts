@@ -89,8 +89,15 @@ export interface WebSocketLike {
 
 export type WebSocketFactory = (url: string) => WebSocketLike;
 
+export type GatewayConnectionResult =
+  | { status: 'pending'; signal?: string }
+  | { status: 'accepted' }
+  | { status: 'rejected'; error: string };
+
 export interface GatewayProtocolAdapter {
   decode(payload: unknown): GatewayMutation[];
+  inspectConnectionMessage?(payload: unknown): GatewayConnectionResult;
+  requiredConnectionSignals?: readonly string[];
   createAuthenticationMessage(token: string): unknown;
   createSnapshotRequest(): unknown;
   createHeartbeatMessage(): unknown;

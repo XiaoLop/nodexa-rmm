@@ -7,6 +7,7 @@ export type {
   ConnectionStatus,
   Device,
   DeviceGroup,
+  GatewayConnectionResult,
   GatewayEvent,
   GatewayEventType,
   GatewayMutation,

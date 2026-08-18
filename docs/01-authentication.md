@@ -150,3 +150,93 @@ Cookie 内容大致包含：
 
 - `cookie`：客户端连接 `meshrelay.ashx` 时使用 `auth=<cookie>`。
 - `rcookie`：通过控制通道通知设备端连接中继时使用 `rauth=<rcookie>`。
+
+## 鉴权成功或失败
+
+### 失败时会返回
+
+```ts
+{
+  action:"close",
+  cause:"noauth",
+  msg: string
+}
+```
+
+> 然后会关闭连接
+
+### 成功时会返回
+
+```Typescript
+export interface Serverinfo {
+    domain: string;
+    name: string;
+    mpsname: string;
+    mpsport: number;
+    port: number;
+    emailcheck: boolean;
+    domainauth: boolean;
+    serverTime: number;
+    features: number;
+    features2: number;
+    languages: string[];
+    tlshash: string;
+    agentCertHash: string;
+    https: boolean;
+    redirport: number;
+    magenturl: string;
+    domainsuffix: string;
+    logoutonidlesessiontimeout: boolean;
+    certExpire: number;
+}
+
+export interface RootObject {
+    action: "serverinfo";
+    serverinfo: Serverinfo;
+}
+```
+
+```Typescript
+
+export type Link = Record<string, {rights: number}>;
+
+export interface Userinfo {
+    _id: string;
+    name: string;
+    email: string;
+    creation: number;
+    login: number;
+    access: number;
+    siteadmin: number;
+    llang: string;
+    links: Link;
+    passchange: number;
+    pastlogin: number;
+}
+
+export interface RootObject {
+    action: "userinfo";
+    userinfo: Userinfo;
+}
+```
+
+```Typescript
+export interface RootObject {
+    action: "traceinfo";
+    traceSources?: null;
+}
+```
+
+```Typescript
+export interface Warning {
+    msg: string;
+    id: boolean;
+}
+
+export interface RootObject {
+    action: "serverwarnings";
+    warnings: Warning[];
+}
+```
+
+鉴权成功后会返回以上4个数据

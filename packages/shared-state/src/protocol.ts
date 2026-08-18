@@ -135,6 +135,31 @@ function decodeEvent(raw: UnknownRecord): GatewayMutation[] {
 }
 
 export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
+  requiredConnectionSignals: ['serverinfo', 'userinfo', 'traceinfo', 'serverwarnings'],
+  inspectConnectionMessage(payload) {
+    if (!isRecord(payload)) return { status: 'pending' };
+
+    const action = stringValue(payload.action);
+    const type = stringValue(payload.type);
+    if (action === 'close' || type === 'authenticationFailed' || type === 'authError') {
+      return {
+        status: 'rejected',
+        error: stringValue(payload.msg) ?? stringValue(payload.message) ?? 'Authentication failed.',
+      };
+    }
+
+    if (type === 'authenticated' || action === 'authenticated') return { status: 'accepted' };
+    if (
+      action === 'serverinfo' ||
+      action === 'userinfo' ||
+      action === 'traceinfo' ||
+      action === 'serverwarnings'
+    ) {
+      return { status: 'pending', signal: action };
+    }
+
+    return { status: 'pending' };
+  },
   decode(payload) {
     if (!isRecord(payload)) return [];
 
@@ -170,7 +195,7 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
 
     const rawEvent = isRecord(payload.event)
       ? payload.event
-      : payload.type === 'event'
+      : payload.type === 'event' || typeof payload.action === 'string'
         ? payload
         : undefined;
     return rawEvent ? decodeEvent(rawEvent) : [];
