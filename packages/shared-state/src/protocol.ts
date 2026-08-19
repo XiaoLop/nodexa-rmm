@@ -5,6 +5,7 @@ import type {
   GatewayEventType,
   GatewayMutation,
   GatewayProtocolAdapter,
+  UserInfo,
 } from './types';
 import { isIdString } from './utils';
 
@@ -269,6 +270,21 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
           groups: normalizeGroupsList(payload.groups ?? payload.meshes),
         },
       ];
+    }
+
+    if (payload.action === 'userinfo' || isRecord(payload.userinfo)) {
+      const uInfo = isRecord(payload.userinfo) ? payload.userinfo : payload;
+      const id = stringValue(uInfo._id) ?? stringValue(uInfo.id) ?? stringValue(uInfo.userid);
+      if (id) {
+        const userInfo: UserInfo = {
+          id,
+          name: stringValue(uInfo.name) ?? stringValue(uInfo.username) ?? id.replace(/^user\/\/[^/]*\//, '').replace(/^user\/\//, ''),
+          email: stringValue(uInfo.email),
+          siteadmin: typeof uInfo.siteadmin === 'number' ? uInfo.siteadmin : undefined,
+          raw: uInfo,
+        };
+        return [{ type: 'userInfoUpdated', userInfo }];
+      }
     }
 
     const rawEvent = isRecord(payload.event)

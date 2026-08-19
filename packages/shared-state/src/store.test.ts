@@ -67,6 +67,29 @@ describe('gateway store and protocol', () => {
     expect(groups[0]).toMatchObject({ id: 'mesh/domain/group1', name: 'Production', description: 'Prod Servers' });
   });
 
+  it('parses MeshCentral userinfo response and stores userInfo', () => {
+    const store = createGatewayStore();
+    const userinfoPayload = {
+      action: 'userinfo',
+      userinfo: {
+        _id: 'user//admin',
+        name: '系统管理员',
+        email: 'admin@example.com',
+        siteadmin: 1,
+      },
+    };
+    for (const mutation of meshCentralGatewayAdapter.decode(userinfoPayload)) {
+      store.getState().applyMutation(mutation);
+    }
+    const userInfo = gatewaySelectors.userInfo(store.getState());
+    expect(userInfo).toMatchObject({
+      id: 'user//admin',
+      name: '系统管理员',
+      email: 'admin@example.com',
+      siteadmin: 1,
+    });
+  });
+
   it('removes devices from remove events', () => {
     const store = createGatewayStore();
     store.getState().upsertDevice({ id: 'node-2', name: 'Server 2', online: true });

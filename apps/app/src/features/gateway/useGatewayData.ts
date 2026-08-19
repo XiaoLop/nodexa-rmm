@@ -8,6 +8,7 @@ export function useGatewayData() {
   const events = useGatewayStore(gateway.store, gatewaySelectors.events);
   const status = useGatewayStore(gateway.store, gatewaySelectors.status);
   const error = useGatewayStore(gateway.store, gatewaySelectors.error);
+  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
 
   const refreshDevices = useCallback(() => {
     if (gateway.client) {
@@ -61,6 +62,7 @@ export function useGatewayData() {
     events,
     status,
     error,
+    userInfo,
     refreshDevices,
     updateDevice,
     sendPowerAction,

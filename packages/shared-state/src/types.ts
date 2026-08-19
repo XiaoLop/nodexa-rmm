@@ -47,6 +47,14 @@ export interface GatewaySnapshot {
   groups: DeviceGroup[];
 }
 
+export interface UserInfo {
+  id: string;
+  name?: string;
+  email?: string;
+  siteadmin?: number;
+  raw?: unknown;
+}
+
 export type GatewayMutation =
   | { type: 'snapshot'; snapshot: GatewaySnapshot }
   | { type: 'devicesReplaced'; devices: Device[] }
@@ -54,13 +62,15 @@ export type GatewayMutation =
   | { type: 'deviceUpserted'; device: Device; event?: GatewayEvent }
   | { type: 'deviceStatusChanged'; deviceId: string; online: boolean; event: GatewayEvent }
   | { type: 'deviceRemoved'; deviceId: string; event?: GatewayEvent }
-  | { type: 'eventReceived'; event: GatewayEvent };
+  | { type: 'eventReceived'; event: GatewayEvent }
+  | { type: 'userInfoUpdated'; userInfo: UserInfo };
 
 export interface GatewayState {
   status: ConnectionStatus;
   devices: Record<string, Device>;
   groups: Record<string, DeviceGroup>;
   events: GatewayEvent[];
+  userInfo?: UserInfo;
   reconnectAttempt: number;
   lastConnectedAt?: string;
   lastMessageAt?: string;
@@ -73,6 +83,7 @@ export interface GatewayState {
   upsertDevice: (device: Device) => void;
   removeDevice: (deviceId: string) => void;
   appendEvent: (event: GatewayEvent) => void;
+  setUserInfo: (userInfo?: UserInfo) => void;
   touchMessage: () => void;
   applyMutation: (mutation: GatewayMutation) => void;
   reset: () => void;

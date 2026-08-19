@@ -19,12 +19,14 @@ const DEFAULT_GATEWAY_URL = 'wss://mesh.company.cn/control.ashx';
 
 interface GatewayCredentials {
   authParam: string;
+  username?: string;
 }
 
 interface GatewayContextValue {
   store: GatewayStore;
   client?: GatewayClient;
   configured: boolean;
+  username?: string;
   login: (username: string, password: string, remember: boolean) => Promise<void>;
   logout: () => Promise<void>;
   reconnect: () => Promise<void>;
@@ -36,6 +38,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   const store = useMemo(() => createGatewayStore(), []);
   const [client, setClient] = useState<GatewayClient | undefined>();
   const [configured, setConfigured] = useState(false);
+  const [username, setUsername] = useState<string | undefined>();
   const segments = useSegments();
   const clientRef = useRef<GatewayClient | undefined>(undefined);
   const credentialsRef = useRef<GatewayCredentials | undefined>(undefined);
@@ -56,6 +59,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       const url = process.env.EXPO_PUBLIC_GATEWAY_WS_URL?.trim() || DEFAULT_GATEWAY_URL;
       setConfigured(Boolean(url));
       credentialsRef.current = credentials;
+      setUsername(credentials.username);
       destroyClient();
       store.getState().reset();
 
@@ -138,7 +142,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   const login = useCallback(
     async (username: string, password: string, remember: boolean) => {
       const authParam = encodeURIComponent(`${btoa(username)},${btoa(password)}`);
-      const credentials: GatewayCredentials = { authParam };
+      const credentials: GatewayCredentials = { authParam, username };
       await connectClient(credentials, true);
       if (remember) {
         await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(credentials));
@@ -151,6 +155,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
 
   const logout = useCallback(async () => {
     credentialsRef.current = undefined;
+    setUsername(undefined);
     destroyClient();
     store.getState().reset();
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
@@ -181,12 +186,22 @@ export function GatewayProvider({ children }: PropsWithChildren) {
           password?: string;
         };
         let authParam = parsed.authParam;
+        let uname = parsed.username;
         if (!authParam && parsed.username && parsed.password) {
           authParam = encodeURIComponent(`${btoa(parsed.username)},${btoa(parsed.password)}`);
         }
+        if (!uname && authParam) {
+          try {
+            const decoded = decodeURIComponent(authParam);
+            const firstPart = decoded.split(',')[0];
+            if (firstPart && typeof atob === 'function') {
+              uname = atob(firstPart);
+            }
+          } catch {}
+        }
         if (!authParam) throw new Error('Invalid auth');
 
-        const credentials: GatewayCredentials = { authParam };
+        const credentials: GatewayCredentials = { authParam, username: uname };
         void connectClient(credentials).catch(() => undefined);
       } catch {
         void AsyncStorage.removeItem(AUTH_STORAGE_KEY);
@@ -238,10 +253,11 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     store,
     client,
     configured,
+    username,
     login,
     logout,
     reconnect,
-  }), [store, client, configured, login, logout, reconnect]);
+  }), [store, client, configured, username, login, logout, reconnect]);
 
   return <GatewayContext.Provider value={value}>{children}</GatewayContext.Provider>;
 }

@@ -1,5 +1,5 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { Device, DeviceGroup, GatewayEvent, GatewayMutation, GatewayState } from './types';
+import type { Device, DeviceGroup, GatewayEvent, GatewayMutation, GatewayState, UserInfo } from './types';
 import { isIdString } from './utils';
 
 const MAX_EVENTS = 100;
@@ -29,6 +29,7 @@ const initialData = {
   devices: {},
   groups: {},
   events: [],
+  userInfo: undefined,
   reconnectAttempt: 0,
 };
 
@@ -49,6 +50,7 @@ export function createGatewayStore(): GatewayStore {
     setReconnectAttempt: (reconnectAttempt) => set({ reconnectAttempt }),
     replaceDevices: (devices) => set({ devices: toRecord(devices) }),
     replaceGroups: (groups) => set({ groups: toRecord(groups) }),
+    setUserInfo: (userInfo) => set({ userInfo }),
     upsertDevice: (device) =>
       set((state) => {
         const existing = state.devices[device.id];
@@ -140,6 +142,9 @@ function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
     case 'eventReceived':
       state.appendEvent(mutation.event);
       return;
+    case 'userInfoUpdated':
+      state.setUserInfo(mutation.userInfo);
+      return;
   }
 }
 
@@ -150,6 +155,7 @@ export const gatewaySelectors = {
   devices: (state: GatewayState): Device[] => selectDevices(state.devices),
   groups: (state: GatewayState): DeviceGroup[] => selectGroups(state.groups),
   events: (state: GatewayState): GatewayEvent[] => state.events,
+  userInfo: (state: GatewayState): UserInfo | undefined => state.userInfo,
   deviceCount: (state: GatewayState) => Object.keys(state.devices).length,
   onlineDeviceCount: (state: GatewayState) =>
     Object.values(state.devices).filter((device) => device.online).length,

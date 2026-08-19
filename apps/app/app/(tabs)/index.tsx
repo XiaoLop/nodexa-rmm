@@ -14,7 +14,7 @@ const quickActions = [
 ];
 
 export default function DashboardScreen() {
-  const { devices, groups, events, status } = useUiData();
+  const { devices, groups, events, status, currentUser } = useUiData();
   const online = devices.filter((device) => device.online).length;
   const onlineRate = devices.length > 0 ? Math.round((online / devices.length) * 100) : 0;
 
@@ -23,11 +23,11 @@ export default function DashboardScreen() {
       <View style={styles.topbar}>
         <View style={styles.identity}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>林</Text>
+            <Text style={styles.avatarText}>{currentUser.avatarText}</Text>
             <View style={[styles.avatarOnline, status !== 'connected' && styles.avatarOffline]} />
           </View>
           <View>
-            <Text style={styles.greeting}>下午好，林默</Text>
+            <Text style={styles.greeting}>{currentUser.greeting}</Text>
             <View style={styles.connectionRow}>
               <View style={[styles.connectionDot, status !== 'connected' && styles.connectionDotConnecting]} />
               <Text style={styles.connectionText}>
