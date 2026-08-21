@@ -19,6 +19,19 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+function timestampValue(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.length > 0) {
+    const numericValue = Number(value);
+    if (!Number.isNaN(numericValue)) return timestampValue(numericValue);
+
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined;
+  return new Date(value < 1_000_000_000_000 ? value * 1000 : value).toISOString();
+}
+
 function normalizeDevice(
   value: unknown,
   fallbackId?: string,
@@ -57,7 +70,7 @@ function normalizeDevice(
     online: online as boolean,
     agentVersion,
     platform: stringValue(value.platform) ?? stringValue(value.osdesc),
-    lastSeenAt: stringValue(value.lastSeenAt) ?? stringValue(value.lastconnect),
+    lastSeenAt: timestampValue(value.lastSeenAt) ?? timestampValue(value.lastconnect),
     raw: value,
   };
 }
@@ -158,7 +171,10 @@ function normalizeEvent(raw: UnknownRecord): GatewayEvent {
     user,
     ip,
     message: stringValue(raw.message) ?? stringValue(raw.msg),
-    occurredAt: stringValue(raw.occurredAt) ?? stringValue(raw.time) ?? new Date().toISOString(),
+    occurredAt:
+      timestampValue(raw.occurredAt) ??
+      timestampValue(raw.time) ??
+      new Date().toISOString(),
     raw,
   };
 }
@@ -184,7 +200,11 @@ function decodeEvent(raw: UnknownRecord): GatewayMutation[] {
       ? [
           {
             type: 'deviceUpserted',
-            device: { ...device, online: event.type === 'deviceOnline' },
+            device: {
+              ...device,
+              online: event.type === 'deviceOnline',
+              lastSeenAt: event.type === 'deviceOffline' ? event.occurredAt : device.lastSeenAt,
+            },
             event,
           },
         ]
@@ -263,6 +283,15 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
       ];
     }
 
+    if (payload.action === 'lastconnects' && isRecord(payload.lastconnects)) {
+      const lastSeenByDeviceId: Record<string, string> = {};
+      for (const [deviceId, value] of Object.entries(payload.lastconnects)) {
+        const lastSeenAt = timestampValue(value);
+        if (lastSeenAt) lastSeenByDeviceId[deviceId] = lastSeenAt;
+      }
+      return [{ type: 'deviceLastSeenUpdated', lastSeenByDeviceId }];
+    }
+
     if (payload.type === 'groups' || payload.action === 'meshes') {
       return [
         {
@@ -281,6 +310,11 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
           name: stringValue(uInfo.name) ?? stringValue(uInfo.username) ?? id.replace(/^user\/\/[^/]*\//, '').replace(/^user\/\//, ''),
           email: stringValue(uInfo.email),
           siteadmin: typeof uInfo.siteadmin === 'number' ? uInfo.siteadmin : undefined,
+          creationAt: timestampValue(uInfo.creation),
+          lastLoginAt: timestampValue(uInfo.login),
+          lastAccessAt: timestampValue(uInfo.access),
+          previousLoginAt: timestampValue(uInfo.pastlogin),
+          language: stringValue(uInfo.llang),
           raw: uInfo,
         };
         return [{ type: 'userInfoUpdated', userInfo }];
@@ -298,6 +332,7 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
   createSnapshotRequest: () => [
     { action: 'meshes', responseid: 'req-groups' },
     { action: 'nodes', responseid: 'req-nodes' },
+    { action: 'lastconnects', tag: 'req-lastconnects' },
     { type: 'request', resource: 'snapshot' },
   ],
   createHeartbeatMessage: () => ({ type: 'ping' }),

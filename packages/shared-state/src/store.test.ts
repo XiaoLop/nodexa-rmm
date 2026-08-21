@@ -37,7 +37,7 @@ describe('gateway store and protocol', () => {
       nodes: {
         'mesh/domain/group1': [
           { _id: 'node/domain/device1', name: 'Web Server', conn: 1 },
-          { _id: 'node/domain/device2', name: 'DB Server', conn: 0 },
+          { _id: 'node/domain/device2', name: 'DB Server', conn: 0, lastconnect: 1_710_000_000 },
         ],
       },
     };
@@ -47,7 +47,40 @@ describe('gateway store and protocol', () => {
     const devices = gatewaySelectors.devices(store.getState());
     expect(devices).toHaveLength(2);
     expect(devices[0]).toMatchObject({ id: 'node/domain/device1', name: 'Web Server', online: true, groupId: 'mesh/domain/group1' });
-    expect(devices[1]).toMatchObject({ id: 'node/domain/device2', name: 'DB Server', online: false, groupId: 'mesh/domain/group1' });
+    expect(devices[1]).toMatchObject({
+      id: 'node/domain/device2',
+      name: 'DB Server',
+      online: false,
+      groupId: 'mesh/domain/group1',
+      lastSeenAt: '2024-03-09T16:00:00.000Z',
+    });
+  });
+
+  it('applies MeshCentral lastconnects response to devices', () => {
+    const store = createGatewayStore();
+    store.getState().replaceDevices([
+      { id: 'node/domain/device1', name: 'Web Server', online: true },
+      { id: 'node/domain/device2', name: 'DB Server', online: false },
+    ]);
+
+    for (const mutation of meshCentralGatewayAdapter.decode({
+      action: 'lastconnects',
+      lastconnects: {
+        'node/domain/device1': 1_720_000_000_000,
+        'node/domain/device2': 1_710_000_000,
+      },
+    })) {
+      store.getState().applyMutation(mutation);
+    }
+
+    expect(store.getState().devices['node/domain/device1']?.lastSeenAt).toBe('2024-07-03T09:46:40.000Z');
+    expect(store.getState().devices['node/domain/device2']?.lastSeenAt).toBe('2024-03-09T16:00:00.000Z');
+
+    store.getState().replaceDevices([
+      { id: 'node/domain/device1', name: 'Web Server Renamed', online: true },
+      { id: 'node/domain/device2', name: 'DB Server', online: false },
+    ]);
+    expect(store.getState().devices['node/domain/device1']?.lastSeenAt).toBe('2024-07-03T09:46:40.000Z');
   });
 
   it('parses MeshCentral real meshes response (DeviceGroup[]) and _id field', () => {
@@ -76,6 +109,11 @@ describe('gateway store and protocol', () => {
         name: '系统管理员',
         email: 'admin@example.com',
         siteadmin: 1,
+        creation: 1_700_000_000,
+        login: 1_710_000_000,
+        access: 1_710_000_100,
+        pastlogin: 1_709_000_000,
+        llang: 'zh-cn',
       },
     };
     for (const mutation of meshCentralGatewayAdapter.decode(userinfoPayload)) {
@@ -87,6 +125,11 @@ describe('gateway store and protocol', () => {
       name: '系统管理员',
       email: 'admin@example.com',
       siteadmin: 1,
+      creationAt: '2023-11-14T22:13:20.000Z',
+      lastLoginAt: '2024-03-09T16:00:00.000Z',
+      lastAccessAt: '2024-03-09T16:01:40.000Z',
+      previousLoginAt: '2024-02-27T02:13:20.000Z',
+      language: 'zh-cn',
     });
   });
 
@@ -202,11 +245,13 @@ describe('gateway store and protocol', () => {
         action: 'nodeconnect',
         nodeid: 'node-1',
         conn: 0,
+        time: 1_720_000_000_000,
       },
     })) {
       store.getState().applyMutation(mutation);
     }
     expect(store.getState().devices['node-1']?.online).toBe(false);
+    expect(store.getState().devices['node-1']?.lastSeenAt).toBe('2024-07-03T09:46:40.000Z');
     expect(store.getState().events[0]?.type).toBe('deviceOffline');
 
     // 2. 远控/中继审计事件 (relaylog)

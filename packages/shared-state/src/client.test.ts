@@ -55,6 +55,7 @@ describe('GatewayClient', () => {
       { type: 'authenticate', token: 'token' },
       { action: 'meshes', responseid: 'req-groups' },
       { action: 'nodes', responseid: 'req-nodes' },
+      { action: 'lastconnects', tag: 'req-lastconnects' },
       { type: 'request', resource: 'snapshot' },
     ]);
 
@@ -109,6 +110,7 @@ describe('GatewayClient', () => {
     expect(socket.sent.map((item) => JSON.parse(item))).toEqual([
       { action: 'meshes', responseid: 'req-groups' },
       { action: 'nodes', responseid: 'req-nodes' },
+      { action: 'lastconnects', tag: 'req-lastconnects' },
       { type: 'request', resource: 'snapshot' },
     ]);
     client.destroy();

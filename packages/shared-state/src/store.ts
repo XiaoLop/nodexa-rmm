@@ -48,7 +48,15 @@ export function createGatewayStore(): GatewayStore {
       }),
     setError: (error) => set({ error }),
     setReconnectAttempt: (reconnectAttempt) => set({ reconnectAttempt }),
-    replaceDevices: (devices) => set({ devices: toRecord(devices) }),
+    replaceDevices: (devices) =>
+      set((state) => ({
+        devices: toRecord(
+          devices.map((device) => ({
+            ...device,
+            lastSeenAt: device.lastSeenAt ?? state.devices[device.id]?.lastSeenAt,
+          })),
+        ),
+      })),
     replaceGroups: (groups) => set({ groups: toRecord(groups) }),
     setUserInfo: (userInfo) => set({ userInfo }),
     upsertDevice: (device) =>
@@ -118,6 +126,13 @@ function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
       state.replaceDevices(mutation.devices);
       return;
     }
+    case 'deviceLastSeenUpdated': {
+      for (const [deviceId, lastSeenAt] of Object.entries(mutation.lastSeenByDeviceId)) {
+        const current = state.devices[deviceId];
+        if (current) state.upsertDevice({ ...current, lastSeenAt });
+      }
+      return;
+    }
     case 'groupsReplaced':
       state.replaceGroups(mutation.groups);
       return;
@@ -131,6 +146,7 @@ function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
         id: mutation.deviceId,
         name: current?.name && !isIdString(current.name) ? current.name : mutation.deviceId,
         online: mutation.online,
+        lastSeenAt: mutation.online ? current?.lastSeenAt : mutation.event.occurredAt,
       });
       state.appendEvent(mutation.event);
       return;

@@ -1,4 +1,3 @@
-import type { UserInfo } from '@meshcentral/shared-state';
 import { gatewaySelectors, getGreetingTime, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
 import { useGatewayData } from './useGatewayData';
 
@@ -22,8 +21,15 @@ export function useUiData() {
       avatarText,
       greeting,
       greetingTime,
+      id: gateway.userInfo?.id,
+      username: gateway.username,
       email: gateway.userInfo?.email,
       siteadmin: gateway.userInfo?.siteadmin,
+      creationAt: gateway.userInfo?.creationAt,
+      lastLoginAt: gateway.userInfo?.lastLoginAt,
+      lastAccessAt: gateway.userInfo?.lastAccessAt,
+      previousLoginAt: gateway.userInfo?.previousLoginAt,
+      language: gateway.userInfo?.language,
     },
     isDemo: false,
   };

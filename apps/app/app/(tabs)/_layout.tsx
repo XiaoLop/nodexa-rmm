@@ -31,7 +31,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="devices"
         options={{
-          title: '设备',
+          title: '我的设备',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="desktop-outline" color={color} size={size} />
           ),
@@ -40,7 +40,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="events"
         options={{
-          title: '事件',
+          title: '最近事件',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pulse-outline" color={color} size={size} />
           ),

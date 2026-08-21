@@ -52,12 +52,18 @@ export interface UserInfo {
   name?: string;
   email?: string;
   siteadmin?: number;
+  creationAt?: string;
+  lastLoginAt?: string;
+  lastAccessAt?: string;
+  previousLoginAt?: string;
+  language?: string;
   raw?: unknown;
 }
 
 export type GatewayMutation =
   | { type: 'snapshot'; snapshot: GatewaySnapshot }
   | { type: 'devicesReplaced'; devices: Device[] }
+  | { type: 'deviceLastSeenUpdated'; lastSeenByDeviceId: Record<string, string> }
   | { type: 'groupsReplaced'; groups: DeviceGroup[] }
   | { type: 'deviceUpserted'; device: Device; event?: GatewayEvent }
   | { type: 'deviceStatusChanged'; deviceId: string; online: boolean; event: GatewayEvent }
@@ -102,7 +108,7 @@ export interface WebSocketLike {
   readonly readyState: number;
   onopen: (() => void) | null;
   onmessage: ((event: MessageEventLike) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((error: any) => void) | null;
   onclose: ((event: CloseEventLike) => void) | null;
   send(data: string): void;
   close(code?: number, reason?: string): void;

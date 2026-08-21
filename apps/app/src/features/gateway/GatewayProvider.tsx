@@ -15,7 +15,7 @@ import { encode as btoa } from 'base-64';
 import { router, useSegments } from 'expo-router';
 
 const AUTH_STORAGE_KEY = '@mesh_auth';
-const DEFAULT_GATEWAY_URL = 'wss://mesh.company.cn/control.ashx';
+const DEFAULT_GATEWAY_URL = 'wss://mesh.xiaonext.com/control';
 
 interface GatewayCredentials {
   authParam: string;
@@ -197,7 +197,9 @@ export function GatewayProvider({ children }: PropsWithChildren) {
             if (firstPart && typeof atob === 'function') {
               uname = atob(firstPart);
             }
-          } catch {}
+          } catch {
+            // 保留服务端返回的认证参数，用户名仅用于界面展示。
+          }
         }
         if (!authParam) throw new Error('Invalid auth');
 

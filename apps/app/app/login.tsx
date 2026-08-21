@@ -27,7 +27,6 @@ export default function LoginScreen() {
       await login(username, password, remember);
       router.replace('/');
     } catch (error) {
-      console.error(error);
       setErrorMsg(error instanceof Error ? error.message : '无法连接到服务器');
     } finally {
       setLoading(false);
@@ -100,7 +99,7 @@ function Field({ label, icon, value, onChangeText }: { label: string; icon: keyo
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
   backgroundOrb: { position: 'absolute', width: 340, height: 340, borderRadius: 170, backgroundColor: colors.primarySoft, right: -170, top: -120 },
-  container: { flex: 1, paddingHorizontal: 25, paddingTop: 30 },
+  container: { flex: 1, paddingHorizontal: 25, paddingTop: 50 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   logo: { width: 48, height: 48, borderRadius: 16, backgroundColor: colors.navy, alignItems: 'center', justifyContent: 'center' },
   brandName: { color: colors.text, fontSize: 16, fontWeight: '800' },

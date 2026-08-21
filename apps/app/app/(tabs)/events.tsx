@@ -32,7 +32,7 @@ export default function EventsScreen() {
       />
       <View style={styles.summary}>
         <View>
-          <Text style={styles.summaryLabel}>今日事件</Text>
+          <Text style={styles.summaryLabel}>最近事件</Text>
           <Text style={styles.summaryValue}>{events.length}</Text>
         </View>
         <View style={styles.summaryDivider} />

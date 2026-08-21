@@ -8,10 +8,38 @@ import { Screen } from '../../src/components/Screen';
 import { useUiData } from '../../src/features/gateway/useUiData';
 import { colors } from '../../src/theme';
 
+function formatLastSeen(lastSeenAt?: string) {
+  if (!lastSeenAt) return '最后在线时间未知';
+
+  const timestamp = Date.parse(lastSeenAt);
+  if (Number.isNaN(timestamp)) return '最后在线时间未知';
+
+  const elapsed = Math.max(0, Date.now() - timestamp);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return '刚刚离线';
+  if (minutes < 60) return `最后在线 ${minutes} 分钟前`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `最后在线 ${hours} 小时前`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `最后在线 ${days} 天前`;
+
+  return `最后在线 ${new Date(timestamp).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
+}
+
 export default function DevicesScreen() {
   const { devices, groups, refreshDevices } = useUiData();
   const [filter, setFilter] = useState<'全部' | '在线' | '离线'>('全部');
   const [query, setQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(() => {
@@ -28,6 +56,10 @@ export default function DevicesScreen() {
     return matchesFilter && matchesQuery;
   });
 
+  const toggleGroup = useCallback((groupId: string) => {
+    setCollapsedGroups((current) => ({ ...current, [groupId]: !current[groupId] }));
+  }, []);
+
   return (
     <Screen
       refreshControl={
@@ -35,7 +67,7 @@ export default function DevicesScreen() {
       }
     >
       <AppHeader
-        title="设备"
+        title="我的设备"
         subtitle={`${devices.filter((device) => device.online).length} 台在线 · ${groups.length} 个设备组`}
         right={
           <Pressable style={styles.add} onPress={() => router.push('/add-device')}>
@@ -45,12 +77,14 @@ export default function DevicesScreen() {
       />
 
       <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, searchFocused && styles.searchBoxFocused]}>
           <Ionicons name="search-outline" size={19} color={colors.muted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="搜索设备名称、系统或分组"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="搜索设备名称"
             placeholderTextColor={colors.subtle}
             style={styles.searchInput}
           />
@@ -63,7 +97,9 @@ export default function DevicesScreen() {
           <Pressable key={item} style={[styles.chip, filter === item && styles.chipActive]} onPress={() => setFilter(item)}>
             <Text style={[styles.chipText, filter === item && styles.chipTextActive]}>{item}</Text>
             <Text style={[styles.chipCount, filter === item && styles.chipCountActive]}>
-              {item === '全部' ? devices.length : devices.filter((device) => device.online === (item === '在线')).length}
+              {item === '全部'
+                ? devices.length
+                : devices.filter((device) => (item === '在线' ? device.online : !device.online)).length}
             </Text>
           </Pressable>
         ))}
@@ -72,46 +108,66 @@ export default function DevicesScreen() {
       {groups.map((group) => {
         const groupDevices = filtered.filter((device) => device.groupId === group.id);
         if (!groupDevices.length) return null;
-        return <DeviceGroupBlock key={group.id} group={group} devices={groupDevices} />;
+        return (
+          <DeviceGroupBlock
+            key={group.id}
+            group={group}
+            devices={groupDevices}
+            collapsed={Boolean(collapsedGroups[group.id])}
+            onToggle={() => toggleGroup(group.id)}
+          />
+        );
       })}
     </Screen>
   );
 }
 
-function DeviceGroupBlock({ group, devices }: { group: DeviceGroup; devices: Device[] }) {
+function DeviceGroupBlock({
+  group,
+  devices,
+  collapsed,
+  onToggle,
+}: {
+  group: DeviceGroup;
+  devices: Device[];
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   return (
     <View style={styles.groupBlock}>
-      <View style={styles.groupHeader}>
+      <Pressable style={styles.groupHeader} onPress={onToggle} accessibilityRole="button">
         <View style={styles.groupTitleRow}>
           <Ionicons name="folder-open" size={18} color={colors.primary} />
           <Text style={styles.groupTitle}>{group.name}</Text>
           <View style={styles.groupCount}><Text style={styles.groupCountText}>{devices.length}</Text></View>
         </View>
-        <Pressable><Ionicons name="ellipsis-horizontal" size={21} color={colors.muted} /></Pressable>
-      </View>
-      <Card style={styles.deviceCard}>
-        {devices.map((device, index) => (
-          <Pressable
-            key={device.id}
-            style={[styles.deviceRow, index === devices.length - 1 && styles.lastRow]}
-            onPress={() => router.push({ pathname: '/device/[id]', params: { id: device.id } })}
-          >
-            <IconTile name={platformIcon(device.platform)} tone={device.online ? 'primary' : 'neutral'} size={46} />
-            <View style={styles.deviceBody}>
-              <View style={styles.deviceNameRow}>
-                <Text numberOfLines={1} style={styles.deviceName}>{device.name}</Text>
-                <StatusBadge online={device.online} />
+        <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={19} color={colors.muted} />
+      </Pressable>
+      {!collapsed && (
+        <Card style={styles.deviceCard}>
+          {devices.map((device, index) => (
+            <Pressable
+              key={device.id}
+              style={[styles.deviceRow, index === devices.length - 1 && styles.lastRow]}
+              onPress={() => router.push({ pathname: '/device/[id]', params: { id: device.id } })}
+            >
+              <IconTile name={platformIcon(device.platform)} tone={device.online ? 'primary' : 'neutral'} size={46} />
+              <View style={styles.deviceBody}>
+                <View style={styles.deviceNameRow}>
+                  <Text numberOfLines={1} style={styles.deviceName}>{device.name}</Text>
+                  <StatusBadge online={device.online} />
+                </View>
+                <Text style={styles.deviceMeta}>{device.platform || '未知系统'} · Agent {device.agentVersion || '—'}</Text>
+                <View style={styles.lastSeenRow}>
+                  <Ionicons name="radio-outline" size={12} color={colors.subtle} />
+                  <Text style={styles.lastSeen}>{device.online ? '刚刚活跃' : formatLastSeen(device.lastSeenAt)}</Text>
+                </View>
               </View>
-              <Text style={styles.deviceMeta}>{device.platform || '未知系统'} · Agent {device.agentVersion || '—'}</Text>
-              <View style={styles.lastSeenRow}>
-                <Ionicons name="radio-outline" size={12} color={colors.subtle} />
-                <Text style={styles.lastSeen}>{device.online ? '刚刚活跃' : '最后在线 6 小时前'}</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
-          </Pressable>
-        ))}
-      </Card>
+              <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
+            </Pressable>
+          ))}
+        </Card>
+      )}
     </View>
   );
 }
@@ -119,8 +175,9 @@ function DeviceGroupBlock({ group, devices }: { group: DeviceGroup; devices: Dev
 const styles = StyleSheet.create({
   add: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchRow: { flexDirection: 'row', gap: 10 },
-  searchBox: { flex: 1, minHeight: 49, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  searchInput: { flex: 1, color: colors.text, fontSize: 13 },
+  searchBox: { flex: 1, minHeight: 49, backgroundColor: colors.surface, borderWidth: 1, borderColor: 'transparent', borderRadius: 16, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  searchBoxFocused: { borderColor: colors.primary },
+  searchInput: { flex: 1, color: colors.text, fontSize: 13, outlineStyle: 'none' as any },
   filterButton: { width: 49, height: 49, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', gap: 9 },
   chip: { height: 36, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 7 },
