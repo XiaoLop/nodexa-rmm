@@ -21,6 +21,7 @@ MeshCentral 的管理能力主要不是标准 REST API，而是通过 WebSocket 
 - [05-events.md](05-events.md)：实时事件、设备在线/离线消息、断线重连
 - [06-other-apis.md](06-other-apis.md)：用户、权限、邀请、共享、报表等补充接口
 - [07-nodejs-wrapper-design.md](07-nodejs-wrapper-design.md)：推荐 SDK 结构、请求关联、示例代码
+- [../packages/shared-state/README.md](../packages/shared-state/README.md)：前端共享状态与网关客户端 (@meshcentral/shared-state) 架构与使用说明
 
 ## 推荐封装层级
 
