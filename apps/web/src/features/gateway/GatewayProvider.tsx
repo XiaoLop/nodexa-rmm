@@ -1,4 +1,4 @@
-import { GatewayClient, createGatewayStore, type GatewayStore } from '@meshcentral/shared-state';
+import { GatewayAuthenticationError, GatewayClient, createGatewayStore, type GatewayStore } from '@meshcentral/shared-state';
 import {
   createContext,
   useCallback,
@@ -81,14 +81,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       clientRef.current = nextClient;
       setClient(nextClient);
 
-      try {
-        await nextClient.connect();
-      } catch (error) {
-        nextClient.destroy();
-        clientRef.current = undefined;
-        setClient(undefined);
-        throw error;
-      }
+      await nextClient.connect();
     },
     [destroyClient, gatewayUrl, store],
   );
@@ -97,16 +90,28 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     async (username: string, password: string, remember: boolean) => {
       const authParam = encodeURIComponent(`${btoa(username)},${btoa(password)}`);
       const nextCredentials: GatewayCredentials = { authParam, username };
-      await connectClient(nextCredentials);
+      
+      try {
+        await connectClient(nextCredentials);
+      } catch (error) {
+        destroyClient();
+        throw error;
+      }
 
-      if (remember) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextCredentials));
-      else localStorage.removeItem(AUTH_STORAGE_KEY);
+      if (remember) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextCredentials));
+        sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      } else {
+        sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextCredentials));
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
     },
-    [connectClient],
+    [connectClient, destroyClient],
   );
 
   const logout = useCallback(() => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
     credentialsRef.current = undefined;
     setCredentials(undefined);
     destroyClient();
@@ -125,15 +130,26 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    void connectClient(storedCredentials)
-      .catch(() => {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        credentialsRef.current = undefined;
-        setCredentials(undefined);
-      })
-      .finally(() => setInitializing(false));
+    let mounted = true;
 
-    return destroyClient;
+    void connectClient(storedCredentials)
+      .catch((error) => {
+        if (!mounted) return;
+        if (error instanceof GatewayAuthenticationError) {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          sessionStorage.removeItem(AUTH_STORAGE_KEY);
+          credentialsRef.current = undefined;
+          setCredentials(undefined);
+        }
+      })
+      .finally(() => {
+        if (mounted) setInitializing(false);
+      });
+
+    return () => {
+      mounted = false;
+      destroyClient();
+    };
   }, [connectClient, destroyClient]);
 
   useEffect(() => {
@@ -146,6 +162,24 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [store]);
+
+  useEffect(() => {
+    const unsubscribe = store.subscribe((state, prevState) => {
+      const lastEvent = state.events[0];
+      const rawData = lastEvent?.raw as Record<string, unknown> | undefined;
+      
+      if (rawData && rawData.action === 'close' && lastEvent !== prevState?.events?.[0]) {
+        if (rawData.cause === 'noauth') {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          sessionStorage.removeItem(AUTH_STORAGE_KEY);
+          credentialsRef.current = undefined;
+          setCredentials(undefined);
+          destroyClient();
+        }
+      }
+    });
+    return unsubscribe;
+  }, [destroyClient, store]);
 
   const value = useMemo<GatewayContextValue>(
     () => ({

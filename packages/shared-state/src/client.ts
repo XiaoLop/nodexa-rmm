@@ -8,6 +8,13 @@ const CLOSE_AUTHENTICATION_FAILED = 4001;
 const CLOSE_AUTHENTICATION_TIMEOUT = 4002;
 const DEFAULT_RECONNECT_DELAYS = [1_000, 2_000, 5_000, 10_000, 30_000, 60_000];
 
+export class GatewayAuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GatewayAuthenticationError';
+  }
+}
+
 export interface GatewayClientOptions {
   url: string;
   store: GatewayStore;
@@ -114,7 +121,7 @@ export class GatewayClient {
         if (connectionResult.status === 'rejected') {
           connectionRejected = true;
           rejectConnection(
-            new Error(connectionResult.error),
+            new GatewayAuthenticationError(connectionResult.error),
             CLOSE_AUTHENTICATION_FAILED,
             'Authentication failed',
           );
