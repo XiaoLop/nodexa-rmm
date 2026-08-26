@@ -1,14 +1,50 @@
-import { EllipsisOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  EllipsisOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  WindowsOutlined,
+  AppleOutlined,
+  LinuxOutlined,
+  AndroidOutlined,
+  QuestionOutlined,
+  CloudServerOutlined,
+  DesktopOutlined,
+  MobileOutlined,
+} from '@ant-design/icons';
 import type { Device } from '@meshcentral/shared-state';
-import { Button, Empty, Input, Select, Table, Tag, type TableColumnsType } from 'antd';
+import { Button, Empty, Input, Select, Table, Tag, type TableColumnsType, theme } from 'antd';
 import { useMemo, useState } from 'react';
-import { deviceIcon } from '../components/ConsoleUi';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
 function rawString(device: Device, key: string) {
   const raw = device.raw as Record<string, unknown> | undefined;
   const value = raw?.[key];
   return typeof value === 'string' ? value : undefined;
+}
+
+function rawNumber(device: Device, key: string) {
+  const raw = device.raw as Record<string, unknown> | undefined;
+  const value = raw?.[key];
+  return typeof value === 'number' ? value : undefined;
+}
+
+function osIcon(platform?: string) {
+  const value = platform?.toLowerCase() ?? '';
+  if (value.includes('windows')) return <WindowsOutlined />;
+  if (value.includes('mac') || value.includes('apple') || value.includes('ios')) return <AppleOutlined />;
+  if (value.includes('linux')) return <LinuxOutlined />;
+  if (value.includes('android')) return <AndroidOutlined />;
+  return <QuestionOutlined />;
+}
+
+function deviceTypeIcon(platform?: string) {
+  const value = platform?.toLowerCase() ?? '';
+  if (value.includes('server') || value.includes('linux')) return <CloudServerOutlined />;
+  if (value.includes('mobile') || value.includes('android') || value.includes('ios')) {
+    return <MobileOutlined />;
+  }
+  return <DesktopOutlined />;
 }
 
 function formatDateTime(value?: string) {
@@ -26,6 +62,7 @@ function formatDateTime(value?: string) {
 }
 
 export function DevicesPage() {
+  const { token } = theme.useToken();
   const { devices, groups, client, status } = useGatewayData();
   const [query, setQuery] = useState('');
   const [groupId, setGroupId] = useState('all');
@@ -66,26 +103,50 @@ export function DevicesPage() {
 
   const columns: TableColumnsType<Device> = [
     {
+      title: '设备类型',
+      key: 'type',
+      width: 100,
+      render: (_, device) => (
+        <div style={{ display: 'flex', gap: 8, fontSize: 18, color: device.online ? token.colorPrimary : token.colorTextSecondary }}>
+          {osIcon(device.platform)}
+          {deviceTypeIcon(device.platform)}
+        </div>
+      ),
+    },
+    {
       title: '设备名称',
       dataIndex: 'name',
       fixed: 'left',
-      width: 190,
+      width: 170,
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (value, device) => (
-        <span className="device-name">
-          {deviceIcon(device.platform)}
-          <b>{value}</b>
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{value}</span>
+          <span style={{ fontSize: 12, color: '#8c8c8c' }}>{rawString(device, 'rname') || '—'}</span>
+        </div>
       ),
     },
-    { title: '设备 ID', dataIndex: 'id', width: 210, ellipsis: true },
     {
-      title: 'IP / 主机',
+      title: '分组名称',
+      key: 'groupName',
+      width: 130,
+      render: (_, device) => {
+        const group = groups.find((g) => g.id === device.groupId);
+        return group?.name || device.groupName || '未分组';
+      },
+    },
+    {
+      title: 'IP',
       key: 'ip',
       width: 150,
-      render: (_, device) => rawString(device, 'ip') || rawString(device, 'host') || '—',
+      render: (_, device) => rawString(device, 'ip') || '-',
     },
-    { title: '分组', dataIndex: 'groupName', width: 130, render: (value) => value || '未分组' },
+    {
+      title: '描述',
+      key: 'desc',
+      width: 150,
+      render: (_, device) => rawString(device, 'desc') || '-',
+    },
     {
       title: '状态',
       dataIndex: 'online',
@@ -102,14 +163,27 @@ export function DevicesPage() {
         </span>
       ),
     },
-    { title: '平台', dataIndex: 'platform', width: 130, render: (value) => value || '未知' },
-    { title: 'Agent 版本', dataIndex: 'agentVersion', width: 120, render: (value) => value || '—' },
     {
-      title: '最后在线',
+      title: '最后在线时间',
       dataIndex: 'lastSeenAt',
       width: 170,
       render: formatDateTime,
       sorter: (a, b) => (a.lastSeenAt || '').localeCompare(b.lastSeenAt || ''),
+    },
+    {
+      title: '上次启动时间',
+      key: 'lastbootuptime',
+      width: 170,
+      render: (_, device) => {
+        const bootTime = rawNumber(device, 'lastbootuptime');
+        if (!bootTime) return '—';
+        return formatDateTime(new Date(bootTime).toISOString());
+      },
+      sorter: (a, b) => {
+        const aBoot = rawNumber(a, 'lastbootuptime') || 0;
+        const bBoot = rawNumber(b, 'lastbootuptime') || 0;
+        return aBoot - bBoot;
+      },
     },
     {
       title: '操作',
@@ -179,6 +253,9 @@ export function DevicesPage() {
         </div>
         <Table
           rowKey="id"
+          rowSelection={{
+            type: 'checkbox',
+          }}
           columns={columns}
           dataSource={filteredDevices}
           pagination={{
