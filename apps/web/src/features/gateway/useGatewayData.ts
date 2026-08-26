@@ -25,5 +25,20 @@ export function useGatewayData() {
   const events = useGatewayStore(gateway.store, gatewaySelectors.events);
   const status = useGatewayStore(gateway.store, gatewaySelectors.status);
   const error = useGatewayStore(gateway.store, gatewaySelectors.error);
-  return { ...gateway, devices, groups, events, status, error };
+  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
+  const reconnectAttempt = useGatewayStore(gateway.store, gatewaySelectors.reconnectAttempt);
+  const lastConnectedAt = useGatewayStore(gateway.store, (state) => state.lastConnectedAt);
+  const lastMessageAt = useGatewayStore(gateway.store, (state) => state.lastMessageAt);
+  return {
+    ...gateway,
+    devices,
+    groups,
+    events,
+    userInfo,
+    status,
+    error,
+    reconnectAttempt,
+    lastConnectedAt,
+    lastMessageAt,
+  };
 }
