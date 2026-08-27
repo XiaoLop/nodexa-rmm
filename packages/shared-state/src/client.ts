@@ -7,6 +7,15 @@ const CLOSE_INITIALIZATION_FAILED = 4000;
 const CLOSE_AUTHENTICATION_FAILED = 4001;
 const CLOSE_AUTHENTICATION_TIMEOUT = 4002;
 const DEFAULT_RECONNECT_DELAYS = [1_000, 2_000, 5_000, 10_000, 30_000, 60_000];
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
+interface PendingRequest {
+  resolve: (payload: unknown) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+  action?: string;
+  deviceId?: string;
+}
 
 export class GatewayAuthenticationError extends Error {
   constructor(message: string) {
@@ -39,6 +48,7 @@ export class GatewayClient {
   private readonly heartbeatIntervalMs: number;
   private readonly connectionTimeoutMs: number;
   private readonly reconnectDelaysMs: number[];
+  private readonly pendingRequests = new Map<string, PendingRequest>();
 
   constructor(private readonly options: GatewayClientOptions) {
     this.protocol = options.protocol ?? meshCentralGatewayAdapter;
@@ -151,6 +161,7 @@ export class GatewayClient {
       socket.onclose = (event) => {
         clearConnectionTimer();
         this.stopHeartbeat();
+        this.rejectPendingRequests(new Error(event.reason || 'Gateway connection closed.'));
         this.socket = undefined;
         this.connectPromise = undefined;
         if (!settled) {
@@ -179,6 +190,7 @@ export class GatewayClient {
     this.manuallyClosed = true;
     this.clearReconnectTimer();
     this.stopHeartbeat();
+    this.rejectPendingRequests(new Error('Gateway client disconnected.'));
     this.reconnectAttempt = 0;
     this.options.store.getState().setReconnectAttempt(0);
     this.socket?.close(1000, 'Client disconnected');
@@ -198,6 +210,50 @@ export class GatewayClient {
       throw new Error('Gateway WebSocket is not connected.');
     }
     this.socket.send(JSON.stringify(payload));
+  }
+
+  request<T = unknown>(payload: Record<string, unknown>, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS): Promise<T> {
+    const responseId =
+      typeof payload.responseid === 'string' && payload.responseid
+        ? payload.responseid
+        : `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingRequests.delete(responseId);
+        reject(new Error(`Gateway request timed out: ${String(payload.action ?? responseId)}`));
+      }, timeoutMs);
+
+      this.pendingRequests.set(responseId, {
+        resolve: (value) => resolve(value as T),
+        reject,
+        timer,
+        action: typeof payload.action === 'string' ? payload.action : undefined,
+        deviceId: typeof payload.nodeid === 'string' ? payload.nodeid : undefined,
+      });
+
+      try {
+        this.send({ ...payload, responseid: responseId });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pendingRequests.delete(responseId);
+        reject(error instanceof Error ? error : new Error('Gateway request failed.'));
+      }
+    });
+  }
+
+  requestSystemInfo<T = unknown>(deviceId: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS): Promise<T> {
+    const responseId = `req-sysinfo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const request = this.protocol.createSystemInfoRequest?.(deviceId, responseId) ?? {
+      action: 'getsysinfo',
+      nodeid: deviceId,
+      nodeinfo: true,
+      responseid: responseId,
+    };
+    if (typeof request !== 'object' || request === null || Array.isArray(request)) {
+      return Promise.reject(new Error('Gateway protocol returned an invalid system information request.'));
+    }
+    return this.request<T>(request as Record<string, unknown>, timeoutMs);
   }
 
   // 请求快照
@@ -255,6 +311,7 @@ export class GatewayClient {
     try {
       const text = typeof data === 'string' ? data : String(data);
       const payload: unknown = JSON.parse(text);
+      this.resolvePendingRequest(payload);
       const state = this.options.store.getState();
       state.touchMessage();
       for (const mutation of this.protocol.decode(payload)) state.applyMutation(mutation);
@@ -295,5 +352,67 @@ export class GatewayClient {
   private clearReconnectTimer(): void {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = undefined;
+  }
+
+  private resolvePendingRequest(payload: unknown): void {
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return;
+    const outerRecord = payload as Record<string, unknown>;
+    const nestedRecord = [outerRecord.data, outerRecord.payload, outerRecord.message].find(
+      (value): value is Record<string, unknown> =>
+        typeof value === 'object' && value !== null && !Array.isArray(value),
+    );
+    const record =
+      typeof outerRecord.action === 'string' || typeof outerRecord.responseid === 'string'
+        ? outerRecord
+        : nestedRecord ?? outerRecord;
+    const responseId =
+      typeof record.responseid === 'string'
+        ? record.responseid
+        : typeof record.tag === 'string'
+          ? record.tag
+          : undefined;
+    let matchedResponseId = responseId;
+    let pending = responseId ? this.pendingRequests.get(responseId) : undefined;
+
+    // MeshCentral 的部分信息响应（包括某些版本的 getsysinfo）不会回传 responseid。
+    // 此时按 action 和 nodeid 匹配；只有候选唯一时才消费请求，避免并发串包。
+    if (!pending && typeof record.action === 'string') {
+      const nodeRecord =
+        typeof record.node === 'object' && record.node !== null && !Array.isArray(record.node)
+          ? record.node as Record<string, unknown>
+          : undefined;
+      const responseDeviceId =
+        typeof record.nodeid === 'string'
+          ? record.nodeid
+          : typeof nodeRecord?._id === 'string'
+            ? nodeRecord._id
+            : undefined;
+      const matches = [...this.pendingRequests.entries()].filter(([, candidate]) =>
+        candidate.action === record.action &&
+        (!responseDeviceId || !candidate.deviceId || candidate.deviceId === responseDeviceId),
+      );
+      if (matches.length === 1) {
+        const match = matches[0];
+        if (match) [matchedResponseId, pending] = match;
+      }
+    }
+
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    if (matchedResponseId) this.pendingRequests.delete(matchedResponseId);
+    const error = record.error ?? record.err;
+    if (typeof error === 'string' && error) {
+      pending.reject(new Error(error));
+    } else {
+      pending.resolve(payload);
+    }
+  }
+
+  private rejectPendingRequests(error: Error): void {
+    for (const pending of this.pendingRequests.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    this.pendingRequests.clear();
   }
 }

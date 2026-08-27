@@ -136,4 +136,5 @@ export interface GatewayProtocolAdapter {
     deviceId: string,
     action: 'wake' | 'reset' | 'poweroff' | 'sleep',
   ): unknown;
+  createSystemInfoRequest?(deviceId: string, responseId: string): unknown;
 }

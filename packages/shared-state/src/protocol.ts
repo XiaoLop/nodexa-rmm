@@ -357,4 +357,10 @@ export const meshCentralGatewayAdapter: GatewayProtocolAdapter = {
           subaction: action,
           responseid: `req-poweraction-${Date.now()}`,
         },
+  createSystemInfoRequest: (deviceId, responseId) => ({
+    action: 'getsysinfo',
+    nodeid: deviceId,
+    nodeinfo: true,
+    responseid: responseId,
+  }),
 };

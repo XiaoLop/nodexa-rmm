@@ -135,4 +135,86 @@ describe('GatewayClient', () => {
     expect(socket.closeCode).toBe(4001);
     expect(socket.closeReason).toBe('Authentication failed');
   });
+
+  it('requests and resolves device system information by response id', async () => {
+    const socket = new FakeWebSocket();
+    const client = new GatewayClient({
+      url: 'ws://gateway.test',
+      store: createGatewayStore(),
+      webSocketFactory: () => socket,
+    });
+
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+
+    const resultPromise = client.requestSystemInfo<{ sysinfo: { hardware: { cpu: string } } }>('node//one');
+    const request = JSON.parse(socket.sent.at(-1) ?? '{}') as Record<string, unknown>;
+    expect(request).toMatchObject({
+      action: 'getsysinfo',
+      nodeid: 'node//one',
+      nodeinfo: true,
+    });
+
+    socket.message({
+      action: 'getsysinfo',
+      responseid: request.responseid,
+      sysinfo: { hardware: { cpu: 'Example CPU' } },
+    });
+
+    await expect(resultPromise).resolves.toMatchObject({
+      sysinfo: { hardware: { cpu: 'Example CPU' } },
+    });
+    client.destroy();
+  });
+
+  it('resolves a system information response that omits responseid', async () => {
+    const socket = new FakeWebSocket();
+    const client = new GatewayClient({
+      url: 'ws://gateway.test',
+      store: createGatewayStore(),
+      webSocketFactory: () => socket,
+    });
+
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+
+    const resultPromise = client.requestSystemInfo<{ hardware: { identifiers: { cpu_name: string } } }>('node//one');
+    socket.message({
+      action: 'getsysinfo',
+      node: { _id: 'node//one' },
+      hardware: { identifiers: { cpu_name: 'Example CPU' } },
+    });
+
+    await expect(resultPromise).resolves.toMatchObject({
+      hardware: { identifiers: { cpu_name: 'Example CPU' } },
+    });
+    client.destroy();
+  });
+
+  it('matches concurrent responseid-less system information responses by node id', async () => {
+    const socket = new FakeWebSocket();
+    const client = new GatewayClient({
+      url: 'ws://gateway.test',
+      store: createGatewayStore(),
+      webSocketFactory: () => socket,
+    });
+
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+
+    const first = client.requestSystemInfo<{ nodeid: string }>('node//one');
+    const second = client.requestSystemInfo<{ nodeid: string }>('node//two');
+    socket.message({ action: 'getsysinfo', nodeid: 'node//two', hardware: {} });
+    socket.message({ action: 'getsysinfo', nodeid: 'node//one', hardware: {} });
+
+    await expect(first).resolves.toMatchObject({ nodeid: 'node//one' });
+    await expect(second).resolves.toMatchObject({ nodeid: 'node//two' });
+    client.destroy();
+  });
 });

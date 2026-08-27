@@ -15,8 +15,6 @@ import {
   ThunderboltOutlined,
   MoonOutlined,
   PoweroffOutlined,
-  CodeOutlined,
-  FolderOpenOutlined,
   InfoCircleOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
@@ -34,7 +32,6 @@ import {
   type TableColumnsType,
   theme,
   Space,
-  Tooltip,
 } from 'antd';
 import { useMemo, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
@@ -256,7 +253,7 @@ export function DevicesPage() {
         const isOffline = !device.online;
         return (
           <Space size="small">
-            <Tooltip title="远程桌面">
+            {/* <Tooltip title="远程桌面">
               <Button
                 type="text"
                 icon={<DesktopOutlined />}
@@ -279,7 +276,7 @@ export function DevicesPage() {
                 disabled={unavailable || isOffline}
                 onClick={() => messageApi.info('文件管理功能开发中')}
               />
-            </Tooltip>
+            </Tooltip> */}
             <Dropdown
               trigger={['click']}
               menu={{
@@ -431,6 +428,8 @@ export function DevicesPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         device={selectedDevice}
+        client={client}
+        connected={status === 'connected'}
       />
     </>
   );

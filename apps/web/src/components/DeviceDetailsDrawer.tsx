@@ -1,42 +1,39 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AndroidOutlined,
   ApiOutlined,
   AppleOutlined,
-  ClockCircleOutlined,
   CloudServerOutlined,
-  DatabaseOutlined,
   DesktopOutlined,
-  FundProjectionScreenOutlined,
-  GlobalOutlined,
   HddOutlined,
+  LoadingOutlined,
   LinuxOutlined,
+  ReloadOutlined,
   QuestionOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
   WifiOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
-import type { Device } from '@meshcentral/shared-state';
-import { Alert, Drawer, Progress, Tag, Tooltip, Typography } from 'antd';
+import type { Device, GatewayClient } from '@meshcentral/shared-state';
+import { Alert, Button, Drawer, Spin, Tag, Tooltip, Typography } from 'antd';
 
 interface DeviceDetailsDrawerProps {
   open: boolean;
   onClose: () => void;
   device: Device | null;
+  client?: GatewayClient;
+  connected: boolean;
 }
 
 type UnknownRecord = Record<string, unknown>;
 
-interface UsageMetric {
-  percent?: number;
-  used?: number;
-  total?: number;
-}
-
-interface DiskMetric extends UsageMetric {
+interface HardwareDisk {
   name: string;
-  fileSystem?: string;
+  model?: string;
+  serial?: string;
+  size?: number;
+  type?: string;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -67,12 +64,6 @@ function numberValue(value: unknown) {
   return undefined;
 }
 
-function clampPercent(value?: number) {
-  if (value === undefined) return undefined;
-  const normalized = value > 0 && value <= 1 ? value * 100 : value;
-  return Math.max(0, Math.min(100, normalized));
-}
-
 function formatBytes(value?: number) {
   if (value === undefined || !Number.isFinite(value) || value < 0) return '—';
   if (value === 0) return '0 B';
@@ -97,13 +88,6 @@ function formatDateTime(value?: string | number) {
   }).format(date);
 }
 
-function formatDuration(bootTime?: number) {
-  if (!bootTime) return '—';
-  const timestamp = bootTime < 1_000_000_000_000 ? bootTime * 1000 : bootTime;
-  const days = Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000));
-  return days < 1 ? '不足 1 天' : `${days} 天`;
-}
-
 function osIcon(platform?: string) {
   const value = platform?.toLowerCase() ?? '';
   if (value.includes('windows')) return <WindowsOutlined />;
@@ -113,70 +97,38 @@ function osIcon(platform?: string) {
   return <QuestionOutlined />;
 }
 
-function getUsageMetric(raw: unknown, type: 'cpu' | 'memory'): UsageMetric {
-  const prefix = type === 'cpu' ? 'cpu' : 'memory';
-  const used = numberValue(firstValue(raw, [
-    `${prefix}.used`, `${prefix}.usedBytes`, `${prefix}Used`, `${prefix}used`,
-    type === 'memory' ? 'memused' : 'cpu.used',
-  ]));
-  const total = numberValue(firstValue(raw, [
-    `${prefix}.total`, `${prefix}.totalBytes`, `${prefix}Total`, `${prefix}total`,
-    type === 'memory' ? 'totalmem' : 'cpu.total',
-  ]));
-  const explicitPercent = numberValue(firstValue(raw, [
-    `${prefix}.percent`, `${prefix}.usage`, `${prefix}.usagePercent`, `${prefix}Usage`, `${prefix}usage`,
-    type === 'cpu' ? 'cpuusage' : 'memusage',
-  ]));
-  const percent = clampPercent(explicitPercent ?? (used !== undefined && total ? (used / total) * 100 : undefined));
-  return { used, total, percent };
+function systemInfoPayload(response: unknown): unknown {
+  return firstValue(response, ['sysinfo', 'data.sysinfo', 'data', 'result']) ?? response;
 }
 
-function getDisks(raw: unknown): DiskMetric[] {
-  const source = firstValue(raw, [
-    'disks', 'drives', 'volumes', 'storage', 'sysinfo.disks', 'sysinfo.storage',
-    'sysinfo.hardware.windows.volumes', 'hardware.windows.volumes',
+function recordList(source: unknown, paths: string[]): UnknownRecord[] {
+  const value = firstValue(source, paths);
+  if (Array.isArray(value)) return value.filter(isRecord);
+  if (isRecord(value)) return Object.values(value).filter(isRecord);
+  return [];
+}
+
+function getHardwareDisks(raw: unknown): HardwareDisk[] {
+  const disks = recordList(raw, [
+    'hardware.windows.physicalDrives',
+    'hardware.windows.drives',
+    'hardware.linux.blockdevices',
+    'hardware.identifiers.storage_devices',
+    'hardware.storage_devices',
+    'physicalDrives',
+    'storage_devices',
   ]);
-  const entries = Array.isArray(source)
-    ? source
-    : isRecord(source)
-      ? Object.entries(source).map(([name, value]) => (isRecord(value) ? { name, ...value } : { name, total: value }))
-      : [];
-
-  return entries.flatMap((entry, index) => {
-    if (!isRecord(entry)) return [];
-    const total = numberValue(firstValue(entry, ['total', 'size', 'capacity', 'totalBytes']));
-    const free = numberValue(firstValue(entry, ['free', 'available', 'freeBytes']));
-    const used = numberValue(firstValue(entry, ['used', 'usedBytes'])) ?? (total !== undefined && free !== undefined ? total - free : undefined);
-    const percent = clampPercent(numberValue(firstValue(entry, ['percent', 'usage', 'usedPercent'])) ?? (used !== undefined && total ? (used / total) * 100 : undefined));
-    return [{
-      name: stringValue(firstValue(entry, ['name', 'drive', 'device', 'mount', 'caption'])) ?? `磁盘 ${index + 1}`,
-      fileSystem: stringValue(firstValue(entry, ['fileSystem', 'filesystem', 'fs', 'type'])),
-      total,
-      used,
-      percent,
-    }];
-  });
+  return disks.map((disk, index) => ({
+    name: stringValue(firstValue(disk, ['Caption', 'caption', 'DeviceID', 'device', 'name'])) ?? `磁盘 ${index + 1}`,
+    model: stringValue(firstValue(disk, ['Model', 'model', 'product'])),
+    serial: stringValue(firstValue(disk, ['SerialNumber', 'serialNumber', 'serial'])),
+    size: numberValue(firstValue(disk, ['Size', 'size', 'capacity', 'bytes'])),
+    type: stringValue(firstValue(disk, ['MediaType', 'mediaType', 'type', 'tran'])),
+  }));
 }
 
-function MetricCard({ icon, label, value, detail, percent, tone = 'blue' }: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  detail?: string;
-  percent?: number;
-  tone?: 'blue' | 'purple' | 'cyan' | 'amber';
-}) {
-  return (
-    <div className={`device-detail-metric tone-${tone}`}>
-      <div className="device-detail-metric-icon">{icon}</div>
-      <div className="device-detail-metric-copy">
-        <span>{label}</span>
-        <strong>{value}</strong>
-        {detail ? <small>{detail}</small> : null}
-      </div>
-      {percent !== undefined ? <Progress percent={Math.round(percent)} size="small" showInfo={false} /> : null}
-    </div>
-  );
+function joinValues(values: Array<string | undefined>) {
+  return values.filter((value): value is string => Boolean(value)).join(' · ') || undefined;
 }
 
 function InfoItem({ label, value, copyable = false }: { label: string; value?: string; copyable?: boolean }) {
@@ -192,7 +144,45 @@ function InfoItem({ label, value, copyable = false }: { label: string; value?: s
   );
 }
 
-export function DeviceDetailsDrawer({ open, onClose, device }: DeviceDetailsDrawerProps) {
+export function DeviceDetailsDrawer({ open, onClose, device, client, connected }: DeviceDetailsDrawerProps) {
+  const [systemInfo, setSystemInfo] = useState<unknown>();
+  const [systemInfoLoading, setSystemInfoLoading] = useState(false);
+  const [systemInfoError, setSystemInfoError] = useState<string>();
+
+  const loadSystemInfo = () => {
+    if (!device || !client || !connected) return;
+    setSystemInfoLoading(true);
+    setSystemInfoError(undefined);
+    void client.requestSystemInfo(device.id)
+      .then((response) => setSystemInfo(systemInfoPayload(response)))
+      .catch((error: unknown) => {
+        setSystemInfoError(error instanceof Error ? error.message : '获取硬件配置失败');
+      })
+      .finally(() => setSystemInfoLoading(false));
+  };
+
+  useEffect(() => {
+    setSystemInfo(undefined);
+    setSystemInfoError(undefined);
+    if (!open || !device || !client || !connected) return;
+
+    let active = true;
+    setSystemInfoLoading(true);
+    void client.requestSystemInfo(device.id)
+      .then((response) => {
+        if (active) setSystemInfo(systemInfoPayload(response));
+      })
+      .catch((error: unknown) => {
+        if (active) setSystemInfoError(error instanceof Error ? error.message : '获取硬件配置失败');
+      })
+      .finally(() => {
+        if (active) setSystemInfoLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, connected, device, open]);
+
   if (!device) {
     return (
       <Drawer title="设备详情" placement="right" onClose={onClose} open={open}>
@@ -202,10 +192,6 @@ export function DeviceDetailsDrawer({ open, onClose, device }: DeviceDetailsDraw
   }
 
   const raw = isRecord(device.raw) ? device.raw : {};
-  const bootTime = numberValue(firstValue(raw, ['lastbootuptime', 'lastBootAt']));
-  const cpu = getUsageMetric(raw, 'cpu');
-  const memory = getUsageMetric(raw, 'memory');
-  const disks = getDisks(raw);
   const conn = numberValue(raw.conn) ?? (device.online ? 1 : 0);
   const connectionTypes = [
     (conn & 1) !== 0 ? 'Agent' : undefined,
@@ -217,7 +203,43 @@ export function DeviceDetailsDrawer({ open, onClose, device }: DeviceDetailsDraw
   const cpuModel = stringValue(firstValue(raw, ['cpu.model', 'cpuModel', 'processor', 'hardware.cpu', 'sysinfo.hardware.cpu']));
   const loggedInUsers = firstValue(raw, ['lusers', 'loggedInUsers']);
   const userText = Array.isArray(loggedInUsers) ? loggedInUsers.map(stringValue).filter(Boolean).join('、') : stringValue(loggedInUsers);
-  const hasPerformanceData = cpu.percent !== undefined || memory.percent !== undefined || disks.length > 0;
+  const hardwareCpu = stringValue(firstValue(systemInfo, [
+    'hardware.identifiers.cpu_name',
+    'hardware.cpu.name',
+    'hardware.cpu.model',
+    'hardware.windows.processors.0.Name',
+    'hardware.windows.processors.0.name',
+    'cpu.name',
+    'cpu.model',
+  ])) ?? cpuModel;
+  const processor = recordList(systemInfo, ['hardware.windows.processors', 'hardware.processors', 'processors'])[0];
+  const coreCount = stringValue(firstValue(processor, ['NumberOfCores', 'cores']));
+  const threadCount = stringValue(firstValue(processor, ['NumberOfLogicalProcessors', 'logicalProcessors', 'threads']));
+  const clockSpeed = stringValue(firstValue(processor, ['MaxClockSpeed', 'maxClockSpeed']));
+  const cpuDetail = joinValues([
+    coreCount ? `${coreCount} 核` : undefined,
+    threadCount ? `${threadCount} 线程` : undefined,
+    clockSpeed ? `${clockSpeed} MHz` : undefined,
+  ]);
+  const memoryModules = recordList(systemInfo, ['hardware.windows.memory', 'hardware.memory', 'memory.modules']);
+  const physicalMemory = memoryModules.reduce((total, module) => total + (numberValue(firstValue(module, ['Capacity', 'capacity', 'size'])) ?? 0), 0);
+  const reportedMemory = numberValue(firstValue(systemInfo, [
+    'hardware.windows.computerSystem.TotalPhysicalMemory',
+    'hardware.totalMemory',
+    'memory.total',
+  ]));
+  const totalPhysicalMemory = physicalMemory || reportedMemory;
+  const motherboard = joinValues([
+    stringValue(firstValue(systemInfo, ['hardware.windows.motherboard.Manufacturer', 'hardware.identifiers.board_vendor', 'hardware.motherboard.manufacturer'])),
+    stringValue(firstValue(systemInfo, ['hardware.windows.motherboard.Product', 'hardware.identifiers.board_name', 'hardware.motherboard.model'])),
+  ]);
+  const bios = joinValues([
+    stringValue(firstValue(systemInfo, ['hardware.windows.bios.Manufacturer', 'hardware.identifiers.bios_vendor', 'hardware.bios.vendor'])),
+    stringValue(firstValue(systemInfo, ['hardware.windows.bios.SMBIOSBIOSVersion', 'hardware.identifiers.bios_version', 'hardware.bios.version'])),
+  ]);
+  const gpu = stringValue(firstValue(systemInfo, ['hardware.identifiers.gpu_name', 'hardware.gpu.name', 'hardware.windows.videoControllers.0.Name']));
+  const hardwareDisks = getHardwareDisks(systemInfo);
+  const hasHardwareData = Boolean(hardwareCpu || totalPhysicalMemory || motherboard || bios || gpu || hardwareDisks.length);
 
   return (
     <Drawer
@@ -249,30 +271,37 @@ export function DeviceDetailsDrawer({ open, onClose, device }: DeviceDetailsDraw
       </header>
 
       <section className="device-detail-section">
-        <div className="device-detail-section-title"><h4>运行概览</h4><span>{hasPerformanceData ? '设备最新上报数据' : '等待设备上报性能数据'}</span></div>
-        <div className="device-detail-metrics">
-          <MetricCard icon={<FundProjectionScreenOutlined />} label="CPU 使用率" value={cpu.percent === undefined ? '暂无数据' : `${Math.round(cpu.percent)}%`} detail={cpuModel} percent={cpu.percent} />
-          <MetricCard icon={<DatabaseOutlined />} label="内存占用" value={memory.percent === undefined ? '暂无数据' : `${Math.round(memory.percent)}%`} detail={memory.total !== undefined ? `${formatBytes(memory.used)} / ${formatBytes(memory.total)}` : undefined} percent={memory.percent} tone="purple" />
-          <MetricCard icon={<GlobalOutlined />} label="公网 IP" value={publicIp} detail={publicIp === '—' ? '网关暂未上报' : '外部访问地址'} tone="cyan" />
-          <MetricCard icon={<ClockCircleOutlined />} label="持续运行" value={formatDuration(bootTime)} detail={bootTime ? `启动于 ${formatDateTime(bootTime)}` : '未上报启动时间'} tone="amber" />
+        <div className="device-detail-section-title">
+          <h4>硬件配置</h4>
+          <Button type="text" size="small" icon={<ReloadOutlined />} loading={systemInfoLoading} disabled={!connected || !client} onClick={loadSystemInfo}>刷新</Button>
         </div>
-        {!hasPerformanceData ? <Alert showIcon type="info" message="性能数据尚未接入" description="CPU、内存和磁盘信息需要业务网关转发设备的系统信息（getsysinfo）响应；字段可用后会自动展示。" /> : null}
-      </section>
-
-      <section className="device-detail-section">
-        <div className="device-detail-section-title"><h4>磁盘占用</h4><span>{disks.length ? `${disks.length} 个卷` : '暂无磁盘数据'}</span></div>
-        <div className="device-detail-disk-list">
-          {disks.length ? disks.map((disk) => (
-            <div className="device-detail-disk" key={disk.name}>
-              <div className="device-detail-disk-icon"><HddOutlined /></div>
-              <div className="device-detail-disk-copy">
-                <div><strong>{disk.name}</strong><span>{disk.fileSystem || '本地磁盘'}</span></div>
-                <Progress percent={disk.percent === undefined ? 0 : Math.round(disk.percent)} showInfo={false} strokeColor={disk.percent !== undefined && disk.percent >= 80 ? '#f4b43c' : '#2f80ff'} />
-                <small><span>{disk.total !== undefined ? `已使用 ${formatBytes(disk.used)}，共 ${formatBytes(disk.total)}` : '容量信息未上报'}</span>{disk.percent !== undefined ? <b>{Math.round(disk.percent)}%</b> : null}</small>
-              </div>
+        {systemInfoLoading && !systemInfo ? (
+          <div className="device-detail-hardware-loading"><Spin indicator={<LoadingOutlined spin />} /><span>正在读取设备硬件配置</span></div>
+        ) : null}
+        {systemInfoError ? <Alert showIcon type="warning" message="硬件配置读取失败" description={systemInfoError} /> : null}
+        {!systemInfoLoading && !systemInfoError && !hasHardwareData ? (
+          <Alert showIcon type="info" message={connected ? '设备未返回硬件配置' : '网关未连接'} description={connected ? '可点击刷新重新发送 getsysinfo 请求。' : '连接网关后将自动读取 CPU、内存、主板和磁盘信息。'} />
+        ) : null}
+        {hasHardwareData ? (
+          <>
+            <div className="device-detail-info-grid">
+              <InfoItem label="处理器" value={hardwareCpu} />
+              <InfoItem label="核心规格" value={cpuDetail} />
+              <InfoItem label="物理内存" value={totalPhysicalMemory ? `${formatBytes(totalPhysicalMemory)}${memoryModules.length ? `（${memoryModules.length} 条）` : ''}` : undefined} />
+              <InfoItem label="显卡" value={gpu} />
+              <InfoItem label="主板" value={motherboard} />
+              <InfoItem label="BIOS" value={bios} />
             </div>
-          )) : <div className="device-detail-empty-disk"><HddOutlined /><span>设备尚未上报磁盘卷与容量信息</span></div>}
-        </div>
+            <div className="device-detail-hardware-disks">
+              {hardwareDisks.map((disk) => (
+                <div className="device-detail-hardware-disk" key={`${disk.name}-${disk.serial ?? ''}`}>
+                  <HddOutlined />
+                  <div><strong>{disk.model || disk.name}</strong><span>{joinValues([disk.type, disk.size !== undefined ? formatBytes(disk.size) : undefined, disk.serial ? `SN ${disk.serial}` : undefined]) || '容量与序列号未上报'}</span></div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
       </section>
 
       <section className="device-detail-section">
