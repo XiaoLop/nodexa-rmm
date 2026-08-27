@@ -1199,6 +1199,25 @@ input {
 .relay-validation-controls .ant-select {
   width: 100%;
 }
+.relay-files-validation {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #25364d;
+  border-radius: 6px;
+  background: #0b1521;
+}
+.relay-files-toolbar {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) auto auto auto;
+  gap: 8px;
+}
+.relay-files-validation .ant-table-wrapper {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #223147;
+  border-radius: 5px;
+}
 .relay-validation-log {
   height: 300px;
   overflow: auto;
@@ -1356,6 +1375,12 @@ input {
   }
   .relay-validation-controls {
     grid-template-columns: 1fr;
+  }
+  .relay-files-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .relay-files-toolbar .ant-input {
+    grid-column: 1 / -1;
   }
   .login-panel {
     min-height: auto;

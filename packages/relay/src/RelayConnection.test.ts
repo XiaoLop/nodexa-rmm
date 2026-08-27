@@ -37,7 +37,7 @@ describe('RelayConnection', () => {
 
     expect(connection.state).toBe('ready');
     expect(states).toEqual(['connecting', 'handshaking', 'ready']);
-    expect(socket.sent).toEqual(['hello', '{"action":"list"}', binary]);
+    expect(socket.sent).toEqual(['5', 'hello', '{"action":"list"}', binary]);
     expect(messages).toEqual(['response']);
 
     connection.close();
@@ -53,6 +53,18 @@ describe('RelayConnection', () => {
 
     await expect(connecting).rejects.toBeInstanceOf(RelayHandshakeError);
     expect(connection.state).toBe('error');
+  });
+
+  it('accepts a recorded-session handshake and starts the selected protocol', async () => {
+    const socket = new FakeRelayWebSocket();
+    const connection = createConnection(socket);
+    const connecting = connection.connect();
+    socket.open();
+    socket.message('cr');
+
+    await connecting;
+    expect(connection.state).toBe('ready');
+    expect(socket.sent).toEqual(['5']);
   });
 
   it('times out while waiting for the handshake', async () => {

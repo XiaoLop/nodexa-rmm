@@ -12,7 +12,40 @@ export { RelayConnection } from './RelayConnection';
 export { RelaySession, type RelaySessionOptions } from './RelaySession';
 export { buildAgentRelayPath, buildRelayUrl } from './relayUrl';
 export { desktopRelayProtocol } from './protocols/desktop';
-export { filesRelayProtocol } from './protocols/files';
+export {
+  FileOperationError,
+  FilesSession,
+  browserFileSource,
+  createListDirectoryMessage,
+  createUploadCancelMessage,
+  createUploadDoneMessage,
+  createUploadMessage,
+  errorFromMessage,
+  filesRelayProtocol,
+  isDirectoryListMessage,
+  joinFilePath,
+  messageIndicatesError,
+  normalizeFilePath,
+  parseDirectoryListing,
+  parseFilePath,
+  parseFilesProtocolText,
+  type DirectoryListMessage,
+  type DirectoryListing,
+  type FileEntry,
+  type FileEntryKind,
+  type FileOperationErrorCode,
+  type FileOperationOptions,
+  type FileOperationState,
+  type FilePath,
+  type FileUploadProgress,
+  type FileUploadResult,
+  type FilesProtocolMessage,
+  type FilesSessionOptions,
+  type FilesSessionState,
+  type ListDirectoryOptions,
+  type UploadFileOptions,
+  type UploadSource,
+} from './protocols/files';
 export { terminalRelayProtocol } from './protocols/terminal';
 export {
   RELAY_PROTOCOLS,

@@ -42,6 +42,7 @@ describe('RelayClient', () => {
       },
     ]);
     expect(new URL(connectedUrl).searchParams.get('auth')).toBe('browser-cookie');
+    expect(socket.sent).toEqual(['5']);
     expect(session.id).toBe('fixed-relay-id');
     expect(session.state).toBe('ready');
     expect(states).toEqual([

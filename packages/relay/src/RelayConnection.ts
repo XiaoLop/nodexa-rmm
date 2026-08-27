@@ -25,7 +25,7 @@ function defaultWebSocketFactory(url: string): RelayWebSocketLike {
 }
 
 function isDefaultHandshakeMessage(data: RelayInboundData): boolean {
-  return data === 'c';
+  return data === 'c' || data === 'cr';
 }
 
 export class RelayConnection {
@@ -127,6 +127,7 @@ export class RelayConnection {
           settled = true;
           clearTimers();
           removeAbortListener();
+          socket.send(String(this.options.protocol));
           this.setState('ready');
           resolve();
           return;
