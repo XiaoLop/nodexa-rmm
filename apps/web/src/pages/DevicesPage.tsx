@@ -38,6 +38,7 @@ import {
 } from 'antd';
 import { useMemo, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
@@ -101,6 +102,8 @@ export function DevicesPage() {
   const [groupId, setGroupId] = useState('all');
   const [online, setOnline] = useState('all');
   const [platform, setPlatform] = useState('all');
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const runPowerAction = (device: Device, action: PowerAction) => {
     if (!client || status !== 'connected') {
@@ -323,8 +326,11 @@ export function DevicesPage() {
                 onClick: ({ key }) => {
                   if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
                     runPowerAction(device, key as PowerAction);
+                  } else if (key === 'info') {
+                    setSelectedDevice(device);
+                    setDrawerOpen(true);
                   } else {
-                    messageApi.info(`${key === 'info' ? '设备信息' : '执行指令'}功能开发中`);
+                    messageApi.info(`执行指令功能开发中`);
                   }
                 },
               }}
@@ -421,6 +427,11 @@ export function DevicesPage() {
           />
         </section>
       </div>
+      <DeviceDetailsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        device={selectedDevice}
+      />
     </>
   );
 }

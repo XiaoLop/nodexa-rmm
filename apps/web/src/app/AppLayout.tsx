@@ -4,7 +4,6 @@ import {
   BellOutlined,
   DashboardOutlined,
   DesktopOutlined,
-  FileOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   QuestionCircleOutlined,
@@ -44,15 +43,6 @@ const menuItems = [
   },
   {
     type: 'group' as const,
-    label: '远程控制',
-    children: [
-      { key: '/remote/desktop', icon: <DesktopOutlined />, label: '远程桌面' },
-      { key: '/remote/terminal', icon: <ThunderboltOutlined />, label: '终端' },
-      { key: '/remote/files', icon: <FileOutlined />, label: '文件管理' },
-    ],
-  },
-  {
-    type: 'group' as const,
     label: '管理',
     children: [
       { key: '/admin/users', icon: <TeamOutlined />, label: '用户管理' },
@@ -69,9 +59,6 @@ const pageTitles: Record<string, string> = {
   '/monitoring/realtime': '监控与事件 / 实时事件',
   '/monitoring/alerts': '监控与事件 / 告警规则',
   '/monitoring/audit': '监控与事件 / 审计日志',
-  '/remote/desktop': '远程控制 / 远程桌面',
-  '/remote/terminal': '远程控制 / 终端',
-  '/remote/files': '远程控制 / 文件管理',
   '/admin/users': '管理 / 用户管理',
   '/admin/roles': '管理 / 角色与权限',
   '/settings': '管理 / 设置',
