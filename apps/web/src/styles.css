@@ -344,7 +344,7 @@ input {
   height: 66px;
   position: sticky;
   top: 0;
-  z-index: 15;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -412,6 +412,8 @@ input {
   margin-top: 3px;
 }
 .app-content {
+  position: relative;
+  z-index: 0;
   min-height: calc(100vh - 66px);
   padding: 16px 18px 24px;
   background: radial-gradient(circle at 38% 0, rgba(24, 47, 77, 0.24), transparent 34%), #09111d;
@@ -1162,6 +1164,64 @@ input {
 .devices-toolbar > .ant-select {
   width: 140px;
 }
+.file-upload-modal {
+  display: grid;
+  gap: 14px;
+}
+.file-upload-location {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0e1825;
+}
+.file-upload-location > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.file-upload-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.file-directory-table {
+  overflow: hidden;
+  border: 1px solid #25364d;
+  border-radius: 6px;
+}
+.file-directory-row {
+  cursor: pointer;
+}
+.file-directory-row:hover > td {
+  background: rgba(22, 119, 255, 0.12) !important;
+}
+.file-directory-row .anticon {
+  color: #69a9ff;
+}
+.file-entry-row .anticon {
+  color: var(--muted);
+}
+.file-upload-selection {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed #385174;
+  border-radius: 6px;
+  background: #0b1521;
+}
+.file-upload-selection > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 .relay-validation {
   display: grid;
   gap: 16px;
@@ -1381,6 +1441,13 @@ input {
   }
   .relay-files-toolbar .ant-input {
     grid-column: 1 / -1;
+  }
+  .file-upload-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .file-upload-selection {
+    grid-template-columns: 1fr;
   }
   .login-panel {
     min-height: auto;

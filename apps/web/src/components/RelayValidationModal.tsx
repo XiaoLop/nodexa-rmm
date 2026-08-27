@@ -21,6 +21,7 @@ import {
 import type { Device, GatewayClient } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Progress, Select, Space, Table, Tag } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
 
 interface RelayValidationModalProps {
   open: boolean;
@@ -54,17 +55,6 @@ const protocolOptions = [
   { value: RELAY_PROTOCOLS.terminal, label: '远程终端（p=1）' },
   { value: RELAY_PROTOCOLS.desktop, label: '远程桌面（p=2）' },
 ];
-
-function relayBaseUrl(gatewayUrl: string): string {
-  const configured = import.meta.env.VITE_RELAY_BASE_URL?.trim();
-  if (configured) return configured;
-
-  const url = new URL(gatewayUrl);
-  url.search = '';
-  url.hash = '';
-  url.pathname = url.pathname.replace(/\/(control|control\.ashx)\/?$/i, '') || '/';
-  return url.toString();
-}
 
 function sanitizeText(value: string): string {
   return value

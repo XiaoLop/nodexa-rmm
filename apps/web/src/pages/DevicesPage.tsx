@@ -36,10 +36,11 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
 import { RelayValidationModal } from '../components/RelayValidationModal';
+import { FileUploadModal } from '../components/FileUploadModal';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
@@ -60,6 +61,33 @@ function rawNumber(device: Device, key: string) {
   const raw = device.raw as Record<string, unknown> | undefined;
   const value = raw?.[key];
   return typeof value === 'number' ? value : undefined;
+}
+
+function deviceCreationTime(device: Device) {
+  return rawNumber(device, 'creation') ?? rawNumber(device, 'firstconnect') ?? 0;
+}
+
+const naturalNameCollator = new Intl.Collator('zh-CN', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+function nameCategory(name: string) {
+  const firstChar = name.trim().charAt(0);
+  if (/^\d$/.test(firstChar)) return 0;
+  if (/^[a-z]$/.test(firstChar)) return 1;
+  if (/^[A-Z]$/.test(firstChar)) return 3;
+  return 2;
+}
+
+function compareDeviceName(a: Device, b: Device) {
+  const categoryDifference = nameCategory(a.name) - nameCategory(b.name);
+  return categoryDifference || naturalNameCollator.compare(a.name, b.name);
+}
+
+function compareNames(a: string, b: string) {
+  const categoryDifference = nameCategory(a) - nameCategory(b);
+  return categoryDifference || naturalNameCollator.compare(a, b);
 }
 
 function osIcon(platform?: string) {
@@ -100,12 +128,24 @@ export function DevicesPage() {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const [query, setQuery] = useState('');
-  const [groupId, setGroupId] = useState('all');
+  const [groupId, setGroupId] = useState('');
   const [online, setOnline] = useState('all');
   const [platform, setPlatform] = useState('all');
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [relayDevice, setRelayDevice] = useState<Device | null>(null);
+  const [uploadDevice, setUploadDevice] = useState<Device | null>(null);
+
+  const sortedGroups = useMemo(
+    () => [...groups].sort((a, b) => compareNames(a.name, b.name)),
+    [groups],
+  );
+
+  useEffect(() => {
+    if (sortedGroups.length && !sortedGroups.some((group) => group.id === groupId)) {
+      setGroupId(sortedGroups[0].id);
+    }
+  }, [groupId, sortedGroups]);
 
   const runPowerAction = (device: Device, action: PowerAction) => {
     if (!client || status !== 'connected') {
@@ -146,22 +186,24 @@ export function DevicesPage() {
 
   const filteredDevices = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return devices.filter((device) => {
-      const matchesQuery =
-        !normalized ||
-        [
-          device.name,
-          device.id,
-          device.platform,
-          device.groupName,
-          rawString(device, 'ip'),
-          rawString(device, 'host'),
-        ].some((value) => value?.toLowerCase().includes(normalized));
-      const matchesGroup = groupId === 'all' || device.groupId === groupId;
-      const matchesOnline = online === 'all' || device.online === (online === 'online');
-      const matchesPlatform = platform === 'all' || device.platform === platform;
-      return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
-    });
+    return devices
+      .filter((device) => {
+        const matchesQuery =
+          !normalized ||
+          [
+            device.name,
+            device.id,
+            device.platform,
+            device.groupName,
+            rawString(device, 'ip'),
+            rawString(device, 'host'),
+          ].some((value) => value?.toLowerCase().includes(normalized));
+        const matchesGroup = Boolean(groupId) && device.groupId === groupId;
+        const matchesOnline = online === 'all' || device.online === (online === 'online');
+        const matchesPlatform = platform === 'all' || device.platform === platform;
+        return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
+      })
+      .sort(compareDeviceName);
   }, [devices, groupId, online, platform, query]);
 
   const columns: TableColumnsType<Device> = [
@@ -181,7 +223,7 @@ export function DevicesPage() {
       dataIndex: 'name',
       fixed: 'left',
       width: 170,
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      sorter: compareDeviceName,
       render: (value, device) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{value}</span>
@@ -234,6 +276,17 @@ export function DevicesPage() {
       sorter: (a, b) => (a.lastSeenAt || '').localeCompare(b.lastSeenAt || ''),
     },
     {
+      title: '创建时间',
+      key: 'creation',
+      width: 170,
+      render: (_, device) => {
+        const creation = deviceCreationTime(device);
+        if (!creation) return '—';
+        return formatDateTime(new Date(creation < 10000000000 ? creation * 1000 : creation).toISOString());
+      },
+      sorter: (a, b) => deviceCreationTime(a) - deviceCreationTime(b),
+    },
+    {
       title: '上次启动时间',
       key: 'lastbootuptime',
       width: 170,
@@ -279,7 +332,7 @@ export function DevicesPage() {
                 type="text"
                 icon={<FolderOpenOutlined />}
                 disabled={unavailable || isOffline}
-                onClick={() => messageApi.info('文件管理功能开发中')}
+                onClick={() => setUploadDevice(device)}
               />
             </Tooltip>
             <Tooltip title="测试中继连接">
@@ -379,10 +432,9 @@ export function DevicesPage() {
             <Select
               value={groupId}
               onChange={setGroupId}
-              options={[
-                { value: 'all', label: '全部分组' },
-                ...groups.map((group) => ({ value: group.id, label: group.name })),
-              ]}
+              disabled={!sortedGroups.length}
+              placeholder="暂无分组"
+              options={sortedGroups.map((group) => ({ value: group.id, label: group.name }))}
             />
             <Select
               value={online}
@@ -420,13 +472,8 @@ export function DevicesPage() {
             }}
             columns={columns}
             dataSource={filteredDevices}
-            pagination={{
-              pageSize: 12,
-              showSizeChanger: true,
-              pageSizeOptions: [12, 20, 50],
-              showTotal: (total) => `共 ${total} 条`,
-            }}
-            scroll={{ x: 1250 }}
+            pagination={false}
+            scroll={{ x: 1420 }}
             locale={{
               emptyText: (
                 <Empty
@@ -448,6 +495,13 @@ export function DevicesPage() {
         open={Boolean(relayDevice)}
         onClose={() => setRelayDevice(null)}
         device={relayDevice}
+        gatewayClient={client}
+        gatewayUrl={gatewayUrl}
+      />
+      <FileUploadModal
+        open={Boolean(uploadDevice)}
+        onClose={() => setUploadDevice(null)}
+        device={uploadDevice}
         gatewayClient={client}
         gatewayUrl={gatewayUrl}
       />

@@ -15,6 +15,24 @@ import {
 import { useMemo, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
+const naturalNameCollator = new Intl.Collator('zh-CN', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+function nameCategory(name: string) {
+  const firstChar = name.trim().charAt(0);
+  if (/^\d$/.test(firstChar)) return 0;
+  if (/^[a-z]$/.test(firstChar)) return 1;
+  if (/^[A-Z]$/.test(firstChar)) return 3;
+  return 2;
+}
+
+function compareGroupName(a: DeviceGroup, b: DeviceGroup) {
+  const categoryDifference = nameCategory(a.name) - nameCategory(b.name);
+  return categoryDifference || naturalNameCollator.compare(a.name, b.name);
+}
+
 function formatDateTime(value?: number) {
   if (!value) return '—';
   // If value is less than 10000000000, it's likely in seconds
@@ -36,16 +54,18 @@ export function DeviceGroupsPage() {
 
   const filteredGroups = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return groups.filter((group) => {
-      const matchesQuery =
-        !normalized ||
-        [
-          group.name,
-          group.id,
-          group.description,
-        ].some((value) => value?.toLowerCase().includes(normalized));
-      return matchesQuery;
-    });
+    return groups
+      .filter((group) => {
+        const matchesQuery =
+          !normalized ||
+          [
+            group.name,
+            group.id,
+            group.description,
+          ].some((value) => value?.toLowerCase().includes(normalized));
+        return matchesQuery;
+      })
+      .sort(compareGroupName);
   }, [groups, query]);
 
   const columns: TableColumnsType<DeviceGroup> = [
@@ -54,7 +74,8 @@ export function DeviceGroupsPage() {
       dataIndex: 'name',
       fixed: 'left',
       width: 200,
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      defaultSortOrder: 'ascend',
+      sorter: compareGroupName,
       render: (value) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ApartmentOutlined style={{ color: '#177ddc' }} />
@@ -144,12 +165,7 @@ export function DeviceGroupsPage() {
           rowKey="id"
           columns={columns}
           dataSource={filteredGroups}
-          pagination={{
-            pageSize: 12,
-            showSizeChanger: true,
-            pageSizeOptions: [12, 20, 50],
-            showTotal: (total) => `共 ${total} 条`,
-          }}
+          pagination={false}
           scroll={{ x: 1000 }}
           locale={{
             emptyText: (
