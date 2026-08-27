@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@meshcentral/relay": "workspace:*",
     "@meshcentral/shared-state": "workspace:*",
     "antd": "^6.6.0",
     "react": "19.2.3",

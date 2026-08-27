@@ -17,6 +17,8 @@ import {
   PoweroffOutlined,
   InfoCircleOutlined,
   ToolOutlined,
+  FolderOpenOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import type { Device } from '@meshcentral/shared-state';
 import {
@@ -32,10 +34,12 @@ import {
   type TableColumnsType,
   theme,
   Space,
+  Tooltip,
 } from 'antd';
 import { useMemo, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
+import { RelayValidationModal } from '../components/RelayValidationModal';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
@@ -92,7 +96,7 @@ function formatDateTime(value?: string) {
 
 export function DevicesPage() {
   const { token } = theme.useToken();
-  const { devices, groups, client, status } = useGatewayData();
+  const { devices, groups, client, status, gatewayUrl } = useGatewayData();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const [query, setQuery] = useState('');
@@ -101,6 +105,7 @@ export function DevicesPage() {
   const [platform, setPlatform] = useState('all');
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [relayDevice, setRelayDevice] = useState<Device | null>(null);
 
   const runPowerAction = (device: Device, action: PowerAction) => {
     if (!client || status !== 'connected') {
@@ -268,15 +273,23 @@ export function DevicesPage() {
                 disabled={unavailable || isOffline}
                 onClick={() => messageApi.info('远程终端功能开发中')}
               />
-            </Tooltip>
-            <Tooltip title="文件管理">
+            </Tooltip> */}
+            <Tooltip title="上传文件">
               <Button
                 type="text"
                 icon={<FolderOpenOutlined />}
                 disabled={unavailable || isOffline}
                 onClick={() => messageApi.info('文件管理功能开发中')}
               />
-            </Tooltip> */}
+            </Tooltip>
+            <Tooltip title="测试中继连接">
+              <Button
+                type="text"
+                icon={<ExperimentOutlined />}
+                disabled={unavailable || isOffline}
+                onClick={() => setRelayDevice(device)}
+              />
+            </Tooltip>
             <Dropdown
               trigger={['click']}
               menu={{
@@ -430,6 +443,13 @@ export function DevicesPage() {
         device={selectedDevice}
         client={client}
         connected={status === 'connected'}
+      />
+      <RelayValidationModal
+        open={Boolean(relayDevice)}
+        onClose={() => setRelayDevice(null)}
+        device={relayDevice}
+        gatewayClient={client}
+        gatewayUrl={gatewayUrl}
       />
     </>
   );

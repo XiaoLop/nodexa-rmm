@@ -1162,6 +1162,73 @@ input {
 .devices-toolbar > .ant-select {
   width: 140px;
 }
+.relay-validation {
+  display: grid;
+  gap: 16px;
+}
+.relay-validation-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(210px, 1fr) minmax(120px, 0.6fr);
+  gap: 12px;
+}
+.relay-validation-controls > div,
+.relay-validation-controls > label {
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0e1825;
+}
+.relay-validation-controls span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.relay-validation-controls strong {
+  overflow: hidden;
+  color: #e8eef7;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.relay-validation-controls small {
+  color: var(--success);
+}
+.relay-validation-controls .ant-select {
+  width: 100%;
+}
+.relay-validation-log {
+  height: 300px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid #25364d;
+  border-radius: 6px;
+  background: #07101a;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+}
+.relay-validation-log > div {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(51, 68, 90, 0.35);
+}
+.relay-validation-log time,
+.relay-validation-empty {
+  color: #687b94;
+}
+.relay-log-success span {
+  color: var(--success);
+}
+.relay-log-warning span {
+  color: var(--warning);
+}
+.relay-log-error span {
+  color: var(--danger);
+}
 .placeholder-card {
   min-height: calc(100vh - 105px);
   display: grid;
@@ -1286,6 +1353,9 @@ input {
   .table-toolbar > .ant-select,
   .devices-toolbar > .ant-select {
     width: calc(50% - 4px);
+  }
+  .relay-validation-controls {
+    grid-template-columns: 1fr;
   }
   .login-panel {
     min-height: auto;
