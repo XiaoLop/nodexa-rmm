@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './app/AppRouter';
 import { GatewayProvider } from './features/gateway/GatewayProvider';
 import 'antd/dist/reset.css';
-import './styles.css';
+import './assets/styles/index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

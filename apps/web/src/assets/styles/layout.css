@@ -1,0 +1,189 @@
+/* Console shell */
+.app-shell {
+  min-height: 100vh;
+  background: #09111d;
+}
+.app-sider {
+  position: fixed !important;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  background: #0d1725 !important;
+  border-right: 1px solid #223147;
+  overflow: hidden;
+}
+.sider-brand {
+  height: 66px;
+  display: flex;
+  align-items: center;
+  padding: 0 17px;
+  border-bottom: 1px solid #202f43;
+}
+.console-menu {
+  height: calc(100vh - 114px);
+  overflow-y: auto;
+  padding: 10px 8px;
+  border-inline-end: 0 !important;
+}
+.console-menu .ant-menu-item-group-title {
+  color: #607188;
+  text-transform: none;
+  font-size: 11px;
+  padding: 17px 11px 5px;
+}
+.console-menu .ant-menu-item {
+  height: 38px;
+  line-height: 38px;
+  margin-block: 2px;
+  color: #9aa9bd;
+}
+.console-menu .ant-menu-item-selected {
+  color: #4b9cff !important;
+}
+.sider-collapse {
+  position: absolute;
+  inset: auto 0 0;
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-top: 1px solid #202f43;
+  background: #0d1725;
+  color: #74859b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+.console-main {
+  margin-left: 220px;
+  min-width: 0;
+  transition: margin 0.2s;
+  background: var(--bg) !important;
+}
+.ant-layout-sider-collapsed + .console-main {
+  margin-left: 72px;
+}
+.app-header {
+  height: 66px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px !important;
+  background: rgba(9, 17, 29, 0.92) !important;
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid #223147;
+}
+.header-left,
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mobile-menu-button {
+  display: none;
+}
+.breadcrumb-title {
+  color: #b7c3d2;
+  font-size: 13px;
+}
+.global-search {
+  width: 260px;
+  background: #0e1825 !important;
+}
+.header-connection {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.header-connection i {
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+.header-connection.is-connected i {
+  background: var(--success);
+}
+.user-menu {
+  border: 0;
+  border-left: 1px solid #26364a;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-left: 14px;
+  cursor: pointer;
+}
+.user-menu span {
+  display: grid;
+  text-align: left;
+  line-height: 1.2;
+}
+.user-menu strong {
+  font-size: 12px;
+  color: #e4ebf5;
+}
+.user-menu small {
+  color: #75869c;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.app-content {
+  position: relative;
+  z-index: 0;
+  min-height: calc(100vh - 66px);
+  padding: 16px 18px 24px;
+  background: radial-gradient(circle at 38% 0, rgba(24, 47, 77, 0.24), transparent 34%), #09111d;
+}
+.page-stack {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+}
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 0;
+}
+.page-heading h1 {
+  font-size: 23px;
+  margin: 0 0 5px;
+}
+.page-heading p {
+  color: var(--muted);
+  margin: 0;
+}
+.console-card,
+.placeholder-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: linear-gradient(145deg, rgba(18, 29, 43, 0.98), rgba(14, 24, 37, 0.98));
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
+}
+.card-header {
+  min-height: 49px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #223147;
+}
+.card-header h2 {
+  color: #edf2f8;
+  font-size: 14px;
+  margin: 0;
+}
+.card-header > div > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+

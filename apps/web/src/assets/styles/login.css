@@ -1,0 +1,204 @@
+/* Login */
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(520px, 1fr);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 48%, rgba(22, 68, 115, 0.24), transparent 38%),
+    linear-gradient(135deg, #091522, #07101a);
+}
+.login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 47%, rgba(66, 104, 144, 0.05));
+}
+.login-hexagons {
+  position: absolute;
+  inset: 0 52% 0 0;
+  opacity: 0.25;
+  background-image:
+    linear-gradient(30deg, #1559a8 1px, transparent 1px),
+    linear-gradient(150deg, #1559a8 1px, transparent 1px);
+  background-size: 120px 208px;
+  mask-image: linear-gradient(90deg, #000, transparent);
+}
+.login-intro {
+  position: relative;
+  z-index: 1;
+  width: min(570px, 78%);
+  min-height: 100vh;
+  margin: auto;
+  padding: 90px 0 48px;
+  display: flex;
+  flex-direction: column;
+}
+.login-intro > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.login-intro .brand-wordmark {
+  font-size: 34px;
+}
+.login-product-line {
+  color: #9db6d7;
+  font-size: 20px;
+  padding-left: 18px;
+  border-left: 1px solid #45607d;
+}
+.login-intro h3.ant-typography {
+  color: #96b5df;
+  font-size: 22px;
+  font-weight: 400;
+  margin: 24px 0 26px 77px;
+}
+.login-intro .ant-typography-paragraph {
+  color: #879ab4;
+  max-width: 530px;
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 0 0 34px;
+}
+.login-features {
+  display: grid;
+  gap: 24px;
+}
+.login-feature {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.login-feature > div {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: linear-gradient(145deg, #14283e, #0e1c2c);
+  color: #4096ff;
+  font-size: 27px;
+  box-shadow: inset 0 0 0 1px rgba(53, 94, 139, 0.16);
+}
+.login-feature span {
+  display: grid;
+  gap: 4px;
+}
+.login-feature strong {
+  color: #e7eef8;
+  font-size: 16px;
+}
+.login-feature small {
+  color: #879ab4;
+  font-size: 14px;
+}
+.login-intro footer {
+  margin-top: auto;
+  color: #5f738c;
+  border-top: 1px solid #25384d;
+  padding-top: 18px;
+}
+.login-panel-wrap {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 44px;
+}
+.login-panel {
+  width: min(472px, 100%);
+  min-height: 620px;
+  padding: 38px 38px 32px;
+  text-align: center;
+  border: 1px solid #22354a;
+  border-radius: 10px;
+  background: linear-gradient(155deg, rgba(20, 34, 50, 0.96), rgba(12, 24, 37, 0.96));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+}
+.login-panel-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.login-panel h2.ant-typography {
+  margin: 0 0 2px;
+  color: #f4f7fb;
+}
+.login-alert {
+  margin-top: 20px;
+  text-align: left;
+}
+.login-form {
+  margin-top: 28px;
+  text-align: left;
+}
+.login-form .ant-form-item {
+  margin-bottom: 20px;
+}
+.login-form .ant-form-item-label label {
+  color: #c7d2e1;
+  font-weight: 600;
+}
+.login-form .ant-input-affix-wrapper {
+  background: #0e1825;
+  border-color: #31435a;
+}
+.password-toggle {
+  color: #71839a !important;
+  margin-right: -10px;
+}
+.login-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -3px 0 20px;
+}
+.login-meta .ant-btn-link {
+  padding: 0;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #71839a;
+  margin: 24px 0 16px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: #314158;
+}
+.login-config-hint {
+  display: block;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 16px;
+}
+.boot-screen {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background: radial-gradient(circle, #152a45, #09111d 55%);
+  color: var(--muted);
+}
+.boot-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #33445a;
+  border-top-color: var(--primary);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
