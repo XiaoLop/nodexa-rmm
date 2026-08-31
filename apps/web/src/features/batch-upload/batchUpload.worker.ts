@@ -41,11 +41,17 @@ interface RpcFailureMessage {
   error: string;
 }
 
-type MainMessage = RunMessage | CancelMessage | ShutdownMessage | RpcSuccessMessage | RpcFailureMessage;
+type MainMessage =
+  RunMessage | CancelMessage | ShutdownMessage | RpcSuccessMessage | RpcFailureMessage;
 
 type WorkerOutboundMessage =
   | { type: 'ready' }
-  | { type: 'control-request'; requestId: string; payload: Record<string, unknown>; timeoutMs?: number }
+  | {
+      type: 'control-request';
+      requestId: string;
+      payload: Record<string, unknown>;
+      timeoutMs?: number;
+    }
   | { type: 'control-send'; requestId: string; payload: unknown }
   | { type: 'status'; taskId: string; status: BatchUploadTaskStatus; detail?: string }
   | {
@@ -99,10 +105,17 @@ function updateStatus(taskId: string, status: BatchUploadTaskStatus, detail?: st
   post({ type: 'status', taskId, status, detail });
 }
 
-function findExistingFile(files: FilesSession, path: string, fileName: string, signal: AbortSignal) {
+function findExistingFile(
+  files: FilesSession,
+  path: string,
+  fileName: string,
+  signal: AbortSignal,
+) {
   return files
     .listDirectory(path, { signal, timeoutMs: 20_000 })
-    .then((listing) => listing.entries.find((entry) => entry.kind === 'file' && entry.name === fileName));
+    .then((listing) =>
+      listing.entries.find((entry) => entry.kind === 'file' && entry.name === fileName),
+    );
 }
 
 function errorCode(error: unknown): string {
@@ -113,7 +126,12 @@ function errorCode(error: unknown): string {
 
 async function runTask(message: RunMessage): Promise<void> {
   if (currentTaskId) {
-    post({ type: 'failed', taskId: message.taskId, errorCode: 'worker-busy', error: '上传 Worker 正忙。' });
+    post({
+      type: 'failed',
+      taskId: message.taskId,
+      errorCode: 'worker-busy',
+      error: '上传 Worker 正忙。',
+    });
     return;
   }
 
@@ -143,7 +161,12 @@ async function runTask(message: RunMessage): Promise<void> {
       signal,
     );
     if (existing && message.config.overwritePolicy === 'skip') {
-      post({ type: 'completed', taskId: message.taskId, result: 'skipped', detail: '远端已存在同名文件。' });
+      post({
+        type: 'completed',
+        taskId: message.taskId,
+        result: 'skipped',
+        detail: '远端已存在同名文件。',
+      });
       return;
     }
 
@@ -158,7 +181,8 @@ async function runTask(message: RunMessage): Promise<void> {
         chunkSize: message.chunkSize,
         onProgress: (progress) => {
           const now = performance.now();
-          const finalProgress = progress.percentage >= 100 || ['failed', 'cancelled'].includes(progress.state);
+          const finalProgress =
+            progress.percentage >= 100 || ['failed', 'cancelled'].includes(progress.state);
           if (!finalProgress && now - lastProgressAt < 150) return;
           lastProgressAt = now;
           post({

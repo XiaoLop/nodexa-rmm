@@ -1,4 +1,10 @@
-import { GatewayClient, createGatewayStore, type GatewayStore } from '@meshcentral/shared-state';
+import { GatewayAuthenticationError, GatewayClient } from '@meshcentral/control-client';
+import {
+  bindGatewayClient,
+  createGatewayStore,
+  type GatewayClientBinding,
+  type GatewayStore,
+} from '@meshcentral/shared-state';
 import { AppState, type AppStateStatus } from 'react-native';
 import {
   createContext,
@@ -41,6 +47,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   const [username, setUsername] = useState<string | undefined>();
   const segments = useSegments();
   const clientRef = useRef<GatewayClient | undefined>(undefined);
+  const bindingRef = useRef<GatewayClientBinding | undefined>(undefined);
   const credentialsRef = useRef<GatewayCredentials | undefined>(undefined);
   const segmentsRef = useRef(segments);
 
@@ -49,6 +56,8 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   }, [segments]);
 
   const destroyClient = useCallback(() => {
+    bindingRef.current?.dispose();
+    bindingRef.current = undefined;
     clientRef.current?.destroy();
     clientRef.current = undefined;
     setClient(undefined);
@@ -68,71 +77,31 @@ export function GatewayProvider({ children }: PropsWithChildren) {
 
       const newClient = new GatewayClient({
         url: wsUrl,
-        store,
         getAccessToken: () => process.env.EXPO_PUBLIC_GATEWAY_ACCESS_TOKEN?.trim() || undefined,
       });
+      const binding = bindGatewayClient(store, newClient);
+      const unsubscribeAuthenticationError = newClient.on('error', (error) => {
+        if (!(error instanceof GatewayAuthenticationError)) return;
+        credentialsRef.current = undefined;
+        void AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        if (segmentsRef.current[0] !== 'login') router.replace('/login');
+      });
+      bindingRef.current = {
+        sync: () => binding.sync(),
+        dispose: () => {
+          unsubscribeAuthenticationError();
+          binding.dispose();
+        },
+      };
 
       clientRef.current = newClient;
       setClient(newClient);
 
-      if (!validateLogin) {
-        await newClient.connect();
-        return;
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        let settled = false;
-        let validationTimer: ReturnType<typeof setTimeout> | undefined;
-
-        const finish = (error?: Error) => {
-          if (settled) return;
-          settled = true;
-          if (validationTimer) clearTimeout(validationTimer);
-          unsubscribe();
-          if (error) reject(error);
-          else resolve();
-        };
-
-        const unsubscribe = store.subscribe((state, prevState) => {
-          const lastEvent = state.events[0];
-          const rawData = lastEvent?.raw as Record<string, unknown> | undefined;
-          if (
-            rawData?.action === 'close' &&
-            lastEvent !== prevState.events[0]
-          ) {
-            const message =
-              rawData.cause === 'noauth'
-                ? rawData.msg === 'tokenrequired'
-                  ? '需要二次验证'
-                  : '账号或密码错误'
-                : typeof rawData.msg === 'string'
-                  ? rawData.msg
-                  : '服务器关闭了连接';
-            finish(new Error(message));
-            return;
-          }
-
-          if (state.status === 'error' && prevState.status !== 'error') {
-            finish(new Error(state.error || '无法连接到服务器'));
-            return;
-          }
-
-          if (state.status === 'connected' && prevState.status !== 'connected') finish();
-        });
-
-        newClient
-          .connect()
-          .then(() => {
-            validationTimer = setTimeout(
-              () => finish(new Error('服务器未返回登录结果，请检查账号、密码和服务器地址')),
-              5000,
-            );
-          })
-          .catch((error: unknown) => {
-            finish(error instanceof Error ? error : new Error('无法连接到服务器，请检查网络或服务器地址'));
-          });
-      }).catch((error) => {
+      await newClient.connect().catch((error) => {
         destroyClient();
+        if (validateLogin && error instanceof GatewayAuthenticationError) {
+          throw new Error(error.message === 'tokenrequired' ? '需要二次验证' : '账号或密码错误');
+        }
         throw error;
       });
     },
@@ -218,32 +187,9 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   }, [connectClient, destroyClient]);
 
   useEffect(() => {
-    const unsubscribe = store.subscribe((state, prevState) => {
-      const lastEvent = state.events[0];
-      const rawData = lastEvent?.raw as Record<string, any> | undefined;
-      
-      if (rawData && rawData.action === 'close' && lastEvent !== prevState?.events?.[0]) {
-        if (rawData.cause === 'noauth') {
-          if (segmentsRef.current[0] !== 'login') {
-            credentialsRef.current = undefined;
-            AsyncStorage.removeItem(AUTH_STORAGE_KEY).catch(() => {});
-            destroyClient();
-            router.replace('/login');
-          }
-        }
-      }
-    });
-    return unsubscribe;
-  }, [destroyClient, store]);
-
-  useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
       const currentClient = clientRef.current;
-      if (
-        nextState === 'active' &&
-        currentClient &&
-        store.getState().status !== 'connected'
-      ) {
+      if (nextState === 'active' && currentClient && store.getState().status !== 'connected') {
         void currentClient.connect().catch(() => undefined);
       }
     };
@@ -251,15 +197,18 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     return () => subscription.remove();
   }, [store]);
 
-  const value = useMemo(() => ({
-    store,
-    client,
-    configured,
-    username,
-    login,
-    logout,
-    reconnect,
-  }), [store, client, configured, username, login, logout, reconnect]);
+  const value = useMemo(
+    () => ({
+      store,
+      client,
+      configured,
+      username,
+      login,
+      logout,
+      reconnect,
+    }),
+    [store, client, configured, username, login, logout, reconnect],
+  );
 
   return <GatewayContext.Provider value={value}>{children}</GatewayContext.Provider>;
 }

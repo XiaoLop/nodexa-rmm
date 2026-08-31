@@ -19,7 +19,8 @@ import {
   type FileUploadProgress,
   type RelaySession,
 } from '@meshcentral/relay';
-import type { Device, GatewayClient } from '@meshcentral/shared-state';
+import type { GatewayClient } from '@meshcentral/control-client';
+import type { Device } from '@meshcentral/shared-state';
 import {
   Alert,
   Button,
@@ -315,7 +316,15 @@ export function FileUploadModal({
         ]}
       >
         <div className="file-upload-modal">
-          {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(undefined)} />}
+          {error && (
+            <Alert
+              type="error"
+              showIcon
+              message={error}
+              closable
+              onClose={() => setError(undefined)}
+            />
+          )}
           <div className="file-upload-location">
             <div>
               <Typography.Text type="secondary">上传目录</Typography.Text>
@@ -323,7 +332,9 @@ export function FileUploadModal({
                 {listing?.path || '根目录'}
               </Typography.Text>
             </div>
-            <Tag color={status === 'ready' ? 'success' : status === 'error' ? 'error' : 'processing'}>
+            <Tag
+              color={status === 'ready' ? 'success' : status === 'error' ? 'error' : 'processing'}
+            >
               {status === 'ready' ? '已连接' : status === 'error' ? '连接失败' : '正在连接'}
             </Tag>
           </div>
@@ -339,10 +350,7 @@ export function FileUploadModal({
               <Button
                 icon={<ArrowUpOutlined />}
                 disabled={
-                  status !== 'ready' ||
-                  directoryLoading ||
-                  uploading ||
-                  currentParent === undefined
+                  status !== 'ready' || directoryLoading || uploading || currentParent === undefined
                 }
                 onClick={() => currentParent !== undefined && void loadDirectory(currentParent)}
               >
@@ -406,7 +414,9 @@ export function FileUploadModal({
                   <Typography.Text strong ellipsis={{ tooltip: selectedFile.name }}>
                     {selectedFile.name}
                   </Typography.Text>
-                  <Typography.Text type="secondary">{formatBytes(selectedFile.size)}</Typography.Text>
+                  <Typography.Text type="secondary">
+                    {formatBytes(selectedFile.size)}
+                  </Typography.Text>
                 </>
               ) : (
                 <Typography.Text type="secondary">
@@ -419,7 +429,9 @@ export function FileUploadModal({
             <Progress
               percent={Number(uploadProgress.percentage.toFixed(1))}
               status={uploadProgress.state === 'failed' ? 'exception' : undefined}
-              format={(percent) => `${percent}% · ${formatBytes(uploadProgress.acknowledgedBytes)} / ${formatBytes(uploadProgress.totalBytes)}`}
+              format={(percent) =>
+                `${percent}% · ${formatBytes(uploadProgress.acknowledgedBytes)} / ${formatBytes(uploadProgress.totalBytes)}`
+              }
             />
           )}
         </div>

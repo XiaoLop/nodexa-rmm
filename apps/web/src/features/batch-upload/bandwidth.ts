@@ -59,8 +59,7 @@ export function calculateBatchUploadChunkSize(
 ): number {
   const uploadCount = Math.max(1, Math.floor(concurrentUploads));
   const totalBytesPerSecond = (config.bandwidthMbps * 1_000_000) / 8;
-  const calculatedBytes =
-    (totalBytesPerSecond * config.chunkIntervalMs) / 1000 / uploadCount;
+  const calculatedBytes = (totalBytesPerSecond * config.chunkIntervalMs) / 1000 / uploadCount;
   const clampedBytes = Math.min(
     config.maxChunkBytes,
     Math.max(config.minChunkBytes, calculatedBytes),

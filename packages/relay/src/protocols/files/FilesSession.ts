@@ -140,7 +140,11 @@ export class FilesSession {
     const requestId = this.nextRequestId('up');
     const chunkSize = options.chunkSize ?? this.options.defaultChunkSize ?? 5 * 1024 * 1024;
     if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
-      throw new FileOperationError('Upload chunk size must be a positive integer.', 'source', requestId);
+      throw new FileOperationError(
+        'Upload chunk size must be a positive integer.',
+        'source',
+        requestId,
+      );
     }
 
     const promise = new Promise<FileUploadResult>((resolve, reject) => {
@@ -339,7 +343,14 @@ export class FilesSession {
 
   private finishFailure<T>(operation: ActiveOperation<T>, error: FileOperationError): void {
     if (this.active !== operation) return;
-    operation.state = error.code === 'cancelled' ? 'cancelled' : error.code === 'timed-out' ? 'timed-out' : error.code === 'connection-lost' ? 'connection-lost' : 'failed';
+    operation.state =
+      error.code === 'cancelled'
+        ? 'cancelled'
+        : error.code === 'timed-out'
+          ? 'timed-out'
+          : error.code === 'connection-lost'
+            ? 'connection-lost'
+            : 'failed';
     if (operation.kind === 'upload') this.reportUploadProgress(operation as UploadOperation);
     this.cleanupOperation(operation);
     operation.reject(error);
@@ -369,9 +380,14 @@ export class FilesSession {
   private failConnection(cause: Error): void {
     if (!this.active) return;
     this.active.cancel(
-      new FileOperationError('File relay connection was lost.', 'connection-lost', this.active.requestId, {
-        cause,
-      }),
+      new FileOperationError(
+        'File relay connection was lost.',
+        'connection-lost',
+        this.active.requestId,
+        {
+          cause,
+        },
+      ),
       false,
     );
   }
@@ -386,7 +402,10 @@ export class FilesSession {
   }
 
   private nextRequestId(prefix: string): string {
-    return this.options.createRequestId?.() ?? `${prefix}-${Date.now().toString(36)}-${++this.requestSequence}`;
+    return (
+      this.options.createRequestId?.() ??
+      `${prefix}-${Date.now().toString(36)}-${++this.requestSequence}`
+    );
   }
 
   private safeSendJson(payload: unknown): void {
@@ -401,10 +420,16 @@ export class FilesSession {
 
 function assertUploadSource(source: UploadSource, name: string): void {
   if (!name || name === '.' || name === '..' || name.includes('/') || name.includes('\\')) {
-    throw new FileOperationError('Upload file name must be a single safe path segment.', 'invalid-path');
+    throw new FileOperationError(
+      'Upload file name must be a single safe path segment.',
+      'invalid-path',
+    );
   }
   if (!Number.isSafeInteger(source.size) || source.size < 0) {
-    throw new FileOperationError('Upload source size must be a non-negative safe integer.', 'source');
+    throw new FileOperationError(
+      'Upload source size must be a non-negative safe integer.',
+      'source',
+    );
   }
 }
 
@@ -431,9 +456,7 @@ async function encodeUploadChunk(
   return escaped;
 }
 
-async function binaryBytes(
-  value: ArrayBuffer | ArrayBufferView | Blob,
-): Promise<Uint8Array> {
+async function binaryBytes(value: ArrayBuffer | ArrayBufferView | Blob): Promise<Uint8Array> {
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
   if (ArrayBuffer.isView(value)) {
     return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);

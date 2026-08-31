@@ -2,14 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatEventMessage, type Device } from '@meshcentral/shared-state';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import {
   AppHeader,
   Card,
@@ -59,7 +52,11 @@ export default function DeviceDetailScreen() {
     return (
       <Screen
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         <AppHeader title="设备详情" back />
@@ -102,7 +99,11 @@ export default function DeviceDetailScreen() {
   return (
     <Screen
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+        />
       }
     >
       <AppHeader
@@ -125,14 +126,21 @@ export default function DeviceDetailScreen() {
         {details.realName && details.realName !== device.name ? (
           <Text style={styles.realName}>{details.realName}</Text>
         ) : null}
-        <Text style={styles.deviceGroup}>{group?.name ?? device.groupName ?? '未分组'} · {device.platform || '未知系统'}</Text>
-        <View style={styles.badgeWrap}><StatusBadge online={device.online} /></View>
+        <Text style={styles.deviceGroup}>
+          {group?.name ?? device.groupName ?? '未分组'} · {device.platform || '未知系统'}
+        </Text>
+        <View style={styles.badgeWrap}>
+          <StatusBadge online={device.online} />
+        </View>
         <View style={styles.heroMetrics}>
           <HeroMetric label="电源状态" value={details.powerStatus} />
           <View style={styles.heroDivider} />
           <HeroMetric label="连接方式" value={details.connectionSummary} />
           <View style={styles.heroDivider} />
-          <HeroMetric label="最近活动" value={formatRelativeTime(device.online ? details.agentConnectedAt : device.lastSeenAt)} />
+          <HeroMetric
+            label="最近活动"
+            value={formatRelativeTime(device.online ? details.agentConnectedAt : device.lastSeenAt)}
+          />
         </View>
       </View>
 
@@ -157,10 +165,30 @@ export default function DeviceDetailScreen() {
         <SectionHeader title="连接与状态" action={<LiveState online={device.online} />} />
         <Card style={styles.statusCard}>
           <View style={styles.statusGrid}>
-            <StatusItem icon="wifi-outline" label="Agent" value={details.agentConnected ? '已连接' : '未连接'} active={details.agentConnected} />
-            <StatusItem icon="hardware-chip-outline" label="Intel AMT" value={details.amtConnected ? '已连接' : '未连接'} active={details.amtConnected} />
-            <StatusItem icon="cloud-outline" label="CIRA" value={details.ciraConnected ? '已连接' : '未连接'} active={details.ciraConnected} />
-            <StatusItem icon="power-outline" label="电源" value={details.powerStatus} active={details.poweredOn} />
+            <StatusItem
+              icon="wifi-outline"
+              label="Agent"
+              value={details.agentConnected ? '已连接' : '未连接'}
+              active={details.agentConnected}
+            />
+            <StatusItem
+              icon="hardware-chip-outline"
+              label="Intel AMT"
+              value={details.amtConnected ? '已连接' : '未连接'}
+              active={details.amtConnected}
+            />
+            <StatusItem
+              icon="cloud-outline"
+              label="CIRA"
+              value={details.ciraConnected ? '已连接' : '未连接'}
+              active={details.ciraConnected}
+            />
+            <StatusItem
+              icon="power-outline"
+              label="电源"
+              value={details.powerStatus}
+              active={details.poweredOn}
+            />
           </View>
           <View style={styles.statusFooter}>
             <Ionicons name="time-outline" size={15} color={colors.muted} />
@@ -194,8 +222,17 @@ export default function DeviceDetailScreen() {
           <InfoRow icon="layers-outline" label="核心组件" value={details.agentCore} />
           <InfoRow icon="shield-checkmark-outline" label="运行权限" value={details.agentRoot} />
           <InfoRow icon="options-outline" label="能力掩码" value={details.agentCapabilities} />
-          <InfoRow icon="calendar-outline" label="首次连接" value={formatDateTime(details.firstConnectedAt)} />
-          <InfoRow icon="timer-outline" label="最近启动" value={formatDateTime(details.lastBootAt)} last />
+          <InfoRow
+            icon="calendar-outline"
+            label="首次连接"
+            value={formatDateTime(details.firstConnectedAt)}
+          />
+          <InfoRow
+            icon="timer-outline"
+            label="最近启动"
+            value={formatDateTime(details.lastBootAt)}
+            last
+          />
         </Card>
       </View>
 
@@ -218,21 +255,29 @@ export default function DeviceDetailScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="最近事件" action={<Text style={styles.eventCount}>{relatedEvents.length} 条</Text>} />
+        <SectionHeader
+          title="最近事件"
+          action={<Text style={styles.eventCount}>{relatedEvents.length} 条</Text>}
+        />
         <Card style={styles.eventCard}>
-          {relatedEvents.length ? relatedEvents.map((event, index) => {
-            const presentation = eventPresentation(event);
-            const message = formatEventMessage(event, devices, groups);
-            return (
-              <View key={event.id} style={[styles.eventRow, index === relatedEvents.length - 1 && styles.lastRow]}>
-                <IconTile name={presentation.icon} tone={presentation.tone} size={36} />
-                <View style={styles.eventCopy}>
-                  <Text style={styles.eventTitle}>{message}</Text>
-                  <Text style={styles.eventMeta}>{formatDateTime(event.occurredAt)}</Text>
+          {relatedEvents.length ? (
+            relatedEvents.map((event, index) => {
+              const presentation = eventPresentation(event);
+              const message = formatEventMessage(event, devices, groups);
+              return (
+                <View
+                  key={event.id}
+                  style={[styles.eventRow, index === relatedEvents.length - 1 && styles.lastRow]}
+                >
+                  <IconTile name={presentation.icon} tone={presentation.tone} size={36} />
+                  <View style={styles.eventCopy}>
+                    <Text style={styles.eventTitle}>{message}</Text>
+                    <Text style={styles.eventMeta}>{formatDateTime(event.occurredAt)}</Text>
+                  </View>
                 </View>
-              </View>
-            );
-          }) : (
+              );
+            })
+          ) : (
             <View style={styles.noEvents}>
               <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
               <Text style={styles.noEventsText}>暂无该设备的最近事件</Text>
@@ -274,12 +319,18 @@ function getDeviceDetails(device: Device) {
     amtConnected,
     agentId: displayValue(agent.id),
     agentCore: stringValue(agent.core),
-    agentRoot: typeof agent.root === 'boolean' ? (agent.root ? '管理员 / Root' : '普通权限') : undefined,
-    agentCapabilities: numberValue(agent.caps) === undefined ? undefined : `0x${numberValue(agent.caps)?.toString(16).toUpperCase()}`,
+    agentRoot:
+      typeof agent.root === 'boolean' ? (agent.root ? '管理员 / Root' : '普通权限') : undefined,
+    agentCapabilities:
+      numberValue(agent.caps) === undefined
+        ? undefined
+        : `0x${numberValue(agent.caps)?.toString(16).toUpperCase()}`,
     firstConnectedAt: timestampValue(raw.firstconnect),
     agentConnectedAt: timestampValue(raw.agct),
     lastBootAt: timestampValue(raw.lastbootuptime),
-    localUsers: localUsers.length ? localUsers.map(formatUserValue).filter(Boolean).join('、') : undefined,
+    localUsers: localUsers.length
+      ? localUsers.map(formatUserValue).filter(Boolean).join('、')
+      : undefined,
     antiVirus: formatSecurityValue(wsc.antiVirus),
     firewall: formatSecurityValue(wsc.firewall),
     autoUpdate: formatSecurityValue(wsc.autoUpdate),
@@ -296,7 +347,8 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value)))
+    return Number(value);
   return undefined;
 }
 
@@ -378,41 +430,158 @@ function formatRelativeTime(value?: string) {
 }
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
-  return <View style={styles.heroMetric}><Text numberOfLines={1} style={styles.heroMetricValue}>{value}</Text><Text style={styles.heroMetricLabel}>{label}</Text></View>;
+  return (
+    <View style={styles.heroMetric}>
+      <Text numberOfLines={1} style={styles.heroMetricValue}>
+        {value}
+      </Text>
+      <Text style={styles.heroMetricLabel}>{label}</Text>
+    </View>
+  );
 }
 
 function LiveState({ online }: { online: boolean }) {
-  return <View style={styles.liveState}><View style={[styles.liveDot, !online && styles.liveDotOffline]} /><Text style={styles.liveText}>{online ? '实时在线' : '当前离线'}</Text></View>;
+  return (
+    <View style={styles.liveState}>
+      <View style={[styles.liveDot, !online && styles.liveDotOffline]} />
+      <Text style={styles.liveText}>{online ? '实时在线' : '当前离线'}</Text>
+    </View>
+  );
 }
 
-function StatusItem({ icon, label, value, active }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; active: boolean }) {
-  return <View style={styles.statusItem}><View style={[styles.statusIcon, active && styles.statusIconActive]}><Ionicons name={icon} size={19} color={active ? colors.success : colors.muted} /></View><Text style={styles.statusLabel}>{label}</Text><Text style={[styles.statusValue, active && styles.statusValueActive]}>{value}</Text></View>;
+function StatusItem({
+  icon,
+  label,
+  value,
+  active,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  active: boolean;
+}) {
+  return (
+    <View style={styles.statusItem}>
+      <View style={[styles.statusIcon, active && styles.statusIconActive]}>
+        <Ionicons name={icon} size={19} color={active ? colors.success : colors.muted} />
+      </View>
+      <Text style={styles.statusLabel}>{label}</Text>
+      <Text style={[styles.statusValue, active && styles.statusValueActive]}>{value}</Text>
+    </View>
+  );
 }
 
-function InfoRow({ icon, label, value, last }: { icon: keyof typeof Ionicons.glyphMap; label: string; value?: string; last?: boolean }) {
-  return <View style={[styles.infoRow, last && styles.lastRow]}><View style={styles.infoIcon}><Ionicons name={icon} size={17} color={colors.primary} /></View><Text style={styles.infoLabel}>{label}</Text><Text selectable numberOfLines={2} style={styles.infoValue}>{value || '—'}</Text></View>;
+function InfoRow({
+  icon,
+  label,
+  value,
+  last,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.infoRow, last && styles.lastRow]}>
+      <View style={styles.infoIcon}>
+        <Ionicons name={icon} size={17} color={colors.primary} />
+      </View>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text selectable numberOfLines={2} style={styles.infoValue}>
+        {value || '—'}
+      </Text>
+    </View>
+  );
 }
 
 function IdentifierRow({ label, value, last }: { label: string; value?: string; last?: boolean }) {
-  return <View style={[styles.identifierRow, last && styles.lastRow]}><Text style={styles.identifierLabel}>{label}</Text><Text selectable style={styles.identifierValue}>{value || '—'}</Text></View>;
+  return (
+    <View style={[styles.identifierRow, last && styles.lastRow]}>
+      <Text style={styles.identifierLabel}>{label}</Text>
+      <Text selectable style={styles.identifierValue}>
+        {value || '—'}
+      </Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  more: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  more: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyCard: { minHeight: 300, padding: 28, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 16 },
-  emptyText: { color: colors.muted, fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: 7 },
-  refreshButton: { minHeight: 45, marginTop: 20, paddingHorizontal: 18, borderRadius: 14, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 7,
+  },
+  refreshButton: {
+    minHeight: 45,
+    marginTop: 20,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   refreshButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
-  hero: { borderRadius: 27, backgroundColor: colors.navy, padding: 22, alignItems: 'center', overflow: 'hidden' },
-  heroGlow: { position: 'absolute', width: 210, height: 210, borderRadius: 105, backgroundColor: '#17485A', right: -75, top: -100 },
-  deviceIcon: { width: 64, height: 64, borderRadius: 21, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  hero: {
+    borderRadius: 27,
+    backgroundColor: colors.navy,
+    padding: 22,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: '#17485A',
+    right: -75,
+    top: -100,
+  },
+  deviceIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 21,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   deviceIconOffline: { backgroundColor: colors.muted },
-  deviceName: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 13, textAlign: 'center' },
+  deviceName: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 13,
+    textAlign: 'center',
+  },
   realName: { color: '#C0CED7', fontSize: 10, marginTop: 4 },
   deviceGroup: { color: '#9DB2C0', fontSize: 10, marginTop: 6, textAlign: 'center' },
   badgeWrap: { marginTop: 11 },
-  heroMetrics: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 20, paddingTop: 17, borderTopWidth: 1, borderTopColor: '#29485B' },
+  heroMetrics: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    paddingTop: 17,
+    borderTopWidth: 1,
+    borderTopColor: '#29485B',
+  },
   heroMetric: { flex: 1, alignItems: 'center', gap: 4, paddingHorizontal: 4 },
   heroMetricValue: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   heroMetricLabel: { color: '#7894A5', fontSize: 9 },
@@ -428,30 +597,90 @@ const styles = StyleSheet.create({
   liveText: { color: colors.muted, fontSize: 10, fontWeight: '700' },
   statusCard: { padding: 15 },
   statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statusItem: { width: '48%', minHeight: 92, borderRadius: 16, padding: 12, backgroundColor: colors.background },
-  statusIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
+  statusItem: {
+    width: '48%',
+    minHeight: 92,
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: colors.background,
+  },
+  statusIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   statusIconActive: { backgroundColor: colors.successSoft },
   statusLabel: { color: colors.muted, fontSize: 9, marginTop: 8 },
   statusValue: { color: colors.muted, fontSize: 12, fontWeight: '800', marginTop: 2 },
   statusValueActive: { color: colors.success },
-  statusFooter: { flexDirection: 'row', alignItems: 'center', gap: 7, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, marginTop: 14, paddingTop: 13 },
+  statusFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    marginTop: 14,
+    paddingTop: 13,
+  },
   statusFooterText: { flex: 1, color: colors.muted, fontSize: 10 },
   infoCard: { paddingHorizontal: 15 },
-  infoRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  infoIcon: { width: 31, height: 31, borderRadius: 10, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  infoRow: {
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  infoIcon: {
+    width: 31,
+    height: 31,
+    borderRadius: 10,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   infoLabel: { width: 82, color: colors.muted, fontSize: 10 },
-  infoValue: { flex: 1, color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'right', lineHeight: 17 },
+  infoValue: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'right',
+    lineHeight: 17,
+  },
   lastRow: { borderBottomWidth: 0 },
   identifierCard: { paddingHorizontal: 15 },
-  identifierRow: { minHeight: 67, justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  identifierRow: {
+    minHeight: 67,
+    justifyContent: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
   identifierLabel: { color: colors.muted, fontSize: 9, fontWeight: '700' },
   identifierValue: { color: colors.text, fontSize: 10, lineHeight: 16, marginTop: 5 },
   eventCount: { color: colors.subtle, fontSize: 10 },
   eventCard: { paddingHorizontal: 14 },
-  eventRow: { minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  eventRow: {
+    minHeight: 69,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
   eventCopy: { flex: 1 },
   eventTitle: { color: colors.text, fontSize: 11, fontWeight: '700', lineHeight: 17 },
   eventMeta: { color: colors.muted, fontSize: 9, marginTop: 4 },
-  noEvents: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  noEvents: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   noEventsText: { color: colors.muted, fontSize: 11 },
 });

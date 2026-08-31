@@ -21,7 +21,10 @@ export function normalizeFilePath(value: string): string {
   if (WINDOWS_DRIVE.test(trimmed) || trimmed.includes('\\')) {
     const drive = WINDOWS_DRIVE.exec(trimmed)?.[0];
     const remainder = drive ? trimmed.slice(drive.length) : trimmed;
-    const parts = collapsePathParts(remainder.split(/[\\/]+/), Boolean(drive) || trimmed.startsWith('\\'));
+    const parts = collapsePathParts(
+      remainder.split(/[\\/]+/),
+      Boolean(drive) || trimmed.startsWith('\\'),
+    );
     if (drive) return `${drive.toUpperCase()}\\${parts.join('\\')}`.replace(/\\$/, '\\');
     return `${trimmed.startsWith('\\') ? '\\' : ''}${parts.join('\\')}`;
   }
@@ -38,7 +41,8 @@ export function joinFilePath(parent: string, child: string): string {
   }
   const normalizedParent = normalizeFilePath(parent);
   if (!normalizedParent) return child;
-  const separator = WINDOWS_DRIVE.test(normalizedParent) || normalizedParent.includes('\\') ? '\\' : '/';
+  const separator =
+    WINDOWS_DRIVE.test(normalizedParent) || normalizedParent.includes('\\') ? '\\' : '/';
   return normalizedParent.endsWith(separator)
     ? `${normalizedParent}${child}`
     : `${normalizedParent}${separator}${child}`;
@@ -51,7 +55,10 @@ function collapsePathParts(parts: string[], absolute: boolean): string[] {
     if (part === '..') {
       if (result.length === 0) {
         if (absolute) continue;
-        throw new FileOperationError('Relative parent path segments are not allowed.', 'invalid-path');
+        throw new FileOperationError(
+          'Relative parent path segments are not allowed.',
+          'invalid-path',
+        );
       }
       result.pop();
       continue;

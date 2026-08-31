@@ -15,7 +15,8 @@ import {
   WifiOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
-import type { Device, GatewayClient } from '@meshcentral/shared-state';
+import type { GatewayClient } from '@meshcentral/control-client';
+import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Drawer, Spin, Tag, Tooltip, Typography } from 'antd';
 
 interface DeviceDetailsDrawerProps {
@@ -41,7 +42,9 @@ function isRecord(value: unknown): value is UnknownRecord {
 }
 
 function valueAt(source: unknown, path: string): unknown {
-  return path.split('.').reduce<unknown>((value, key) => (isRecord(value) ? value[key] : undefined), source);
+  return path
+    .split('.')
+    .reduce<unknown>((value, key) => (isRecord(value) ? value[key] : undefined), source);
 }
 
 function firstValue(source: unknown, paths: string[]) {
@@ -60,7 +63,8 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value)))
+    return Number(value);
   return undefined;
 }
 
@@ -91,7 +95,8 @@ function formatDateTime(value?: string | number) {
 function osIcon(platform?: string) {
   const value = platform?.toLowerCase() ?? '';
   if (value.includes('windows')) return <WindowsOutlined />;
-  if (value.includes('mac') || value.includes('apple') || value.includes('ios')) return <AppleOutlined />;
+  if (value.includes('mac') || value.includes('apple') || value.includes('ios'))
+    return <AppleOutlined />;
   if (value.includes('linux')) return <LinuxOutlined />;
   if (value.includes('android')) return <AndroidOutlined />;
   return <QuestionOutlined />;
@@ -119,7 +124,9 @@ function getHardwareDisks(raw: unknown): HardwareDisk[] {
     'storage_devices',
   ]);
   return disks.map((disk, index) => ({
-    name: stringValue(firstValue(disk, ['Caption', 'caption', 'DeviceID', 'device', 'name'])) ?? `磁盘 ${index + 1}`,
+    name:
+      stringValue(firstValue(disk, ['Caption', 'caption', 'DeviceID', 'device', 'name'])) ??
+      `磁盘 ${index + 1}`,
     model: stringValue(firstValue(disk, ['Model', 'model', 'product'])),
     serial: stringValue(firstValue(disk, ['SerialNumber', 'serialNumber', 'serial'])),
     size: numberValue(firstValue(disk, ['Size', 'size', 'capacity', 'bytes'])),
@@ -131,7 +138,15 @@ function joinValues(values: Array<string | undefined>) {
   return values.filter((value): value is string => Boolean(value)).join(' · ') || undefined;
 }
 
-function InfoItem({ label, value, copyable = false }: { label: string; value?: string; copyable?: boolean }) {
+function InfoItem({
+  label,
+  value,
+  copyable = false,
+}: {
+  label: string;
+  value?: string;
+  copyable?: boolean;
+}) {
   return (
     <div className="device-detail-info-item">
       <span>{label}</span>
@@ -144,7 +159,13 @@ function InfoItem({ label, value, copyable = false }: { label: string; value?: s
   );
 }
 
-export function DeviceDetailsDrawer({ open, onClose, device, client, connected }: DeviceDetailsDrawerProps) {
+export function DeviceDetailsDrawer({
+  open,
+  onClose,
+  device,
+  client,
+  connected,
+}: DeviceDetailsDrawerProps) {
   const [systemInfo, setSystemInfo] = useState<unknown>();
   const [systemInfoLoading, setSystemInfoLoading] = useState(false);
   const [systemInfoError, setSystemInfoError] = useState<string>();
@@ -153,7 +174,8 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
     if (!device || !client || !connected) return;
     setSystemInfoLoading(true);
     setSystemInfoError(undefined);
-    void client.requestSystemInfo(device.id)
+    void client
+      .requestSystemInfo(device.id)
       .then((response) => setSystemInfo(systemInfoPayload(response)))
       .catch((error: unknown) => {
         setSystemInfoError(error instanceof Error ? error.message : '获取硬件配置失败');
@@ -168,7 +190,8 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
 
     let active = true;
     setSystemInfoLoading(true);
-    void client.requestSystemInfo(device.id)
+    void client
+      .requestSystemInfo(device.id)
       .then((response) => {
         if (active) setSystemInfo(systemInfoPayload(response));
       })
@@ -193,53 +216,123 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
 
   const raw = isRecord(device.raw) ? device.raw : {};
   const conn = numberValue(raw.conn) ?? (device.online ? 1 : 0);
-  const connectionTypes = [
-    (conn & 1) !== 0 ? 'Agent' : undefined,
-    (conn & 2) !== 0 ? 'CIRA' : undefined,
-    (conn & 4) !== 0 || (conn & 8) !== 0 ? 'Intel AMT' : undefined,
-  ].filter(Boolean).join(' + ') || '无活动连接';
-  const localIp = stringValue(firstValue(raw, ['ip', 'localip', 'localIp', 'network.localIp'])) ?? '—';
-  const publicIp = stringValue(firstValue(raw, ['publicip', 'publicIp', 'wanip', 'wanIp', 'externalip', 'externalIp', 'network.publicIp'])) ?? '—';
-  const cpuModel = stringValue(firstValue(raw, ['cpu.model', 'cpuModel', 'processor', 'hardware.cpu', 'sysinfo.hardware.cpu']));
+  const connectionTypes =
+    [
+      (conn & 1) !== 0 ? 'Agent' : undefined,
+      (conn & 2) !== 0 ? 'CIRA' : undefined,
+      (conn & 4) !== 0 || (conn & 8) !== 0 ? 'Intel AMT' : undefined,
+    ]
+      .filter(Boolean)
+      .join(' + ') || '无活动连接';
+  const localIp =
+    stringValue(firstValue(raw, ['ip', 'localip', 'localIp', 'network.localIp'])) ?? '—';
+  const publicIp =
+    stringValue(
+      firstValue(raw, [
+        'publicip',
+        'publicIp',
+        'wanip',
+        'wanIp',
+        'externalip',
+        'externalIp',
+        'network.publicIp',
+      ]),
+    ) ?? '—';
+  const cpuModel = stringValue(
+    firstValue(raw, ['cpu.model', 'cpuModel', 'processor', 'hardware.cpu', 'sysinfo.hardware.cpu']),
+  );
   const loggedInUsers = firstValue(raw, ['lusers', 'loggedInUsers']);
-  const userText = Array.isArray(loggedInUsers) ? loggedInUsers.map(stringValue).filter(Boolean).join('、') : stringValue(loggedInUsers);
-  const hardwareCpu = stringValue(firstValue(systemInfo, [
-    'hardware.identifiers.cpu_name',
-    'hardware.cpu.name',
-    'hardware.cpu.model',
-    'hardware.windows.processors.0.Name',
-    'hardware.windows.processors.0.name',
-    'cpu.name',
-    'cpu.model',
-  ])) ?? cpuModel;
-  const processor = recordList(systemInfo, ['hardware.windows.processors', 'hardware.processors', 'processors'])[0];
+  const userText = Array.isArray(loggedInUsers)
+    ? loggedInUsers.map(stringValue).filter(Boolean).join('、')
+    : stringValue(loggedInUsers);
+  const hardwareCpu =
+    stringValue(
+      firstValue(systemInfo, [
+        'hardware.identifiers.cpu_name',
+        'hardware.cpu.name',
+        'hardware.cpu.model',
+        'hardware.windows.processors.0.Name',
+        'hardware.windows.processors.0.name',
+        'cpu.name',
+        'cpu.model',
+      ]),
+    ) ?? cpuModel;
+  const processor = recordList(systemInfo, [
+    'hardware.windows.processors',
+    'hardware.processors',
+    'processors',
+  ])[0];
   const coreCount = stringValue(firstValue(processor, ['NumberOfCores', 'cores']));
-  const threadCount = stringValue(firstValue(processor, ['NumberOfLogicalProcessors', 'logicalProcessors', 'threads']));
+  const threadCount = stringValue(
+    firstValue(processor, ['NumberOfLogicalProcessors', 'logicalProcessors', 'threads']),
+  );
   const clockSpeed = stringValue(firstValue(processor, ['MaxClockSpeed', 'maxClockSpeed']));
   const cpuDetail = joinValues([
     coreCount ? `${coreCount} 核` : undefined,
     threadCount ? `${threadCount} 线程` : undefined,
     clockSpeed ? `${clockSpeed} MHz` : undefined,
   ]);
-  const memoryModules = recordList(systemInfo, ['hardware.windows.memory', 'hardware.memory', 'memory.modules']);
-  const physicalMemory = memoryModules.reduce((total, module) => total + (numberValue(firstValue(module, ['Capacity', 'capacity', 'size'])) ?? 0), 0);
-  const reportedMemory = numberValue(firstValue(systemInfo, [
-    'hardware.windows.computerSystem.TotalPhysicalMemory',
-    'hardware.totalMemory',
-    'memory.total',
-  ]));
+  const memoryModules = recordList(systemInfo, [
+    'hardware.windows.memory',
+    'hardware.memory',
+    'memory.modules',
+  ]);
+  const physicalMemory = memoryModules.reduce(
+    (total, module) =>
+      total + (numberValue(firstValue(module, ['Capacity', 'capacity', 'size'])) ?? 0),
+    0,
+  );
+  const reportedMemory = numberValue(
+    firstValue(systemInfo, [
+      'hardware.windows.computerSystem.TotalPhysicalMemory',
+      'hardware.totalMemory',
+      'memory.total',
+    ]),
+  );
   const totalPhysicalMemory = physicalMemory || reportedMemory;
   const motherboard = joinValues([
-    stringValue(firstValue(systemInfo, ['hardware.windows.motherboard.Manufacturer', 'hardware.identifiers.board_vendor', 'hardware.motherboard.manufacturer'])),
-    stringValue(firstValue(systemInfo, ['hardware.windows.motherboard.Product', 'hardware.identifiers.board_name', 'hardware.motherboard.model'])),
+    stringValue(
+      firstValue(systemInfo, [
+        'hardware.windows.motherboard.Manufacturer',
+        'hardware.identifiers.board_vendor',
+        'hardware.motherboard.manufacturer',
+      ]),
+    ),
+    stringValue(
+      firstValue(systemInfo, [
+        'hardware.windows.motherboard.Product',
+        'hardware.identifiers.board_name',
+        'hardware.motherboard.model',
+      ]),
+    ),
   ]);
   const bios = joinValues([
-    stringValue(firstValue(systemInfo, ['hardware.windows.bios.Manufacturer', 'hardware.identifiers.bios_vendor', 'hardware.bios.vendor'])),
-    stringValue(firstValue(systemInfo, ['hardware.windows.bios.SMBIOSBIOSVersion', 'hardware.identifiers.bios_version', 'hardware.bios.version'])),
+    stringValue(
+      firstValue(systemInfo, [
+        'hardware.windows.bios.Manufacturer',
+        'hardware.identifiers.bios_vendor',
+        'hardware.bios.vendor',
+      ]),
+    ),
+    stringValue(
+      firstValue(systemInfo, [
+        'hardware.windows.bios.SMBIOSBIOSVersion',
+        'hardware.identifiers.bios_version',
+        'hardware.bios.version',
+      ]),
+    ),
   ]);
-  const gpu = stringValue(firstValue(systemInfo, ['hardware.identifiers.gpu_name', 'hardware.gpu.name', 'hardware.windows.videoControllers.0.Name']));
+  const gpu = stringValue(
+    firstValue(systemInfo, [
+      'hardware.identifiers.gpu_name',
+      'hardware.gpu.name',
+      'hardware.windows.videoControllers.0.Name',
+    ]),
+  );
   const hardwareDisks = getHardwareDisks(systemInfo);
-  const hasHardwareData = Boolean(hardwareCpu || totalPhysicalMemory || motherboard || bios || gpu || hardwareDisks.length);
+  const hasHardwareData = Boolean(
+    hardwareCpu || totalPhysicalMemory || motherboard || bios || gpu || hardwareDisks.length,
+  );
 
   return (
     <Drawer
@@ -251,11 +344,16 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
       rootClassName="device-details-drawer"
     >
       <header className="device-detail-hero">
-        <div className={`device-detail-device-icon ${device.online ? 'is-online' : ''}`}>{osIcon(device.platform)}</div>
+        <div className={`device-detail-device-icon ${device.online ? 'is-online' : ''}`}>
+          {osIcon(device.platform)}
+        </div>
         <div className="device-detail-title">
           <div>
             <Typography.Title level={3}>{device.name}</Typography.Title>
-            <Tag color={device.online ? 'success' : 'default'}><span className="device-detail-live-dot" />{device.online ? '在线' : '离线'}</Tag>
+            <Tag color={device.online ? 'success' : 'default'}>
+              <span className="device-detail-live-dot" />
+              {device.online ? '在线' : '离线'}
+            </Tag>
           </div>
           <p>{stringValue(raw.rname) || stringValue(raw.host) || '未上报主机名'}</p>
           <div className="device-detail-tags">
@@ -269,30 +367,72 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
       <section className="device-detail-section">
         <div className="device-detail-section-title">
           <h4>硬件配置</h4>
-          <Button type="text" size="small" icon={<ReloadOutlined />} loading={systemInfoLoading} disabled={!connected || !client} onClick={loadSystemInfo}>刷新</Button>
+          <Button
+            type="text"
+            size="small"
+            icon={<ReloadOutlined />}
+            loading={systemInfoLoading}
+            disabled={!connected || !client}
+            onClick={loadSystemInfo}
+          >
+            刷新
+          </Button>
         </div>
         {systemInfoLoading && !systemInfo ? (
-          <div className="device-detail-hardware-loading"><Spin indicator={<LoadingOutlined spin />} /><span>正在读取设备硬件配置</span></div>
+          <div className="device-detail-hardware-loading">
+            <Spin indicator={<LoadingOutlined spin />} />
+            <span>正在读取设备硬件配置</span>
+          </div>
         ) : null}
-        {systemInfoError ? <Alert showIcon type="warning" message="硬件配置读取失败" description={systemInfoError} /> : null}
+        {systemInfoError ? (
+          <Alert showIcon type="warning" message="硬件配置读取失败" description={systemInfoError} />
+        ) : null}
         {!systemInfoLoading && !systemInfoError && !hasHardwareData ? (
-          <Alert showIcon type="info" message={connected ? '设备未返回硬件配置' : '网关未连接'} description={connected ? '可点击刷新重新发送 getsysinfo 请求。' : '连接网关后将自动读取 CPU、内存、主板和磁盘信息。'} />
+          <Alert
+            showIcon
+            type="info"
+            message={connected ? '设备未返回硬件配置' : '网关未连接'}
+            description={
+              connected
+                ? '可点击刷新重新发送 getsysinfo 请求。'
+                : '连接网关后将自动读取 CPU、内存、主板和磁盘信息。'
+            }
+          />
         ) : null}
         {hasHardwareData ? (
           <>
             <div className="device-detail-info-grid">
               <InfoItem label="处理器" value={hardwareCpu} />
               <InfoItem label="核心规格" value={cpuDetail} />
-              <InfoItem label="物理内存" value={totalPhysicalMemory ? `${formatBytes(totalPhysicalMemory)}${memoryModules.length ? `（${memoryModules.length} 条）` : ''}` : undefined} />
+              <InfoItem
+                label="物理内存"
+                value={
+                  totalPhysicalMemory
+                    ? `${formatBytes(totalPhysicalMemory)}${memoryModules.length ? `（${memoryModules.length} 条）` : ''}`
+                    : undefined
+                }
+              />
               <InfoItem label="显卡" value={gpu} />
               <InfoItem label="主板" value={motherboard} />
               <InfoItem label="BIOS" value={bios} />
             </div>
             <div className="device-detail-hardware-disks">
               {hardwareDisks.map((disk) => (
-                <div className="device-detail-hardware-disk" key={`${disk.name}-${disk.serial ?? ''}`}>
+                <div
+                  className="device-detail-hardware-disk"
+                  key={`${disk.name}-${disk.serial ?? ''}`}
+                >
                   <HddOutlined />
-                  <div><strong>{disk.model || disk.name}</strong><span>{joinValues([disk.type, disk.size !== undefined ? formatBytes(disk.size) : undefined, disk.serial ? `SN ${disk.serial}` : undefined]) || '容量与序列号未上报'}</span></div>
+                  <div>
+                    <strong>{disk.model || disk.name}</strong>
+                    <span>
+                      {joinValues([
+                        disk.type,
+                        disk.size !== undefined ? formatBytes(disk.size) : undefined,
+                        disk.serial ? `SN ${disk.serial}` : undefined,
+                      ]) || '容量与序列号未上报'}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -301,19 +441,26 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
       </section>
 
       <section className="device-detail-section">
-        <div className="device-detail-section-title"><h4>网络与连接</h4></div>
+        <div className="device-detail-section-title">
+          <h4>网络与连接</h4>
+        </div>
         <div className="device-detail-info-grid">
           <InfoItem label="局域网 IP" value={localIp} copyable />
           <InfoItem label="公网 IP" value={publicIp} copyable />
           <InfoItem label="主机地址" value={stringValue(raw.host)} copyable />
           <InfoItem label="连接方式" value={connectionTypes} />
-          <InfoItem label="最后在线" value={device.online ? '当前在线' : formatDateTime(device.lastSeenAt)} />
+          <InfoItem
+            label="最后在线"
+            value={device.online ? '当前在线' : formatDateTime(device.lastSeenAt)}
+          />
           <InfoItem label="首次连接" value={formatDateTime(numberValue(raw.firstconnect))} />
         </div>
       </section>
 
       <section className="device-detail-section">
-        <div className="device-detail-section-title"><h4>设备信息</h4></div>
+        <div className="device-detail-section-title">
+          <h4>设备信息</h4>
+        </div>
         <div className="device-detail-info-grid">
           <InfoItem label="设备 ID" value={device.id} copyable />
           <InfoItem label="Agent 版本" value={device.agentVersion} />
@@ -323,9 +470,21 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
           <InfoItem label="设备描述" value={stringValue(raw.desc)} />
         </div>
         <div className="device-detail-health-row">
-          <Tooltip title="Agent 连接状态"><span><WifiOutlined /> Agent {(conn & 1) !== 0 ? '已连接' : '未连接'}</span></Tooltip>
-          <Tooltip title="安全信息来自设备上报"><span><SafetyCertificateOutlined /> 安全状态 {isRecord(raw.wsc) ? '已上报' : '未知'}</span></Tooltip>
-          <Tooltip title="当前登录用户"><span><UserOutlined /> {userText || '无用户数据'}</span></Tooltip>
+          <Tooltip title="Agent 连接状态">
+            <span>
+              <WifiOutlined /> Agent {(conn & 1) !== 0 ? '已连接' : '未连接'}
+            </span>
+          </Tooltip>
+          <Tooltip title="安全信息来自设备上报">
+            <span>
+              <SafetyCertificateOutlined /> 安全状态 {isRecord(raw.wsc) ? '已上报' : '未知'}
+            </span>
+          </Tooltip>
+          <Tooltip title="当前登录用户">
+            <span>
+              <UserOutlined /> {userText || '无用户数据'}
+            </span>
+          </Tooltip>
         </div>
       </section>
     </Drawer>

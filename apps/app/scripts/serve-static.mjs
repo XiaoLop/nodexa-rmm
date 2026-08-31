@@ -15,10 +15,16 @@ const mime = {
 };
 
 createServer((request, response) => {
-  const pathname = decodeURIComponent(new URL(request.url || '/', `http://${request.headers.host}`).pathname);
+  const pathname = decodeURIComponent(
+    new URL(request.url || '/', `http://${request.headers.host}`).pathname,
+  );
   const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
-  const candidates = extname(relative) ? [relative] : [`${relative}.html`, join(relative, 'index.html')];
-  const file = candidates.map((candidate) => normalize(join(root, candidate))).find((candidate) => candidate.startsWith(root) && existsSync(candidate));
+  const candidates = extname(relative)
+    ? [relative]
+    : [`${relative}.html`, join(relative, 'index.html')];
+  const file = candidates
+    .map((candidate) => normalize(join(root, candidate)))
+    .find((candidate) => candidate.startsWith(root) && existsSync(candidate));
 
   if (!file) {
     response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });

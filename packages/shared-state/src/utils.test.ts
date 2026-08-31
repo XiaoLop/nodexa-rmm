@@ -47,12 +47,8 @@ describe('utils: event formatting and ID masking', () => {
   });
 
   it('formats event messages replacing node// and mesh// IDs with names or fallback terms', () => {
-    const devices: Device[] = [
-      { id: 'node//111', name: 'Web Server A', online: true },
-    ];
-    const groups: DeviceGroup[] = [
-      { id: 'mesh//100', name: '华东服务器组' },
-    ];
+    const devices: Device[] = [{ id: 'node//111', name: 'Web Server A', online: true }];
+    const groups: DeviceGroup[] = [{ id: 'mesh//100', name: '华东服务器组' }];
 
     const event1: GatewayEvent = {
       id: 'e1',
@@ -93,7 +89,9 @@ describe('utils: event formatting and ID masking', () => {
     };
 
     expect(formatEventMessage(event1, devices, groups)).toBe('设备已上线');
-    expect(formatEventMessage(event2, devices, groups)).toBe('上传文件: "C:/app.exe", 大小: 1000 至 设备组');
+    expect(formatEventMessage(event2, devices, groups)).toBe(
+      '上传文件: "C:/app.exe", 大小: 1000 至 设备组',
+    );
     expect(formatEventMessage(eventEmpty, devices, groups)).toBe('设备已上线');
     expect(formatEventMessage(eventStarted, devices, groups)).toBe(
       '开始远程桌面会话 "r1fj8y9yd58" 来自 172.18.0.1 至 172.18.0.1',

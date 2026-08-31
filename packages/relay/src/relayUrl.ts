@@ -2,7 +2,8 @@ import type { RelayProtocol, RelayUrlOptions } from './types';
 
 function normalizeRelayUrl(baseUrl: string): URL {
   const url = new URL(baseUrl);
-  url.protocol = url.protocol === 'http:' ? 'ws:' : url.protocol === 'https:' ? 'wss:' : url.protocol;
+  url.protocol =
+    url.protocol === 'http:' ? 'ws:' : url.protocol === 'https:' ? 'wss:' : url.protocol;
   if (url.protocol !== 'ws:' && url.protocol !== 'wss:') {
     throw new TypeError('Relay base URL must use http, https, ws or wss.');
   }

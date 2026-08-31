@@ -52,7 +52,9 @@ export default function DevicesScreen() {
 
   const filtered = devices.filter((device) => {
     const matchesFilter = filter === '全部' || (filter === '在线' ? device.online : !device.online);
-    const matchesQuery = `${device.name} ${device.platform} ${device.groupName}`.toLowerCase().includes(query.toLowerCase());
+    const matchesQuery = `${device.name} ${device.platform} ${device.groupName}`
+      .toLowerCase()
+      .includes(query.toLowerCase());
     return matchesFilter && matchesQuery;
   });
 
@@ -63,7 +65,11 @@ export default function DevicesScreen() {
   return (
     <Screen
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+        />
       }
     >
       <AppHeader
@@ -89,17 +95,24 @@ export default function DevicesScreen() {
             style={styles.searchInput}
           />
         </View>
-        <Pressable style={styles.filterButton}><Ionicons name="options-outline" size={21} color={colors.text} /></Pressable>
+        <Pressable style={styles.filterButton}>
+          <Ionicons name="options-outline" size={21} color={colors.text} />
+        </Pressable>
       </View>
 
       <View style={styles.chips}>
         {(['全部', '在线', '离线'] as const).map((item) => (
-          <Pressable key={item} style={[styles.chip, filter === item && styles.chipActive]} onPress={() => setFilter(item)}>
+          <Pressable
+            key={item}
+            style={[styles.chip, filter === item && styles.chipActive]}
+            onPress={() => setFilter(item)}
+          >
             <Text style={[styles.chipText, filter === item && styles.chipTextActive]}>{item}</Text>
             <Text style={[styles.chipCount, filter === item && styles.chipCountActive]}>
               {item === '全部'
                 ? devices.length
-                : devices.filter((device) => (item === '在线' ? device.online : !device.online)).length}
+                : devices.filter((device) => (item === '在线' ? device.online : !device.online))
+                    .length}
             </Text>
           </Pressable>
         ))}
@@ -139,7 +152,9 @@ function DeviceGroupBlock({
         <View style={styles.groupTitleRow}>
           <Ionicons name="folder-open" size={18} color={colors.primary} />
           <Text style={styles.groupTitle}>{group.name}</Text>
-          <View style={styles.groupCount}><Text style={styles.groupCountText}>{devices.length}</Text></View>
+          <View style={styles.groupCount}>
+            <Text style={styles.groupCountText}>{devices.length}</Text>
+          </View>
         </View>
         <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={19} color={colors.muted} />
       </Pressable>
@@ -151,16 +166,26 @@ function DeviceGroupBlock({
               style={[styles.deviceRow, index === devices.length - 1 && styles.lastRow]}
               onPress={() => router.push({ pathname: '/device/[id]', params: { id: device.id } })}
             >
-              <IconTile name={platformIcon(device.platform)} tone={device.online ? 'primary' : 'neutral'} size={46} />
+              <IconTile
+                name={platformIcon(device.platform)}
+                tone={device.online ? 'primary' : 'neutral'}
+                size={46}
+              />
               <View style={styles.deviceBody}>
                 <View style={styles.deviceNameRow}>
-                  <Text numberOfLines={1} style={styles.deviceName}>{device.name}</Text>
+                  <Text numberOfLines={1} style={styles.deviceName}>
+                    {device.name}
+                  </Text>
                   <StatusBadge online={device.online} />
                 </View>
-                <Text style={styles.deviceMeta}>{device.platform || '未知系统'} · Agent {device.agentVersion || '—'}</Text>
+                <Text style={styles.deviceMeta}>
+                  {device.platform || '未知系统'} · Agent {device.agentVersion || '—'}
+                </Text>
                 <View style={styles.lastSeenRow}>
                   <Ionicons name="radio-outline" size={12} color={colors.subtle} />
-                  <Text style={styles.lastSeen}>{device.online ? '刚刚活跃' : formatLastSeen(device.lastSeenAt)}</Text>
+                  <Text style={styles.lastSeen}>
+                    {device.online ? '刚刚活跃' : formatLastSeen(device.lastSeenAt)}
+                  </Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
@@ -173,27 +198,84 @@ function DeviceGroupBlock({
 }
 
 const styles = StyleSheet.create({
-  add: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  add: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchRow: { flexDirection: 'row', gap: 10 },
-  searchBox: { flex: 1, minHeight: 49, backgroundColor: colors.surface, borderWidth: 1, borderColor: 'transparent', borderRadius: 16, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  searchBox: {
+    flex: 1,
+    minHeight: 49,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
   searchBoxFocused: { borderColor: colors.primary },
   searchInput: { flex: 1, color: colors.text, fontSize: 13, outlineStyle: 'none' as any },
-  filterButton: { width: 49, height: 49, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  filterButton: {
+    width: 49,
+    height: 49,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chips: { flexDirection: 'row', gap: 9 },
-  chip: { height: 36, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  chip: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   chipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
   chipText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   chipTextActive: { color: '#FFFFFF' },
   chipCount: { color: colors.subtle, fontSize: 10, fontWeight: '800' },
   chipCountActive: { color: '#8FB0BF' },
   groupBlock: { gap: 11 },
-  groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 2 },
+  groupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+  },
   groupTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   groupTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  groupCount: { minWidth: 22, height: 20, paddingHorizontal: 6, borderRadius: 7, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  groupCount: {
+    minWidth: 22,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 7,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   groupCountText: { color: colors.primary, fontSize: 10, fontWeight: '800' },
   deviceCard: { paddingHorizontal: 14 },
-  deviceRow: { minHeight: 92, flexDirection: 'row', alignItems: 'center', gap: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  deviceRow: {
+    minHeight: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
   lastRow: { borderBottomWidth: 0 },
   deviceBody: { flex: 1, gap: 4 },
   deviceNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },

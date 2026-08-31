@@ -1,4 +1,9 @@
-import { gatewaySelectors, getGreetingTime, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
+import {
+  gatewaySelectors,
+  getGreetingTime,
+  getUserDisplayName,
+  useGatewayStore,
+} from '@meshcentral/shared-state';
 import { useGatewayData } from './useGatewayData';
 
 export function useUiData() {

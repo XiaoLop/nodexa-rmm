@@ -306,7 +306,8 @@ export type RelayLogEventMessage = MeshCentralEventMessage<RelayLogEventPayload>
 /** 系统信息 Hash 更新完整事件消息 */
 export type SysInfoHashEventMessage = MeshCentralEventMessage<SysInfoHashEventPayload>;
 /** 服务器性能监控指标完整事件消息 */
-export type ServerTimelineStatsEventMessage = MeshCentralEventMessage<ServerTimelineStatsEventPayload>;
+export type ServerTimelineStatsEventMessage =
+  MeshCentralEventMessage<ServerTimelineStatsEventPayload>;
 /** 节点上线完整事件消息 */
 export type NodeConnectEventMessage = MeshCentralEventMessage<NodeConnectEventPayload>;
 /** 网络接口变动完整事件消息 */

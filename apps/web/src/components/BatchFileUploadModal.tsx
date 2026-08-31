@@ -5,7 +5,7 @@ import {
   StopOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import type { GatewayClient } from '@meshcentral/shared-state';
+import type { GatewayClient } from '@meshcentral/control-client';
 import {
   Alert,
   Button,

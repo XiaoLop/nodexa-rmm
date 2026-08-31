@@ -12,7 +12,10 @@ export interface DirectoryListMessage extends FilesProtocolMessage {
   entries: FileEntry[];
 }
 
-export function createListDirectoryMessage(path: string, requestId: string): Record<string, unknown> {
+export function createListDirectoryMessage(
+  path: string,
+  requestId: string,
+): Record<string, unknown> {
   return { action: 'ls', reqid: requestId, path };
 }
 
@@ -38,9 +41,14 @@ export function parseFilesProtocolText(text: string): FilesProtocolMessage {
   try {
     value = JSON.parse(text);
   } catch (error) {
-    throw new FileOperationError('Received invalid JSON from the file relay.', 'protocol', undefined, {
-      cause: error,
-    });
+    throw new FileOperationError(
+      'Received invalid JSON from the file relay.',
+      'protocol',
+      undefined,
+      {
+        cause: error,
+      },
+    );
   }
   if (!isRecord(value)) {
     throw new FileOperationError('File relay JSON message must be an object.', 'protocol');
@@ -56,13 +64,18 @@ export function isDirectoryListMessage(message: FilesProtocolMessage): boolean {
   return Array.isArray(message.raw.dir);
 }
 
-export function parseDirectoryListing(message: FilesProtocolMessage, requestedPath: string): DirectoryListing {
+export function parseDirectoryListing(
+  message: FilesProtocolMessage,
+  requestedPath: string,
+): DirectoryListing {
   if (!isDirectoryListMessage(message)) {
     throw errorFromMessage(message, 'Directory response omitted the dir array.');
   }
   const rawPath = typeof message.raw.path === 'string' ? message.raw.path : requestedPath;
   const path = normalizeFilePath(rawPath);
-  const entries = (message.raw.dir as unknown[]).map((entry, index) => parseFileEntry(entry, path, index));
+  const entries = (message.raw.dir as unknown[]).map((entry, index) =>
+    parseFileEntry(entry, path, index),
+  );
   return { path, entries };
 }
 
@@ -136,7 +149,9 @@ function firstString(...values: unknown[]): string | undefined {
 }
 
 function numberOf(...values: unknown[]): number | undefined {
-  const value = values.find((candidate) => typeof candidate === 'number' || typeof candidate === 'string');
+  const value = values.find(
+    (candidate) => typeof candidate === 'number' || typeof candidate === 'string',
+  );
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
     const parsed = Number(value);
@@ -146,9 +161,13 @@ function numberOf(...values: unknown[]): number | undefined {
 }
 
 function dateOf(...values: unknown[]): Date | undefined {
-  const value = values.find((candidate) => typeof candidate === 'number' || typeof candidate === 'string');
+  const value = values.find(
+    (candidate) => typeof candidate === 'number' || typeof candidate === 'string',
+  );
   if (value === undefined) return undefined;
-  const parsed = new Date(typeof value === 'number' && value < 10_000_000_000 ? value * 1000 : value);
+  const parsed = new Date(
+    typeof value === 'number' && value < 10_000_000_000 ? value * 1000 : value,
+  );
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 

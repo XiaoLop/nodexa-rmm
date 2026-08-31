@@ -1,8 +1,5 @@
-import type { GatewayClient } from '@meshcentral/shared-state';
-import {
-  batchUploadBandwidthConfig,
-  calculateBatchUploadChunkSize,
-} from './bandwidth';
+import type { GatewayClient } from '@meshcentral/control-client';
+import { batchUploadBandwidthConfig, calculateBatchUploadChunkSize } from './bandwidth';
 import type {
   BatchUploadConfig,
   BatchUploadDeviceSnapshot,
@@ -180,7 +177,11 @@ export class BatchUploadManager {
     if (!task || isTerminal(task.status)) return;
     if (task.status === 'queued') {
       this.queue = this.queue.filter((id) => id !== taskId);
-      this.updateTask(taskId, { status: 'cancelled', completedAt: Date.now(), detail: '用户取消。' });
+      this.updateTask(taskId, {
+        status: 'cancelled',
+        completedAt: Date.now(),
+        detail: '用户取消。',
+      });
       this.finishIfDone();
       return;
     }
@@ -286,9 +287,12 @@ export class BatchUploadManager {
   }
 
   private createWorker(): void {
-    const worker = new Worker(new URL('./batchUpload.worker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./batchUpload.worker.ts', import.meta.url), {
+      type: 'module',
+    });
     const slot: WorkerSlot = { id: createId('worker'), worker, ready: false };
-    worker.onmessage = (event: MessageEvent<WorkerMessage>) => this.handleWorkerMessage(slot, event.data);
+    worker.onmessage = (event: MessageEvent<WorkerMessage>) =>
+      this.handleWorkerMessage(slot, event.data);
     worker.onerror = (event) => {
       const taskId = slot.taskId;
       if (taskId) {
@@ -341,7 +345,7 @@ export class BatchUploadManager {
         this.updateTask(message.taskId, {
           status: message.result,
           acknowledgedBytes:
-            message.result === 'success' ? this.findTask(message.taskId)?.totalBytes ?? 0 : 0,
+            message.result === 'success' ? (this.findTask(message.taskId)?.totalBytes ?? 0) : 0,
           percentage: message.result === 'success' ? 100 : 0,
           detail: message.detail,
           completedAt: Date.now(),
@@ -368,14 +372,22 @@ export class BatchUploadManager {
     }
   }
 
-  private async handleControlRequest(slot: WorkerSlot, message: WorkerControlRequest): Promise<void> {
+  private async handleControlRequest(
+    slot: WorkerSlot,
+    message: WorkerControlRequest,
+  ): Promise<void> {
     if (!this.gatewayClient || !slot.taskId) {
-      slot.worker.postMessage({ type: 'rpc-error', requestId: message.requestId, error: '网关不可用。' });
+      slot.worker.postMessage({
+        type: 'rpc-error',
+        requestId: message.requestId,
+        error: '网关不可用。',
+      });
       return;
     }
     try {
       const result = await this.gatewayClient.request(message.payload, message.timeoutMs);
-      if (slot.taskId) slot.worker.postMessage({ type: 'rpc-result', requestId: message.requestId, result });
+      if (slot.taskId)
+        slot.worker.postMessage({ type: 'rpc-result', requestId: message.requestId, result });
     } catch (error) {
       if (slot.taskId) {
         slot.worker.postMessage({
@@ -391,7 +403,11 @@ export class BatchUploadManager {
     try {
       if (!this.gatewayClient || !slot.taskId) throw new Error('网关不可用。');
       this.gatewayClient.send(message.payload);
-      slot.worker.postMessage({ type: 'rpc-result', requestId: message.requestId, result: undefined });
+      slot.worker.postMessage({
+        type: 'rpc-result',
+        requestId: message.requestId,
+        result: undefined,
+      });
     } catch (error) {
       slot.worker.postMessage({
         type: 'rpc-error',
@@ -407,12 +423,13 @@ export class BatchUploadManager {
     if (!config || !this.baseUrl) return;
     const concurrentUploads = Math.max(
       1,
-      Math.min(config.concurrency, this.workers.length, this.queue.length + this.activeWorkerCount()),
+      Math.min(
+        config.concurrency,
+        this.workers.length,
+        this.queue.length + this.activeWorkerCount(),
+      ),
     );
-    const chunkSize = calculateBatchUploadChunkSize(
-      batchUploadBandwidthConfig,
-      concurrentUploads,
-    );
+    const chunkSize = calculateBatchUploadChunkSize(batchUploadBandwidthConfig, concurrentUploads);
     for (const slot of this.workers) {
       if (!slot.ready || slot.taskId || !this.queue.length) continue;
       const taskId = this.queue.shift();
@@ -466,7 +483,9 @@ export class BatchUploadManager {
   private updateTask(taskId: string, updates: Partial<BatchUploadTask>, shouldEmit = true): void {
     this.snapshot = {
       ...this.snapshot,
-      tasks: this.snapshot.tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
+      tasks: this.snapshot.tasks.map((task) =>
+        task.id === taskId ? { ...task, ...updates } : task,
+      ),
     };
     if (shouldEmit) this.emit();
   }

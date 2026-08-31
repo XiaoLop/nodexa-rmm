@@ -18,7 +18,8 @@ import {
   type RelayInboundData,
   type RelaySession,
 } from '@meshcentral/relay';
-import type { Device, GatewayClient } from '@meshcentral/shared-state';
+import type { GatewayClient } from '@meshcentral/control-client';
+import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Progress, Select, Space, Table, Tag } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
@@ -202,10 +203,16 @@ export function RelayValidationModal({
       if (protocol === RELAY_PROTOCOLS.files) {
         filesRef.current = new FilesSession(session, {
           onUnhandledMessage: (message) =>
-            addLog('warning', `收到未关联的文件协议消息：${sanitizeText(JSON.stringify(message)).slice(0, 160)}`),
+            addLog(
+              'warning',
+              `收到未关联的文件协议消息：${sanitizeText(JSON.stringify(message)).slice(0, 160)}`,
+            ),
         });
       }
-      addLog('success', `中继已进入 ready，总耗时 ${Math.round(performance.now() - startedAtRef.current)} ms`);
+      addLog(
+        'success',
+        `中继已进入 ready，总耗时 ${Math.round(performance.now() - startedAtRef.current)} ms`,
+      );
     } catch (error) {
       const detail = error instanceof Error ? `${error.name}：${error.message}` : '未知错误';
       addLog('error', `连接失败：${sanitizeText(detail)}`);
@@ -240,7 +247,10 @@ export function RelayValidationModal({
       setRemotePath(result.path);
       addLog('success', `目录读取完成，共 ${result.entries.length} 项`);
     } catch (error) {
-      addLog('error', `目录读取失败：${sanitizeText(error instanceof Error ? error.message : '未知错误')}`);
+      addLog(
+        'error',
+        `目录读取失败：${sanitizeText(error instanceof Error ? error.message : '未知错误')}`,
+      );
     } finally {
       setFileBusy(false);
     }
@@ -259,7 +269,10 @@ export function RelayValidationModal({
       });
       addLog('success', `文件上传完成：${file.name}`);
     } catch (error) {
-      addLog('error', `文件上传失败：${sanitizeText(error instanceof Error ? error.message : '未知错误')}`);
+      addLog(
+        'error',
+        `文件上传失败：${sanitizeText(error instanceof Error ? error.message : '未知错误')}`,
+      );
     } finally {
       setFileBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -272,7 +285,12 @@ export function RelayValidationModal({
   return (
     <Modal
       open={open}
-      title={<Space><ExperimentOutlined />中继连接验证</Space>}
+      title={
+        <Space>
+          <ExperimentOutlined />
+          中继连接验证
+        </Space>
+      }
       width={760}
       onCancel={onClose}
       footer={null}
@@ -307,18 +325,38 @@ export function RelayValidationModal({
             </Tag>
           </div>
         </div>
-        {!baseUrl && <Alert type="error" showIcon message="无法从网关地址推导中继地址，请配置 VITE_RELAY_BASE_URL。" />}
+        {!baseUrl && (
+          <Alert
+            type="error"
+            showIcon
+            message="无法从网关地址推导中继地址，请配置 VITE_RELAY_BASE_URL。"
+          />
+        )}
         <Space wrap>
-          <Button type="primary" icon={<ExperimentOutlined />} disabled={!canConnect} loading={busy} onClick={() => void connect()}>
+          <Button
+            type="primary"
+            icon={<ExperimentOutlined />}
+            disabled={!canConnect}
+            loading={busy}
+            onClick={() => void connect()}
+          >
             连接
           </Button>
-          <Button icon={<CloseOutlined />} disabled={!sessionRef.current || state !== 'ready'} onClick={closeSession}>
+          <Button
+            icon={<CloseOutlined />}
+            disabled={!sessionRef.current || state !== 'ready'}
+            onClick={closeSession}
+          >
             正常关闭
           </Button>
           <Button danger icon={<StopOutlined />} disabled={!active} onClick={cancelSession}>
             取消
           </Button>
-          <Button icon={<DisconnectOutlined />} disabled={active || logs.length === 0} onClick={reset}>
+          <Button
+            icon={<DisconnectOutlined />}
+            disabled={active || logs.length === 0}
+            onClick={reset}
+          >
             清空记录
           </Button>
         </Space>
@@ -332,7 +370,11 @@ export function RelayValidationModal({
                 onChange={(event) => setRemotePath(event.target.value)}
                 onPressEnter={() => void listDirectory()}
               />
-              <Button icon={<FolderOpenOutlined />} loading={fileBusy} onClick={() => void listDirectory()}>
+              <Button
+                icon={<FolderOpenOutlined />}
+                loading={fileBusy}
+                onClick={() => void listDirectory()}
+              >
                 读取目录
               </Button>
               <input
@@ -344,7 +386,11 @@ export function RelayValidationModal({
                   if (file) void uploadFile(file);
                 }}
               />
-              <Button icon={<UploadOutlined />} disabled={fileBusy} onClick={() => fileInputRef.current?.click()}>
+              <Button
+                icon={<UploadOutlined />}
+                disabled={fileBusy}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 上传文件
               </Button>
               <Button danger disabled={!fileBusy} onClick={() => filesRef.current?.cancelActive()}>
@@ -355,7 +401,9 @@ export function RelayValidationModal({
               <Progress
                 percent={Number(uploadProgress.percentage.toFixed(1))}
                 status={uploadProgress.state === 'failed' ? 'exception' : undefined}
-                format={(percent) => `${percent}% · ${uploadProgress.acknowledgedBytes}/${uploadProgress.totalBytes} B`}
+                format={(percent) =>
+                  `${percent}% · ${uploadProgress.acknowledgedBytes}/${uploadProgress.totalBytes} B`
+                }
               />
             )}
             <Table
@@ -367,8 +415,18 @@ export function RelayValidationModal({
               columns={[
                 { title: '名称', dataIndex: 'name', ellipsis: true },
                 { title: '类型', dataIndex: 'kind', width: 90 },
-                { title: '大小', dataIndex: 'size', width: 110, render: (value?: number) => value ?? '—' },
-                { title: '修改时间', dataIndex: 'modifiedAt', width: 180, render: (value?: Date) => value?.toLocaleString() ?? '—' },
+                {
+                  title: '大小',
+                  dataIndex: 'size',
+                  width: 110,
+                  render: (value?: number) => value ?? '—',
+                },
+                {
+                  title: '修改时间',
+                  dataIndex: 'modifiedAt',
+                  width: 180,
+                  render: (value?: Date) => value?.toLocaleString() ?? '—',
+                },
               ]}
             />
           </div>

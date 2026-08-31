@@ -23,7 +23,9 @@ function parseAuthorization(value: unknown): RelayAuthorization {
   if (!isRecord(value)) throw new RelayAuthenticationError('Invalid relay authorization response.');
   const nested = [value.data, value.payload, value.message].find(isRecord);
   const response =
-    typeof value.cookie === 'string' || typeof value.rcookie === 'string' ? value : nested ?? value;
+    typeof value.cookie === 'string' || typeof value.rcookie === 'string'
+      ? value
+      : (nested ?? value);
   if (typeof response.cookie !== 'string' || typeof response.rcookie !== 'string') {
     throw new RelayAuthenticationError('Relay authorization response omitted cookie or rcookie.');
   }

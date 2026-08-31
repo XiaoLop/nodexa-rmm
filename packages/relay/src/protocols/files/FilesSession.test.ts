@@ -105,11 +105,18 @@ describe('FilesSession', () => {
 
     socket.message(JSON.stringify({ action: 'uploadack', reqid: 'up-1' }));
     await vi.waitFor(() => expect(socket.sent).toHaveLength(3));
-    expect(reads).toEqual([[0, 2], [2, 4]]);
+    expect(reads).toEqual([
+      [0, 2],
+      [2, 4],
+    ]);
 
     socket.message(JSON.stringify({ action: 'uploadack', reqid: 'up-1' }));
     await vi.waitFor(() => expect(socket.sent).toHaveLength(4));
-    expect(reads).toEqual([[0, 2], [2, 4], [4, 5]]);
+    expect(reads).toEqual([
+      [0, 2],
+      [2, 4],
+      [4, 5],
+    ]);
 
     socket.message(JSON.stringify({ action: 'uploadack', reqid: 'up-1' }));
     await vi.waitFor(() => expect(socket.sent).toHaveLength(5));
@@ -144,7 +151,10 @@ describe('FilesSession', () => {
     expect(reads).toEqual([[0, fiveMiB]]);
     socket.message(JSON.stringify({ action: 'uploadack', reqid: 'up-large' }));
     await vi.waitFor(() => expect(socket.sent).toHaveLength(3));
-    expect(reads).toEqual([[0, fiveMiB], [fiveMiB, fiveMiB + 3]]);
+    expect(reads).toEqual([
+      [0, fiveMiB],
+      [fiveMiB, fiveMiB + 3],
+    ]);
     socket.message(JSON.stringify({ action: 'uploadack', reqid: 'up-large' }));
     await vi.waitFor(() => expect(socket.sent).toHaveLength(4));
     socket.message(JSON.stringify({ action: 'uploaddone', reqid: 'up-large' }));

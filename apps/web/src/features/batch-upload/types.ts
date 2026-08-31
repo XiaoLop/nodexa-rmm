@@ -14,12 +14,7 @@ export type BatchUploadTaskStatus =
   | 'cancelled';
 
 export type BatchUploadStatus =
-  | 'configuring'
-  | 'running'
-  | 'cancelling'
-  | 'completed'
-  | 'cancelled'
-  | 'failed';
+  'configuring' | 'running' | 'cancelling' | 'completed' | 'cancelled' | 'failed';
 
 export interface BatchUploadDeviceSnapshot {
   id: string;

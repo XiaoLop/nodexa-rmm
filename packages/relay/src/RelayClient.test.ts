@@ -36,8 +36,7 @@ describe('RelayClient', () => {
         nodeid: 'node//one',
         type: 'tunnel',
         usage: 5,
-        value:
-          '*/meshrelay.ashx?p=5&nodeid=node%2F%2Fone&id=fixed-relay-id&rauth=agent-cookie',
+        value: '*/meshrelay.ashx?p=5&nodeid=node%2F%2Fone&id=fixed-relay-id&rauth=agent-cookie',
         responseid: 'relay-fixed-relay-id',
       },
     ]);
@@ -45,13 +44,7 @@ describe('RelayClient', () => {
     expect(socket.sent).toEqual(['5']);
     expect(session.id).toBe('fixed-relay-id');
     expect(session.state).toBe('ready');
-    expect(states).toEqual([
-      'authorizing',
-      'notifying',
-      'connecting',
-      'handshaking',
-      'ready',
-    ]);
+    expect(states).toEqual(['authorizing', 'notifying', 'connecting', 'handshaking', 'ready']);
   });
 
   it('rejects malformed authorization responses before notifying the agent', async () => {

@@ -1,4 +1,10 @@
-import { GatewayAuthenticationError, GatewayClient, createGatewayStore, type GatewayStore } from '@meshcentral/shared-state';
+import { GatewayAuthenticationError, GatewayClient } from '@meshcentral/control-client';
+import {
+  bindGatewayClient,
+  createGatewayStore,
+  type GatewayClientBinding,
+  type GatewayStore,
+} from '@meshcentral/shared-state';
 import {
   createContext,
   useCallback,
@@ -53,6 +59,7 @@ function readStoredCredentials(): GatewayCredentials | undefined {
 export function GatewayProvider({ children }: PropsWithChildren) {
   const store = useMemo(() => createGatewayStore(), []);
   const clientRef = useRef<GatewayClient | undefined>(undefined);
+  const bindingRef = useRef<GatewayClientBinding | undefined>(undefined);
   const credentialsRef = useRef<GatewayCredentials | undefined>(undefined);
   const [client, setClient] = useState<GatewayClient | undefined>();
   const [credentials, setCredentials] = useState<GatewayCredentials | undefined>();
@@ -60,6 +67,8 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   const gatewayUrl = import.meta.env.VITE_GATEWAY_WS_URL?.trim() || DEFAULT_GATEWAY_URL;
 
   const destroyClient = useCallback(() => {
+    bindingRef.current?.dispose();
+    bindingRef.current = undefined;
     clientRef.current?.destroy();
     clientRef.current = undefined;
     setClient(undefined);
@@ -75,9 +84,23 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       const separator = gatewayUrl.includes('?') ? '&' : '?';
       const nextClient = new GatewayClient({
         url: `${gatewayUrl}${separator}x-meshauth=${nextCredentials.authParam}`,
-        store,
         getAccessToken: () => import.meta.env.VITE_GATEWAY_ACCESS_TOKEN?.trim() || undefined,
       });
+      const binding = bindGatewayClient(store, nextClient);
+      const unsubscribeAuthenticationError = nextClient.on('error', (error) => {
+        if (!(error instanceof GatewayAuthenticationError)) return;
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        sessionStorage.removeItem(AUTH_STORAGE_KEY);
+        credentialsRef.current = undefined;
+        setCredentials(undefined);
+      });
+      bindingRef.current = {
+        sync: () => binding.sync(),
+        dispose: () => {
+          unsubscribeAuthenticationError();
+          binding.dispose();
+        },
+      };
       clientRef.current = nextClient;
       setClient(nextClient);
 
@@ -90,7 +113,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     async (username: string, password: string, remember: boolean) => {
       const authParam = encodeURIComponent(`${btoa(username)},${btoa(password)}`);
       const nextCredentials: GatewayCredentials = { authParam, username };
-      
+
       try {
         await connectClient(nextCredentials);
       } catch (error) {
@@ -162,24 +185,6 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [store]);
-
-  useEffect(() => {
-    const unsubscribe = store.subscribe((state, prevState) => {
-      const lastEvent = state.events[0];
-      const rawData = lastEvent?.raw as Record<string, unknown> | undefined;
-      
-      if (rawData && rawData.action === 'close' && lastEvent !== prevState?.events?.[0]) {
-        if (rawData.cause === 'noauth') {
-          localStorage.removeItem(AUTH_STORAGE_KEY);
-          sessionStorage.removeItem(AUTH_STORAGE_KEY);
-          credentialsRef.current = undefined;
-          setCredentials(undefined);
-          destroyClient();
-        }
-      }
-    });
-    return unsubscribe;
-  }, [destroyClient, store]);
 
   const value = useMemo<GatewayContextValue>(
     () => ({

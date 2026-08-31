@@ -17,7 +17,7 @@ export function isIdString(str?: string): boolean {
  */
 export function getEventTargetName(
   event: GatewayEvent,
-  devices?: Device[] | Record<string, Device>
+  devices?: Device[] | Record<string, Device>,
 ): string | undefined {
   if (event.deviceName && !isIdString(event.deviceName)) {
     return event.deviceName;
@@ -46,7 +46,7 @@ export function getEventTargetName(
 export function formatEventMessage(
   event: GatewayEvent,
   devices?: Device[] | Record<string, Device>,
-  groups?: DeviceGroup[] | Record<string, DeviceGroup>
+  groups?: DeviceGroup[] | Record<string, DeviceGroup>,
 ): string {
   const rawMsg = (event.message || '').trim();
 
@@ -54,7 +54,8 @@ export function formatEventMessage(
   let message: string;
 
   const isOnline = event.type === 'deviceOnline' || /^(nodeconnect|connected)$/i.test(rawMsg);
-  const isOffline = event.type === 'deviceOffline' || /^(nodedisconnect|disconnected)$/i.test(rawMsg);
+  const isOffline =
+    event.type === 'deviceOffline' || /^(nodedisconnect|disconnected)$/i.test(rawMsg);
   const isChanged = event.type === 'deviceChanged' || /^changenode$/i.test(rawMsg);
   const isRemoved = event.type === 'deviceRemoved' || /^(removenode|deletenode)$/i.test(rawMsg);
 

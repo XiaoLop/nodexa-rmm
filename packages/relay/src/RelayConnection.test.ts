@@ -3,7 +3,10 @@ import { RelayCancelledError, RelayHandshakeError, RelayTimeoutError } from './e
 import { RelayConnection } from './RelayConnection';
 import { FakeRelayWebSocket } from './testing';
 
-function createConnection(socket: FakeRelayWebSocket, options: { connectionTimeoutMs?: number; handshakeTimeoutMs?: number } = {}) {
+function createConnection(
+  socket: FakeRelayWebSocket,
+  options: { connectionTimeoutMs?: number; handshakeTimeoutMs?: number } = {},
+) {
   return new RelayConnection({
     baseUrl: 'wss://mesh.example.com/domain',
     deviceId: 'node//one',

@@ -16,7 +16,10 @@ export default function EventsScreen() {
       active === '全部' ||
       (active === '上线' && (event.type === 'deviceOnline' || event.message?.includes('上线'))) ||
       (active === '离线' && (event.type === 'deviceOffline' || event.message?.includes('断开'))) ||
-      (active === '变更' && event.type === 'deviceChanged' && !event.message?.includes('上线') && !event.message?.includes('断开'))
+      (active === '变更' &&
+        event.type === 'deviceChanged' &&
+        !event.message?.includes('上线') &&
+        !event.message?.includes('断开')),
   );
 
   return (
@@ -55,7 +58,9 @@ export default function EventsScreen() {
             style={[styles.filter, active === filter && styles.filterActive]}
             onPress={() => setActive(filter)}
           >
-            <Text style={[styles.filterText, active === filter && styles.filterTextActive]}>{filter}</Text>
+            <Text style={[styles.filterText, active === filter && styles.filterTextActive]}>
+              {filter}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -65,11 +70,7 @@ export default function EventsScreen() {
       </View>
       <Card style={styles.eventCard}>
         {visible.map((event, index) => (
-          <CompactEventRow
-            key={event.id}
-            event={event}
-            isLast={index === visible.length - 1}
-          />
+          <CompactEventRow key={event.id} event={event} isLast={index === visible.length - 1} />
         ))}
       </Card>
     </Screen>
@@ -77,14 +78,40 @@ export default function EventsScreen() {
 }
 
 const styles = StyleSheet.create({
-  calendar: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  summary: { backgroundColor: colors.navy, borderRadius: 22, minHeight: 98, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  calendar: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summary: {
+    backgroundColor: colors.navy,
+    borderRadius: 22,
+    minHeight: 98,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   summaryLabel: { color: '#8FA7B8', fontSize: 10 },
   summaryValue: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginTop: 5 },
   summaryTime: { color: '#FFFFFF', fontSize: 17, fontWeight: '800', marginTop: 8 },
   summaryDivider: { width: 1, height: 38, backgroundColor: '#29465A' },
   filters: { flexDirection: 'row', gap: 8 },
-  filter: { flex: 1, height: 38, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  filter: {
+    flex: 1,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
   filterTextActive: { color: '#FFFFFF' },

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  calculateBatchUploadChunkSize,
-  readBatchUploadBandwidthConfig,
-} from './bandwidth';
+import { calculateBatchUploadChunkSize, readBatchUploadBandwidthConfig } from './bandwidth';
 
 describe('batch upload bandwidth configuration', () => {
   it('calculates a fair chunk size from total bandwidth and concurrency', () => {

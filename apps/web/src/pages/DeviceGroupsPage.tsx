@@ -1,19 +1,6 @@
-import {
-  ApartmentOutlined,
-  ReloadOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { ApartmentOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import type { DeviceGroup } from '@meshcentral/shared-state';
-import {
-  Button,
-  Empty,
-  Input,
-  Progress,
-  Table,
-  Tag,
-  theme,
-  type TableColumnsType,
-} from 'antd';
+import { Button, Empty, Input, Progress, Table, Tag, theme, type TableColumnsType } from 'antd';
 import { useMemo, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
@@ -74,11 +61,9 @@ export function DeviceGroupsPage() {
       .filter((group) => {
         const matchesQuery =
           !normalized ||
-          [
-            group.name,
-            group.id,
-            group.description,
-          ].some((value) => value?.toLowerCase().includes(normalized));
+          [group.name, group.id, group.description].some((value) =>
+            value?.toLowerCase().includes(normalized),
+          );
         return matchesQuery;
       })
       .sort(compareGroupName);
@@ -213,9 +198,7 @@ export function DeviceGroupsPage() {
           scroll={{ x: 1260 }}
           locale={{
             emptyText: (
-              <Empty
-                description={groups.length ? '没有符合筛选条件的分组' : '等待网关同步分组'}
-              />
+              <Empty description={groups.length ? '没有符合筛选条件的分组' : '等待网关同步分组'} />
             ),
           }}
         />

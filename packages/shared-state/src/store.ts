@@ -1,5 +1,5 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { Device, DeviceGroup, GatewayEvent, GatewayMutation, GatewayState, UserInfo } from './types';
+import type { Device, DeviceGroup, GatewayEvent, GatewayState, UserInfo } from './types';
 import { isIdString } from './utils';
 
 const MAX_EVENTS = 100;
@@ -36,7 +36,7 @@ const initialData = {
 export type GatewayStore = StoreApi<GatewayState>;
 
 export function createGatewayStore(): GatewayStore {
-  return createStore<GatewayState>()((set, get) => ({
+  return createStore<GatewayState>()((set) => ({
     ...initialData,
     setConnectionStatus: (status, error) =>
       set({
@@ -63,9 +63,7 @@ export function createGatewayStore(): GatewayStore {
       set((state) => {
         const existing = state.devices[device.id];
         const isOnlineProvided = typeof device.online === 'boolean';
-        const online = isOnlineProvided
-          ? device.online
-          : (existing?.online ?? false);
+        const online = isOnlineProvided ? device.online : (existing?.online ?? false);
 
         const name =
           device.name && !isIdString(device.name)
@@ -111,57 +109,8 @@ export function createGatewayStore(): GatewayStore {
         return { events: [enhancedEvent, ...state.events].slice(0, MAX_EVENTS) };
       }),
     touchMessage: () => set({ lastMessageAt: new Date().toISOString() }),
-    applyMutation: (mutation) => applyMutation(get(), mutation),
     reset: () => set(initialData),
   }));
-}
-
-function applyMutation(state: GatewayState, mutation: GatewayMutation): void {
-  switch (mutation.type) {
-    case 'snapshot':
-      state.replaceDevices(mutation.snapshot.devices);
-      state.replaceGroups(mutation.snapshot.groups);
-      return;
-    case 'devicesReplaced': {
-      state.replaceDevices(mutation.devices);
-      return;
-    }
-    case 'deviceLastSeenUpdated': {
-      for (const [deviceId, lastSeenAt] of Object.entries(mutation.lastSeenByDeviceId)) {
-        const current = state.devices[deviceId];
-        if (current) state.upsertDevice({ ...current, lastSeenAt });
-      }
-      return;
-    }
-    case 'groupsReplaced':
-      state.replaceGroups(mutation.groups);
-      return;
-    case 'deviceUpserted':
-      state.upsertDevice(mutation.device);
-      if (mutation.event) state.appendEvent(mutation.event);
-      return;
-    case 'deviceStatusChanged': {
-      const current = state.devices[mutation.deviceId];
-      state.upsertDevice({
-        id: mutation.deviceId,
-        name: current?.name && !isIdString(current.name) ? current.name : mutation.deviceId,
-        online: mutation.online,
-        lastSeenAt: mutation.online ? current?.lastSeenAt : mutation.event.occurredAt,
-      });
-      state.appendEvent(mutation.event);
-      return;
-    }
-    case 'deviceRemoved':
-      state.removeDevice(mutation.deviceId);
-      if (mutation.event) state.appendEvent(mutation.event);
-      return;
-    case 'eventReceived':
-      state.appendEvent(mutation.event);
-      return;
-    case 'userInfoUpdated':
-      state.setUserInfo(mutation.userInfo);
-      return;
-  }
 }
 
 export const gatewaySelectors = {

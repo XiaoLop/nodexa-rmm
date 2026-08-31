@@ -16,7 +16,8 @@ export function platformIcon(platform?: string) {
   const value = platform?.toLowerCase() ?? '';
   if (value.includes('windows')) return 'logo-windows' as const;
   if (value.includes('mac')) return 'logo-apple' as const;
-  if (value.includes('ubuntu') || value.includes('linux') || value.includes('raspberry')) return 'logo-tux' as const;
+  if (value.includes('ubuntu') || value.includes('linux') || value.includes('raspberry'))
+    return 'logo-tux' as const;
   return 'desktop-outline' as const;
 }
 
@@ -24,11 +25,16 @@ export function eventPresentation(event: GatewayEvent | string) {
   const type = typeof event === 'string' ? event : event.type;
   const msg = typeof event === 'string' ? '' : (event.message ?? '');
 
-  if (msg.includes('桌面') || msg.includes('远程桌面')) return { icon: 'desktop-outline' as const, tone: 'primary' as const };
-  if (msg.includes('文件') || msg.includes('上传') || msg.includes('下载')) return { icon: 'folder-open-outline' as const, tone: 'info' as const };
-  if (msg.includes('终端') || msg.includes('命令')) return { icon: 'terminal-outline' as const, tone: 'warning' as const };
-  if (type === 'deviceOnline' || msg.includes('Powered On') || msg.includes('上线')) return { icon: 'arrow-up-circle-outline' as const, tone: 'success' as const };
-  if (type === 'deviceOffline' || msg.includes('断开') || msg.includes('离线')) return { icon: 'cloud-offline-outline' as const, tone: 'danger' as const };
+  if (msg.includes('桌面') || msg.includes('远程桌面'))
+    return { icon: 'desktop-outline' as const, tone: 'primary' as const };
+  if (msg.includes('文件') || msg.includes('上传') || msg.includes('下载'))
+    return { icon: 'folder-open-outline' as const, tone: 'info' as const };
+  if (msg.includes('终端') || msg.includes('命令'))
+    return { icon: 'terminal-outline' as const, tone: 'warning' as const };
+  if (type === 'deviceOnline' || msg.includes('Powered On') || msg.includes('上线'))
+    return { icon: 'arrow-up-circle-outline' as const, tone: 'success' as const };
+  if (type === 'deviceOffline' || msg.includes('断开') || msg.includes('离线'))
+    return { icon: 'cloud-offline-outline' as const, tone: 'danger' as const };
   if (type === 'deviceRemoved') return { icon: 'trash-outline' as const, tone: 'danger' as const };
   return { icon: 'sync-circle-outline' as const, tone: 'info' as const };
 }
@@ -106,7 +112,9 @@ export function IconTile({
 export function StatusBadge({ online }: { online: boolean }) {
   return (
     <View style={[styles.badge, online ? styles.onlineBadge : styles.offlineBadge]}>
-      <View style={[styles.badgeDot, { backgroundColor: online ? colors.success : colors.subtle }]} />
+      <View
+        style={[styles.badgeDot, { backgroundColor: online ? colors.success : colors.subtle }]}
+      />
       <Text style={[styles.badgeText, { color: online ? colors.success : colors.muted }]}>
         {online ? '在线' : '离线'}
       </Text>

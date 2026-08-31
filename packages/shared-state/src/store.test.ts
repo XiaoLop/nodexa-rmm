@@ -1,52 +1,52 @@
 import { describe, expect, it } from 'vitest';
-import { meshCentralGatewayAdapter } from './protocol';
 import { createGatewayStore, gatewaySelectors } from './store';
 
-describe('gateway store and protocol', () => {
+describe('gateway store', () => {
   it('applies snapshots and device events', () => {
     const store = createGatewayStore();
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      type: 'snapshot',
-      devices: [{ id: 'node-1', name: 'Server 1', online: false }],
-      groups: [{ id: 'group-1', name: 'Servers' }],
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().replaceDevices([{ id: 'node-1', name: 'Server 1', online: false }]);
+    store.getState().replaceGroups([{ id: 'group-1', name: 'Servers' }]);
 
     expect(store.getState().devices['node-1']?.online).toBe(false);
     expect(store.getState().groups['group-1']?.name).toBe('Servers');
 
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      type: 'event',
-      action: 'nodeconnect',
-      nodeid: 'node-1',
-      msg: 'Agent connected',
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().upsertDevice({ id: 'node-1', name: 'Server 1', online: true });
+    store.getState().appendEvent({
+      id: 'event-1',
+      type: 'deviceOnline',
+      deviceId: 'node-1',
+      occurredAt: new Date().toISOString(),
+    });
 
     expect(store.getState().devices['node-1']).toMatchObject({ name: 'Server 1', online: true });
     expect(store.getState().events[0]?.type).toBe('deviceOnline');
   });
 
-  it('parses MeshCentral real nodes response (Record<string, Device[]>) and _id field', () => {
+  it('replaces normalized devices', () => {
     const store = createGatewayStore();
-    const meshCentralNodesPayload = {
-      action: 'nodes',
-      responseid: 'req-nodes',
-      nodes: {
-        'mesh/domain/group1': [
-          { _id: 'node/domain/device1', name: 'Web Server', conn: 1 },
-          { _id: 'node/domain/device2', name: 'DB Server', conn: 0, lastconnect: 1_710_000_000 },
-        ],
+    store.getState().replaceDevices([
+      {
+        id: 'node/domain/device1',
+        name: 'Web Server',
+        online: true,
+        groupId: 'mesh/domain/group1',
       },
-    };
-    for (const mutation of meshCentralGatewayAdapter.decode(meshCentralNodesPayload)) {
-      store.getState().applyMutation(mutation);
-    }
+      {
+        id: 'node/domain/device2',
+        name: 'DB Server',
+        online: false,
+        groupId: 'mesh/domain/group1',
+        lastSeenAt: '2024-03-09T16:00:00.000Z',
+      },
+    ]);
     const devices = gatewaySelectors.devices(store.getState());
     expect(devices).toHaveLength(2);
-    expect(devices[0]).toMatchObject({ id: 'node/domain/device1', name: 'Web Server', online: true, groupId: 'mesh/domain/group1' });
+    expect(devices[0]).toMatchObject({
+      id: 'node/domain/device1',
+      name: 'Web Server',
+      online: true,
+      groupId: 'mesh/domain/group1',
+    });
     expect(devices[1]).toMatchObject({
       id: 'node/domain/device2',
       name: 'DB Server',
@@ -56,69 +56,67 @@ describe('gateway store and protocol', () => {
     });
   });
 
-  it('applies MeshCentral lastconnects response to devices', () => {
+  it('preserves last-seen values when replacing devices', () => {
     const store = createGatewayStore();
     store.getState().replaceDevices([
       { id: 'node/domain/device1', name: 'Web Server', online: true },
       { id: 'node/domain/device2', name: 'DB Server', online: false },
     ]);
 
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      action: 'lastconnects',
-      lastconnects: {
-        'node/domain/device1': 1_720_000_000_000,
-        'node/domain/device2': 1_710_000_000,
-      },
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().upsertDevice({
+      ...store.getState().devices['node/domain/device1']!,
+      lastSeenAt: '2024-07-03T09:46:40.000Z',
+    });
+    store.getState().upsertDevice({
+      ...store.getState().devices['node/domain/device2']!,
+      lastSeenAt: '2024-03-09T16:00:00.000Z',
+    });
 
-    expect(store.getState().devices['node/domain/device1']?.lastSeenAt).toBe('2024-07-03T09:46:40.000Z');
-    expect(store.getState().devices['node/domain/device2']?.lastSeenAt).toBe('2024-03-09T16:00:00.000Z');
+    expect(store.getState().devices['node/domain/device1']?.lastSeenAt).toBe(
+      '2024-07-03T09:46:40.000Z',
+    );
+    expect(store.getState().devices['node/domain/device2']?.lastSeenAt).toBe(
+      '2024-03-09T16:00:00.000Z',
+    );
 
     store.getState().replaceDevices([
       { id: 'node/domain/device1', name: 'Web Server Renamed', online: true },
       { id: 'node/domain/device2', name: 'DB Server', online: false },
     ]);
-    expect(store.getState().devices['node/domain/device1']?.lastSeenAt).toBe('2024-07-03T09:46:40.000Z');
+    expect(store.getState().devices['node/domain/device1']?.lastSeenAt).toBe(
+      '2024-07-03T09:46:40.000Z',
+    );
   });
 
-  it('parses MeshCentral real meshes response (DeviceGroup[]) and _id field', () => {
+  it('replaces normalized groups', () => {
     const store = createGatewayStore();
-    const meshCentralMeshesPayload = {
-      action: 'meshes',
-      responseid: 'req-groups',
-      meshes: [
-        { _id: 'mesh/domain/group1', name: 'Production', desc: 'Prod Servers' },
-      ],
-    };
-    for (const mutation of meshCentralGatewayAdapter.decode(meshCentralMeshesPayload)) {
-      store.getState().applyMutation(mutation);
-    }
+    store
+      .getState()
+      .replaceGroups([
+        { id: 'mesh/domain/group1', name: 'Production', description: 'Prod Servers' },
+      ]);
     const groups = gatewaySelectors.groups(store.getState());
     expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ id: 'mesh/domain/group1', name: 'Production', description: 'Prod Servers' });
+    expect(groups[0]).toMatchObject({
+      id: 'mesh/domain/group1',
+      name: 'Production',
+      description: 'Prod Servers',
+    });
   });
 
-  it('parses MeshCentral userinfo response and stores userInfo', () => {
+  it('stores normalized user information', () => {
     const store = createGatewayStore();
-    const userinfoPayload = {
-      action: 'userinfo',
-      userinfo: {
-        _id: 'user//admin',
-        name: '系统管理员',
-        email: 'admin@example.com',
-        siteadmin: 1,
-        creation: 1_700_000_000,
-        login: 1_710_000_000,
-        access: 1_710_000_100,
-        pastlogin: 1_709_000_000,
-        llang: 'zh-cn',
-      },
-    };
-    for (const mutation of meshCentralGatewayAdapter.decode(userinfoPayload)) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().setUserInfo({
+      id: 'user//admin',
+      name: '系统管理员',
+      email: 'admin@example.com',
+      siteadmin: 1,
+      creationAt: '2023-11-14T22:13:20.000Z',
+      lastLoginAt: '2024-03-09T16:00:00.000Z',
+      lastAccessAt: '2024-03-09T16:01:40.000Z',
+      previousLoginAt: '2024-02-27T02:13:20.000Z',
+      language: 'zh-cn',
+    });
     const userInfo = gatewaySelectors.userInfo(store.getState());
     expect(userInfo).toMatchObject({
       id: 'user//admin',
@@ -133,64 +131,16 @@ describe('gateway store and protocol', () => {
     });
   });
 
-  it('removes devices from remove events', () => {
+  it('removes devices', () => {
     const store = createGatewayStore();
     store.getState().upsertDevice({ id: 'node-2', name: 'Server 2', online: true });
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      type: 'event',
-      action: 'removenode',
-      nodeid: 'node-2',
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().removeDevice('node-2');
     expect(store.getState().devices['node-2']).toBeUndefined();
-  });
-
-  it('ignores ifchange events and does not store them in state', () => {
-    const store = createGatewayStore();
-    const payloads = [
-      {
-        action: 'event',
-        event: {
-          action: 'ifchange',
-          etype: 'node',
-          nodeid: 'node-1',
-        },
-      },
-      {
-        action: 'ifchange',
-        nodeid: 'node-1',
-      },
-      {
-        etype: 'ifchange',
-        nodeid: 'node-1',
-      },
-    ];
-
-    for (const payload of payloads) {
-      const mutations = meshCentralGatewayAdapter.decode(payload);
-      expect(mutations).toHaveLength(0);
-      for (const mutation of mutations) {
-        store.getState().applyMutation(mutation);
-      }
-    }
-    expect(store.getState().events).toHaveLength(0);
   });
 
   it('ignores unknown events and does not store them in state', () => {
     const store = createGatewayStore();
 
-    // 1. 测试通过 decode 解码未知 action 消息
-    const mutations = meshCentralGatewayAdapter.decode({
-      action: 'event',
-      event: {
-        action: 'someUnknownAction',
-        nodeid: 'node-1',
-      },
-    });
-    expect(mutations).toHaveLength(0);
-
-    // 2. 测试直接调用 appendEvent 传入 unknown 类型事件
     store.getState().appendEvent({
       id: 'evt-1',
       type: 'unknown',
@@ -204,20 +154,9 @@ describe('gateway store and protocol', () => {
     const store = createGatewayStore();
     store.getState().upsertDevice({ id: 'node/1', name: 'Old Name', online: true });
 
-    // 真实 MeshCentral changenode 事件 node 对象通常不带 conn 属性
-    const mutations = meshCentralGatewayAdapter.decode({
-      action: 'event',
-      event: {
-        etype: 'node',
-        action: 'changenode',
-        nodeid: 'node/1',
-        node: { _id: 'node/1', name: 'New Name' },
-      },
-    });
-
-    for (const mutation of mutations) {
-      store.getState().applyMutation(mutation);
-    }
+    store
+      .getState()
+      .upsertDevice({ id: 'node/1', name: 'New Name', online: undefined as unknown as boolean });
 
     expect(store.getState().devices['node/1']?.name).toBe('New Name');
     expect(store.getState().devices['node/1']?.online).toBe(true);
@@ -234,71 +173,56 @@ describe('gateway store and protocol', () => {
     expect(store.getState().events).toHaveLength(0);
   });
 
-  it('correctly handles deviceOffline (conn: 0), relaylog, and agentlog events', () => {
+  it('stores device, relay and agent events', () => {
     const store = createGatewayStore();
     store.getState().upsertDevice({ id: 'node-1', name: 'Server 1', online: true });
 
-    // 1. 设备离线事件 (nodeconnect with conn: 0)
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      action: 'event',
-      event: {
-        action: 'nodeconnect',
-        nodeid: 'node-1',
-        conn: 0,
-        time: 1_720_000_000_000,
-      },
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().upsertDevice({
+      id: 'node-1',
+      name: 'Server 1',
+      online: false,
+      lastSeenAt: '2024-07-03T09:46:40.000Z',
+    });
+    store.getState().appendEvent({
+      id: 'offline',
+      type: 'deviceOffline',
+      deviceId: 'node-1',
+      occurredAt: '2024-07-03T09:46:40.000Z',
+    });
     expect(store.getState().devices['node-1']?.online).toBe(false);
     expect(store.getState().devices['node-1']?.lastSeenAt).toBe('2024-07-03T09:46:40.000Z');
     expect(store.getState().events[0]?.type).toBe('deviceOffline');
 
-    // 2. 远控/中继审计事件 (relaylog)
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      action: 'event',
-      event: {
-        etype: 'relay',
-        action: 'relaylog',
-        nodeid: 'node-1',
-        msg: 'Ended desktop session "session-1" from 127.0.0.1 to 127.0.0.1, 30 second(s)',
-        protocol: 2,
-      },
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().appendEvent({
+      id: 'relay',
+      type: 'relayLog',
+      deviceId: 'node-1',
+      message: 'Ended desktop session',
+      occurredAt: new Date().toISOString(),
+    });
     expect(store.getState().events[0]?.type).toBe('relayLog');
     expect(store.getState().events[0]?.message).toContain('Ended desktop session');
 
-    // 3. Agent 日志事件 (agentlog)
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      action: 'event',
-      event: {
-        etype: 'node',
-        action: 'agentlog',
-        nodeid: 'node-1',
-        msg: 'Upload: "C:/test.txt", Size: 1024',
-      },
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().appendEvent({
+      id: 'agent',
+      type: 'agentLog',
+      deviceId: 'node-1',
+      occurredAt: new Date().toISOString(),
+    });
     expect(store.getState().events[0]?.type).toBe('agentLog');
   });
 
-  it('correctly transitions offline device to online on nodeconnect event', () => {
+  it('transitions offline devices to online', () => {
     const store = createGatewayStore();
     store.getState().upsertDevice({ id: 'node-offline', name: 'Offline Server', online: false });
 
-    for (const mutation of meshCentralGatewayAdapter.decode({
-      action: 'event',
-      event: {
-        action: 'nodeconnect',
-        nodeid: 'node-offline',
-        conn: 1,
-      },
-    })) {
-      store.getState().applyMutation(mutation);
-    }
+    store.getState().upsertDevice({ id: 'node-offline', name: 'Offline Server', online: true });
+    store.getState().appendEvent({
+      id: 'online',
+      type: 'deviceOnline',
+      deviceId: 'node-offline',
+      occurredAt: new Date().toISOString(),
+    });
 
     expect(store.getState().devices['node-offline']?.online).toBe(true);
     expect(store.getState().events[0]?.type).toBe('deviceOnline');

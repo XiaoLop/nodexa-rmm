@@ -98,7 +98,8 @@ function compareNames(a: string, b: string) {
 function osIcon(platform?: string) {
   const value = platform?.toLowerCase() ?? '';
   if (value.includes('windows')) return <WindowsOutlined />;
-  if (value.includes('mac') || value.includes('apple') || value.includes('ios')) return <AppleOutlined />;
+  if (value.includes('mac') || value.includes('apple') || value.includes('ios'))
+    return <AppleOutlined />;
   if (value.includes('linux')) return <LinuxOutlined />;
   if (value.includes('android')) return <AndroidOutlined />;
   return <QuestionOutlined />;
@@ -260,7 +261,14 @@ export function DevicesPage() {
       key: 'type',
       width: 100,
       render: (_, device) => (
-        <div style={{ display: 'flex', gap: 8, fontSize: 18, color: device.online ? token.colorPrimary : token.colorTextSecondary }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            fontSize: 18,
+            color: device.online ? token.colorPrimary : token.colorTextSecondary,
+          }}
+        >
           {osIcon(device.platform)}
           {deviceTypeIcon(device.platform)}
         </div>
@@ -275,7 +283,9 @@ export function DevicesPage() {
       render: (value, device) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{value}</span>
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>{rawString(device, 'rname') || '—'}</span>
+          <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+            {rawString(device, 'rname') || '—'}
+          </span>
         </div>
       ),
     },
@@ -330,7 +340,9 @@ export function DevicesPage() {
       render: (_, device) => {
         const creation = deviceCreationTime(device);
         if (!creation) return '—';
-        return formatDateTime(new Date(creation < 10000000000 ? creation * 1000 : creation).toISOString());
+        return formatDateTime(
+          new Date(creation < 10000000000 ? creation * 1000 : creation).toISOString(),
+        );
       },
       sorter: (a, b) => deviceCreationTime(a) - deviceCreationTime(b),
     },
