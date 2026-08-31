@@ -80,6 +80,12 @@
   .devices-toolbar > .ant-input-affix-wrapper {
     width: 100%;
   }
+  .batch-upload-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .batch-upload-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 @media (max-width: 620px) {
   .app-content {
@@ -132,6 +138,10 @@
   }
   .file-upload-selection {
     grid-template-columns: 1fr;
+  }
+  .batch-upload-form-grid,
+  .batch-upload-summary {
+    grid-template-columns: 1fr 1fr;
   }
   .login-panel {
     min-height: auto;

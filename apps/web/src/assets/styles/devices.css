@@ -66,6 +66,53 @@
   flex-direction: column;
   gap: 3px;
 }
+.batch-upload-modal {
+  display: grid;
+  gap: 16px;
+}
+.batch-upload-form {
+  display: grid;
+  gap: 2px;
+}
+.batch-upload-form-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.3fr) minmax(220px, 1fr) 150px;
+  gap: 14px;
+}
+.batch-upload-file-picker {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed #385174;
+  border-radius: 6px;
+  background: #0b1521;
+}
+.batch-upload-summary {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(90px, 1fr));
+  gap: 10px;
+}
+.batch-upload-summary .ant-statistic {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0e1825;
+}
+.batch-upload-summary .ant-statistic-title {
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+.batch-upload-summary .ant-statistic-content {
+  font-size: 22px;
+}
+.batch-upload-device {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
 .relay-validation {
   display: grid;
   gap: 16px;

@@ -49,6 +49,7 @@ export class GatewayClient {
   private readonly connectionTimeoutMs: number;
   private readonly reconnectDelaysMs: number[];
   private readonly pendingRequests = new Map<string, PendingRequest>();
+  private authCookieRequestChain: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: GatewayClientOptions) {
     this.protocol = options.protocol ?? meshCentralGatewayAdapter;
@@ -213,6 +214,23 @@ export class GatewayClient {
   }
 
   request<T = unknown>(payload: Record<string, unknown>, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS): Promise<T> {
+    // MeshCentral authcookie responses normally omit responseid. Serialize these requests so
+    // action-based fallback matching always has exactly one candidate during batch relays.
+    if (payload.action === 'authcookie') {
+      const request = this.authCookieRequestChain.then(() => this.requestNow<T>(payload, timeoutMs));
+      this.authCookieRequestChain = request.then(
+        () => undefined,
+        () => undefined,
+      );
+      return request;
+    }
+    return this.requestNow<T>(payload, timeoutMs);
+  }
+
+  private requestNow<T = unknown>(
+    payload: Record<string, unknown>,
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+  ): Promise<T> {
     const responseId =
       typeof payload.responseid === 'string' && payload.responseid
         ? payload.responseid
@@ -376,7 +394,13 @@ export class GatewayClient {
 
     // MeshCentral 的部分信息响应（包括某些版本的 getsysinfo）不会回传 responseid。
     // 此时按 action 和 nodeid 匹配；只有候选唯一时才消费请求，避免并发串包。
-    if (!pending && typeof record.action === 'string') {
+    const responseAction =
+      typeof record.action === 'string'
+        ? record.action
+        : typeof record.cookie === 'string' && typeof record.rcookie === 'string'
+          ? 'authcookie'
+          : undefined;
+    if (!pending && responseAction) {
       const nodeRecord =
         typeof record.node === 'object' && record.node !== null && !Array.isArray(record.node)
           ? record.node as Record<string, unknown>
@@ -388,7 +412,7 @@ export class GatewayClient {
             ? nodeRecord._id
             : undefined;
       const matches = [...this.pendingRequests.entries()].filter(([, candidate]) =>
-        candidate.action === record.action &&
+        candidate.action === responseAction &&
         (!responseDeviceId || !candidate.deviceId || candidate.deviceId === responseDeviceId),
       );
       if (matches.length === 1) {

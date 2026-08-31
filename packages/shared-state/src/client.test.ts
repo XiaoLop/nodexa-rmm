@@ -217,4 +217,34 @@ describe('GatewayClient', () => {
     await expect(second).resolves.toMatchObject({ nodeid: 'node//two' });
     client.destroy();
   });
+
+  it('serializes concurrent authcookie requests whose responses omit responseid', async () => {
+    const socket = new FakeWebSocket();
+    const client = new GatewayClient({
+      url: 'ws://gateway.test',
+      store: createGatewayStore(),
+      webSocketFactory: () => socket,
+    });
+
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+
+    const first = client.request<{ cookie: string; rcookie: string }>({ action: 'authcookie' });
+    const second = client.request<{ cookie: string; rcookie: string }>({ action: 'authcookie' });
+    const authRequests = () =>
+      socket.sent
+        .map((item) => JSON.parse(item) as Record<string, unknown>)
+        .filter((item) => item.action === 'authcookie');
+
+    await vi.waitFor(() => expect(authRequests()).toHaveLength(1));
+    socket.message({ action: 'authcookie', cookie: 'browser-one', rcookie: 'agent-one' });
+    await expect(first).resolves.toMatchObject({ cookie: 'browser-one' });
+    await vi.waitFor(() => expect(authRequests()).toHaveLength(2));
+
+    socket.message({ cookie: 'browser-two', rcookie: 'agent-two' });
+    await expect(second).resolves.toMatchObject({ cookie: 'browser-two' });
+    client.destroy();
+  });
 });

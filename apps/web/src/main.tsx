@@ -29,9 +29,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         components: {
           Button: { controlHeightLG: 46, fontWeight: 600 },
           Card: { colorBgContainer: '#111c2a' },
+          Drawer: { colorBgElevated: 'var(--bg)' },
           Input: { activeBorderColor: '#2f80ff', hoverBorderColor: '#3c8bff' },
           Layout: { headerBg: '#0b1421', siderBg: '#0d1725' },
           Menu: { darkItemBg: '#0d1725', darkItemSelectedBg: '#1d3555', itemBorderRadius: 5 },
+          Modal: {
+            contentBg: 'var(--bg)',
+            footerBg: 'var(--bg)',
+            headerBg: 'var(--bg)',
+          },
           Table: { headerBg: '#101a27', headerColor: '#c9d4e3', borderColor: '#243348' },
         },
       }}

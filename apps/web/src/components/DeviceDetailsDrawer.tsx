@@ -249,10 +249,6 @@ export function DeviceDetailsDrawer({ open, onClose, device, client, connected }
       open={open}
       width="min(760px, 100vw)"
       rootClassName="device-details-drawer"
-      styles={{
-        section: { background: 'var(--bg)' },
-        body: { background: 'var(--bg)' },
-      }}
     >
       <header className="device-detail-hero">
         <div className={`device-detail-device-icon ${device.online ? 'is-online' : ''}`}>{osIcon(device.platform)}</div>

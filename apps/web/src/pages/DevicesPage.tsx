@@ -19,6 +19,7 @@ import {
   ToolOutlined,
   FolderOpenOutlined,
   ExperimentOutlined,
+  CloudUploadOutlined,
 } from '@ant-design/icons';
 import type { Device } from '@meshcentral/shared-state';
 import {
@@ -36,11 +37,15 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type Key } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
 import { RelayValidationModal } from '../components/RelayValidationModal';
 import { FileUploadModal } from '../components/FileUploadModal';
+import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
+import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
+import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
+import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
@@ -135,6 +140,32 @@ export function DevicesPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [relayDevice, setRelayDevice] = useState<Device | null>(null);
   const [uploadDevice, setUploadDevice] = useState<Device | null>(null);
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Key[]>([]);
+  const [batchUploadOpen, setBatchUploadOpen] = useState(false);
+  const [batchDevices, setBatchDevices] = useState<BatchUploadDeviceSnapshot[]>([]);
+  const batchUploadManagerRef = useRef<BatchUploadManager | null>(null);
+  if (!batchUploadManagerRef.current) batchUploadManagerRef.current = new BatchUploadManager();
+  const batchUploadManager = batchUploadManagerRef.current;
+
+  const batchRelayBaseUrl = useMemo(() => {
+    if (!gatewayUrl) return undefined;
+    try {
+      return relayBaseUrl(gatewayUrl);
+    } catch {
+      return undefined;
+    }
+  }, [gatewayUrl]);
+
+  useEffect(() => {
+    // React StrictMode 在开发环境会执行一次 setup → cleanup → setup。
+    // 重新激活管理器，避免第一次 cleanup 后调度器永久处于 disposed 状态。
+    batchUploadManager.activate();
+    return () => batchUploadManager.dispose();
+  }, [batchUploadManager]);
+
+  useEffect(() => {
+    if (status !== 'connected') batchUploadManager.handleGatewayDisconnected();
+  }, [batchUploadManager, status]);
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => compareNames(a.name, b.name)),
@@ -142,8 +173,9 @@ export function DevicesPage() {
   );
 
   useEffect(() => {
-    if (sortedGroups.length && !sortedGroups.some((group) => group.id === groupId)) {
-      setGroupId(sortedGroups[0].id);
+    const firstGroup = sortedGroups[0];
+    if (firstGroup && !sortedGroups.some((group) => group.id === groupId)) {
+      setGroupId(firstGroup.id);
     }
   }, [groupId, sortedGroups]);
 
@@ -205,6 +237,22 @@ export function DevicesPage() {
       })
       .sort(compareDeviceName);
   }, [devices, groupId, online, platform, query]);
+
+  const openBatchUpload = () => {
+    const existingSnapshot = batchUploadManager.getSnapshot();
+    if (existingSnapshot.status === 'running' || existingSnapshot.status === 'cancelling') {
+      setBatchDevices(existingSnapshot.tasks.map((task) => task.device));
+      setBatchUploadOpen(true);
+      return;
+    }
+    const selected = new Set(selectedDeviceIds.map(String));
+    const snapshots = devices.filter((device) => selected.has(device.id)).map(snapshotDevice);
+    if (!snapshots.length) return;
+    batchUploadManager.reset();
+    batchUploadManager.configure(snapshots);
+    setBatchDevices(snapshots);
+    setBatchUploadOpen(true);
+  };
 
   const columns: TableColumnsType<Device> = [
     {
@@ -416,9 +464,21 @@ export function DevicesPage() {
             <h1>所有设备</h1>
             <p>查看业务网关同步的设备、分组与实时在线状态</p>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} disabled>
-            添加设备
-          </Button>
+          <Space>
+            <Button
+              icon={<CloudUploadOutlined />}
+              disabled={
+                batchUploadManager.getSnapshot().tasks.length === 0 &&
+                (!selectedDeviceIds.length || status !== 'connected')
+              }
+              onClick={openBatchUpload}
+            >
+              批量上传文件{selectedDeviceIds.length ? `（${selectedDeviceIds.length}）` : ''}
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} disabled>
+              添加设备
+            </Button>
+          </Space>
         </div>
         <section className="console-card devices-table-card">
           <div className="table-toolbar devices-toolbar">
@@ -469,6 +529,9 @@ export function DevicesPage() {
             rowKey="id"
             rowSelection={{
               type: 'checkbox',
+              selectedRowKeys: selectedDeviceIds,
+              preserveSelectedRowKeys: true,
+              onChange: setSelectedDeviceIds,
             }}
             columns={columns}
             dataSource={filteredDevices}
@@ -504,6 +567,15 @@ export function DevicesPage() {
         device={uploadDevice}
         gatewayClient={client}
         gatewayUrl={gatewayUrl}
+      />
+      <BatchFileUploadModal
+        open={batchUploadOpen}
+        devices={batchDevices}
+        gatewayClient={client}
+        baseUrl={batchRelayBaseUrl}
+        connected={status === 'connected'}
+        manager={batchUploadManager}
+        onClose={() => setBatchUploadOpen(false)}
       />
     </>
   );

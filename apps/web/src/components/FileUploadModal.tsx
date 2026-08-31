@@ -34,6 +34,10 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  batchUploadBandwidthConfig,
+  calculateBatchUploadChunkSize,
+} from '../features/batch-upload/bandwidth';
 import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
 
 interface FileUploadModalProps {
@@ -214,6 +218,7 @@ export function FileUploadModal({
     try {
       await filesSession.uploadFile(listing.path, browserFileSource(selectedFile), {
         timeoutMs: 60_000,
+        chunkSize: calculateBatchUploadChunkSize(batchUploadBandwidthConfig, 1),
         onProgress: setUploadProgress,
       });
       if (lifecycleRef.current !== lifecycle) return;
