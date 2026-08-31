@@ -8,8 +8,10 @@ import {
   Button,
   Empty,
   Input,
+  Progress,
   Table,
   Tag,
+  theme,
   type TableColumnsType,
 } from 'antd';
 import { useMemo, useState } from 'react';
@@ -49,8 +51,22 @@ function formatDateTime(value?: number) {
 }
 
 export function DeviceGroupsPage() {
+  const { token } = theme.useToken();
   const { groups, devices, client, status } = useGatewayData();
   const [query, setQuery] = useState('');
+
+  const deviceStatsByGroup = useMemo(() => {
+    const stats = new Map<string, { total: number; online: number; offline: number }>();
+    devices.forEach((device) => {
+      if (!device.groupId) return;
+      const current = stats.get(device.groupId) ?? { total: 0, online: 0, offline: 0 };
+      current.total += 1;
+      if (device.online) current.online += 1;
+      else current.offline += 1;
+      stats.set(device.groupId, current);
+    });
+    return stats;
+  }, [devices]);
 
   const filteredGroups = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -75,7 +91,6 @@ export function DeviceGroupsPage() {
       fixed: 'left',
       width: 200,
       defaultSortOrder: 'ascend',
-      sorter: compareGroupName,
       render: (value) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ApartmentOutlined style={{ color: '#177ddc' }} />
@@ -94,13 +109,42 @@ export function DeviceGroupsPage() {
       key: 'deviceCount',
       width: 120,
       render: (_, group) => {
-        const count = devices.filter((d) => d.groupId === group.id).length;
+        const count = deviceStatsByGroup.get(group.id)?.total ?? 0;
         return <Tag color="blue">{count} 台设备</Tag>;
       },
       sorter: (a, b) => {
-        const countA = devices.filter((d) => d.groupId === a.id).length;
-        const countB = devices.filter((d) => d.groupId === b.id).length;
+        const countA = deviceStatsByGroup.get(a.id)?.total ?? 0;
+        const countB = deviceStatsByGroup.get(b.id)?.total ?? 0;
         return countA - countB;
+      },
+    },
+    {
+      title: '设备统计',
+      key: 'deviceStats',
+      width: 260,
+      render: (_, group) => {
+        const stats = deviceStatsByGroup.get(group.id) ?? {
+          total: 0,
+          online: 0,
+          offline: 0,
+        };
+        const onlinePercent = stats.total ? (stats.online / stats.total) * 100 : 0;
+        return (
+          <Progress
+            percent={onlinePercent}
+            strokeColor={token.colorPrimary}
+            format={() => (
+              <span style={{ color: token.colorPrimary }}>
+                {stats.online} / {stats.offline}
+              </span>
+            )}
+          />
+        );
+      },
+      sorter: (a, b) => {
+        const onlineA = deviceStatsByGroup.get(a.id)?.online ?? 0;
+        const onlineB = deviceStatsByGroup.get(b.id)?.online ?? 0;
+        return onlineA - onlineB;
       },
     },
     {
@@ -166,7 +210,7 @@ export function DeviceGroupsPage() {
           columns={columns}
           dataSource={filteredGroups}
           pagination={false}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1260 }}
           locale={{
             emptyText: (
               <Empty
