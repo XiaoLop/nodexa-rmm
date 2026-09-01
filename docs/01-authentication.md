@@ -2,6 +2,31 @@
 
 MeshCentral 管理接口主要通过 `control.ashx` WebSocket 鉴权。常用方式有账号密码、二次验证令牌、登录 Cookie、登录密钥和登录令牌。
 
+## 使用 cookie 鉴权
+
+### 账号密码登录
+
+登录接口：
+
+```shell
+# 请求地址
+POST https://<server>/<domain>/login
+
+# Content-Type:
+x-www-form-urlencoded
+
+# 请求体
+action=login
+username=admin
+password=password
+
+# 响应cookie
+xid=xxx
+xid.sig=xxxx
+```
+
+将cookie中的 xid 和 xid.sig 携带到 ws 连接中, 就会鉴权成功
+
 ## 账号密码鉴权
 
 连接地址：
