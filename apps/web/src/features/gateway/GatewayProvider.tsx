@@ -15,9 +15,9 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { GATEWAY_CONTROL_URL } from '../../config/gateway';
 
 const AUTH_STORAGE_KEY = 'meshcentral.web.auth';
-const DEFAULT_GATEWAY_URL = 'wss://mesh.xiaonext.com/control';
 
 interface GatewayCredentials {
   authParam: string;
@@ -64,7 +64,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   const [client, setClient] = useState<GatewayClient | undefined>();
   const [credentials, setCredentials] = useState<GatewayCredentials | undefined>();
   const [initializing, setInitializing] = useState(true);
-  const gatewayUrl = import.meta.env.VITE_GATEWAY_WS_URL?.trim() || DEFAULT_GATEWAY_URL;
+  const gatewayUrl = GATEWAY_CONTROL_URL;
 
   const destroyClient = useCallback(() => {
     bindingRef.current?.dispose();

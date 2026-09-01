@@ -45,7 +45,7 @@ import { FileUploadModal } from '../components/FileUploadModal';
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
-import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
+import { GATEWAY_RELAY_URL } from '../config/gateway';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
@@ -130,7 +130,7 @@ function formatDateTime(value?: string) {
 
 export function DevicesPage() {
   const { token } = theme.useToken();
-  const { devices, groups, client, status, gatewayUrl } = useGatewayData();
+  const { devices, groups, client, status } = useGatewayData();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const [query, setQuery] = useState('');
@@ -147,15 +147,6 @@ export function DevicesPage() {
   const batchUploadManagerRef = useRef<BatchUploadManager | null>(null);
   if (!batchUploadManagerRef.current) batchUploadManagerRef.current = new BatchUploadManager();
   const batchUploadManager = batchUploadManagerRef.current;
-
-  const batchRelayBaseUrl = useMemo(() => {
-    if (!gatewayUrl) return undefined;
-    try {
-      return relayBaseUrl(gatewayUrl);
-    } catch {
-      return undefined;
-    }
-  }, [gatewayUrl]);
 
   useEffect(() => {
     // React StrictMode 在开发环境会执行一次 setup → cleanup → setup。
@@ -571,20 +562,18 @@ export function DevicesPage() {
         onClose={() => setRelayDevice(null)}
         device={relayDevice}
         gatewayClient={client}
-        gatewayUrl={gatewayUrl}
       />
       <FileUploadModal
         open={Boolean(uploadDevice)}
         onClose={() => setUploadDevice(null)}
         device={uploadDevice}
         gatewayClient={client}
-        gatewayUrl={gatewayUrl}
       />
       <BatchFileUploadModal
         open={batchUploadOpen}
         devices={batchDevices}
         gatewayClient={client}
-        baseUrl={batchRelayBaseUrl}
+        baseUrl={GATEWAY_RELAY_URL}
         connected={status === 'connected'}
         manager={batchUploadManager}
         onClose={() => setBatchUploadOpen(false)}

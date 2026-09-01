@@ -22,13 +22,12 @@ import type { GatewayClient } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Progress, Select, Space, Table, Tag } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
+import { GATEWAY_RELAY_URL } from '../config/gateway';
 
 interface RelayValidationModalProps {
   open: boolean;
   device: Device | null;
   gatewayClient?: GatewayClient;
-  gatewayUrl?: string;
   onClose: () => void;
 }
 
@@ -95,7 +94,6 @@ export function RelayValidationModal({
   open,
   device,
   gatewayClient,
-  gatewayUrl,
   onClose,
 }: RelayValidationModalProps) {
   const [protocol, setProtocol] = useState<number>(RELAY_PROTOCOLS.files);
@@ -112,15 +110,7 @@ export function RelayValidationModal({
   const abortRef = useRef<AbortController | undefined>(undefined);
   const startedAtRef = useRef(0);
   const logIdRef = useRef(0);
-
-  const baseUrl = useMemo(() => {
-    if (!gatewayUrl) return undefined;
-    try {
-      return relayBaseUrl(gatewayUrl);
-    } catch {
-      return undefined;
-    }
-  }, [gatewayUrl]);
+  const baseUrl = GATEWAY_RELAY_URL;
 
   const addLog = (level: ValidationLog['level'], message: string) => {
     const elapsedMs = startedAtRef.current ? performance.now() - startedAtRef.current : 0;
@@ -329,7 +319,7 @@ export function RelayValidationModal({
           <Alert
             type="error"
             showIcon
-            message="无法从网关地址推导中继地址，请配置 VITE_RELAY_BASE_URL。"
+            message="中继地址不可用，请配置 VITE_GATEWAY_WS_URL。"
           />
         )}
         <Space wrap>

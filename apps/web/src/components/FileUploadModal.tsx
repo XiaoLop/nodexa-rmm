@@ -39,13 +39,12 @@ import {
   batchUploadBandwidthConfig,
   calculateBatchUploadChunkSize,
 } from '../features/batch-upload/bandwidth';
-import { relayBaseUrl } from '../features/gateway/relayBaseUrl';
+import { GATEWAY_RELAY_URL } from '../config/gateway';
 
 interface FileUploadModalProps {
   open: boolean;
   device: Device | null;
   gatewayClient?: GatewayClient;
-  gatewayUrl?: string;
   onClose: () => void;
 }
 
@@ -86,7 +85,6 @@ export function FileUploadModal({
   open,
   device,
   gatewayClient,
-  gatewayUrl,
   onClose,
 }: FileUploadModalProps) {
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -102,15 +100,7 @@ export function FileUploadModal({
   const filesSessionRef = useRef<FilesSession | undefined>(undefined);
   const abortRef = useRef<AbortController | undefined>(undefined);
   const lifecycleRef = useRef(0);
-
-  const baseUrl = useMemo(() => {
-    if (!gatewayUrl) return undefined;
-    try {
-      return relayBaseUrl(gatewayUrl);
-    } catch {
-      return undefined;
-    }
-  }, [gatewayUrl]);
+  const baseUrl = GATEWAY_RELAY_URL;
 
   const entries = useMemo(
     () =>
