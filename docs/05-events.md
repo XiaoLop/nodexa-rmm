@@ -216,9 +216,9 @@ client.on('message', (data) => {
 
 | 字段 | 说明 |
 | --- | --- |
-| `etype` | 事件类别，例如 `node` 或 `relay` |
+| `etype` | 事件类别，例如 `node` 或 `relay`；部分事件可能省略 |
 | `action` | 具体事件动作，例如 `agentlog`、`relaylog` |
-| `nodeid` | 事件关联的设备 ID |
+| `nodeid` | 事件关联的设备 ID；是否存在取决于查询方式和事件类型 |
 | `msg` | 服务端生成的事件消息 |
 | `msgid` | MeshCentral 内部消息类型 ID，可配合 `msgArgs` 生成本地化消息 |
 | `msgArgs` | 消息模板参数 |
@@ -243,15 +243,133 @@ client.on('message', (data) => {
 
 ### 按设备过滤
 
-使用完整设备 ID 作为 `nodeid` 参数：
+发送 `events` 请求时可以携带完整设备 ID 作为 `nodeid` 参数，只获取指定节点关联的历史事件：
 
 ```json
 {
   "action": "events",
-  "nodeid": "node//yyyyyyyy",
-  "limit": 100
+  "limit": 60,
+  "nodeid": "node//17qDHvBbIuFqTjlUN1w0cb8GLCq4UySgG3BGu1ePPc4YSG9jVNCEoX$vnuCL1VFL"
 }
 ```
+
+响应中的 `events` 仅包含该节点的相关记录，例如远程桌面会话和 Agent 操作日志：
+
+```json
+{
+  "action": "events",
+  "events": [
+    {
+      "action": "relaylog",
+      "userid": "user//admin",
+      "username": "admin",
+      "msgid": 11,
+      "msgArgs": ["dt7s1c74v3m", "172.18.0.1", "172.18.0.1", 52],
+      "msg": "Ended desktop session \"dt7s1c74v3m\" from 172.18.0.1 to 172.18.0.1, 52 second(s)",
+      "protocol": 2,
+      "bytesin": 24493,
+      "bytesout": 22745,
+      "time": "2026-09-01T13:03:32.806Z"
+    },
+    {
+      "action": "agentlog",
+      "msg": "Started remote desktop without notification (172.18.0.1)",
+      "msgid": 36,
+      "remoteaddr": "172.18.0.1",
+      "userid": "user//admin",
+      "username": "admin",
+      "sessionid": "user//admin/e153a04f0fce626413f094a8c25f4702ff84cd37",
+      "time": "2026-09-01T13:02:40.252Z"
+    }
+  ]
+}
+```
+
+对应的 TypeScript 请求与响应类型可定义为：
+
+```ts
+interface NodeEventsRequest {
+  action: 'events';
+  limit?: number;
+  nodeid: string;
+  responseid?: string;
+}
+
+interface HistoricalEventBase {
+  /** 按节点查询时通常省略，使用请求中的 nodeid 作为关联节点。 */
+  nodeid?: string;
+  /** 某些按节点查询的历史事件不会返回 etype。 */
+  etype?: string;
+  userid?: string;
+  username?: string;
+  msg?: string;
+  msgid?: number;
+  msgArgs?: Array<string | number | boolean | null>;
+  time: string;
+}
+
+interface RelayLogEvent extends HistoricalEventBase {
+  action: 'relaylog';
+  /** 例如 2 表示远程桌面，5 表示文件管理。 */
+  protocol: number;
+  /** 通常仅会话结束事件包含流量统计。 */
+  bytesin?: number;
+  bytesout?: number;
+}
+
+interface AgentLogEvent extends HistoricalEventBase {
+  action: 'agentlog';
+  remoteaddr?: string;
+  sessionid?: string;
+}
+
+interface UnknownHistoricalEvent extends HistoricalEventBase {
+  action: string;
+  [field: string]: unknown;
+}
+
+type HistoricalEvent = RelayLogEvent | AgentLogEvent | UnknownHistoricalEvent;
+
+interface EventsResponse {
+  action: 'events';
+  responseid?: string;
+  events: HistoricalEvent[];
+}
+```
+
+实际服务端还可能返回其他 `action`，因此类型中保留了 `UnknownHistoricalEvent`。消费事件时应先判断 `action`，再读取该事件类型特有的字段：
+
+```ts
+function isRelayLogEvent(event: HistoricalEvent): event is RelayLogEvent {
+  return event.action === 'relaylog' && 'protocol' in event && typeof event.protocol === 'number';
+}
+
+function isAgentLogEvent(event: HistoricalEvent): event is AgentLogEvent {
+  return event.action === 'agentlog';
+}
+
+function handleHistoricalEvent(event: HistoricalEvent, requestedNodeId: string): void {
+  const nodeid = event.nodeid ?? requestedNodeId;
+
+  if (isRelayLogEvent(event)) {
+    console.log(nodeid, event.protocol, event.bytesin, event.bytesout);
+    return;
+  }
+
+  if (isAgentLogEvent(event)) {
+    console.log(nodeid, event.remoteaddr, event.sessionid);
+  }
+}
+```
+
+`nodeid` 参数还会影响响应事件的字段结构，但不同事件类型返回的字段并不完全一致：
+
+- 请求携带 `nodeid` 时，服务端已知查询上下文，返回的节点相关历史事件可能省略 `nodeid`，有些记录还可能省略 `etype`。客户端应将请求中的节点 ID 作为所有返回事件的关联节点上下文。
+- 请求未携带 `nodeid` 时，节点事件（例如 `etype: "node"` 的 `agentlog`）通常会携带 `nodeid`，用于区分事件所属设备。
+- `relaylog`、`agentlog` 等不同事件类型拥有不同字段集合。例如 `relaylog` 可能包含 `protocol`、`bytesin` 和 `bytesout`，而 `agentlog` 可能包含 `remoteaddr` 和 `sessionid`；开始事件与结束事件的字段也可能不同。
+- 并非所有历史事件都与设备关联。用户、服务器或其他全局事件即使在未按节点查询时，也可能没有 `nodeid`。
+
+因此，客户端不应仅凭某个字段是否存在来判断事件类型，也不应假设每条历史事件都有 `etype`、`nodeid`、`msgArgs`、`protocol` 或流量统计字段。应优先根据 `action` 识别事件，并将其余字段按可选字段处理；按节点查询时，不能因为事件缺少 `nodeid` 而将其丢弃。
 
 ### 请求与响应匹配
 
