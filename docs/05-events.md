@@ -253,6 +253,32 @@ client.on('message', (data) => {
 }
 ```
 
+`filter` 用于只获取指定事件类型，可以与 `nodeid`、`user` 和 `limit` 等参数组合使用。当前已确认的过滤值包括：
+
+```ts
+type HistoricalEventFilter =
+  | 'agentlog'
+  | 'relaylog'
+  | 'manual'
+  | 'runcommands'
+  | 'batchupload'
+  | 'changenode'
+  | 'removenode';
+```
+
+例如，下面的请求只返回指定节点的 `relaylog` 历史事件：
+
+```json
+{
+  "action": "events",
+  "limit": 60,
+  "nodeid": "node//17qDHvBbIuFqTjlUN1w0cb8GLCq4UySgG3BGu1ePPc4YSG9jVNCEoX$vnuCL1VFL",
+  "filter": "relaylog"
+}
+```
+
+若不传 `filter`，则返回符合其他查询条件的多种历史事件。`filter` 是服务端查询条件，与前文实时事件流中的客户端过滤不是同一机制。
+
 响应中的 `events` 仅包含该节点的相关记录，例如远程桌面会话和 Agent 操作日志：
 
 ```json
@@ -292,6 +318,7 @@ interface NodeEventsRequest {
   action: 'events';
   limit?: number;
   nodeid: string;
+  filter?: HistoricalEventFilter;
   responseid?: string;
 }
 
