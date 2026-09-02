@@ -58,6 +58,25 @@ describe('GatewayClient', () => {
     client.destroy();
   });
 
+  it('serializes and matches responseid-less event history responses', async () => {
+    const { client, socket } = await connectedClient();
+    const first = client.events.list({ limit: 60 });
+    const second = client.events.list({ limit: 100 });
+    const requests = () =>
+      socket.sent.map((item) => JSON.parse(item)).filter((item) => item.action === 'events');
+    await vi.waitFor(() => expect(requests()).toHaveLength(1));
+
+    socket.message({
+      action: 'events',
+      events: [{ action: 'agentlog', nodeid: 'node//one', time: '2026-09-02T00:00:00.000Z' }],
+    });
+    await expect(first).resolves.toMatchObject([{ type: 'agentLog', deviceId: 'node//one' }]);
+    await vi.waitFor(() => expect(requests()).toHaveLength(2));
+    socket.message({ action: 'events', events: [] });
+    await expect(second).resolves.toEqual([]);
+    client.destroy();
+  });
+
   it('serializes responseid-less authcookie requests', async () => {
     const { client, socket } = await connectedClient();
     const first = client.request<{ cookie: string }>({ action: 'authcookie' });

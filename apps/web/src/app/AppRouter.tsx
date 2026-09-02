@@ -7,6 +7,7 @@ import { DeviceGroupsPage } from '../pages/DeviceGroupsPage';
 import { DevicesPage } from '../pages/DevicesPage';
 import { AppBootScreen, LoginPage } from '../pages/LoginPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { RealtimeEventsPage } from '../pages/RealtimeEventsPage';
 import { AppLayout } from './AppLayout';
 
 function ProtectedRoute({ children }: PropsWithChildren) {
@@ -35,6 +36,7 @@ export function AppRouter() {
         <Route path="/devices" element={<DevicesPage />} />
         <Route path="/devices/groups" element={<DeviceGroupsPage />} />
         <Route path="/devices/*" element={<ComingSoonPage />} />
+        <Route path="/monitoring/realtime" element={<RealtimeEventsPage />} />
         <Route path="/monitoring/*" element={<ComingSoonPage />} />
         <Route path="/remote/*" element={<ComingSoonPage />} />
         <Route path="/admin/*" element={<ComingSoonPage />} />

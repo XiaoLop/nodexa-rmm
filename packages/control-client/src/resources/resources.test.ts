@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { GatewayValidationError } from '../errors';
 import { DevicesResource } from './devices';
 import { EventsResource } from './events';
 import { GroupsResource } from './groups';
@@ -42,5 +43,17 @@ describe('resources', () => {
     await expect(events.listByDevice('one')).resolves.toMatchObject([
       { type: 'agentLog', deviceId: 'one' },
     ]);
+  });
+
+  it('passes history limits and filters and rejects invalid limits', async () => {
+    const client = new FakeClient();
+    const events = new EventsResource(client);
+    client.responses.push({ events: [] });
+    await events.list({ limit: 60, filter: 'relaylog' });
+    expect(client.requests.at(-1)).toEqual({ action: 'events', limit: 60, filter: 'relaylog' });
+
+    expect(() => events.list({ limit: 0 })).toThrow(GatewayValidationError);
+    expect(() => events.list({ limit: 201 })).toThrow(GatewayValidationError);
+    expect(() => events.list({ limit: 1.5 })).toThrow(GatewayValidationError);
   });
 });

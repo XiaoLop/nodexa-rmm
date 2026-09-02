@@ -240,4 +240,18 @@ describe('gateway store', () => {
 
     expect(gatewaySelectors.devices(store.getState())).not.toBe(initialDevices);
   });
+
+  it('keeps the newest 100 realtime events in newest-first order', () => {
+    const store = createGatewayStore();
+    for (let index = 0; index < 101; index += 1) {
+      store.getState().appendEvent({
+        id: `event-${index}`,
+        type: 'agentLog',
+        occurredAt: new Date(1_710_000_000_000 + index).toISOString(),
+      });
+    }
+    expect(store.getState().events).toHaveLength(100);
+    expect(store.getState().events[0]?.id).toBe('event-100');
+    expect(store.getState().events.at(-1)?.id).toBe('event-1');
+  });
 });

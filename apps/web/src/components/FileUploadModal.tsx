@@ -81,12 +81,7 @@ function entryIcon(entry: FileEntry) {
   return <FileOutlined />;
 }
 
-export function FileUploadModal({
-  open,
-  device,
-  gatewayClient,
-  onClose,
-}: FileUploadModalProps) {
+export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUploadModalProps) {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [error, setError] = useState<string>();

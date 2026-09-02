@@ -1,7 +1,8 @@
 import { SyncOutlined } from '@ant-design/icons';
+import type { GatewayEvent } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
-import { Alert, Button, Empty, Tag } from 'antd';
-import { useMemo } from 'react';
+import { Alert, Button, Empty, Spin, Tag } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DonutChart, MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useGatewayData } from '../features/gateway/useGatewayData';
@@ -39,8 +40,21 @@ function makeEventTrend(events: ReturnType<typeof useGatewayData>['events']) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const data = useGatewayData();
+  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState<string>();
   const online = data.devices.filter((device) => device.online).length;
   const offline = data.devices.length - online;
+  const dashboardEvents = useMemo(() => {
+    const eventsById = new Map(historyEvents.map((event) => [event.id, event]));
+    for (const event of data.events) eventsById.set(event.id, event);
+    return [...eventsById.values()]
+      .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
+      .slice(0, 30);
+  }, [data.events, historyEvents]);
+  const waitingForRealtimeEvents =
+    dashboardEvents.length === 0 &&
+    (eventsLoading || data.status === 'connecting' || data.status === 'reconnecting');
   const recentEvents = data.events.filter(
     (event) => Date.now() - new Date(event.occurredAt).getTime() <= 86_400_000,
   );
@@ -89,6 +103,29 @@ export function DashboardPage() {
       return '已配置业务网关';
     }
   })();
+
+  useEffect(() => {
+    if (!data.client || data.status !== 'connected') return;
+    let active = true;
+    setEventsLoading(true);
+    setEventsError(undefined);
+    void data.client.events
+      .list({ limit: 30 })
+      .then((events) => {
+        if (active) setHistoryEvents(events);
+      })
+      .catch((error) => {
+        if (active) {
+          setEventsError(error instanceof Error ? error.message : '仪表盘事件加载失败。');
+        }
+      })
+      .finally(() => {
+        if (active) setEventsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [data.client, data.status]);
 
   return (
     <div className="dashboard-page page-stack">
@@ -196,7 +233,15 @@ export function DashboardPage() {
             </Button>
           </div>
           <div className="event-list">
-            {data.events.slice(0, 6).map((event) => {
+            {eventsError && (
+              <Alert
+                showIcon
+                type="warning"
+                message="仪表盘事件加载失败"
+                description={eventsError}
+              />
+            )}
+            {dashboardEvents.map((event) => {
               const name = getEventTargetName(event, data.devices);
               const message = formatEventMessage(event, data.devices, data.groups);
               const tone =
@@ -216,9 +261,15 @@ export function DashboardPage() {
                 </div>
               );
             })}
-            {data.events.length === 0 && (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="等待实时事件" />
-            )}
+            {dashboardEvents.length === 0 &&
+              (waitingForRealtimeEvents ? (
+                <div className="event-list-loading">
+                  <Spin size="small" />
+                  <span>正在连接实时事件流…</span>
+                </div>
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="等待实时事件" />
+              ))}
           </div>
         </section>
 

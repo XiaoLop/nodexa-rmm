@@ -18,7 +18,7 @@ interface PendingRequest {
 
 export class RequestManager {
   private readonly pending = new Map<string, PendingRequest>();
-  private authCookieChain: Promise<void> = Promise.resolve();
+  private readonly responseIdOptionalChains = new Map<string, Promise<void>>();
 
   constructor(
     private readonly send: (payload: unknown) => void,
@@ -27,22 +27,18 @@ export class RequestManager {
   ) {}
 
   request<T>(payload: Record<string, unknown>, timeoutMs = this.defaultTimeoutMs): Promise<T> {
-    if (payload.action === 'authcookie') {
-      const request = this.authCookieChain.then(() => this.requestNow<T>(payload, timeoutMs));
-      this.authCookieChain = request.then(
-        () => undefined,
-        () => undefined,
-      );
-      return request;
-    }
+    if (payload.action === 'authcookie' || payload.action === 'events')
+      return this.requestSequentially<T>(payload, timeoutMs);
     return this.requestNow<T>(payload, timeoutMs);
   }
 
   consume(payload: unknown): boolean {
     if (!isRecord(payload)) return false;
-    const nested = [payload.data, payload.payload, payload.message].find(isRecord);
+    const nested = [payload.data, payload.payload, payload.message, payload.event].find(isRecord);
+    const isEventEnvelope = payload.action === 'event' && nested !== undefined;
     const record =
-      typeof payload.action === 'string' || typeof payload.responseid === 'string'
+      !isEventEnvelope &&
+      (typeof payload.action === 'string' || typeof payload.responseid === 'string')
         ? payload
         : (nested ?? payload);
     const responseId = typeof record.responseid === 'string' ? record.responseid : undefined;
@@ -95,7 +91,7 @@ export class RequestManager {
           response: payload,
         }),
       );
-    else match.resolve(payload);
+    else match.resolve(record);
     return true;
   }
 
@@ -112,6 +108,20 @@ export class RequestManager {
       );
     }
     this.pending.clear();
+  }
+
+  private requestSequentially<T>(payload: Record<string, unknown>, timeoutMs: number): Promise<T> {
+    const action = String(payload.action);
+    const previous = this.responseIdOptionalChains.get(action) ?? Promise.resolve();
+    const request = previous.then(() => this.requestNow<T>(payload, timeoutMs));
+    this.responseIdOptionalChains.set(
+      action,
+      request.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return request;
   }
 
   private requestNow<T>(payload: Record<string, unknown>, timeoutMs: number): Promise<T> {

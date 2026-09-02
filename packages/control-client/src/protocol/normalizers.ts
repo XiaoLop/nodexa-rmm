@@ -96,8 +96,38 @@ export function normalizeGroups(value: unknown): DeviceGroup[] {
     .filter((item): item is DeviceGroup => Boolean(item));
 }
 
-function eventId(action: string, deviceId?: string): string {
-  return `${action}-${deviceId ?? 'global'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function stableValue(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return `[${value.map(stableValue).join(',')}]`;
+  if (isRecord(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableValue(value[key])}`)
+      .join(',')}}`;
+  }
+  return String(value);
+}
+
+function eventId(raw: UnknownRecord, action: string, deviceId?: string): string {
+  const serverId = stringValue(raw.id) ?? stringValue(raw._id) ?? stringValue(raw.eventid);
+  if (serverId) return serverId;
+
+  const fingerprint = stableValue([
+    action,
+    deviceId ?? null,
+    stringValue(raw.userid) ?? stringValue(raw.user) ?? null,
+    raw.time ?? raw.occurredAt ?? null,
+    raw.msgid ?? null,
+    raw.msgArgs ?? null,
+  ]);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < fingerprint.length; index += 1) {
+    hash ^= fingerprint.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `event-${(hash >>> 0).toString(36)}`;
 }
 
 export function normalizeEvent(value: unknown): GatewayEvent | undefined {
@@ -117,10 +147,14 @@ export function normalizeEvent(value: unknown): GatewayEvent | undefined {
   else if (action === 'removenode' || action === 'deletenode') type = 'deviceRemoved';
   else if (action === 'relaylog' || raw.etype === 'relay') type = 'relayLog';
   else if (action === 'agentlog') type = 'agentLog';
+  else if (action === 'manual') type = 'manualOperation';
+  else if (action === 'runcommands') type = 'commandExecution';
+  else if (action === 'batchupload') type = 'batchUpload';
   else if (action === 'wssessioncount') type = 'userSessionCount';
   return {
-    id: stringValue(raw.id) ?? eventId(action, deviceId),
+    id: eventId(raw, action, deviceId),
     type,
+    action,
     deviceId,
     deviceName: stringValue(raw.deviceName) ?? stringValue(raw.nodename) ?? stringValue(node?.name),
     user:

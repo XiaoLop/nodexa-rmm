@@ -31,5 +31,24 @@ describe('protocol normalizers', () => {
     );
     expect(normalizeEvent({ action: 'changenode', nodeid: 'one' })?.type).toBe('deviceChanged');
     expect(normalizeEvent({ action: 'relaylog', nodeid: 'one' })?.type).toBe('relayLog');
+    expect(normalizeEvent({ action: 'manual', nodeid: 'one' })?.type).toBe('manualOperation');
+  });
+
+  it('creates stable IDs for equivalent historical and realtime events', () => {
+    const event = {
+      action: 'agentlog',
+      nodeid: 'node//one',
+      userid: 'user//admin',
+      time: 1_710_000_000,
+      msgid: 12,
+      msgArgs: ['file.txt', { size: 4 }],
+    };
+    expect(normalizeEvent(event)?.id).toBe(normalizeEvent({ ...event })?.id);
+    expect(normalizeEvent(event)?.id).not.toBe(
+      normalizeEvent({ ...event, nodeid: 'node//two' })?.id,
+    );
+    expect(normalizeEvent(event)?.id).not.toBe(
+      normalizeEvent({ ...event, time: 1_710_000_001 })?.id,
+    );
   });
 });

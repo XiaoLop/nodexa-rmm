@@ -34,12 +34,16 @@ export type GatewayEventType =
   | 'deviceRemoved'
   | 'relayLog'
   | 'agentLog'
+  | 'manualOperation'
+  | 'commandExecution'
+  | 'batchUpload'
   | 'userSessionCount'
   | 'unknown';
 
 export interface GatewayEvent {
   id: string;
   type: GatewayEventType;
+  action?: string;
   deviceId?: string;
   deviceName?: string;
   user?: string;
@@ -135,8 +139,12 @@ export interface GroupUpdate {
   name?: string;
   description?: string;
 }
+export type HistoricalEventFilter =
+  'agentlog' | 'relaylog' | 'manual' | 'runcommands' | 'batchupload' | 'changenode' | 'removenode';
+
 export interface EventListOptions {
   limit?: number;
+  filter?: HistoricalEventFilter;
 }
 
 export interface GatewayClientOptions {

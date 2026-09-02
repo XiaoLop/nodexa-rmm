@@ -33,7 +33,26 @@
   width: calc(100% - 28px);
 }
 .event-list {
+  height: 350px;
   padding: 8px 14px 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.event-list::-webkit-scrollbar {
+  display: none;
+}
+.event-list-loading {
+  min-height: 88px;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  justify-items: center;
+  color: #8797aa;
+  font-size: 12px;
+}
+.event-list > .ant-alert {
+  margin: 4px 0 8px;
 }
 .event-row {
   min-height: 44px;
@@ -83,6 +102,25 @@
 .chart-card,
 .groups-card {
   min-height: 245px;
+}
+.platform-card {
+  display: flex;
+  flex-direction: column;
+}
+.platform-card .donut-layout {
+  flex: 1;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  align-content: start;
+}
+.platform-card .donut-legend {
+  grid-row: 1;
+  width: 100%;
+}
+.platform-card .donut {
+  grid-row: 2;
+  margin-top: 12px;
 }
 .dashboard-trend-card .trend-chart {
   padding-top: 14px;

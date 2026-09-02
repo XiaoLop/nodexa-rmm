@@ -1,0 +1,22 @@
+.realtime-events-toolbar {
+  gap: 16px;
+}
+.realtime-events-table .ant-table-row {
+  cursor: pointer;
+}
+.realtime-events-table .ant-table-cell {
+  vertical-align: top;
+}
+.realtime-event-raw {
+  max-height: 420px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #293b52;
+  border-radius: 8px;
+  background: #0d1725;
+  color: #c6d0dd;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

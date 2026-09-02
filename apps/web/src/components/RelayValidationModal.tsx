@@ -21,7 +21,7 @@ import {
 import type { GatewayClient } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Progress, Select, Space, Table, Tag } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GATEWAY_RELAY_URL } from '../config/gateway';
 
 interface RelayValidationModalProps {
@@ -316,11 +316,7 @@ export function RelayValidationModal({
           </div>
         </div>
         {!baseUrl && (
-          <Alert
-            type="error"
-            showIcon
-            message="中继地址不可用，请配置 VITE_GATEWAY_WS_URL。"
-          />
+          <Alert type="error" showIcon message="中继地址不可用，请配置 VITE_GATEWAY_WS_URL。" />
         )}
         <Space wrap>
           <Button
