@@ -165,47 +165,126 @@ client.on('message', (data) => {
 
 ## 获取历史事件
 
-请求最近事件：
+通过控制通道发送 `action: "events"` 可以获取最近保存的历史事件。`limit` 表示期望返回的最大事件数量；服务端通常按事件时间从新到旧返回。
+
+### 获取最近事件
+
+下面的请求获取最近 60 条事件：
 
 ```json
 {
   "action": "events",
-  "limit": 100,
-  "responseid": "req-events"
+  "limit": 60
 }
 ```
 
-按用户过滤：
+响应中的 `events` 是事件数组：
+
+```json
+{
+  "action": "events",
+  "events": [
+    {
+      "etype": "node",
+      "action": "agentlog",
+      "nodeid": "node//ZNWmO2ABRN0XMEm$VkfiEqrFArZK4x@RqKeZweKvdAZzfRS0uLNFoJ$UvQlR5xGY",
+      "msg": "Performing power action=2, forced=0",
+      "msgid": 25,
+      "msgArgs": [2, 0],
+      "remoteaddr": "172.18.0.1",
+      "userid": "user//admin",
+      "username": "admin",
+      "time": "2026-09-02T04:08:06.266Z"
+    },
+    {
+      "etype": "node",
+      "action": "agentlog",
+      "nodeid": "node//DFm$t7nBrWNjtFyoO8Ao9ruebL3i3IwRRnMvwsmJHltfiGqdqtiZaGaUOwLE0kvD",
+      "msg": "Performing power action=2, forced=0",
+      "msgid": 25,
+      "msgArgs": [2, 0],
+      "remoteaddr": "172.18.0.1",
+      "userid": "user//admin",
+      "username": "admin",
+      "time": "2026-09-02T04:07:57.219Z"
+    }
+  ]
+}
+```
+
+常用响应字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `etype` | 事件类别，例如 `node` 或 `relay` |
+| `action` | 具体事件动作，例如 `agentlog`、`relaylog` |
+| `nodeid` | 事件关联的设备 ID |
+| `msg` | 服务端生成的事件消息 |
+| `msgid` | MeshCentral 内部消息类型 ID，可配合 `msgArgs` 生成本地化消息 |
+| `msgArgs` | 消息模板参数 |
+| `remoteaddr` | 发起操作的客户端或代理地址 |
+| `userid` | 操作用户的完整 ID |
+| `username` | 操作用户名 |
+| `time` | ISO 8601 格式的事件发生时间 |
+
+例如上述 `msgid: 25`、`msgArgs: [2, 0]` 表示设备正在执行电源操作；原始消息为 `Performing power action=2, forced=0`。应用层应保留原始字段，并根据 `action`、`msgid` 和 `msgArgs` 转换为适合展示的本地化描述。
+
+### 按用户过滤
+
+使用完整用户 ID 作为 `user` 参数：
 
 ```json
 {
   "action": "events",
   "user": "user//admin",
-  "limit": 100,
-  "responseid": "req-user-events"
+  "limit": 100
 }
 ```
 
-按设备过滤：
+### 按设备过滤
+
+使用完整设备 ID 作为 `nodeid` 参数：
 
 ```json
 {
   "action": "events",
   "nodeid": "node//yyyyyyyy",
-  "limit": 100,
-  "responseid": "req-node-events"
+  "limit": 100
 }
 ```
 
-响应：
+### 请求与响应匹配
+
+如果同一控制连接上会并发发送多个请求，建议添加唯一的 `responseid`：
 
 ```json
 {
   "action": "events",
-  "responseid": "req-events",
+  "limit": 60,
+  "responseid": "req-events-001"
+}
+```
+
+服务端会在对应响应中返回相同的 `responseid`：
+
+```json
+{
+  "action": "events",
+  "responseid": "req-events-001",
   "events": []
 }
 ```
+
+未提供 `responseid` 时，服务端仍可返回历史事件，但客户端难以在并发请求场景中可靠区分响应和实时推送。因此 SDK 或 Web 应用应始终自动生成 `responseid`，并在收到响应后解除对应的待处理请求。
+
+### 客户端处理建议
+
+- 将历史响应中的每一项与实时推送事件复用同一套标准化逻辑。
+- 使用服务端事件 ID；若事件没有 ID，可基于 `action`、`nodeid`、`userid`、`time`、`msgid` 和 `msgArgs` 生成稳定指纹，用于历史事件与实时事件去重。
+- 不要只使用接收时间或随机数生成去重 ID，否则同一事件通过历史查询和实时推送到达时会被视为两条记录。
+- 将 `time` 作为事件发生时间，客户端接收时间仅用于连接诊断。
+- 保留完整原始事件，界面展示时再进行设备名称解析、消息本地化和敏感字段脱敏。
+- 当前原生 `events` 请求适合获取最近事件；复杂的时间范围、关键字和分页查询应由业务网关封装，避免浏览器直接依赖 MeshCentral 的内部查询能力。
 
 ## 接收设备与系统事件
 
