@@ -12,5 +12,6 @@ export {
   timestampValue,
 } from './protocol/normalizers';
 export { DevicesResource } from './resources/devices';
+export { CommandsResource } from './resources/commands';
 export { GroupsResource } from './resources/groups';
 export { EventsResource } from './resources/events';

@@ -20,6 +20,8 @@ import {
   FolderOpenOutlined,
   ExperimentOutlined,
   CloudUploadOutlined,
+  DeleteOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import type { Device } from '@meshcentral/shared-state';
 import {
@@ -38,14 +40,18 @@ import {
   Tooltip,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState, type Key } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
+import { DeviceEditModal } from '../components/DeviceEditModal';
+import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent 安装引导弹窗
 import { RelayValidationModal } from '../components/RelayValidationModal';
 import { FileUploadModal } from '../components/FileUploadModal';
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
+import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsModal';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
-import { GATEWAY_RELAY_URL } from '../config/gateway';
+import { GATEWAY_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
@@ -130,20 +136,26 @@ function formatDateTime(value?: string) {
 
 export function DevicesPage() {
   const { token } = theme.useToken();
-  const { devices, groups, client, status } = useGatewayData();
+  const { devices, groups, client, status, refreshSnapshot } = useGatewayData();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
-  const [query, setQuery] = useState('');
-  const [groupId, setGroupId] = useState('');
-  const [online, setOnline] = useState('all');
-  const [platform, setPlatform] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('query') ?? '');
+  const [groupId, setGroupId] = useState(() => searchParams.get('groupId') ?? '');
+  const [online, setOnline] = useState(() => searchParams.get('status') ?? 'all');
+  const [platform, setPlatform] = useState(() => searchParams.get('platform') ?? 'all');
+  const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1);
+  const [pageSize, setPageSize] = useState(() => Number(searchParams.get('pageSize')) || 20);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [relayDevice, setRelayDevice] = useState<Device | null>(null);
   const [uploadDevice, setUploadDevice] = useState<Device | null>(null);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Key[]>([]);
   const [batchUploadOpen, setBatchUploadOpen] = useState(false);
+  const [batchMoveOpen, setBatchMoveOpen] = useState(false);
   const [batchDevices, setBatchDevices] = useState<BatchUploadDeviceSnapshot[]>([]);
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const batchUploadManagerRef = useRef<BatchUploadManager | null>(null);
   if (!batchUploadManagerRef.current) batchUploadManagerRef.current = new BatchUploadManager();
   const batchUploadManager = batchUploadManagerRef.current;
@@ -165,11 +177,20 @@ export function DevicesPage() {
   );
 
   useEffect(() => {
-    const firstGroup = sortedGroups[0];
-    if (firstGroup && !sortedGroups.some((group) => group.id === groupId)) {
-      setGroupId(firstGroup.id);
-    }
-  }, [groupId, sortedGroups]);
+    const next = new URLSearchParams();
+    if (query.trim()) next.set('query', query.trim());
+    if (groupId) next.set('groupId', groupId);
+    if (online !== 'all') next.set('status', online);
+    if (platform !== 'all') next.set('platform', platform);
+    if (currentPage > 1) next.set('page', String(currentPage));
+    if (pageSize !== 20) next.set('pageSize', String(pageSize));
+    setSearchParams(next, { replace: true });
+  }, [currentPage, groupId, online, pageSize, platform, query, setSearchParams]);
+
+  const updateFilters = <T,>(setter: (value: T) => void, value: T) => {
+    setter(value);
+    setCurrentPage(1);
+  };
 
   const runPowerAction = (device: Device, action: PowerAction) => {
     if (!client || status !== 'connected') {
@@ -222,13 +243,51 @@ export function DevicesPage() {
             rawString(device, 'ip'),
             rawString(device, 'host'),
           ].some((value) => value?.toLowerCase().includes(normalized));
-        const matchesGroup = Boolean(groupId) && device.groupId === groupId;
+        const matchesGroup = !groupId || device.groupId === groupId;
         const matchesOnline = online === 'all' || device.online === (online === 'online');
         const matchesPlatform = platform === 'all' || device.platform === platform;
         return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
       })
       .sort(compareDeviceName);
   }, [devices, groupId, online, platform, query]);
+
+  const openDeviceEditor = (device: Device) => {
+    setEditingDevice(device);
+  };
+
+  const confirmDeviceDeletion = (device: Device) => {
+    if (!client) return;
+    modal.confirm({
+      title: '删除设备',
+      content: (
+        <div>
+          <p>确定要删除设备「{device.name}」吗？此操作不可撤销。</p>
+          <p>设备 ID：{device.id}</p>
+          <p>分组：{groups.find((group) => group.id === device.groupId)?.name ?? '未分组'}；状态：{device.online ? '在线' : '离线'}</p>
+        </div>
+      ),
+      okText: '删除设备',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await client.devices.remove(device.id);
+          setSelectedDeviceIds((ids) => ids.filter((id) => String(id) !== device.id));
+          if (selectedDevice?.id === device.id) setDrawerOpen(false);
+          await refreshSnapshot();
+          void messageApi.success(`已删除「${device.name}」`);
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : '未知错误';
+          void messageApi.error(`删除设备失败：${detail}`);
+          throw error;
+        }
+      },
+    });
+  };
+
+  const openInviteModal = () => {
+    setInviteOpen(true);
+  };
 
   const openBatchUpload = () => {
     const existingSnapshot = batchUploadManager.getSnapshot();
@@ -244,6 +303,66 @@ export function DevicesPage() {
     batchUploadManager.configure(snapshots);
     setBatchDevices(snapshots);
     setBatchUploadOpen(true);
+  };
+
+  const selectedDevices = useMemo(() => {
+    const selected = new Set(selectedDeviceIds.map(String));
+    return devices.filter((device) => selected.has(device.id));
+  }, [devices, selectedDeviceIds]);
+
+  const handleBatchOperationCompleted = (successfulDeviceIds: string[]) => {
+    const successful = new Set(successfulDeviceIds);
+    setSelectedDeviceIds((ids) => ids.filter((id) => !successful.has(String(id))));
+    void refreshSnapshot().catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : '未知错误';
+      void messageApi.warning(`操作已提交，但刷新设备快照失败：${detail}。当前数据可能已过期。`);
+    });
+  };
+
+  const confirmBatchPowerAction = (action: PowerAction) => {
+    if (!client || status !== 'connected' || !selectedDevices.length) return;
+    const targets = action === 'wake' ? selectedDevices : selectedDevices.filter((device) => device.online);
+    const offlineCount = selectedDevices.length - targets.length;
+    const label = powerActionLabels[action];
+    modal.confirm({
+      title: `批量${label}`,
+      content: (
+        <div>
+          <p>确定要对 {targets.length} 台设备执行{label}操作吗？</p>
+          {offlineCount > 0 && <p>{offlineCount} 台离线设备将跳过。</p>}
+          <p>请求提交后不代表设备端已经完成操作。</p>
+        </div>
+      ),
+      okText: `确认${label}`,
+      cancelText: '取消',
+      okButtonProps: action === 'poweroff' ? { danger: true } : undefined,
+      onOk: async () => {
+        if (!targets.length) {
+          void messageApi.warning('没有符合条件的设备可执行此操作。');
+          return;
+        }
+        try {
+          const result = await client.devices.powerMany(
+            targets.map((device) => ({ id: device.id, name: device.name })),
+            action,
+          );
+          const successful = result.results.filter(
+            (item) => item.status === 'submitted' || item.status === 'succeeded',
+          );
+          const failed = result.results.filter((item) => item.status === 'failed');
+          handleBatchOperationCompleted(successful.map((item) => item.deviceId));
+          if (failed.length) {
+            void messageApi.warning(`${label}请求已提交 ${successful.length} 台，失败 ${failed.length} 台。`);
+          } else {
+            void messageApi.success(`已向 ${successful.length} 台设备提交${label}请求。`);
+          }
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : '未知错误';
+          void messageApi.error(`${label}请求提交失败：${detail}`);
+          throw error;
+        }
+      },
+    });
   };
 
   const columns: TableColumnsType<Device> = [
@@ -409,6 +528,19 @@ export function DevicesPage() {
                     label: '执行指令',
                     disabled: unavailable || isOffline,
                   },
+                  {
+                    key: 'edit',
+                    icon: <EditOutlined />,
+                    label: '编辑',
+                    disabled: unavailable,
+                  },
+                  {
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    label: '删除',
+                    danger: true,
+                    disabled: unavailable,
+                  },
                   { type: 'divider' },
                   {
                     key: 'wake',
@@ -443,6 +575,10 @@ export function DevicesPage() {
                   } else if (key === 'info') {
                     setSelectedDevice(device);
                     setDrawerOpen(true);
+                  } else if (key === 'edit') {
+                    openDeviceEditor(device);
+                  } else if (key === 'delete') {
+                    confirmDeviceDeletion(device);
                   } else {
                     messageApi.info(`执行指令功能开发中`);
                   }
@@ -468,6 +604,29 @@ export function DevicesPage() {
             <p>查看业务网关同步的设备、分组与实时在线状态</p>
           </div>
           <Space>
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'move', label: '移动分组' },
+                  { type: 'divider' },
+                  { key: 'wake', label: '唤醒' },
+                  { key: 'reset', label: '重启' },
+                  { key: 'sleep', label: '休眠' },
+                  { key: 'poweroff', label: '关机', danger: true },
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'move') setBatchMoveOpen(true);
+                  else confirmBatchPowerAction(key as PowerAction);
+                },
+              }}
+            >
+              <Button
+                disabled={!client || status !== 'connected' || !selectedDevices.length}
+              >
+                批量操作{selectedDeviceIds.length ? `（${selectedDevices.length}）` : ''}
+              </Button>
+            </Dropdown>
             <Button
               icon={<CloudUploadOutlined />}
               disabled={
@@ -478,7 +637,12 @@ export function DevicesPage() {
             >
               批量上传文件{selectedDeviceIds.length ? `（${selectedDeviceIds.length}）` : ''}
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} disabled>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              disabled={!client || status !== 'connected' || !sortedGroups.length}
+              onClick={openInviteModal}
+            >
               添加设备
             </Button>
           </Space>
@@ -487,21 +651,22 @@ export function DevicesPage() {
           <div className="table-toolbar devices-toolbar">
             <Input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => updateFilters(setQuery, event.target.value)}
               prefix={<SearchOutlined />}
               placeholder="搜索设备名称、ID、IP、平台..."
               allowClear
             />
             <Select
               value={groupId}
-              onChange={setGroupId}
-              disabled={!sortedGroups.length}
-              placeholder="暂无分组"
-              options={sortedGroups.map((group) => ({ value: group.id, label: group.name }))}
+              onChange={(value) => updateFilters(setGroupId, value)}
+              options={[
+                { value: '', label: '全部分组' },
+                ...sortedGroups.map((group) => ({ value: group.id, label: group.name })),
+              ]}
             />
             <Select
               value={online}
-              onChange={setOnline}
+              onChange={(value) => updateFilters(setOnline, value)}
               options={[
                 { value: 'all', label: '全部状态' },
                 { value: 'online', label: '在线' },
@@ -510,7 +675,7 @@ export function DevicesPage() {
             />
             <Select
               value={platform}
-              onChange={setPlatform}
+              onChange={(value) => updateFilters(setPlatform, value)}
               options={[
                 { value: 'all', label: '全部平台' },
                 ...platforms.map((value) => ({ value, label: value })),
@@ -523,7 +688,7 @@ export function DevicesPage() {
             <Button
               icon={<ReloadOutlined />}
               disabled={status !== 'connected'}
-              onClick={() => client?.requestSnapshot()}
+              onClick={() => void refreshSnapshot()}
             >
               刷新
             </Button>
@@ -538,7 +703,18 @@ export function DevicesPage() {
             }}
             columns={columns}
             dataSource={filteredDevices}
-            pagination={false}
+            pagination={{
+              current: currentPage,
+              pageSize,
+              total: filteredDevices.length,
+              showSizeChanger: true,
+              pageSizeOptions: [20, 50, 100],
+              showTotal: (total) => `共 ${total} 台设备`,
+              onChange: (page, nextPageSize) => {
+                setCurrentPage(page);
+                if (nextPageSize !== pageSize) setPageSize(nextPageSize);
+              },
+            }}
             scroll={{ x: 1420 }}
             locale={{
               emptyText: (
@@ -556,6 +732,26 @@ export function DevicesPage() {
         device={selectedDevice}
         client={client}
         connected={status === 'connected'}
+      />
+      <DeviceEditModal
+        device={editingDevice}
+        groups={sortedGroups}
+        client={client}
+        onClose={() => setEditingDevice(null)}
+        onSaved={refreshSnapshot}
+      />
+      <DeviceInviteModal
+        isOpen={inviteOpen}
+        meshId={sortedGroups[0]?.id ?? ''}
+        meshName={sortedGroups[0]?.name ?? '默认分组'}
+        groups={sortedGroups}
+        serverInfo={{
+          name: new URL(MESH_AGENTS_URL).hostname,
+          port: Number(new URL(MESH_AGENTS_URL).port) || (new URL(MESH_AGENTS_URL).protocol === 'https:' ? 443 : 80),
+          https: new URL(MESH_AGENTS_URL).protocol === 'https:',
+          magenturl: MESH_AGENTS_URL,
+        }}
+        onClose={() => setInviteOpen(false)}
       />
       <RelayValidationModal
         open={Boolean(relayDevice)}
@@ -577,6 +773,15 @@ export function DevicesPage() {
         connected={status === 'connected'}
         manager={batchUploadManager}
         onClose={() => setBatchUploadOpen(false)}
+      />
+      <BatchDeviceOperationsModal
+        open={batchMoveOpen}
+        devices={selectedDevices}
+        groups={sortedGroups}
+        client={client}
+        connected={status === 'connected'}
+        onClose={() => setBatchMoveOpen(false)}
+        onCompleted={handleBatchOperationCompleted}
       />
     </>
   );

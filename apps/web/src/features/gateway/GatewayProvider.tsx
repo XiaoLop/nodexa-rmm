@@ -35,6 +35,7 @@ interface GatewayContextValue {
   login: (username: string, password: string, remember: boolean) => Promise<void>;
   logout: () => void;
   reconnect: () => Promise<void>;
+  refreshSnapshot: () => Promise<void>;
 }
 
 const GatewayContext = createContext<GatewayContextValue | null>(null);
@@ -146,6 +147,11 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     await connectClient(credentialsRef.current);
   }, [connectClient]);
 
+  const refreshSnapshot = useCallback(async () => {
+    if (!bindingRef.current) throw new Error('网关未连接，无法刷新数据。');
+    await bindingRef.current.sync();
+  }, []);
+
   useEffect(() => {
     const storedCredentials = readStoredCredentials();
     if (!storedCredentials) {
@@ -198,8 +204,9 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       login,
       logout,
       reconnect,
+      refreshSnapshot,
     }),
-    [store, client, gatewayUrl, credentials, initializing, login, logout, reconnect],
+    [store, client, gatewayUrl, credentials, initializing, login, logout, reconnect, refreshSnapshot],
   );
 
   return <GatewayContext.Provider value={value}>{children}</GatewayContext.Provider>;

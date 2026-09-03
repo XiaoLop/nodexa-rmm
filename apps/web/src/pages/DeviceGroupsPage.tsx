@@ -1,7 +1,28 @@
-import { ApartmentOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  ApartmentOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import type { DeviceGroup } from '@meshcentral/shared-state';
-import { Button, Empty, Input, Progress, Table, Tag, theme, type TableColumnsType } from 'antd';
+import {
+  Button,
+  Empty,
+  Form,
+  Input,
+  Modal,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  message,
+  theme,
+  type TableColumnsType,
+} from 'antd';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
 const naturalNameCollator = new Intl.Collator('zh-CN', {
@@ -39,8 +60,14 @@ function formatDateTime(value?: number) {
 
 export function DeviceGroupsPage() {
   const { token } = theme.useToken();
-  const { groups, devices, client, status } = useGatewayData();
+  const { groups, devices, client, status, refreshSnapshot } = useGatewayData();
+  const navigate = useNavigate();
+  const [messageApi, messageContextHolder] = message.useMessage();
+  const [modal, modalContextHolder] = Modal.useModal();
   const [query, setQuery] = useState('');
+  const [editingGroup, setEditingGroup] = useState<DeviceGroup | null | 'new'>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [form] = Form.useForm<{ name: string; description?: string }>();
 
   const deviceStatsByGroup = useMemo(() => {
     const stats = new Map<string, { total: number; online: number; offline: number }>();
@@ -68,6 +95,58 @@ export function DeviceGroupsPage() {
       })
       .sort(compareGroupName);
   }, [groups, query]);
+
+  const openGroupEditor = (group?: DeviceGroup) => {
+    form.setFieldsValue({ name: group?.name ?? '', description: group?.description ?? '' });
+    setEditingGroup(group ?? 'new');
+  };
+
+  const submitGroup = async () => {
+    if (!client || !editingGroup) return;
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+      if (editingGroup === 'new') {
+        await client.groups.create(values.name.trim(), { description: values.description?.trim() });
+      } else {
+        await client.groups.update(editingGroup.id, {
+          name: values.name.trim(),
+          description: values.description?.trim() ?? '',
+        });
+      }
+      await refreshSnapshot();
+      void messageApi.success(editingGroup === 'new' ? '已创建设备分组' : '已更新设备分组');
+      setEditingGroup(null);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '未知错误';
+      void messageApi.error(`保存分组失败：${detail}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const confirmGroupDeletion = (group: DeviceGroup) => {
+    if (!client) return;
+    const count = deviceStatsByGroup.get(group.id)?.total ?? 0;
+    modal.confirm({
+      title: '删除设备分组',
+      content: `确定要删除分组「${group.name}」吗？该分组当前包含 ${count} 台设备。设备迁移或删除策略将由服务端决定。`,
+      okText: '删除分组',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await client.groups.remove(group.id);
+          await refreshSnapshot();
+          void messageApi.success(`已删除分组「${group.name}」`);
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : '未知错误';
+          void messageApi.error(`删除分组失败：${detail}`);
+          throw error;
+        }
+      },
+    });
+  };
 
   const columns: TableColumnsType<DeviceGroup> = [
     {
@@ -159,15 +238,57 @@ export function DeviceGroupsPage() {
         return (raw?.creatorname as string) || '—';
       },
     },
+    {
+      title: '操作',
+      key: 'actions',
+      fixed: 'right',
+      width: 230,
+      render: (_, group) => (
+        <Space size="small">
+          <Button type="link" size="small" onClick={() => navigate(`/devices?groupId=${encodeURIComponent(group.id)}`)}>
+            查看设备
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            disabled={!client || status !== 'connected'}
+            onClick={() => openGroupEditor(group)}
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            disabled={!client || status !== 'connected'}
+            onClick={() => confirmGroupDeletion(group)}
+          >
+            删除
+          </Button>
+        </Space>
+      ),
+    },
   ];
 
   return (
     <div className="page-stack devices-page">
+      {messageContextHolder}
+      {modalContextHolder}
       <div className="page-heading">
         <div>
           <h1>设备分组</h1>
           <p>管理设备分组，查看各分组下的设备数量</p>
         </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          disabled={!client || status !== 'connected'}
+          onClick={() => openGroupEditor()}
+        >
+          新建分组
+        </Button>
       </div>
       <section className="console-card devices-table-card">
         <div className="table-toolbar devices-toolbar">
@@ -185,7 +306,7 @@ export function DeviceGroupsPage() {
           <Button
             icon={<ReloadOutlined />}
             disabled={status !== 'connected'}
-            onClick={() => client?.requestSnapshot()}
+            onClick={() => void refreshSnapshot()}
           >
             刷新
           </Button>
@@ -194,8 +315,13 @@ export function DeviceGroupsPage() {
           rowKey="id"
           columns={columns}
           dataSource={filteredGroups}
-          pagination={false}
-          scroll={{ x: 1260 }}
+          pagination={{
+            defaultPageSize: 20,
+            showSizeChanger: true,
+            pageSizeOptions: [20, 50, 100],
+            showTotal: (total) => `共 ${total} 个分组`,
+          }}
+          scroll={{ x: 1490 }}
           locale={{
             emptyText: (
               <Empty description={groups.length ? '没有符合筛选条件的分组' : '等待网关同步分组'} />
@@ -203,6 +329,25 @@ export function DeviceGroupsPage() {
           }}
         />
       </section>
+      <Modal
+        title={editingGroup === 'new' ? '新建设备分组' : '编辑设备分组'}
+        open={Boolean(editingGroup)}
+        onCancel={() => setEditingGroup(null)}
+        onOk={() => void submitGroup()}
+        okText={editingGroup === 'new' ? '创建分组' : '保存修改'}
+        cancelText="取消"
+        confirmLoading={submitting}
+        destroyOnHidden
+      >
+        <Form form={form} layout="vertical" preserve={false}>
+          <Form.Item name="name" label="分组名称" rules={[{ required: true, whitespace: true, message: '请输入分组名称' }]}>
+            <Input maxLength={128} />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea rows={3} maxLength={500} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

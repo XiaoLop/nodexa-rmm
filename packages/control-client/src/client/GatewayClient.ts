@@ -13,6 +13,7 @@ import {
   requiredConnectionSignals,
 } from '../protocol/codec';
 import { DevicesResource } from '../resources/devices';
+import { CommandsResource } from '../resources/commands';
 import { EventsResource } from '../resources/events';
 import { GroupsResource } from '../resources/groups';
 import type {
@@ -31,6 +32,7 @@ const DEFAULT_RECONNECT_DELAYS = [1_000, 2_000, 5_000, 10_000, 30_000, 60_000];
 
 export class GatewayClient {
   readonly devices: DevicesResource;
+  readonly commands: CommandsResource;
   readonly groups: GroupsResource;
   readonly events: EventsResource;
   private socket?: WebSocketLike;
@@ -60,6 +62,7 @@ export class GatewayClient {
       (diagnostic) => this.dispatcher.emit('diagnostic', diagnostic),
     );
     this.devices = new DevicesResource(this);
+    this.commands = new CommandsResource(this);
     this.groups = new GroupsResource(this);
     this.events = new EventsResource(this);
     if (options.onConnectionChange) this.on('connection', options.onConnectionChange);

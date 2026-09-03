@@ -123,6 +123,52 @@ export interface DeviceUpdate {
   tags?: string[];
 }
 
+export type BatchTaskStatus = 'queued' | 'running' | 'submitted' | 'succeeded' | 'failed' | 'skipped';
+export interface BatchDeviceTarget {
+  id: string;
+  name?: string;
+}
+export interface BatchDeviceResult {
+  deviceId: string;
+  deviceName: string;
+  status: BatchTaskStatus;
+  message?: string;
+  startedAt?: number;
+  finishedAt?: number;
+}
+export interface BatchOperationResult {
+  results: BatchDeviceResult[];
+  raw: unknown;
+}
+export interface AgentEmailInviteOptions {
+  groupId: string;
+  email: string;
+  name?: string;
+  message?: string;
+  os?: string;
+}
+export interface AgentLinkInviteOptions {
+  groupId: string;
+  expireHours?: number;
+  flags?: 0 | 1 | 2;
+}
+export interface AgentInviteResult {
+  raw: unknown;
+}
+export interface AgentInviteLinkResult {
+  url?: string;
+  raw: unknown;
+}
+export interface CommandRunOptions {
+  shell?: 'shell' | 'powershell';
+  runAsUser?: 0 | 1 | 2;
+  reply?: boolean;
+}
+export interface CommandSubmission {
+  requestId: string;
+  raw: unknown;
+}
+
 export interface DeviceDetails {
   device?: Device;
   networkInfo: unknown;
