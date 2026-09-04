@@ -23,7 +23,7 @@ import {
   DeleteOutlined,
   EditOutlined,
 } from '@ant-design/icons';
-import type { Device } from '@meshcentral/shared-state';
+import { gatewaySelectors, useGatewayStore, type Device } from '@meshcentral/shared-state';
 import {
   Button,
   Dropdown,
@@ -39,9 +39,17 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { useEffect, useMemo, useRef, useState, type Key } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Key,
+} from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useGateway } from '../features/gateway/GatewayProvider';
 import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
 import { DeviceEditModal } from '../components/DeviceEditModal';
 import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent 安装引导弹窗
@@ -101,6 +109,17 @@ function compareNames(a: string, b: string) {
   return categoryDifference || naturalNameCollator.compare(a, b);
 }
 
+const sortedDevicesCache = new WeakMap<Device[], Device[]>();
+
+function sortDevicesByName(devices: Device[]) {
+  const cached = sortedDevicesCache.get(devices);
+  if (cached) return cached;
+
+  const sorted = [...devices].sort(compareDeviceName);
+  sortedDevicesCache.set(devices, sorted);
+  return sorted;
+}
+
 function osIcon(platform?: string) {
   const value = platform?.toLowerCase() ?? '';
   if (value.includes('windows')) return <WindowsOutlined />;
@@ -120,23 +139,38 @@ function deviceTypeIcon(platform?: string) {
   return <DesktopOutlined />;
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
 function formatDateTime(value?: string) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
+  return dateTimeFormatter.format(date);
 }
+
+const meshAgentsUrl = new URL(MESH_AGENTS_URL);
+const deviceInviteServerInfo = {
+  name: meshAgentsUrl.hostname,
+  port: Number(meshAgentsUrl.port) || (meshAgentsUrl.protocol === 'https:' ? 443 : 80),
+  https: meshAgentsUrl.protocol === 'https:',
+  magenturl: MESH_AGENTS_URL,
+};
 
 export function DevicesPage() {
   const { token } = theme.useToken();
-  const { devices, groups, client, status, refreshSnapshot } = useGatewayData();
+  const gateway = useGateway();
+  const devices = useGatewayStore(gateway.store, gatewaySelectors.devices);
+  const groups = useGatewayStore(gateway.store, gatewaySelectors.groups);
+  const status = useGatewayStore(gateway.store, gatewaySelectors.status);
+  const deferredDevices = useDeferredValue(devices, []);
+  const { client, refreshSnapshot } = gateway;
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -175,6 +209,10 @@ export function DevicesPage() {
     () => [...groups].sort((a, b) => compareNames(a.name, b.name)),
     [groups],
   );
+  const groupNameById = useMemo(
+    () => new Map(groups.map((group) => [group.id, group.name])),
+    [groups],
+  );
 
   useEffect(() => {
     const next = new URLSearchParams();
@@ -192,47 +230,54 @@ export function DevicesPage() {
     setCurrentPage(1);
   };
 
-  const runPowerAction = (device: Device, action: PowerAction) => {
-    if (!client || status !== 'connected') {
-      void messageApi.error('网关未连接，无法发送设备指令');
-      return;
-    }
+  const runPowerAction = useCallback(
+    (device: Device, action: PowerAction) => {
+      if (!client || status !== 'connected') {
+        void messageApi.error('网关未连接，无法发送设备指令');
+        return;
+      }
 
-    const label = powerActionLabels[action];
-    modal.confirm({
-      title: `${label}设备`,
-      content: `确定要对「${device.name}」执行${label}操作吗？`,
-      okText: `确认${label}`,
-      cancelText: '取消',
-      okButtonProps: action === 'poweroff' ? { danger: true } : undefined,
-      onOk: () => {
-        try {
-          client.sendPowerAction(device.id, action);
-          void messageApi.success(`已向「${device.name}」发送${label}指令`);
-        } catch (error) {
-          const detail = error instanceof Error ? error.message : '未知错误';
-          void messageApi.error(`${label}指令发送失败：${detail}`);
-        }
-      },
-    });
-  };
+      const label = powerActionLabels[action];
+      modal.confirm({
+        title: `${label}设备`,
+        content: `确定要对「${device.name}」执行${label}操作吗？`,
+        okText: `确认${label}`,
+        cancelText: '取消',
+        okButtonProps: action === 'poweroff' ? { danger: true } : undefined,
+        onOk: () => {
+          try {
+            client.sendPowerAction(device.id, action);
+            void messageApi.success(`已向「${device.name}」发送${label}指令`);
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : '未知错误';
+            void messageApi.error(`${label}指令发送失败：${detail}`);
+          }
+        },
+      });
+    },
+    [client, messageApi, modal, status],
+  );
 
   const platforms = useMemo(
     () =>
       [
         ...new Set(
-          devices
+          deferredDevices
             .map((device) => device.platform)
             .filter((value): value is string => Boolean(value)),
         ),
       ].sort(),
-    [devices],
+    [deferredDevices],
   );
 
   const filteredDevices = useMemo(() => {
+    const sortedDevices = sortDevicesByName(deferredDevices);
     const normalized = query.trim().toLowerCase();
-    return devices
-      .filter((device) => {
+    if (!normalized && !groupId && online === 'all' && platform === 'all') {
+      return sortedDevices;
+    }
+
+    return sortedDevices.filter((device) => {
         const matchesQuery =
           !normalized ||
           [
@@ -247,43 +292,48 @@ export function DevicesPage() {
         const matchesOnline = online === 'all' || device.online === (online === 'online');
         const matchesPlatform = platform === 'all' || device.platform === platform;
         return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
-      })
-      .sort(compareDeviceName);
-  }, [devices, groupId, online, platform, query]);
+      });
+  }, [deferredDevices, groupId, online, platform, query]);
 
-  const openDeviceEditor = (device: Device) => {
+  const openDeviceEditor = useCallback((device: Device) => {
     setEditingDevice(device);
-  };
+  }, []);
 
-  const confirmDeviceDeletion = (device: Device) => {
-    if (!client) return;
-    modal.confirm({
-      title: '删除设备',
-      content: (
-        <div>
-          <p>确定要删除设备「{device.name}」吗？此操作不可撤销。</p>
-          <p>设备 ID：{device.id}</p>
-          <p>分组：{groups.find((group) => group.id === device.groupId)?.name ?? '未分组'}；状态：{device.online ? '在线' : '离线'}</p>
-        </div>
-      ),
-      okText: '删除设备',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await client.devices.remove(device.id);
-          setSelectedDeviceIds((ids) => ids.filter((id) => String(id) !== device.id));
-          if (selectedDevice?.id === device.id) setDrawerOpen(false);
-          await refreshSnapshot();
-          void messageApi.success(`已删除「${device.name}」`);
-        } catch (error) {
-          const detail = error instanceof Error ? error.message : '未知错误';
-          void messageApi.error(`删除设备失败：${detail}`);
-          throw error;
-        }
-      },
-    });
-  };
+  const confirmDeviceDeletion = useCallback(
+    (device: Device) => {
+      if (!client) return;
+      modal.confirm({
+        title: '删除设备',
+        content: (
+          <div>
+            <p>确定要删除设备「{device.name}」吗？此操作不可撤销。</p>
+            <p>设备 ID：{device.id}</p>
+            <p>
+              分组：{groupNameById.get(device.groupId ?? '') ?? '未分组'}；状态：
+              {device.online ? '在线' : '离线'}
+            </p>
+          </div>
+        ),
+        okText: '删除设备',
+        cancelText: '取消',
+        okButtonProps: { danger: true },
+        onOk: async () => {
+          try {
+            await client.devices.remove(device.id);
+            setSelectedDeviceIds((ids) => ids.filter((id) => String(id) !== device.id));
+            if (selectedDevice?.id === device.id) setDrawerOpen(false);
+            await refreshSnapshot();
+            void messageApi.success(`已删除「${device.name}」`);
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : '未知错误';
+            void messageApi.error(`删除设备失败：${detail}`);
+            throw error;
+          }
+        },
+      });
+    },
+    [client, groupNameById, messageApi, modal, refreshSnapshot, selectedDevice?.id],
+  );
 
   const openInviteModal = () => {
     setInviteOpen(true);
@@ -365,7 +415,7 @@ export function DevicesPage() {
     });
   };
 
-  const columns: TableColumnsType<Device> = [
+  const columns = useMemo<TableColumnsType<Device>>(() => [
     {
       title: '设备类型',
       key: 'type',
@@ -403,10 +453,8 @@ export function DevicesPage() {
       title: '分组名称',
       key: 'groupName',
       width: 130,
-      render: (_, device) => {
-        const group = groups.find((g) => g.id === device.groupId);
-        return group?.name || device.groupName || '未分组';
-      },
+      render: (_, device) =>
+        groupNameById.get(device.groupId ?? '') || device.groupName || '未分组',
     },
     {
       title: 'IP',
@@ -591,7 +639,43 @@ export function DevicesPage() {
         );
       },
     },
-  ];
+  ], [
+    client,
+    confirmDeviceDeletion,
+    groupNameById,
+    messageApi,
+    openDeviceEditor,
+    runPowerAction,
+    status,
+    token.colorPrimary,
+    token.colorTextSecondary,
+  ]);
+
+  const rowSelection = useMemo(
+    () => ({
+      type: 'checkbox' as const,
+      selectedRowKeys: selectedDeviceIds,
+      preserveSelectedRowKeys: true,
+      onChange: setSelectedDeviceIds,
+    }),
+    [selectedDeviceIds],
+  );
+
+  const pagination = useMemo(
+    () => ({
+      current: currentPage,
+      pageSize,
+      total: filteredDevices.length,
+      showSizeChanger: true,
+      pageSizeOptions: [20, 50, 100],
+      showTotal: (total: number) => `共 ${total} 台设备`,
+      onChange: (page: number, nextPageSize: number) => {
+        setCurrentPage(page);
+        if (nextPageSize !== pageSize) setPageSize(nextPageSize);
+      },
+    }),
+    [currentPage, filteredDevices.length, pageSize],
+  );
 
   return (
     <>
@@ -695,26 +779,11 @@ export function DevicesPage() {
           </div>
           <Table
             rowKey="id"
-            rowSelection={{
-              type: 'checkbox',
-              selectedRowKeys: selectedDeviceIds,
-              preserveSelectedRowKeys: true,
-              onChange: setSelectedDeviceIds,
-            }}
+            loading={deferredDevices !== devices}
+            rowSelection={rowSelection}
             columns={columns}
             dataSource={filteredDevices}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: filteredDevices.length,
-              showSizeChanger: true,
-              pageSizeOptions: [20, 50, 100],
-              showTotal: (total) => `共 ${total} 台设备`,
-              onChange: (page, nextPageSize) => {
-                setCurrentPage(page);
-                if (nextPageSize !== pageSize) setPageSize(nextPageSize);
-              },
-            }}
+            pagination={pagination}
             scroll={{ x: 1420 }}
             locale={{
               emptyText: (
@@ -726,63 +795,72 @@ export function DevicesPage() {
           />
         </section>
       </div>
-      <DeviceDetailsDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        device={selectedDevice}
-        client={client}
-        connected={status === 'connected'}
-      />
-      <DeviceEditModal
-        device={editingDevice}
-        groups={sortedGroups}
-        client={client}
-        onClose={() => setEditingDevice(null)}
-        onSaved={refreshSnapshot}
-      />
-      <DeviceInviteModal
-        isOpen={inviteOpen}
-        meshId={sortedGroups[0]?.id ?? ''}
-        meshName={sortedGroups[0]?.name ?? '默认分组'}
-        groups={sortedGroups}
-        serverInfo={{
-          name: new URL(MESH_AGENTS_URL).hostname,
-          port: Number(new URL(MESH_AGENTS_URL).port) || (new URL(MESH_AGENTS_URL).protocol === 'https:' ? 443 : 80),
-          https: new URL(MESH_AGENTS_URL).protocol === 'https:',
-          magenturl: MESH_AGENTS_URL,
-        }}
-        onClose={() => setInviteOpen(false)}
-      />
-      <RelayValidationModal
-        open={Boolean(relayDevice)}
-        onClose={() => setRelayDevice(null)}
-        device={relayDevice}
-        gatewayClient={client}
-      />
-      <FileUploadModal
-        open={Boolean(uploadDevice)}
-        onClose={() => setUploadDevice(null)}
-        device={uploadDevice}
-        gatewayClient={client}
-      />
-      <BatchFileUploadModal
-        open={batchUploadOpen}
-        devices={batchDevices}
-        gatewayClient={client}
-        baseUrl={GATEWAY_RELAY_URL}
-        connected={status === 'connected'}
-        manager={batchUploadManager}
-        onClose={() => setBatchUploadOpen(false)}
-      />
-      <BatchDeviceOperationsModal
-        open={batchMoveOpen}
-        devices={selectedDevices}
-        groups={sortedGroups}
-        client={client}
-        connected={status === 'connected'}
-        onClose={() => setBatchMoveOpen(false)}
-        onCompleted={handleBatchOperationCompleted}
-      />
+      {drawerOpen && selectedDevice && (
+        <DeviceDetailsDrawer
+          open
+          onClose={() => setDrawerOpen(false)}
+          device={selectedDevice}
+          client={client}
+          connected={status === 'connected'}
+        />
+      )}
+      {editingDevice && (
+        <DeviceEditModal
+          device={editingDevice}
+          groups={sortedGroups}
+          client={client}
+          onClose={() => setEditingDevice(null)}
+          onSaved={refreshSnapshot}
+        />
+      )}
+      {inviteOpen && (
+        <DeviceInviteModal
+          isOpen
+          meshId={sortedGroups[0]?.id ?? ''}
+          meshName={sortedGroups[0]?.name ?? '默认分组'}
+          groups={sortedGroups}
+          serverInfo={deviceInviteServerInfo}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
+      {relayDevice && (
+        <RelayValidationModal
+          open
+          onClose={() => setRelayDevice(null)}
+          device={relayDevice}
+          gatewayClient={client}
+        />
+      )}
+      {uploadDevice && (
+        <FileUploadModal
+          open
+          onClose={() => setUploadDevice(null)}
+          device={uploadDevice}
+          gatewayClient={client}
+        />
+      )}
+      {batchUploadOpen && (
+        <BatchFileUploadModal
+          open
+          devices={batchDevices}
+          gatewayClient={client}
+          baseUrl={GATEWAY_RELAY_URL}
+          connected={status === 'connected'}
+          manager={batchUploadManager}
+          onClose={() => setBatchUploadOpen(false)}
+        />
+      )}
+      {batchMoveOpen && (
+        <BatchDeviceOperationsModal
+          open
+          devices={selectedDevices}
+          groups={sortedGroups}
+          client={client}
+          connected={status === 'connected'}
+          onClose={() => setBatchMoveOpen(false)}
+          onCompleted={handleBatchOperationCompleted}
+        />
+      )}
     </>
   );
 }

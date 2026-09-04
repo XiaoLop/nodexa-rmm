@@ -16,9 +16,13 @@ import {
 import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { getUserDisplayName } from '@meshcentral/shared-state';
+import {
+  gatewaySelectors,
+  getUserDisplayName,
+  useGatewayStore,
+} from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/ConsoleUi';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useGateway } from '../features/gateway/GatewayProvider';
 
 const { Header, Sider, Content } = Layout;
 
@@ -68,7 +72,10 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { status, userInfo, username, logout } = useGatewayData();
+  const gateway = useGateway();
+  const status = useGatewayStore(gateway.store, gatewaySelectors.status);
+  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
+  const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
   const connected = status === 'connected';
   const selectedKey = useMemo(
