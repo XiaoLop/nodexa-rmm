@@ -8,11 +8,11 @@
 .devices-toolbar > .ant-select {
   width: 140px;
 }
-.file-upload-modal {
+.file-explorer-modal {
   display: grid;
   gap: 14px;
 }
-.file-upload-location {
+.file-explorer-location {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22,35 +22,35 @@
   border-radius: 6px;
   background: #0e1825;
 }
-.file-upload-location > div {
+.file-explorer-location > div {
   min-width: 0;
   display: grid;
   gap: 4px;
 }
-.file-upload-toolbar {
+.file-explorer-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-.file-directory-table {
+.file-explorer-table {
   overflow: hidden;
   border: 1px solid #25364d;
   border-radius: 6px;
 }
-.file-directory-row {
+.file-explorer-directory-row {
   cursor: pointer;
 }
-.file-directory-row:hover > td {
+.file-explorer-directory-row:hover > td {
   background: rgba(22, 119, 255, 0.12) !important;
 }
-.file-directory-row .anticon {
+.file-explorer-directory-row .anticon {
   color: #69a9ff;
 }
-.file-entry-row .anticon {
+.file-explorer-entry-row .anticon {
   color: var(--muted);
 }
-.file-upload-selection {
+.file-explorer-upload {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -60,7 +60,7 @@
   border-radius: 6px;
   background: #0b1521;
 }
-.file-upload-selection > div {
+.file-explorer-upload > div {
   min-width: 0;
   display: flex;
   flex-direction: column;

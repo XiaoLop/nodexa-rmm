@@ -183,7 +183,7 @@ export function DevicesPage() {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [relayDevice, setRelayDevice] = useState<Device | null>(null);
-  const [uploadDevice, setUploadDevice] = useState<Device | null>(null);
+  const [fileExplorerDevice, setFileExplorerDevice] = useState<Device | null>(null);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Key[]>([]);
   const [batchUploadOpen, setBatchUploadOpen] = useState(false);
   const [batchMoveOpen, setBatchMoveOpen] = useState(false);
@@ -545,12 +545,13 @@ export function DevicesPage() {
                 onClick={() => messageApi.info('远程终端功能开发中')}
               />
             </Tooltip> */}
-            <Tooltip title="上传文件">
+            <Tooltip title="文件管理">
               <Button
                 type="text"
                 icon={<FolderOpenOutlined />}
                 disabled={unavailable || isOffline}
-                onClick={() => setUploadDevice(device)}
+                aria-label={`管理 ${device.name} 的文件`}
+                onClick={() => setFileExplorerDevice(device)}
               />
             </Tooltip>
             <Tooltip title="测试中继连接">
@@ -830,11 +831,11 @@ export function DevicesPage() {
           gatewayClient={client}
         />
       )}
-      {uploadDevice && (
+      {fileExplorerDevice && (
         <FileUploadModal
           open
-          onClose={() => setUploadDevice(null)}
-          device={uploadDevice}
+          onClose={() => setFileExplorerDevice(null)}
+          device={fileExplorerDevice}
           gatewayClient={client}
         />
       )}

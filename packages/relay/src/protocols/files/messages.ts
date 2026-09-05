@@ -36,6 +36,25 @@ export function createUploadCancelMessage(requestId: string): Record<string, unk
   return { action: 'uploadcancel', reqid: requestId };
 }
 
+export function createDownloadStartMessage(
+  path: string,
+  requestId: string,
+): Record<string, unknown> {
+  return { action: 'download', sub: 'start', id: requestId, path };
+}
+
+export function createDownloadStartAckMessage(requestId: string): Record<string, unknown> {
+  return { action: 'download', sub: 'startack', id: requestId, ack: 1 };
+}
+
+export function createDownloadAckMessage(requestId: string): Record<string, unknown> {
+  return { action: 'download', sub: 'ack', id: requestId };
+}
+
+export function createDownloadStopMessage(requestId: string): Record<string, unknown> {
+  return { action: 'download', sub: 'stop', id: requestId };
+}
+
 export function parseFilesProtocolText(text: string): FilesProtocolMessage {
   let value: unknown;
   try {

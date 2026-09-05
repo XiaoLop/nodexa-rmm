@@ -5,6 +5,7 @@ export type FileOperationState =
   | 'requesting'
   | 'waiting-start'
   | 'reading'
+  | 'receiving'
   | 'sending'
   | 'waiting-ack'
   | 'completed'
@@ -92,6 +93,31 @@ export interface FileUploadResult {
   requestId: string;
   path: string;
   name: string;
+  size: number;
+}
+
+export interface DownloadSink {
+  write(chunk: Uint8Array): void | Promise<void>;
+  close(): void | Promise<void>;
+  abort(reason?: unknown): void | Promise<void>;
+}
+
+export interface FileDownloadProgress {
+  requestId: string;
+  state: FileOperationState;
+  receivedBytes: number;
+  totalBytes?: number;
+  percentage?: number;
+}
+
+export interface DownloadFileOptions extends FileOperationOptions {
+  totalBytes?: number;
+  onProgress?: (progress: FileDownloadProgress) => void;
+}
+
+export interface FileDownloadResult {
+  requestId: string;
+  path: string;
   size: number;
 }
 

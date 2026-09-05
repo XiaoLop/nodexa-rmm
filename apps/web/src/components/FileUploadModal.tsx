@@ -1,5 +1,6 @@
 import {
   ArrowUpOutlined,
+  DownloadOutlined,
   FileOutlined,
   FolderOpenOutlined,
   FolderOutlined,
@@ -11,11 +12,13 @@ import {
 } from '@ant-design/icons';
 import {
   FilesSession,
+  FileOperationError,
   RELAY_PROTOCOLS,
   RelayClient,
   browserFileSource,
   type DirectoryListing,
   type FileEntry,
+  type FileDownloadProgress,
   type FileUploadProgress,
   type RelaySession,
 } from '@meshcentral/relay';
@@ -40,6 +43,7 @@ import {
   calculateBatchUploadChunkSize,
 } from '../features/batch-upload/bandwidth';
 import { GATEWAY_RELAY_URL } from '../config/gateway';
+import { createBrowserDownload } from '../features/files/createBrowserDownload';
 
 interface FileUploadModalProps {
   open: boolean;
@@ -49,6 +53,14 @@ interface FileUploadModalProps {
 }
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error';
+
+interface ActiveTransfer {
+  kind: 'upload' | 'download';
+  name: string;
+  transferredBytes: number;
+  totalBytes?: number;
+  percentage?: number;
+}
 
 function parentPath(path: string): string | undefined {
   if (!path) return undefined;
@@ -88,8 +100,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
   const [listing, setListing] = useState<DirectoryListing>();
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File>();
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<FileUploadProgress>();
+  const [activeTransfer, setActiveTransfer] = useState<ActiveTransfer>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const relaySessionRef = useRef<RelaySession | undefined>(undefined);
   const filesSessionRef = useRef<FilesSession | undefined>(undefined);
@@ -132,8 +143,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
     setListing(undefined);
     setDirectoryLoading(true);
     setSelectedFile(undefined);
-    setUploadProgress(undefined);
-    setUploading(false);
+    setActiveTransfer(undefined);
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     const connect = async () => {
@@ -179,7 +189,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
 
   const loadDirectory = async (path: string) => {
     const filesSession = filesSessionRef.current;
-    if (!filesSession || directoryLoading || uploading) return;
+    if (!filesSession || directoryLoading || activeTransfer) return;
     setDirectoryLoading(true);
     setError(undefined);
     try {
@@ -196,16 +206,28 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
 
   const uploadFile = async () => {
     const filesSession = filesSessionRef.current;
-    if (!filesSession || !selectedFile || !listing || uploading) return;
+    if (!filesSession || !selectedFile || !listing || activeTransfer) return;
     const lifecycle = lifecycleRef.current;
-    setUploading(true);
     setError(undefined);
-    setUploadProgress(undefined);
+    setActiveTransfer({
+      kind: 'upload',
+      name: selectedFile.name,
+      transferredBytes: 0,
+      totalBytes: selectedFile.size,
+      percentage: 0,
+    });
     try {
       await filesSession.uploadFile(listing.path, browserFileSource(selectedFile), {
         timeoutMs: 60_000,
         chunkSize: calculateBatchUploadChunkSize(batchUploadBandwidthConfig, 1),
-        onProgress: setUploadProgress,
+        onProgress: (progress: FileUploadProgress) =>
+          setActiveTransfer({
+            kind: 'upload',
+            name: selectedFile.name,
+            transferredBytes: progress.acknowledgedBytes,
+            totalBytes: progress.totalBytes,
+            percentage: progress.percentage,
+          }),
       });
       if (lifecycleRef.current !== lifecycle) return;
       void messageApi.success(`${selectedFile.name} 已上传到 ${listing.path || '根目录'}`);
@@ -217,12 +239,83 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
       }
     } catch (uploadError) {
       if (lifecycleRef.current !== lifecycle) return;
+      if (uploadError instanceof FileOperationError && uploadError.code === 'cancelled') {
+        void messageApi.info('已取消上传。');
+        return;
+      }
       const detail = uploadError instanceof Error ? uploadError.message : '文件上传失败。';
       setError(detail);
       void messageApi.error(`文件上传失败：${detail}`);
     } finally {
-      if (lifecycleRef.current === lifecycle) setUploading(false);
+      if (lifecycleRef.current === lifecycle) setActiveTransfer(undefined);
     }
+  };
+
+  const downloadFile = async (entry: FileEntry) => {
+    const filesSession = filesSessionRef.current;
+    if (!filesSession || entry.kind !== 'file' || activeTransfer) return;
+    try {
+      const target = await createBrowserDownload(entry.name);
+      if (!target) return;
+      const lifecycle = lifecycleRef.current;
+      setError(undefined);
+      setActiveTransfer({
+        kind: 'download',
+        name: entry.name,
+        transferredBytes: 0,
+        totalBytes: entry.size,
+        percentage: entry.size === undefined ? undefined : 0,
+      });
+      try {
+        const result = await filesSession.downloadFile(entry.path, target.sink, {
+          timeoutMs: 60_000,
+          totalBytes: entry.size,
+          onProgress: (progress: FileDownloadProgress) =>
+            setActiveTransfer({
+              kind: 'download',
+              name: entry.name,
+              transferredBytes: progress.receivedBytes,
+              totalBytes: progress.totalBytes,
+              percentage: progress.percentage,
+            }),
+        });
+        if (lifecycleRef.current !== lifecycle) return;
+        void messageApi.success(`${entry.name} 下载完成，共 ${formatBytes(result.size)}`);
+      } catch (downloadError) {
+        if (lifecycleRef.current !== lifecycle) return;
+        if (downloadError instanceof FileOperationError && downloadError.code === 'cancelled') {
+          void messageApi.info('已取消下载。');
+          return;
+        }
+        const detail = downloadError instanceof Error ? downloadError.message : '文件下载失败。';
+        setError(detail);
+        void messageApi.error(`文件下载失败：${detail}`);
+      } finally {
+        if (lifecycleRef.current === lifecycle) setActiveTransfer(undefined);
+      }
+    } catch (targetError) {
+      const detail = targetError instanceof Error ? targetError.message : '无法创建本地保存文件。';
+      setError(detail);
+      void messageApi.error(`无法开始下载：${detail}`);
+    }
+  };
+
+  const closeModal = () => {
+    if (!activeTransfer) {
+      onClose();
+      return;
+    }
+    Modal.confirm({
+      title: activeTransfer.kind === 'upload' ? '上传仍在进行' : '下载仍在进行',
+      content: '关闭文件管理器将取消当前传输。',
+      okText: '取消传输并关闭',
+      okButtonProps: { danger: true },
+      cancelText: '继续传输',
+      onOk: () => {
+        filesSessionRef.current?.cancelActive('用户关闭文件管理器。');
+        onClose();
+      },
+    });
   };
 
   const currentParent = parentPath(listing?.path ?? '');
@@ -259,6 +352,26 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
       width: 180,
       render: (modifiedAt: Date | undefined) => modifiedAt?.toLocaleString('zh-CN') ?? '—',
     },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 72,
+      align: 'center',
+      render: (_, entry) =>
+        entry.kind === 'file' ? (
+          <Button
+            type="text"
+            title={`下载 ${entry.name}`}
+            aria-label={`下载 ${entry.name}`}
+            icon={<DownloadOutlined />}
+            disabled={status !== 'ready' || directoryLoading || Boolean(activeTransfer)}
+            onClick={(event) => {
+              event.stopPropagation();
+              void downloadFile(entry);
+            }}
+          />
+        ) : null,
+    },
   ];
 
   return (
@@ -268,24 +381,24 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
         open={open}
         title={
           <Space>
-            <UploadOutlined />
-            上传文件到 {device?.name ?? '设备'}
+            <FolderOpenOutlined />
+            文件管理 - {device?.name ?? '设备'}
           </Space>
         }
         width={820}
-        onCancel={onClose}
+        onCancel={closeModal}
         destroyOnHidden
         footer={[
-          <Button key="cancel" onClick={onClose}>
+          <Button key="cancel" onClick={closeModal}>
             关闭
           </Button>,
-          uploading ? (
+          activeTransfer ? (
             <Button
               key="stop"
               danger
-              onClick={() => filesSessionRef.current?.cancelActive('用户取消上传。')}
+              onClick={() => filesSessionRef.current?.cancelActive('用户取消文件传输。')}
             >
-              取消上传
+              取消{activeTransfer.kind === 'upload' ? '上传' : '下载'}
             </Button>
           ) : (
             <Button
@@ -300,7 +413,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
           ),
         ]}
       >
-        <div className="file-upload-modal">
+        <div className="file-explorer-modal">
           {error && (
             <Alert
               type="error"
@@ -310,7 +423,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
               onClose={() => setError(undefined)}
             />
           )}
-          <div className="file-upload-location">
+          <div className="file-explorer-location">
             <div>
               <Typography.Text type="secondary">上传目录</Typography.Text>
               <Typography.Text strong ellipsis={{ tooltip: listing?.path || '根目录' }}>
@@ -323,11 +436,11 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
               {status === 'ready' ? '已连接' : status === 'error' ? '连接失败' : '正在连接'}
             </Tag>
           </div>
-          <div className="file-upload-toolbar">
+          <div className="file-explorer-toolbar">
             <Space wrap>
               <Button
                 icon={<HomeOutlined />}
-                disabled={status !== 'ready' || directoryLoading || uploading || !listing?.path}
+                disabled={status !== 'ready' || directoryLoading || Boolean(activeTransfer) || !listing?.path}
                 onClick={() => void loadDirectory('')}
               >
                 根目录
@@ -335,7 +448,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
               <Button
                 icon={<ArrowUpOutlined />}
                 disabled={
-                  status !== 'ready' || directoryLoading || uploading || currentParent === undefined
+                  status !== 'ready' || directoryLoading || Boolean(activeTransfer) || currentParent === undefined
                 }
                 onClick={() => currentParent !== undefined && void loadDirectory(currentParent)}
               >
@@ -343,7 +456,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
               </Button>
               <Button
                 icon={<ReloadOutlined />}
-                disabled={status !== 'ready' || directoryLoading || uploading || !listing}
+                disabled={status !== 'ready' || directoryLoading || Boolean(activeTransfer) || !listing}
                 onClick={() => listing && void loadDirectory(listing.path)}
               >
                 刷新
@@ -352,7 +465,7 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
             <Typography.Text type="secondary">点击文件夹进入并选择上传位置</Typography.Text>
           </div>
           <Table<FileEntry>
-            className="file-directory-table"
+            className="file-explorer-table"
             size="small"
             rowKey="path"
             columns={columns}
@@ -371,24 +484,23 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
             onRow={(entry) => {
               const directory = entry.kind === 'directory' || entry.kind === 'drive';
               return {
-                className: directory ? 'file-directory-row' : 'file-entry-row',
+                className: directory ? 'file-explorer-directory-row' : 'file-explorer-entry-row',
                 onClick: directory ? () => void loadDirectory(entry.path) : undefined,
               };
             }}
           />
-          <div className="file-upload-selection">
+          <div className="file-explorer-upload">
             <input
               ref={fileInputRef}
               hidden
               type="file"
               onChange={(event) => {
                 setSelectedFile(event.target.files?.[0]);
-                setUploadProgress(undefined);
               }}
             />
             <Button
               icon={<FolderOpenOutlined />}
-              disabled={status !== 'ready' || uploading}
+              disabled={status !== 'ready' || Boolean(activeTransfer)}
               onClick={() => fileInputRef.current?.click()}
             >
               选择本地文件
@@ -410,12 +522,14 @@ export function FileUploadModal({ open, device, gatewayClient, onClose }: FileUp
               )}
             </div>
           </div>
-          {uploadProgress && (
+          {activeTransfer && (
             <Progress
-              percent={Number(uploadProgress.percentage.toFixed(1))}
-              status={uploadProgress.state === 'failed' ? 'exception' : undefined}
+              percent={Number((activeTransfer.percentage ?? 0).toFixed(1))}
+              status="active"
               format={(percent) =>
-                `${percent}% · ${formatBytes(uploadProgress.acknowledgedBytes)} / ${formatBytes(uploadProgress.totalBytes)}`
+                activeTransfer.totalBytes === undefined
+                  ? `${activeTransfer.kind === 'upload' ? '上传' : '下载'} ${formatBytes(activeTransfer.transferredBytes)}`
+                  : `${percent}% · ${formatBytes(activeTransfer.transferredBytes)} / ${formatBytes(activeTransfer.totalBytes)}`
               }
             />
           )}

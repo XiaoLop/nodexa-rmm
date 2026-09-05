@@ -4,7 +4,14 @@ import { RelaySession } from '../../RelaySession';
 import { FakeRelayWebSocket } from '../../testing';
 import { FilesSession } from './FilesSession';
 import { normalizeFilePath } from './path';
-import { FileOperationError, type UploadSource } from './types';
+import { FileOperationError, type DownloadSink, type UploadSource } from './types';
+
+function downloadFrame(data: number[], done = false): Uint8Array {
+  const frame = new Uint8Array(data.length + 4);
+  new DataView(frame.buffer).setUint32(0, done ? 0x01000001 : 0x01000000, false);
+  frame.set(data, 4);
+  return frame;
+}
 
 async function createFilesSession(options: ConstructorParameters<typeof FilesSession>[1] = {}) {
   const socket = new FakeRelayWebSocket();
@@ -214,6 +221,68 @@ describe('FilesSession', () => {
 
     await expect(upload).rejects.toMatchObject({ code: 'cancelled' });
     expect(socket.sent[1]).toBe('{"action":"uploadcancel","reqid":"up-cancel"}');
+  });
+
+  it('downloads frames with backpressure until the final block', async () => {
+    const chunks: number[][] = [];
+    const progress: number[] = [];
+    const sink: DownloadSink = {
+      write: vi.fn(async (chunk: Uint8Array) => {
+        chunks.push(Array.from(chunk));
+      }),
+      close: vi.fn(),
+      abort: vi.fn(),
+    };
+    const { socket, files } = await createFilesSession({ createRequestId: () => 'down-1' });
+
+    const download = files.downloadFile('/tmp/demo.bin', sink, {
+      totalBytes: 5,
+      onProgress: (value) => progress.push(value.percentage ?? -1),
+    });
+    expect(socket.sent[0]).toBe(
+      '{"action":"download","sub":"start","id":"down-1","path":"/tmp/demo.bin"}',
+    );
+    socket.message(JSON.stringify({ action: 'download', sub: 'start', id: 'down-1' }));
+    await vi.waitFor(() => expect(socket.sent).toHaveLength(2));
+    expect(socket.sent[1]).toBe(
+      '{"action":"download","sub":"startack","id":"down-1","ack":1}',
+    );
+
+    socket.message(downloadFrame([1, 2, 3]));
+    await vi.waitFor(() => expect(socket.sent).toHaveLength(3));
+    expect(socket.sent[2]).toBe('{"action":"download","sub":"ack","id":"down-1"}');
+    socket.message(downloadFrame([4, 5], true));
+
+    await expect(download).resolves.toEqual({
+      requestId: 'down-1',
+      path: '/tmp/demo.bin',
+      size: 5,
+    });
+    expect(chunks).toEqual([
+      [1, 2, 3],
+      [4, 5],
+    ]);
+    expect(sink.close).toHaveBeenCalledOnce();
+    expect(sink.abort).not.toHaveBeenCalled();
+    expect(progress.at(-1)).toBe(100);
+  });
+
+  it('cancels a download, aborts the sink, and notifies the remote agent', async () => {
+    const sink: DownloadSink = {
+      write: vi.fn(),
+      close: vi.fn(),
+      abort: vi.fn(),
+    };
+    const { socket, files } = await createFilesSession({ createRequestId: () => 'down-cancel' });
+    const download = files.downloadFile('C:\\Temp\\demo.bin', sink);
+
+    files.cancelActive('Stopped by user.');
+
+    await expect(download).rejects.toMatchObject({ code: 'cancelled' });
+    expect(socket.sent[1]).toBe(
+      '{"action":"download","sub":"stop","id":"down-cancel"}',
+    );
+    expect(sink.abort).toHaveBeenCalledOnce();
   });
 
   it('does not start an operation with an already aborted signal', async () => {

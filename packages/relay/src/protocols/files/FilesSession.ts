@@ -1,6 +1,10 @@
 import type { RelayInboundData } from '../../types';
 import type { RelaySession } from '../../RelaySession';
 import {
+  createDownloadAckMessage,
+  createDownloadStartAckMessage,
+  createDownloadStartMessage,
+  createDownloadStopMessage,
   createListDirectoryMessage,
   createUploadCancelMessage,
   createUploadDoneMessage,
@@ -15,7 +19,11 @@ import {
 import { normalizeFilePath } from './path';
 import {
   FileOperationError,
+  type DownloadFileOptions,
+  type DownloadSink,
   type DirectoryListing,
+  type FileDownloadProgress,
+  type FileDownloadResult,
   type FileOperationState,
   type FileUploadProgress,
   type FileUploadResult,
@@ -28,7 +36,7 @@ import {
 
 interface ActiveOperation<T> {
   requestId: string;
-  kind: 'list' | 'upload';
+  kind: 'list' | 'upload' | 'download';
   state: FileOperationState;
   timeoutMs: number;
   resolve: (value: T) => void;
@@ -37,6 +45,15 @@ interface ActiveOperation<T> {
   removeAbort?: () => void;
   handleMessage(message: FilesProtocolMessage): void;
   cancel(error: FileOperationError, notifyRemote: boolean): void;
+}
+
+interface DownloadOperation extends ActiveOperation<FileDownloadResult> {
+  kind: 'download';
+  path: string;
+  sink: DownloadSink;
+  receivedBytes: number;
+  totalBytes?: number;
+  onProgress?: (progress: FileDownloadProgress) => void;
 }
 
 type AnyActiveOperation = ActiveOperation<any>;
@@ -182,6 +199,51 @@ export class FilesSession {
     return promise;
   }
 
+  async downloadFile(
+    path: string,
+    sink: DownloadSink,
+    options: DownloadFileOptions = {},
+  ): Promise<FileDownloadResult> {
+    this.assertAvailable();
+    if (options.signal?.aborted) {
+      throw new FileOperationError('File operation was cancelled.', 'cancelled');
+    }
+    const normalizedPath = normalizeFilePath(path);
+    if (options.totalBytes !== undefined && (!Number.isSafeInteger(options.totalBytes) || options.totalBytes < 0)) {
+      throw new FileOperationError('Download size must be a non-negative safe integer.', 'source');
+    }
+    const requestId = this.nextRequestId('down');
+    const promise = new Promise<FileDownloadResult>((resolve, reject) => {
+      const operation: DownloadOperation = {
+        requestId,
+        kind: 'download',
+        state: 'waiting-start',
+        timeoutMs: 0,
+        path: normalizedPath,
+        sink,
+        receivedBytes: 0,
+        totalBytes: options.totalBytes,
+        onProgress: options.onProgress,
+        resolve,
+        reject,
+        handleMessage: (message) => this.handleDownloadMessage(operation, message),
+        cancel: (error, notifyRemote) => {
+          if (notifyRemote) this.safeSendJson(createDownloadStopMessage(requestId));
+          void Promise.resolve(operation.sink.abort(error)).catch(() => undefined);
+          this.finishFailure(operation, error);
+        },
+      };
+      this.startOperation(operation, options);
+      this.reportDownloadProgress(operation);
+    });
+    try {
+      this.relay.sendJson(createDownloadStartMessage(normalizedPath, requestId));
+    } catch (error) {
+      this.active?.cancel(connectionError(error, requestId), false);
+    }
+    return promise;
+  }
+
   cancelActive(reason = 'File operation was cancelled.'): void {
     const operation = this.active;
     if (!operation) return;
@@ -219,6 +281,11 @@ export class FilesSession {
   private async handleInbound(data: RelayInboundData): Promise<void> {
     const text = await protocolText(data);
     if (text === undefined) {
+      if (typeof data !== 'string' && this.active?.kind === 'download') {
+        this.resetOperationTimeout(this.active);
+        await this.handleDownloadBinary(this.active as DownloadOperation, data);
+        return;
+      }
       this.options.onUnhandledMessage?.(data);
       return;
     }
@@ -288,6 +355,59 @@ export class FilesSession {
     }
   }
 
+  private handleDownloadMessage(operation: DownloadOperation, message: FilesProtocolMessage): void {
+    if (messageIndicatesError(message) || (message.action === 'download' && message.raw.sub === 'cancel')) {
+      operation.cancel(errorFromMessage(message, 'Remote file download failed.'), false);
+      return;
+    }
+    if (message.action !== 'download' || message.raw.sub !== 'start' || operation.state !== 'waiting-start') {
+      this.options.onUnhandledMessage?.(message.raw);
+      return;
+    }
+    operation.state = 'receiving';
+    this.reportDownloadProgress(operation);
+    try {
+      this.relay.sendJson(createDownloadStartAckMessage(operation.requestId));
+    } catch (error) {
+      operation.cancel(connectionError(error, operation.requestId), false);
+    }
+  }
+
+  private async handleDownloadBinary(
+    operation: DownloadOperation,
+    data: Exclude<RelayInboundData, string>,
+  ): Promise<void> {
+    if (this.active !== operation || operation.state !== 'receiving') {
+      this.options.onUnhandledMessage?.(data);
+      return;
+    }
+    try {
+      const bytes = await binaryBytes(data);
+      if (bytes.byteLength < 4) {
+        throw new FileOperationError('Download data frame omitted its control header.', 'protocol', operation.requestId);
+      }
+      const flags = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, false);
+      const chunk = bytes.subarray(4);
+      if (chunk.byteLength > 0) await operation.sink.write(chunk);
+      if (this.active !== operation) return;
+      operation.receivedBytes += chunk.byteLength;
+      this.reportDownloadProgress(operation);
+      if ((flags & 1) !== 0) {
+        await operation.sink.close();
+        if (this.active !== operation) return;
+        this.finishSuccess(operation, {
+          requestId: operation.requestId,
+          path: operation.path,
+          size: operation.receivedBytes,
+        });
+      } else {
+        this.relay.sendJson(createDownloadAckMessage(operation.requestId));
+      }
+    } catch (error) {
+      operation.cancel(toFileError(error, operation.requestId, 'source'), true);
+    }
+  }
+
   private async sendNextUploadChunk(operation: UploadOperation): Promise<void> {
     if (this.active !== operation || operation.finishing) return;
     const start = operation.sentBytes;
@@ -334,6 +454,25 @@ export class FilesSession {
     });
   }
 
+  private reportDownloadProgress(operation: DownloadOperation): void {
+    operation.onProgress?.({
+      requestId: operation.requestId,
+      state: operation.state,
+      receivedBytes: operation.receivedBytes,
+      ...(operation.totalBytes === undefined
+        ? {}
+        : {
+            totalBytes: operation.totalBytes,
+            percentage:
+              operation.totalBytes === 0
+                ? operation.state === 'completed'
+                  ? 100
+                  : 0
+                : Math.min(100, (operation.receivedBytes / operation.totalBytes) * 100),
+          }),
+    });
+  }
+
   private finishSuccess<T>(operation: ActiveOperation<T>, value: T): void {
     if (this.active !== operation) return;
     operation.state = 'completed';
@@ -352,6 +491,7 @@ export class FilesSession {
             ? 'connection-lost'
             : 'failed';
     if (operation.kind === 'upload') this.reportUploadProgress(operation as UploadOperation);
+    if (operation.kind === 'download') this.reportDownloadProgress(operation as DownloadOperation);
     this.cleanupOperation(operation);
     operation.reject(error);
   }

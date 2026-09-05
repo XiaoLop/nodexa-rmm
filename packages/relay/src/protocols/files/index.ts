@@ -7,6 +7,10 @@ export const filesRelayProtocol: RelayProtocolDescriptor = {
 
 export { FilesSession } from './FilesSession';
 export {
+  createDownloadAckMessage,
+  createDownloadStartAckMessage,
+  createDownloadStartMessage,
+  createDownloadStopMessage,
   createListDirectoryMessage,
   createUploadCancelMessage,
   createUploadDoneMessage,
@@ -22,8 +26,12 @@ export {
 export { joinFilePath, normalizeFilePath, parseFilePath } from './path';
 export { browserFileSource } from './sources';
 export {
+  type DownloadFileOptions,
+  type DownloadSink,
   FileOperationError,
   type DirectoryListing,
+  type FileDownloadProgress,
+  type FileDownloadResult,
   type FileEntry,
   type FileEntryKind,
   type FileOperationErrorCode,
