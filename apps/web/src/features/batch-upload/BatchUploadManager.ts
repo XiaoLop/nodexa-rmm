@@ -145,16 +145,17 @@ export class BatchUploadManager {
     this.baseUrl = baseUrl;
     this.cancellingAll = false;
     const now = Date.now();
-    const tasks = this.snapshot.tasks.map((task) =>
-      task.device.online
-        ? { ...task, status: 'queued' as const, totalBytes: config.file.size }
-        : {
-            ...task,
-            status: 'skipped' as const,
-            totalBytes: config.file.size,
-            completedAt: now,
-            detail: '设备离线，未建立文件中继。',
-          },
+    const tasks = this.snapshot.tasks.flatMap((task) =>
+      config.files.map((file) => ({
+        ...task,
+        id: createId('file-task'),
+        file,
+        targetFileName: file.name,
+        status: task.device.online ? ('queued' as const) : ('skipped' as const),
+        totalBytes: file.size,
+        completedAt: task.device.online ? undefined : now,
+        detail: task.device.online ? undefined : '设备离线，未建立文件中继。',
+      })),
     );
     this.snapshot = {
       ...this.snapshot,
@@ -435,7 +436,7 @@ export class BatchUploadManager {
       const taskId = this.queue.shift();
       if (!taskId) break;
       const task = this.findTask(taskId);
-      if (!task || task.status !== 'queued') continue;
+      if (!task || task.status !== 'queued' || !task.file || !task.targetFileName) continue;
       slot.ready = false;
       slot.taskId = taskId;
       this.updateTask(taskId, {
@@ -448,7 +449,10 @@ export class BatchUploadManager {
         type: 'run',
         taskId,
         device: task.device,
-        config,
+        targetDirectory: config.targetDirectory,
+        overwritePolicy: config.overwritePolicy,
+        file: task.file,
+        targetFileName: task.targetFileName,
         baseUrl: this.baseUrl,
         chunkSize,
       });

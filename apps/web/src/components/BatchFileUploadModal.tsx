@@ -47,7 +47,6 @@ interface BatchFileUploadModalProps {
 
 interface UploadFormValues {
   targetDirectory: string;
-  targetFileName: string;
   overwritePolicy: 'skip' | 'overwrite';
   concurrency: number;
 }
@@ -124,7 +123,7 @@ export function BatchFileUploadModal({
     manager.getSnapshot,
     manager.getSnapshot,
   );
-  const [selectedFile, setSelectedFile] = useState<File>();
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [now, setNow] = useState(Date.now());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const summary = useMemo(() => summarizeBatchUpload(snapshot.tasks), [snapshot.tasks]);
@@ -142,28 +141,34 @@ export function BatchFileUploadModal({
   }, [now]);
 
   useEffect(() => {
-    setSelectedFile(undefined);
+    setSelectedFiles([]);
     form.resetFields();
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [form, snapshot.id]);
 
   const startUpload = async () => {
-    if (!selectedFile || !gatewayClient || !baseUrl || !connected) {
-      void messageApi.error(!selectedFile ? '请选择本地文件。' : '网关或中继地址不可用。');
+    if (!selectedFiles.length || !gatewayClient || !baseUrl || !connected) {
+      void messageApi.error(!selectedFiles.length ? '请选择本地文件。' : '网关或中继地址不可用。');
       return;
     }
     try {
       const values = await form.validateFields();
       const directoryError = validateTargetDirectory(values.targetDirectory);
-      const nameError = validateTargetFileName(values.targetFileName);
+      const nameError = selectedFiles
+        .map((file) => validateTargetFileName(file.name))
+        .find((error) => error !== undefined);
       if (directoryError || nameError) {
         void messageApi.error(directoryError ?? nameError);
         return;
       }
+      const normalizedNames = selectedFiles.map((file) => file.name.toLocaleLowerCase());
+      if (new Set(normalizedNames).size !== normalizedNames.length) {
+        void messageApi.error('所选文件包含重复文件名，请调整后重试。');
+        return;
+      }
       const config: BatchUploadConfig = {
-        file: selectedFile,
+        files: selectedFiles,
         targetDirectory: values.targetDirectory.trim(),
-        targetFileName: values.targetFileName,
         overwritePolicy: values.overwritePolicy,
         concurrency: values.concurrency,
       };
@@ -213,6 +218,15 @@ export function BatchFileUploadModal({
       key: 'platform',
       width: 115,
       render: (_, task) => task.device.platform || '未知',
+    },
+    {
+      title: '文件',
+      dataIndex: 'targetFileName',
+      width: 180,
+      ellipsis: { showTitle: false },
+      render: (name?: string) => (
+        <Typography.Text ellipsis={{ tooltip: name }}>{name || '—'}</Typography.Text>
+      ),
     },
     {
       title: '状态',
@@ -296,7 +310,7 @@ export function BatchFileUploadModal({
                   key="start"
                   type="primary"
                   icon={<UploadOutlined />}
-                  disabled={!selectedFile || !connected || !baseUrl}
+                  disabled={!selectedFiles.length || !connected || !baseUrl}
                   onClick={() => void startUpload()}
                 >
                   开始上传
@@ -349,10 +363,9 @@ export function BatchFileUploadModal({
                   ref={fileInputRef}
                   hidden
                   type="file"
+                  multiple
                   onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    setSelectedFile(file);
-                    if (file) form.setFieldValue('targetFileName', file.name);
+                    setSelectedFiles(Array.from(event.target.files ?? []));
                   }}
                 />
                 <div className="batch-upload-file-picker">
@@ -362,9 +375,12 @@ export function BatchFileUploadModal({
                   >
                     选择文件
                   </Button>
-                  {selectedFile ? (
-                    <Typography.Text ellipsis={{ tooltip: selectedFile.name }}>
-                      {selectedFile.name} · {formatBytes(selectedFile.size)}
+                  {selectedFiles.length ? (
+                    <Typography.Text
+                      ellipsis={{ tooltip: selectedFiles.map((file) => file.name).join('、') }}
+                    >
+                      已选择 {selectedFiles.length} 个文件 ·{' '}
+                      {formatBytes(selectedFiles.reduce((total, file) => total + file.size, 0))}
                     </Typography.Text>
                   ) : (
                     <Typography.Text type="secondary">尚未选择文件</Typography.Text>
@@ -379,13 +395,6 @@ export function BatchFileUploadModal({
                 >
                   <Input placeholder="例如 C:\\Temp 或 /tmp" />
                 </Form.Item>
-                <Form.Item
-                  name="targetFileName"
-                  label="目标文件名"
-                  rules={[{ required: true, message: '请输入目标文件名。' }]}
-                >
-                  <Input placeholder="默认使用本地文件名" />
-                </Form.Item>
                 <Form.Item name="concurrency" label="最大并发数">
                   <InputNumber min={1} max={8} precision={0} style={{ width: '100%' }} />
                 </Form.Item>
@@ -399,14 +408,14 @@ export function BatchFileUploadModal({
               <Alert
                 showIcon
                 type="info"
-                message={`即将向 ${devices.length} 台设备上传；离线设备会直接跳过。`}
-                description="每台在线设备使用独立文件中继，并发 Worker 和中继连接最多 8 个。"
+                message={`即将向 ${devices.length} 台设备上传 ${selectedFiles.length} 个文件；离线设备会直接跳过。`}
+                description="文件会保留原始名称；每个设备与文件组成独立任务，并发 Worker 和中继连接最多 8 个。"
               />
             </Form>
           ) : (
             <>
               <div className="batch-upload-summary">
-                <Statistic title="总设备" value={summary.total} />
+                <Statistic title="总任务" value={summary.total} />
                 <Statistic title="等待" value={summary.queued} />
                 <Statistic title="进行中" value={summary.active} />
                 <Statistic title="成功" value={summary.success} />
@@ -429,7 +438,7 @@ export function BatchFileUploadModal({
                 columns={columns}
                 dataSource={snapshot.tasks}
                 pagination={{ pageSize: 20, hideOnSinglePage: true }}
-                scroll={{ x: 1080, y: 430 }}
+                scroll={{ x: 1260, y: 430 }}
               />
             </>
           )}

@@ -9,13 +9,20 @@ import {
   type RelayControlChannel,
   type RelaySession,
 } from '@meshcentral/relay';
-import type { BatchUploadConfig, BatchUploadDeviceSnapshot, BatchUploadTaskStatus } from './types';
+import type {
+  BatchUploadDeviceSnapshot,
+  BatchUploadOverwritePolicy,
+  BatchUploadTaskStatus,
+} from './types';
 
 interface RunMessage {
   type: 'run';
   taskId: string;
   device: BatchUploadDeviceSnapshot;
-  config: BatchUploadConfig;
+  targetDirectory: string;
+  overwritePolicy: BatchUploadOverwritePolicy;
+  file: File;
+  targetFileName: string;
   baseUrl: string;
   chunkSize: number;
 }
@@ -156,11 +163,11 @@ async function runTask(message: RunMessage): Promise<void> {
     updateStatus(message.taskId, 'checking');
     const existing = await findExistingFile(
       currentFiles,
-      message.config.targetDirectory,
-      message.config.targetFileName,
+      message.targetDirectory,
+      message.targetFileName,
       signal,
     );
-    if (existing && message.config.overwritePolicy === 'skip') {
+    if (existing && message.overwritePolicy === 'skip') {
       post({
         type: 'completed',
         taskId: message.taskId,
@@ -172,10 +179,10 @@ async function runTask(message: RunMessage): Promise<void> {
 
     updateStatus(message.taskId, 'uploading');
     await currentFiles.uploadFile(
-      message.config.targetDirectory,
-      browserFileSource(message.config.file),
+      message.targetDirectory,
+      browserFileSource(message.file),
       {
-        name: message.config.targetFileName,
+        name: message.targetFileName,
         signal,
         timeoutMs: 60_000,
         chunkSize: message.chunkSize,

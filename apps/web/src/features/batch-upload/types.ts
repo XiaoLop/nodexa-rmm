@@ -24,9 +24,8 @@ export interface BatchUploadDeviceSnapshot {
 }
 
 export interface BatchUploadConfig {
-  file: File;
+  files: File[];
   targetDirectory: string;
-  targetFileName: string;
   overwritePolicy: BatchUploadOverwritePolicy;
   concurrency: number;
 }
@@ -35,6 +34,8 @@ export interface BatchUploadTask {
   id: string;
   batchId: string;
   device: BatchUploadDeviceSnapshot;
+  file?: File;
+  targetFileName?: string;
   status: BatchUploadTaskStatus;
   totalBytes: number;
   sentBytes: number;
