@@ -779,7 +779,6 @@ export function DevicesPage() {
           </div>
           <Table
             rowKey="id"
-            loading={deferredDevices !== devices}
             rowSelection={rowSelection}
             columns={columns}
             dataSource={filteredDevices}
