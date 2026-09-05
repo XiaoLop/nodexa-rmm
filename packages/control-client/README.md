@@ -1,7 +1,5 @@
 # @meshcentral/control-client
 
-无 React、无 Zustand 依赖的 MeshCentral 控制通道客户端。
-
 提供 `GatewayClient`、连接与错误订阅、通用 `request`/`send`，以及 `devices`、`groups`、`events` 资源 API。
 
 ## 安装
