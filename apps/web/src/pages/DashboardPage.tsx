@@ -9,6 +9,38 @@ import { useGatewayData } from '../features/gateway/useGatewayData';
 
 const platformColors = ['#2f80ff', '#7259e8', '#2dbf73', '#f4b43c', '#708097'];
 
+function getOperatingSystem(platform?: string) {
+  const value = platform?.trim().toLowerCase() ?? '';
+  if (!value) return '其他';
+  if (value.includes('windows')) return 'Windows';
+  if (value.includes('android')) return 'Android';
+  if (value.includes('ios') || value.includes('ipados')) return 'iOS';
+  if (value.includes('mac') || value.includes('darwin') || value.includes('apple')) return 'macOS';
+  if (
+    [
+      'linux',
+      'ubuntu',
+      'debian',
+      'centos',
+      'fedora',
+      'red hat',
+      'rhel',
+      'rocky',
+      'alma',
+      'arch',
+      'suse',
+      'alpine',
+      'raspbian',
+    ].some((name) => value.includes(name))
+  ) {
+    return 'Linux';
+  }
+  if (value.includes('freebsd')) return 'FreeBSD';
+  if (value.includes('openbsd')) return 'OpenBSD';
+  if (value.includes('netbsd')) return 'NetBSD';
+  return '其他';
+}
+
 function formatDateTime(value?: string) {
   if (!value) return '—';
   const date = new Date(value);
@@ -67,7 +99,7 @@ export function DashboardPage() {
   const platformData = useMemo(() => {
     const counts = new Map<string, number>();
     for (const device of data.devices) {
-      const platform = device.platform?.trim() || '其他';
+      const platform = getOperatingSystem(device.platform);
       counts.set(platform, (counts.get(platform) ?? 0) + 1);
     }
     return [...counts.entries()]
