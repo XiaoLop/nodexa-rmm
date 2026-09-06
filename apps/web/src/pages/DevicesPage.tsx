@@ -48,7 +48,7 @@ import {
   useState,
   type Key,
 } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
 import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
 import { DeviceEditModal } from '../components/DeviceEditModal';
@@ -174,6 +174,7 @@ export function DevicesPage() {
   const { client, refreshSnapshot } = gateway;
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get('query') ?? '');
   const [groupId, setGroupId] = useState(() => searchParams.get('groupId') ?? '');
@@ -450,7 +451,13 @@ export function DevicesPage() {
         sorter: compareDeviceName,
         render: (value, device) => (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{value}</span>
+            <button
+              type="button"
+              className="device-workspace-link"
+              onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)}
+            >
+              {value}
+            </button>
             <span style={{ fontSize: 12, color: '#8c8c8c' }}>
               {rawString(device, 'rname') || '—'}
             </span>
@@ -577,7 +584,12 @@ export function DevicesPage() {
                     {
                       key: 'info',
                       icon: <InfoCircleOutlined />,
-                      label: '设备信息',
+                      label: '打开工作台',
+                    },
+                    {
+                      key: 'quick-info',
+                      icon: <InfoCircleOutlined />,
+                      label: '快速信息',
                     },
                     {
                       key: 'command',
@@ -630,6 +642,8 @@ export function DevicesPage() {
                     if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
                       runPowerAction(device, key as PowerAction);
                     } else if (key === 'info') {
+                      navigate(`/devices/${encodeURIComponent(device.id)}/workspace`);
+                    } else if (key === 'quick-info') {
                       setSelectedDevice(device);
                       setDrawerOpen(true);
                     } else if (key === 'edit') {
@@ -660,6 +674,7 @@ export function DevicesPage() {
       confirmDeviceDeletion,
       groupNameById,
       messageApi,
+      navigate,
       openDeviceEditor,
       runPowerAction,
       status,

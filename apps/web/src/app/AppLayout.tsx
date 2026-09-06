@@ -68,6 +68,14 @@ const pageTitles: Record<string, string> = {
   '/settings': '管理 / 设置',
 };
 
+function resolvePageMeta(pathname: string) {
+  if (/^\/devices\/[^/]+\/workspace$/.test(pathname)) {
+    return { selectedKey: '/devices', title: '设备管理 / 设备工作台' };
+  }
+  const selectedKey = Object.keys(pageTitles).find((key) => pathname === key) ?? pathname;
+  return { selectedKey, title: pageTitles[selectedKey] ?? 'MeshCentral 控制台' };
+}
+
 export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
@@ -78,10 +86,7 @@ export function AppLayout() {
   const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
   const connected = status === 'connected';
-  const selectedKey = useMemo(
-    () => Object.keys(pageTitles).find((key) => location.pathname === key) ?? location.pathname,
-    [location.pathname],
-  );
+  const pageMeta = useMemo(() => resolvePageMeta(location.pathname), [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -103,7 +108,7 @@ export function AppLayout() {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[selectedKey]}
+          selectedKeys={[pageMeta.selectedKey]}
           onClick={({ key }) => navigate(key)}
           items={menuItems}
           className="console-menu"
@@ -123,7 +128,7 @@ export function AppLayout() {
               onClick={() => setCollapsed((value) => !value)}
             />
             <span className="breadcrumb-title">
-              {pageTitles[selectedKey] ?? 'MeshCentral 控制台'}
+              {pageMeta.title}
             </span>
           </div>
           <div className="header-actions">

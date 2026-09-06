@@ -4,6 +4,7 @@ import { useGateway } from '../features/gateway/GatewayProvider';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { DeviceGroupsPage } from '../pages/DeviceGroupsPage';
+import { DeviceWorkspacePage } from '../pages/DeviceWorkspacePage';
 import { DevicesPage } from '../pages/DevicesPage';
 import { AppBootScreen, LoginPage } from '../pages/LoginPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -35,6 +36,7 @@ export function AppRouter() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/devices" element={<DevicesPage />} />
         <Route path="/devices/groups" element={<DeviceGroupsPage />} />
+        <Route path="/devices/:deviceId/workspace" element={<DeviceWorkspacePage />} />
         <Route path="/devices/*" element={<ComingSoonPage />} />
         <Route path="/monitoring/realtime" element={<RealtimeEventsPage />} />
         <Route path="/monitoring/*" element={<ComingSoonPage />} />
