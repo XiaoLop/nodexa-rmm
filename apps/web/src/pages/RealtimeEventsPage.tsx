@@ -20,8 +20,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
-const eventFilters: Array<{ label: string; value?: HistoricalEventFilter }> = [
-  { label: '全部' },
+const allEventFilter = 'all' as const;
+
+const eventFilters: Array<{
+  label: string;
+  value: HistoricalEventFilter | typeof allEventFilter;
+}> = [
+  { label: '全部', value: allEventFilter },
   { label: 'Agent 日志', value: 'agentlog' },
   { label: '中继日志', value: 'relaylog' },
   { label: '手动操作', value: 'manual' },
@@ -283,11 +288,12 @@ export function RealtimeEventsPage() {
             </Tag>
             <Select
               aria-label="事件类型"
-              value={eventFilter}
-              placeholder="全部事件"
+              value={eventFilter ?? allEventFilter}
               options={eventFilters}
               style={{ width: 132 }}
-              onChange={(value) => setEventFilter(value)}
+              onChange={(value) =>
+                setEventFilter(value === allEventFilter ? undefined : value)
+              }
             />
             <Select
               aria-label="获取条数"
