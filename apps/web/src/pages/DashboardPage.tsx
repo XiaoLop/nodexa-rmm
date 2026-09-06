@@ -154,7 +154,7 @@ export function DashboardPage() {
           icon={iconForMetric('groups')}
         />
         <MetricCard
-          label="需关注设备"
+          label="异常设备"
           value={offline}
           hint={`${data.devices.length ? Math.round((offline / data.devices.length) * 100) : 0}% 离线`}
           tone="amber"
