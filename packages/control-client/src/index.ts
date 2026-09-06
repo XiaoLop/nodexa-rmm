@@ -11,7 +11,9 @@ export {
   normalizeUserInfo,
   timestampValue,
 } from './protocol/normalizers';
+export { normalizeCommandMessage } from './protocol/commandMessages';
 export { DevicesResource } from './resources/devices';
 export { CommandsResource } from './resources/commands';
+export { CommandExecution } from './resources/CommandExecution';
 export { GroupsResource } from './resources/groups';
 export { EventsResource } from './resources/events';

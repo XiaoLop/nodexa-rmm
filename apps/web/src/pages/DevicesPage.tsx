@@ -57,6 +57,7 @@ import { RelayValidationModal } from '../components/RelayValidationModal';
 import { FileUploadModal } from '../components/FileUploadModal';
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
 import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsModal';
+import { CommandExecutionModal } from '../components/CommandExecutionModal';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
 import { GATEWAY_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
@@ -187,6 +188,7 @@ export function DevicesPage() {
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Key[]>([]);
   const [batchUploadOpen, setBatchUploadOpen] = useState(false);
   const [batchMoveOpen, setBatchMoveOpen] = useState(false);
+  const [commandDevices, setCommandDevices] = useState<Device[]>([]);
   const [batchDevices, setBatchDevices] = useState<BatchUploadDeviceSnapshot[]>([]);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -278,21 +280,21 @@ export function DevicesPage() {
     }
 
     return sortedDevices.filter((device) => {
-        const matchesQuery =
-          !normalized ||
-          [
-            device.name,
-            device.id,
-            device.platform,
-            device.groupName,
-            rawString(device, 'ip'),
-            rawString(device, 'host'),
-          ].some((value) => value?.toLowerCase().includes(normalized));
-        const matchesGroup = !groupId || device.groupId === groupId;
-        const matchesOnline = online === 'all' || device.online === (online === 'online');
-        const matchesPlatform = platform === 'all' || device.platform === platform;
-        return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
-      });
+      const matchesQuery =
+        !normalized ||
+        [
+          device.name,
+          device.id,
+          device.platform,
+          device.groupName,
+          rawString(device, 'ip'),
+          rawString(device, 'host'),
+        ].some((value) => value?.toLowerCase().includes(normalized));
+      const matchesGroup = !groupId || device.groupId === groupId;
+      const matchesOnline = online === 'all' || device.online === (online === 'online');
+      const matchesPlatform = platform === 'all' || device.platform === platform;
+      return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
+    });
   }, [deferredDevices, groupId, online, platform, query]);
 
   const openDeviceEditor = useCallback((device: Device) => {
@@ -371,14 +373,17 @@ export function DevicesPage() {
 
   const confirmBatchPowerAction = (action: PowerAction) => {
     if (!client || status !== 'connected' || !selectedDevices.length) return;
-    const targets = action === 'wake' ? selectedDevices : selectedDevices.filter((device) => device.online);
+    const targets =
+      action === 'wake' ? selectedDevices : selectedDevices.filter((device) => device.online);
     const offlineCount = selectedDevices.length - targets.length;
     const label = powerActionLabels[action];
     modal.confirm({
       title: `批量${label}`,
       content: (
         <div>
-          <p>确定要对 {targets.length} 台设备执行{label}操作吗？</p>
+          <p>
+            确定要对 {targets.length} 台设备执行{label}操作吗？
+          </p>
           {offlineCount > 0 && <p>{offlineCount} 台离线设备将跳过。</p>}
           <p>请求提交后不代表设备端已经完成操作。</p>
         </div>
@@ -402,7 +407,9 @@ export function DevicesPage() {
           const failed = result.results.filter((item) => item.status === 'failed');
           handleBatchOperationCompleted(successful.map((item) => item.deviceId));
           if (failed.length) {
-            void messageApi.warning(`${label}请求已提交 ${successful.length} 台，失败 ${failed.length} 台。`);
+            void messageApi.warning(
+              `${label}请求已提交 ${successful.length} 台，失败 ${failed.length} 台。`,
+            );
           } else {
             void messageApi.success(`已向 ${successful.length} 台设备提交${label}请求。`);
           }
@@ -415,121 +422,122 @@ export function DevicesPage() {
     });
   };
 
-  const columns = useMemo<TableColumnsType<Device>>(() => [
-    {
-      title: '设备类型',
-      key: 'type',
-      width: 100,
-      render: (_, device) => (
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            fontSize: 18,
-            color: device.online ? token.colorPrimary : token.colorTextSecondary,
-          }}
-        >
-          {osIcon(device.platform)}
-          {deviceTypeIcon(device.platform)}
-        </div>
-      ),
-    },
-    {
-      title: '设备名称',
-      dataIndex: 'name',
-      fixed: 'left',
-      width: 170,
-      sorter: compareDeviceName,
-      render: (value, device) => (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{value}</span>
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>
-            {rawString(device, 'rname') || '—'}
+  const columns = useMemo<TableColumnsType<Device>>(
+    () => [
+      {
+        title: '设备类型',
+        key: 'type',
+        width: 100,
+        render: (_, device) => (
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              fontSize: 18,
+              color: device.online ? token.colorPrimary : token.colorTextSecondary,
+            }}
+          >
+            {osIcon(device.platform)}
+            {deviceTypeIcon(device.platform)}
+          </div>
+        ),
+      },
+      {
+        title: '设备名称',
+        dataIndex: 'name',
+        fixed: 'left',
+        width: 170,
+        sorter: compareDeviceName,
+        render: (value, device) => (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{value}</span>
+            <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+              {rawString(device, 'rname') || '—'}
+            </span>
+          </div>
+        ),
+      },
+      {
+        title: '分组名称',
+        key: 'groupName',
+        width: 130,
+        render: (_, device) =>
+          groupNameById.get(device.groupId ?? '') || device.groupName || '未分组',
+      },
+      {
+        title: 'IP',
+        key: 'ip',
+        width: 150,
+        render: (_, device) => rawString(device, 'ip') || '-',
+      },
+      {
+        title: '描述',
+        key: 'desc',
+        width: 150,
+        render: (_, device) => rawString(device, 'desc') || '-',
+      },
+      {
+        title: '状态',
+        dataIndex: 'online',
+        width: 100,
+        filters: [
+          { text: '在线', value: true },
+          { text: '离线', value: false },
+        ],
+        onFilter: (value, record) => record.online === value,
+        render: (value) => (
+          <span className={`status-text ${value ? 'online' : 'offline'}`}>
+            <i />
+            {value ? '在线' : '离线'}
           </span>
-        </div>
-      ),
-    },
-    {
-      title: '分组名称',
-      key: 'groupName',
-      width: 130,
-      render: (_, device) =>
-        groupNameById.get(device.groupId ?? '') || device.groupName || '未分组',
-    },
-    {
-      title: 'IP',
-      key: 'ip',
-      width: 150,
-      render: (_, device) => rawString(device, 'ip') || '-',
-    },
-    {
-      title: '描述',
-      key: 'desc',
-      width: 150,
-      render: (_, device) => rawString(device, 'desc') || '-',
-    },
-    {
-      title: '状态',
-      dataIndex: 'online',
-      width: 100,
-      filters: [
-        { text: '在线', value: true },
-        { text: '离线', value: false },
-      ],
-      onFilter: (value, record) => record.online === value,
-      render: (value) => (
-        <span className={`status-text ${value ? 'online' : 'offline'}`}>
-          <i />
-          {value ? '在线' : '离线'}
-        </span>
-      ),
-    },
-    {
-      title: '最后在线时间',
-      dataIndex: 'lastSeenAt',
-      width: 170,
-      render: formatDateTime,
-      sorter: (a, b) => (a.lastSeenAt || '').localeCompare(b.lastSeenAt || ''),
-    },
-    {
-      title: '创建时间',
-      key: 'creation',
-      width: 170,
-      render: (_, device) => {
-        const creation = deviceCreationTime(device);
-        if (!creation) return '—';
-        return formatDateTime(
-          new Date(creation < 10000000000 ? creation * 1000 : creation).toISOString(),
-        );
+        ),
       },
-      sorter: (a, b) => deviceCreationTime(a) - deviceCreationTime(b),
-    },
-    {
-      title: '上次启动时间',
-      key: 'lastbootuptime',
-      width: 170,
-      render: (_, device) => {
-        const bootTime = rawNumber(device, 'lastbootuptime');
-        if (!bootTime) return '—';
-        return formatDateTime(new Date(bootTime).toISOString());
+      {
+        title: '最后在线时间',
+        dataIndex: 'lastSeenAt',
+        width: 170,
+        render: formatDateTime,
+        sorter: (a, b) => (a.lastSeenAt || '').localeCompare(b.lastSeenAt || ''),
       },
-      sorter: (a, b) => {
-        const aBoot = rawNumber(a, 'lastbootuptime') || 0;
-        const bBoot = rawNumber(b, 'lastbootuptime') || 0;
-        return aBoot - bBoot;
+      {
+        title: '创建时间',
+        key: 'creation',
+        width: 170,
+        render: (_, device) => {
+          const creation = deviceCreationTime(device);
+          if (!creation) return '—';
+          return formatDateTime(
+            new Date(creation < 10000000000 ? creation * 1000 : creation).toISOString(),
+          );
+        },
+        sorter: (a, b) => deviceCreationTime(a) - deviceCreationTime(b),
       },
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      fixed: 'right',
-      width: 160,
-      render: (_, device) => {
-        const unavailable = !client || status !== 'connected';
-        const isOffline = !device.online;
-        return (
-          <Space size="small">
-            {/* <Tooltip title="远程桌面">
+      {
+        title: '上次启动时间',
+        key: 'lastbootuptime',
+        width: 170,
+        render: (_, device) => {
+          const bootTime = rawNumber(device, 'lastbootuptime');
+          if (!bootTime) return '—';
+          return formatDateTime(new Date(bootTime).toISOString());
+        },
+        sorter: (a, b) => {
+          const aBoot = rawNumber(a, 'lastbootuptime') || 0;
+          const bBoot = rawNumber(b, 'lastbootuptime') || 0;
+          return aBoot - bBoot;
+        },
+      },
+      {
+        title: '操作',
+        key: 'actions',
+        fixed: 'right',
+        width: 160,
+        render: (_, device) => {
+          const unavailable = !client || status !== 'connected';
+          const isOffline = !device.online;
+          return (
+            <Space size="small">
+              {/* <Tooltip title="远程桌面">
               <Button
                 type="text"
                 icon={<DesktopOutlined />}
@@ -545,112 +553,120 @@ export function DevicesPage() {
                 onClick={() => messageApi.info('远程终端功能开发中')}
               />
             </Tooltip> */}
-            <Tooltip title="文件管理">
-              <Button
-                type="text"
-                icon={<FolderOpenOutlined />}
-                disabled={unavailable || isOffline}
-                aria-label={`管理 ${device.name} 的文件`}
-                onClick={() => setFileExplorerDevice(device)}
-              />
-            </Tooltip>
-            <Tooltip title="测试中继连接">
-              <Button
-                type="text"
-                icon={<ExperimentOutlined />}
-                disabled={unavailable || isOffline}
-                onClick={() => setRelayDevice(device)}
-              />
-            </Tooltip>
-            <Dropdown
-              trigger={['click']}
-              menu={{
-                items: [
-                  {
-                    key: 'info',
-                    icon: <InfoCircleOutlined />,
-                    label: '设备信息',
+              <Tooltip title="文件管理">
+                <Button
+                  type="text"
+                  icon={<FolderOpenOutlined />}
+                  disabled={unavailable || isOffline}
+                  aria-label={`管理 ${device.name} 的文件`}
+                  onClick={() => setFileExplorerDevice(device)}
+                />
+              </Tooltip>
+              <Tooltip title="测试中继连接">
+                <Button
+                  type="text"
+                  icon={<ExperimentOutlined />}
+                  disabled={unavailable || isOffline}
+                  onClick={() => setRelayDevice(device)}
+                />
+              </Tooltip>
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: [
+                    {
+                      key: 'info',
+                      icon: <InfoCircleOutlined />,
+                      label: '设备信息',
+                    },
+                    {
+                      key: 'command',
+                      icon: <ToolOutlined />,
+                      label: '执行指令',
+                      disabled: unavailable || isOffline,
+                    },
+                    {
+                      key: 'edit',
+                      icon: <EditOutlined />,
+                      label: '编辑',
+                      disabled: unavailable,
+                    },
+                    {
+                      key: 'delete',
+                      icon: <DeleteOutlined />,
+                      label: '删除',
+                      danger: true,
+                      disabled: unavailable,
+                    },
+                    { type: 'divider' },
+                    {
+                      key: 'wake',
+                      icon: <ThunderboltOutlined />,
+                      label: '唤醒',
+                      disabled: unavailable,
+                    },
+                    {
+                      key: 'reset',
+                      icon: <RedoOutlined />,
+                      label: '重启',
+                      disabled: unavailable || isOffline,
+                    },
+                    {
+                      key: 'sleep',
+                      icon: <MoonOutlined />,
+                      label: '休眠',
+                      disabled: unavailable || isOffline,
+                    },
+                    { type: 'divider' },
+                    {
+                      key: 'poweroff',
+                      icon: <PoweroffOutlined />,
+                      label: '关机',
+                      danger: true,
+                      disabled: unavailable || isOffline,
+                    },
+                  ],
+                  onClick: ({ key }) => {
+                    if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
+                      runPowerAction(device, key as PowerAction);
+                    } else if (key === 'info') {
+                      setSelectedDevice(device);
+                      setDrawerOpen(true);
+                    } else if (key === 'edit') {
+                      openDeviceEditor(device);
+                    } else if (key === 'delete') {
+                      confirmDeviceDeletion(device);
+                    } else if (key === 'command') {
+                      setCommandDevices([device]);
+                    } else {
+                      messageApi.info(`执行指令功能开发中`);
+                    }
                   },
-                  {
-                    key: 'command',
-                    icon: <ToolOutlined />,
-                    label: '执行指令',
-                    disabled: unavailable || isOffline,
-                  },
-                  {
-                    key: 'edit',
-                    icon: <EditOutlined />,
-                    label: '编辑',
-                    disabled: unavailable,
-                  },
-                  {
-                    key: 'delete',
-                    icon: <DeleteOutlined />,
-                    label: '删除',
-                    danger: true,
-                    disabled: unavailable,
-                  },
-                  { type: 'divider' },
-                  {
-                    key: 'wake',
-                    icon: <ThunderboltOutlined />,
-                    label: '唤醒',
-                    disabled: unavailable,
-                  },
-                  {
-                    key: 'reset',
-                    icon: <RedoOutlined />,
-                    label: '重启',
-                    disabled: unavailable || isOffline,
-                  },
-                  {
-                    key: 'sleep',
-                    icon: <MoonOutlined />,
-                    label: '休眠',
-                    disabled: unavailable || isOffline,
-                  },
-                  { type: 'divider' },
-                  {
-                    key: 'poweroff',
-                    icon: <PoweroffOutlined />,
-                    label: '关机',
-                    danger: true,
-                    disabled: unavailable || isOffline,
-                  },
-                ],
-                onClick: ({ key }) => {
-                  if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
-                    runPowerAction(device, key as PowerAction);
-                  } else if (key === 'info') {
-                    setSelectedDevice(device);
-                    setDrawerOpen(true);
-                  } else if (key === 'edit') {
-                    openDeviceEditor(device);
-                  } else if (key === 'delete') {
-                    confirmDeviceDeletion(device);
-                  } else {
-                    messageApi.info(`执行指令功能开发中`);
-                  }
-                },
-              }}
-            >
-              <Button type="text" icon={<EllipsisOutlined />} aria-label={`操作 ${device.name}`} />
-            </Dropdown>
-          </Space>
-        );
+                }}
+              >
+                <Button
+                  type="text"
+                  icon={<EllipsisOutlined />}
+                  aria-label={`操作 ${device.name}`}
+                />
+              </Dropdown>
+            </Space>
+          );
+        },
       },
-    },
-  ], [
-    client,
-    confirmDeviceDeletion,
-    groupNameById,
-    messageApi,
-    openDeviceEditor,
-    runPowerAction,
-    status,
-    token.colorPrimary,
-    token.colorTextSecondary,
-  ]);
+    ],
+    [
+      client,
+      confirmDeviceDeletion,
+      groupNameById,
+      messageApi,
+      openDeviceEditor,
+      runPowerAction,
+      status,
+      token.colorPrimary,
+      token.colorTextSecondary,
+    ],
+  );
 
   const rowSelection = useMemo(
     () => ({
@@ -694,6 +710,7 @@ export function DevicesPage() {
               menu={{
                 items: [
                   { key: 'move', label: '移动分组' },
+                  { key: 'command', icon: <ToolOutlined />, label: '执行命令' },
                   { type: 'divider' },
                   { key: 'wake', label: '唤醒' },
                   { key: 'reset', label: '重启' },
@@ -702,13 +719,12 @@ export function DevicesPage() {
                 ],
                 onClick: ({ key }) => {
                   if (key === 'move') setBatchMoveOpen(true);
+                  else if (key === 'command') setCommandDevices(selectedDevices);
                   else confirmBatchPowerAction(key as PowerAction);
                 },
               }}
             >
-              <Button
-                disabled={!client || status !== 'connected' || !selectedDevices.length}
-              >
+              <Button disabled={!client || status !== 'connected' || !selectedDevices.length}>
                 批量操作{selectedDeviceIds.length ? `（${selectedDevices.length}）` : ''}
               </Button>
             </Dropdown>
@@ -859,6 +875,15 @@ export function DevicesPage() {
           connected={status === 'connected'}
           onClose={() => setBatchMoveOpen(false)}
           onCompleted={handleBatchOperationCompleted}
+        />
+      )}
+      {commandDevices.length > 0 && (
+        <CommandExecutionModal
+          open
+          devices={commandDevices}
+          client={client}
+          connected={status === 'connected'}
+          onClose={() => setCommandDevices([])}
         />
       )}
     </>

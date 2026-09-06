@@ -1,8 +1,32 @@
 import { GatewayValidationError } from '../errors';
-import type { CommandRunOptions, CommandSubmission } from '../types';
+import type {
+  CommandExecuteOptions,
+  CommandExecutionHandle,
+  CommandRunOptions,
+  CommandSubmission,
+  GatewayClientEvents,
+  GatewayEventChannel,
+  GatewayListener,
+} from '../types';
+import { CommandExecution } from './CommandExecution';
 
 interface ResourceClient {
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
+  readonly connectionStatus?: string;
+  send?(payload: unknown): void;
+  on?<K extends GatewayEventChannel>(
+    channel: K,
+    listener: GatewayListener<GatewayClientEvents[K]>,
+  ): () => void;
+}
+
+interface TrackedExecutionClient {
+  readonly connectionStatus: string;
+  send(payload: unknown): void;
+  on<K extends GatewayEventChannel>(
+    channel: K,
+    listener: GatewayListener<GatewayClientEvents[K]>,
+  ): () => void;
 }
 
 const required = (value: string, name: string) => {
@@ -10,7 +34,37 @@ const required = (value: string, name: string) => {
 };
 
 export class CommandsResource {
+  private executionClient?: TrackedExecutionClient;
+
   constructor(private readonly client: ResourceClient) {}
+
+  execute(
+    deviceIds: string[],
+    command: string,
+    options: CommandExecuteOptions = {},
+  ): CommandExecutionHandle {
+    if (!deviceIds.length || deviceIds.some((id) => !id.trim()))
+      throw new GatewayValidationError('At least one valid device ID is required.');
+    required(command, 'Command');
+    const sourceSend = this.client.send;
+    const sourceOn = this.client.on;
+    if (!sourceSend || !sourceOn)
+      throw new GatewayValidationError('This client does not support tracked command execution.');
+    const source = this.client;
+    const send = sourceSend.bind(source);
+    const on = sourceOn.bind(source);
+    const executionClient =
+      this.executionClient ??
+      ({
+        get connectionStatus() {
+          return source.connectionStatus ?? 'unknown';
+        },
+        send,
+        on,
+      } satisfies TrackedExecutionClient);
+    this.executionClient = executionClient;
+    return new CommandExecution(executionClient, [...new Set(deviceIds)], command, options);
+  }
 
   async run(
     deviceIds: string[],

@@ -123,7 +123,8 @@ export interface DeviceUpdate {
   tags?: string[];
 }
 
-export type BatchTaskStatus = 'queued' | 'running' | 'submitted' | 'succeeded' | 'failed' | 'skipped';
+export type BatchTaskStatus =
+  'queued' | 'running' | 'submitted' | 'succeeded' | 'failed' | 'skipped';
 export interface BatchDeviceTarget {
   id: string;
   name?: string;
@@ -167,6 +168,63 @@ export interface CommandRunOptions {
 export interface CommandSubmission {
   requestId: string;
   raw: unknown;
+}
+
+export type CommandShell = 'auto' | 'shell' | 'powershell';
+export type CommandExecutionStatus =
+  'submitting' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'timedOut' | 'unknown';
+export type CommandOutputStream = 'stdout' | 'stderr' | 'output' | 'system';
+
+export interface NormalizedCommandMessage {
+  requestId?: string;
+  deviceId?: string;
+  kind: 'accepted' | 'output' | 'completed' | 'failed' | 'cancelled' | 'unknown';
+  finalResult?: boolean;
+  stream?: CommandOutputStream;
+  content?: string;
+  exitCode?: number;
+  error?: string;
+  raw: unknown;
+}
+
+export interface CommandOutputChunk {
+  sequence: number;
+  stream: CommandOutputStream;
+  content: string;
+  receivedAt: number;
+}
+
+export interface CommandDeviceResult {
+  deviceId: string;
+  status: CommandExecutionStatus;
+  output: CommandOutputChunk[];
+  exitCode?: number;
+  error?: string;
+  startedAt: number;
+  finishedAt?: number;
+  durationMs?: number;
+}
+
+export interface CommandBatchSnapshot {
+  requestId: string;
+  status: CommandExecutionStatus;
+  results: CommandDeviceResult[];
+  trackingStopped?: boolean;
+}
+
+export interface CommandExecuteOptions {
+  shell?: Exclude<CommandShell, 'auto'>;
+  runAsUser?: 0 | 1 | 2;
+  timeoutMs?: number;
+}
+
+export interface CommandExecutionHandle {
+  readonly requestId: string;
+  getSnapshot(): CommandBatchSnapshot;
+  subscribe(listener: (snapshot: CommandBatchSnapshot) => void): () => void;
+  stopTracking(): void;
+  cancelRemote(): Promise<void>;
+  completed: Promise<CommandBatchSnapshot>;
 }
 
 export interface DeviceDetails {
