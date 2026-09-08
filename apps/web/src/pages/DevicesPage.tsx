@@ -15,10 +15,8 @@ import {
   ThunderboltOutlined,
   MoonOutlined,
   PoweroffOutlined,
-  InfoCircleOutlined,
   ToolOutlined,
   FolderOpenOutlined,
-  ExperimentOutlined,
   CloudUploadOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -50,10 +48,8 @@ import {
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
-import { DeviceDetailsDrawer } from '../components/DeviceDetailsDrawer';
 import { DeviceEditModal } from '../components/DeviceEditModal';
 import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent 安装引导弹窗
-import { RelayValidationModal } from '../components/RelayValidationModal';
 import { FileUploadModal } from '../components/FileUploadModal';
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
 import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsModal';
@@ -182,9 +178,6 @@ export function DevicesPage() {
   const [platform, setPlatform] = useState(() => searchParams.get('platform') ?? 'all');
   const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1);
   const [pageSize, setPageSize] = useState(() => Number(searchParams.get('pageSize')) || 20);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [relayDevice, setRelayDevice] = useState<Device | null>(null);
   const [fileExplorerDevice, setFileExplorerDevice] = useState<Device | null>(null);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Key[]>([]);
   const [batchUploadOpen, setBatchUploadOpen] = useState(false);
@@ -324,7 +317,6 @@ export function DevicesPage() {
           try {
             await client.devices.remove(device.id);
             setSelectedDeviceIds((ids) => ids.filter((id) => String(id) !== device.id));
-            if (selectedDevice?.id === device.id) setDrawerOpen(false);
             await refreshSnapshot();
             void messageApi.success(`已删除「${device.name}」`);
           } catch (error) {
@@ -335,7 +327,7 @@ export function DevicesPage() {
         },
       });
     },
-    [client, groupNameById, messageApi, modal, refreshSnapshot, selectedDevice?.id],
+    [client, groupNameById, messageApi, modal, refreshSnapshot],
   );
 
   const openInviteModal = () => {
@@ -544,22 +536,6 @@ export function DevicesPage() {
           const isOffline = !device.online;
           return (
             <Space size="small">
-              {/* <Tooltip title="远程桌面">
-              <Button
-                type="text"
-                icon={<DesktopOutlined />}
-                disabled={unavailable || isOffline}
-                onClick={() => messageApi.info('远程桌面功能开发中')}
-              />
-            </Tooltip>
-            <Tooltip title="远程终端">
-              <Button
-                type="text"
-                icon={<CodeOutlined />}
-                disabled={unavailable || isOffline}
-                onClick={() => messageApi.info('远程终端功能开发中')}
-              />
-            </Tooltip> */}
               <Tooltip title="文件管理">
                 <Button
                   type="text"
@@ -569,28 +545,20 @@ export function DevicesPage() {
                   onClick={() => setFileExplorerDevice(device)}
                 />
               </Tooltip>
-              <Tooltip title="测试中继连接">
+              <Tooltip title="工作台">
                 <Button
                   type="text"
-                  icon={<ExperimentOutlined />}
-                  disabled={unavailable || isOffline}
-                  onClick={() => setRelayDevice(device)}
+                  icon={<DesktopOutlined />}
+                  aria-label={`打开 ${device.name} 的工作台`}
+                  onClick={() =>
+                    navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)
+                  }
                 />
               </Tooltip>
               <Dropdown
                 trigger={['click']}
                 menu={{
                   items: [
-                    {
-                      key: 'info',
-                      icon: <InfoCircleOutlined />,
-                      label: '打开工作台',
-                    },
-                    {
-                      key: 'quick-info',
-                      icon: <InfoCircleOutlined />,
-                      label: '快速信息',
-                    },
                     {
                       key: 'command',
                       icon: <ToolOutlined />,
@@ -641,11 +609,6 @@ export function DevicesPage() {
                   onClick: ({ key }) => {
                     if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
                       runPowerAction(device, key as PowerAction);
-                    } else if (key === 'info') {
-                      navigate(`/devices/${encodeURIComponent(device.id)}/workspace`);
-                    } else if (key === 'quick-info') {
-                      setSelectedDevice(device);
-                      setDrawerOpen(true);
                     } else if (key === 'edit') {
                       openDeviceEditor(device);
                     } else if (key === 'delete') {
@@ -826,15 +789,6 @@ export function DevicesPage() {
           />
         </section>
       </div>
-      {drawerOpen && selectedDevice && (
-        <DeviceDetailsDrawer
-          open
-          onClose={() => setDrawerOpen(false)}
-          device={selectedDevice}
-          client={client}
-          connected={status === 'connected'}
-        />
-      )}
       {editingDevice && (
         <DeviceEditModal
           device={editingDevice}
@@ -852,14 +806,6 @@ export function DevicesPage() {
           groups={sortedGroups}
           serverInfo={deviceInviteServerInfo}
           onClose={() => setInviteOpen(false)}
-        />
-      )}
-      {relayDevice && (
-        <RelayValidationModal
-          open
-          onClose={() => setRelayDevice(null)}
-          device={relayDevice}
-          gatewayClient={client}
         />
       )}
       {fileExplorerDevice && (
