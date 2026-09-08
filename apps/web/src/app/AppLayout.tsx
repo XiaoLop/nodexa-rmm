@@ -16,11 +16,8 @@ import {
 import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import {
-  gatewaySelectors,
-  getUserDisplayName,
-  useGatewayStore,
-} from '@meshcentral/shared-state';
+import { isFullAdministrator } from '@meshcentral/control-client';
+import { gatewaySelectors, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/ConsoleUi';
 import { useGateway } from '../features/gateway/GatewayProvider';
 
@@ -127,9 +124,7 @@ export function AppLayout() {
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed((value) => !value)}
             />
-            <span className="breadcrumb-title">
-              {pageMeta.title}
-            </span>
+            <span className="breadcrumb-title">{pageMeta.title}</span>
           </div>
           <div className="header-actions">
             <Input
@@ -160,7 +155,11 @@ export function AppLayout() {
                 <Avatar icon={<UserOutlined />} />
                 <span>
                   <strong>{displayName}</strong>
-                  <small>{userInfo?.siteadmin ? '站点管理员' : '控制台用户'}</small>
+                  <small>
+                    {userInfo?.siteadmin !== undefined && isFullAdministrator(userInfo.siteadmin)
+                      ? '站点管理员'
+                      : '控制台用户'}
+                  </small>
                 </span>
               </button>
             </Dropdown>

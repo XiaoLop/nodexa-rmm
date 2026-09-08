@@ -66,6 +66,41 @@ export interface UserInfo {
   raw?: unknown;
 }
 
+export interface ManagedUser {
+  id: string;
+  name: string;
+  realName?: string;
+  email?: string;
+  phone?: string;
+  siteRights: number;
+  locked: boolean;
+  resetNextLogin?: boolean;
+  createdAt?: string;
+  lastLoginAt?: string;
+  previousLoginAt?: string;
+  lastAccessAt?: string;
+  passwordChangedAt?: string;
+  raw: unknown;
+}
+
+export interface UserCreateOptions {
+  username: string;
+  password?: string;
+  randomPassword?: boolean;
+  email?: string;
+  realName?: string;
+  phone?: string;
+  resetNextLogin?: boolean;
+}
+
+export interface UserUpdate {
+  email?: string;
+  realName?: string;
+  phone?: string;
+}
+
+export type UserSessionCounts = Record<string, number>;
+
 export interface GatewaySnapshot {
   devices: Device[];
   groups: DeviceGroup[];

@@ -1,16 +1,42 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GatewayValidationError } from '../errors';
+import type { GatewayClientEvents, GatewayEventChannel, GatewayListener } from '../types';
+import addUserSuccessFixture from '../testing/fixtures/users/add-success.json';
+import deleteUserSuccessFixture from '../testing/fixtures/users/delete-success.json';
+import editUserSuccessFixture from '../testing/fixtures/users/edit-success.json';
 import { DevicesResource } from './devices';
 import { CommandsResource } from './commands';
 import { EventsResource } from './events';
 import { GroupsResource } from './groups';
+import { UsersResource } from './users';
 
 class FakeClient {
   readonly requests: Record<string, unknown>[] = [];
+  readonly sent: unknown[] = [];
   responses: unknown[] = [];
+  private readonly listeners = new Map<GatewayEventChannel, Set<GatewayListener<never>>>();
+
   async request<T>(payload: Record<string, unknown>): Promise<T> {
     this.requests.push(payload);
     return this.responses.shift() as T;
+  }
+
+  send(payload: unknown): void {
+    this.sent.push(payload);
+  }
+
+  on<K extends GatewayEventChannel>(
+    channel: K,
+    listener: GatewayListener<GatewayClientEvents[K]>,
+  ): () => void {
+    const listeners = this.listeners.get(channel) ?? new Set<GatewayListener<never>>();
+    listeners.add(listener as GatewayListener<never>);
+    this.listeners.set(channel, listeners);
+    return () => listeners.delete(listener as GatewayListener<never>);
+  }
+
+  emit<K extends GatewayEventChannel>(channel: K, value: GatewayClientEvents[K]): void {
+    for (const listener of this.listeners.get(channel) ?? []) listener(value as never);
   }
 }
 
@@ -59,6 +85,130 @@ describe('resources', () => {
     await expect(events.listByDevice('one')).resolves.toMatchObject([
       { type: 'agentLog', deviceId: 'one' },
     ]);
+  });
+
+  it('builds and normalizes user requests', async () => {
+    const client = new FakeClient();
+    const users = new UsersResource(client);
+    client.responses.push({
+      users: [{ _id: 'user//admin', name: 'admin', siteadmin: -1 }],
+    });
+    await expect(users.list()).resolves.toMatchObject([
+      { id: 'user//admin', name: 'admin', siteRights: 0xffffffff, locked: false },
+    ]);
+
+    client.responses.push({ action: 'wssessioncount', wssessions: { 'user//admin': 2 } });
+    await expect(users.listSessionCounts()).resolves.toEqual({ 'user//admin': 2 });
+
+    client.responses.push({ users: [] });
+    const create = users.create({
+      username: ' new-user ',
+      password: 'secret',
+      email: ' user@example.com ',
+      realName: ' New User ',
+      phone: ' 10000 ',
+      resetNextLogin: true,
+    });
+    await vi.waitFor(() => expect(client.sent).toHaveLength(1));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'adduser',
+      username: 'new-user',
+      pass: 'secret',
+      email: 'user@example.com',
+      realname: 'New User',
+      phone: '10000',
+      resetNextLogin: true,
+      randomPassword: false,
+      removeEvents: false,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: { etype: 'user', action: 'accountcreate', username: 'other-user' },
+    });
+    let createSettled = false;
+    void create.finally(() => {
+      createSettled = true;
+    });
+    await Promise.resolve();
+    expect(createSettled).toBe(false);
+    client.emit('message', {
+      ...addUserSuccessFixture,
+      event: { ...addUserSuccessFixture.event, username: 'new-user' },
+    });
+    await expect(create).resolves.toMatchObject({ action: 'accountcreate' });
+
+    const update = users.update('user//new-user', { realName: 'New User' });
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'edituser',
+      id: 'user//new-user',
+      email: undefined,
+      realname: 'New User',
+      phone: undefined,
+    });
+    client.emit('message', {
+      ...editUserSuccessFixture,
+      event: {
+        ...editUserSuccessFixture.event,
+        account: { ...editUserSuccessFixture.event.account, _id: 'user//new-user' },
+      },
+    });
+    await expect(update).resolves.toMatchObject({ action: 'accountchange' });
+
+    const lock = users.setLocked('user//new-user', true, 0x100);
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'edituser',
+      id: 'user//new-user',
+      siteadmin: 0x120,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        userid: 'user//new-user',
+      },
+    });
+    await expect(lock).resolves.toMatchObject({ action: 'accountchange' });
+
+    const remove = users.remove('user//new-user', 'new-user');
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'deleteuser',
+      userid: 'user//new-user',
+      username: 'new-user',
+    });
+    client.emit('message', {
+      ...deleteUserSuccessFixture,
+      event: {
+        ...deleteUserSuccessFixture.event,
+        userid: 'user//new-user',
+        username: 'new-user',
+      },
+    });
+    await expect(remove).resolves.toMatchObject({ action: 'accountremove' });
+  });
+
+  it('rejects invalid user mutations', async () => {
+    const users = new UsersResource(new FakeClient());
+    await expect(users.create({ username: ' ', password: 'secret' })).rejects.toBeInstanceOf(
+      GatewayValidationError,
+    );
+    await expect(users.create({ username: 'user', password: ' ' })).rejects.toBeInstanceOf(
+      GatewayValidationError,
+    );
+    expect(() => users.update('user//one', {})).toThrow(GatewayValidationError);
+    expect(() => users.remove(' ')).toThrow(GatewayValidationError);
+  });
+
+  it('rejects user mutations when the gateway reports an error', async () => {
+    const client = new FakeClient();
+    const users = new UsersResource(client);
+    const update = users.update('user//one', { email: 'one@example.invalid' });
+    await vi.waitFor(() => expect(client.sent).toHaveLength(1));
+    client.emit('message', { action: 'edituser', result: 'Access denied' });
+    await expect(update).rejects.toThrow('Access denied');
   });
 
   it('passes history limits and filters and rejects invalid limits', async () => {

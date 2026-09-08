@@ -16,6 +16,8 @@ interface PendingRequest {
   tag?: string;
 }
 
+const RESPONSE_ID_OPTIONAL_ACTIONS = new Set(['authcookie', 'events', 'users', 'wssessioncount']);
+
 export class RequestManager {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly responseIdOptionalChains = new Map<string, Promise<void>>();
@@ -27,7 +29,7 @@ export class RequestManager {
   ) {}
 
   request<T>(payload: Record<string, unknown>, timeoutMs = this.defaultTimeoutMs): Promise<T> {
-    if (payload.action === 'authcookie' || payload.action === 'events')
+    if (typeof payload.action === 'string' && RESPONSE_ID_OPTIONAL_ACTIONS.has(payload.action))
       return this.requestSequentially<T>(payload, timeoutMs);
     return this.requestNow<T>(payload, timeoutMs);
   }

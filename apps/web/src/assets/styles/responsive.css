@@ -77,7 +77,8 @@
     flex-wrap: wrap;
   }
   .table-toolbar > .ant-input-affix-wrapper,
-  .devices-toolbar > .ant-input-affix-wrapper {
+  .devices-toolbar > .ant-input-affix-wrapper,
+  .users-toolbar > .ant-input-affix-wrapper {
     width: 100%;
   }
   .batch-upload-form-grid {
@@ -120,7 +121,8 @@
     flex-direction: column;
   }
   .table-toolbar > .ant-select,
-  .devices-toolbar > .ant-select {
+  .devices-toolbar > .ant-select,
+  .users-toolbar > .ant-select {
     width: calc(50% - 4px);
   }
   .relay-validation-controls {

@@ -6,6 +6,13 @@ import {
   normalizeLastConnects,
   normalizeUserInfo,
 } from './normalizers';
+import {
+  isFullAdministrator,
+  normalizeManagedUsers,
+  normalizeSiteRights,
+  normalizeUserSessionCounts,
+  setUserLocked,
+} from './userNormalizers';
 
 describe('protocol normalizers', () => {
   it('normalizes MeshCentral resources', () => {
@@ -32,6 +39,40 @@ describe('protocol normalizers', () => {
     expect(normalizeEvent({ action: 'changenode', nodeid: 'one' })?.type).toBe('deviceChanged');
     expect(normalizeEvent({ action: 'relaylog', nodeid: 'one' })?.type).toBe('relayLog');
     expect(normalizeEvent({ action: 'manual', nodeid: 'one' })?.type).toBe('manualOperation');
+  });
+
+  it('normalizes managed users and preserves unsigned site rights', () => {
+    expect(
+      normalizeManagedUsers({
+        users: {
+          'user//domain/alice': {
+            realname: 'Alice',
+            email: 'alice@example.com',
+            siteadmin: -1,
+            creation: 1_710_000_000,
+            login: 1_710_000_100,
+            pastlogin: 1_709_000_000,
+            access: 1_710_000_200,
+            passchange: 1_700_000_000,
+          },
+        },
+      })[0],
+    ).toMatchObject({
+      id: 'user//domain/alice',
+      name: 'alice',
+      realName: 'Alice',
+      siteRights: 0xffffffff,
+      locked: false,
+      createdAt: '2024-03-09T16:00:00.000Z',
+    });
+    expect(normalizeSiteRights(-1)).toBe(0xffffffff);
+    expect(isFullAdministrator(-1)).toBe(true);
+    expect(setUserLocked(0x100, true)).toBe(0x120);
+    expect(setUserLocked(0x120, false)).toBe(0x100);
+    expect(setUserLocked(0xffffffff, false)).toBe(0xffffffdf);
+    expect(
+      normalizeUserSessionCounts({ action: 'wssessioncount', wssessions: { 'user//admin': 2 } }),
+    ).toEqual({ 'user//admin': 2 });
   });
 
   it('creates stable IDs for equivalent historical and realtime events', () => {

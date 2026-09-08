@@ -92,6 +92,46 @@ describe('GatewayClient', () => {
     client.destroy();
   });
 
+  it('serializes and matches responseid-less user list responses', async () => {
+    const { client, socket } = await connectedClient();
+    const first = client.users.list();
+    const second = client.users.list();
+    const requests = () =>
+      socket.sent.map((item) => JSON.parse(item)).filter((item) => item.action === 'users');
+    await vi.waitFor(() => expect(requests()).toHaveLength(1));
+
+    socket.message({
+      action: 'users',
+      users: [{ _id: 'user//one', name: 'one', siteadmin: 0 }],
+    });
+    await expect(first).resolves.toMatchObject([{ id: 'user//one', name: 'one' }]);
+    await vi.waitFor(() => expect(requests()).toHaveLength(2));
+    socket.message({
+      action: 'users',
+      users: [{ _id: 'user//two', name: 'two', siteadmin: 0 }],
+    });
+    await expect(second).resolves.toMatchObject([{ id: 'user//two', name: 'two' }]);
+    client.destroy();
+  });
+
+  it('matches responseid-less user session count responses', async () => {
+    const { client, socket } = await connectedClient();
+    const counts = client.users.listSessionCounts();
+    await vi.waitFor(() =>
+      expect(
+        socket.sent
+          .map((item) => JSON.parse(item))
+          .filter((item) => item.action === 'wssessioncount'),
+      ).toHaveLength(1),
+    );
+    socket.message({
+      action: 'wssessioncount',
+      wssessions: { 'user//admin': 2, 'user//operator': 1 },
+    });
+    await expect(counts).resolves.toEqual({ 'user//admin': 2, 'user//operator': 1 });
+    client.destroy();
+  });
+
   it('isolates listener failures', async () => {
     const { client, socket } = await connectedClient();
     const diagnostics: string[] = [];

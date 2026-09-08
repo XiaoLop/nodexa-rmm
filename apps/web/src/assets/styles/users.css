@@ -1,0 +1,50 @@
+.users-toolbar > .ant-input-affix-wrapper {
+  width: min(360px, 34vw);
+}
+
+.users-toolbar > .ant-select {
+  width: 160px;
+}
+
+.user-identity {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-identity-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #315079;
+  border-radius: 6px;
+  color: #78b3ff;
+  background: #0d1927;
+}
+
+.user-identity > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.user-identity strong,
+.user-identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-identity small {
+  color: var(--muted);
+}

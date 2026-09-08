@@ -6,6 +6,7 @@
 @import './device-details.css';
 @import './dashboard-widgets.css';
 @import './devices.css';
+@import './users.css';
 @import './realtime-events.css';
 @import './commands.css';
 @import './device-workspace.css';

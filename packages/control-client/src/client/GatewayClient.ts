@@ -16,6 +16,7 @@ import { DevicesResource } from '../resources/devices';
 import { CommandsResource } from '../resources/commands';
 import { EventsResource } from '../resources/events';
 import { GroupsResource } from '../resources/groups';
+import { UsersResource } from '../resources/users';
 import type {
   ConnectionStatus,
   GatewayClientEvents,
@@ -35,6 +36,7 @@ export class GatewayClient {
   readonly commands: CommandsResource;
   readonly groups: GroupsResource;
   readonly events: EventsResource;
+  readonly users: UsersResource;
   private socket?: WebSocketLike;
   private heartbeatTimer?: ReturnType<typeof setInterval>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
@@ -65,6 +67,7 @@ export class GatewayClient {
     this.commands = new CommandsResource(this);
     this.groups = new GroupsResource(this);
     this.events = new EventsResource(this);
+    this.users = new UsersResource(this);
     if (options.onConnectionChange) this.on('connection', options.onConnectionChange);
     if (options.onEvent) this.on('event', options.onEvent);
     if (options.onError) this.on('error', options.onError);

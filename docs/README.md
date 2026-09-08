@@ -39,21 +39,17 @@ MeshCentral 的管理能力主要不是标准 REST API，而是通过 WebSocket 
 ```json
 {
   "action": "nodes",
-  "responseid": "req-001"
 }
 ```
 
-服务端返回 JSON，通常会带同样的 `responseid`：
+服务端返回 JSON：
 
 ```json
 {
   "action": "nodes",
-  "responseid": "req-001",
   "nodes": {}
 }
 ```
-
-封装时应为每个请求生成唯一 `responseid`，用 `Map<responseid, Promise>` 管理响应。没有 `responseid` 的消息通常是事件推送或广播。
 
 ## 常用连接地址
 

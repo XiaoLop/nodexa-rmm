@@ -37,10 +37,11 @@
 
 ## 用户列表
 
+请求：
+
 ```json
 {
-  "action": "users",
-  "responseid": "req-users"
+  "action": "users"
 }
 ```
 
@@ -60,31 +61,80 @@
 }
 ```
 
+目标环境返回的 `users` 消息不包含 `responseid`。客户端应按 `action: "users"`
+接收列表快照，并避免同时发起多个无法区分的用户列表请求。
+
 ## 新增用户
+
+使用服务端生成随机密码：
 
 ```json
 {
   "action": "adduser",
   "username": "newuser",
-  "pass": "password",
   "email": "newuser@example.com",
-  "resetNextLogin": true,
-  "siteadmin": 0,
-  "responseid": "req-add-user"
+  "pass": "",
+  "resetNextLogin": false,
+  "randomPassword": true,
+  "removeEvents": false
+}
+```
+
+也可以关闭 `randomPassword` 并通过 `pass` 提交初始密码。密码不得写入日志、共享状态或持久存储。
+
+创建成功后通过用户事件确认：
+
+```json
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "userid": "user//newuser",
+    "username": "newuser",
+    "account": {
+      "_id": "user//newuser",
+      "name": "newuser",
+      "email": "newuser@example.com"
+    },
+    "action": "accountcreate",
+    "msg": "Account created, email is newuser@example.com",
+    "domain": ""
+  }
 }
 ```
 
 ## 编辑用户
 
+目标环境的 `edituser` 使用 `id` 指定完整用户 ID。只发送实际需要修改的字段；传空字符串可用于清空服务端允许清空的字段。
+
 ```json
 {
   "action": "edituser",
-  "userid": "user//newuser",
+  "id": "user//newuser",
   "email": "user@example.com",
-  "realname": "User Name",
-  "phone": "123456",
-  "siteadmin": 0,
-  "responseid": "req-edit-user"
+  "realname": "User Name"
+}
+```
+
+修改成功后通过 `accountchange` 用户事件确认，事件中的 `account` 是服务端修改后的用户状态：
+
+```json
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "userid": "user//admin",
+    "username": "admin",
+    "account": {
+      "_id": "user//newuser",
+      "name": "newuser",
+      "email": "user@example.com",
+      "realname": "User Name"
+    },
+    "action": "accountchange",
+    "msg": "Account changed: newuser",
+    "domain": ""
+  }
 }
 ```
 
@@ -94,9 +144,27 @@
 {
   "action": "deleteuser",
   "userid": "user//newuser",
-  "responseid": "req-delete-user"
+  "username": "newuser"
 }
 ```
+
+删除成功后通过 `accountremove` 用户事件确认：
+
+```json
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "userid": "user//newuser",
+    "username": "newuser",
+    "action": "accountremove",
+    "msg": "Account removed",
+    "domain": ""
+  }
+}
+```
+
+目标环境未确认这些写操作会返回可匹配的 `responseid/result`。客户端应以对应的用户事件和后续 `users` 回读作为最终确认；超时后也要先回读状态，避免重复创建或遗漏清理。
 
 ## 用户组列表
 
