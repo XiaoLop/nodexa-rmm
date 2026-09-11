@@ -105,16 +105,19 @@
 .user-detail-chevron { margin-left: auto; color: #a7bad0; font-size: 28px; }
 
 .user-detail-access-card { overflow: hidden; padding: 0 16px 8px; }
+.user-detail-access-card.constrained { height: 260px; }
 .user-detail-access-card header { height: 42px; display: flex; align-items: center; border-bottom: 1px solid #173554; }
 .user-detail-access-card h2 { display: flex; align-items: center; gap: 9px; margin: 0; color: #e7f0fb; font-size: 14px; }
-.user-detail-access-card header button { margin-left: auto; border: 0; color: #38a4ff; background: transparent; font-size: 11px; cursor: pointer; }
+.user-detail-access-card header > span { margin-left: auto; color: #7893b3; font-size: 11px; }
 .blue-text { color: #49a9ff; }
 .purple-text { color: #9987ff; }
 .user-detail-access-head,
-.user-detail-access-row { display: grid; grid-template-columns: minmax(100px, .8fr) minmax(140px, 1.2fr) 14px; align-items: center; }
+.user-detail-access-row { display: grid; grid-template-columns: minmax(100px, .8fr) minmax(140px, 1.2fr); align-items: center; }
 .user-detail-access-head { padding: 10px 8px 5px; color: #7893b3; font-size: 11px; }
-.user-detail-access-row { width: 100%; min-height: 32px; padding: 0 8px; border: 0; border-top: 1px solid rgba(28, 55, 85, 0.45); color: #bbcee5; background: transparent; text-align: left; font-size: 11px; cursor: pointer; }
-.user-detail-access-row b { color: #5480aa; font-size: 18px; }
+.user-detail-access-card.constrained .user-detail-access-body { height: 186px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.user-detail-access-card.constrained .user-detail-access-body::-webkit-scrollbar { display: none; }
+.user-detail-access-card.constrained .user-detail-access-body > .ant-empty { height: 100%; display: flex; flex-direction: column; justify-content: center; margin: 0; }
+.user-detail-access-row { width: 100%; min-height: 32px; padding: 0 8px; border-top: 1px solid rgba(28, 55, 85, 0.45); color: #bbcee5; font-size: 11px; }
 
 .user-detail-log-card { padding: 0 16px 12px; }
 .user-detail-log-card h2 { height: 42px; display: flex; align-items: center; gap: 10px; margin: 0; border-bottom: 1px solid #173554; color: #dce8f7; font-size: 14px; }

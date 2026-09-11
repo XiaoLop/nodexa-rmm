@@ -19,7 +19,7 @@ export class EventsResource {
   }
   listByUser(userId: string, options: EventListOptions = {}): Promise<GatewayEvent[]> {
     if (!userId.trim()) throw new GatewayValidationError('User ID is required.');
-    return this.fetch({ user: userId, ...this.createOptions(options) });
+    return this.fetch({ userid: userId, ...this.createOptions(options) });
   }
   private createOptions(options: EventListOptions): Record<string, unknown> {
     const limit = options.limit ?? 100;

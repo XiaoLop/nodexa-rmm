@@ -1,4 +1,4 @@
-import type { ManagedUser, UserSessionCounts } from '../types';
+import type { ManagedUser, UserLink, UserLinkType, UserSessionCounts } from '../types';
 import { isRecord, stringValue, timestampValue } from './normalizers';
 
 export const SITE_RIGHT_LOCKED = 0x00000020;
@@ -25,6 +25,23 @@ function userNameFromId(id: string): string {
   return id.replace(/^user\/\/[^/]*\//, '').replace(/^user\/\//, '');
 }
 
+function userLinkType(id: string): UserLinkType {
+  if (id.startsWith('mesh//')) return 'device-group';
+  if (id.startsWith('ugrp//')) return 'user-group';
+  if (id.startsWith('node//')) return 'device';
+  return 'unknown';
+}
+
+function normalizeUserLinks(value: unknown): UserLink[] {
+  if (!isRecord(value)) return [];
+  return Object.entries(value).flatMap(([id, link]) => {
+    if (!isRecord(link) || typeof link.rights !== 'number' || !Number.isFinite(link.rights)) {
+      return [];
+    }
+    return [{ id, type: userLinkType(id), rights: normalizeSiteRights(link.rights) }];
+  });
+}
+
 export function normalizeManagedUser(value: unknown, fallbackId?: string): ManagedUser | undefined {
   if (!isRecord(value)) return undefined;
   const id =
@@ -47,6 +64,7 @@ export function normalizeManagedUser(value: unknown, fallbackId?: string): Manag
     previousLoginAt: timestampValue(value.pastlogin),
     lastAccessAt: timestampValue(value.access),
     passwordChangedAt: timestampValue(value.passchange),
+    links: normalizeUserLinks(value.links),
     raw: value,
   };
 }

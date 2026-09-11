@@ -16,7 +16,14 @@ interface PendingRequest {
   tag?: string;
 }
 
-const RESPONSE_ID_OPTIONAL_ACTIONS = new Set(['authcookie', 'events', 'users', 'wssessioncount']);
+const RESPONSE_ID_OPTIONAL_ACTIONS = new Set([
+  'authcookie',
+  'events',
+  'meshes',
+  'usergroups',
+  'users',
+  'wssessioncount',
+]);
 
 export class RequestManager {
   private readonly pending = new Map<string, PendingRequest>();

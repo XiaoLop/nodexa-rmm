@@ -8,6 +8,7 @@ import { DevicesResource } from './devices';
 import { CommandsResource } from './commands';
 import { EventsResource } from './events';
 import { GroupsResource } from './groups';
+import { UserGroupsResource } from './userGroups';
 import { UsersResource } from './users';
 
 class FakeClient {
@@ -85,6 +86,27 @@ describe('resources', () => {
     await expect(events.listByDevice('one')).resolves.toMatchObject([
       { type: 'agentLog', deviceId: 'one' },
     ]);
+    client.responses.push({ events: [] });
+    await events.listByUser('user//admin', { limit: 60 });
+    expect(client.requests.at(-1)).toEqual({
+      action: 'events',
+      userid: 'user//admin',
+      limit: 60,
+    });
+  });
+
+  it('builds and normalizes user group requests', async () => {
+    const client = new FakeClient();
+    const userGroups = new UserGroupsResource(client);
+    client.responses.push({
+      ugroups: {
+        'ugrp//operators': { name: 'Operators', desc: 'Operations team' },
+      },
+    });
+    await expect(userGroups.list()).resolves.toMatchObject([
+      { id: 'ugrp//operators', name: 'Operators', description: 'Operations team' },
+    ]);
+    expect(client.requests.at(-1)).toEqual({ action: 'usergroups' });
   });
 
   it('builds and normalizes user requests', async () => {

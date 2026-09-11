@@ -27,6 +27,13 @@ export interface DeviceGroup {
   raw?: unknown;
 }
 
+export interface UserGroup {
+  id: string;
+  name: string;
+  description?: string;
+  raw?: unknown;
+}
+
 export type GatewayEventType =
   | 'deviceOnline'
   | 'deviceOffline'
@@ -66,6 +73,14 @@ export interface UserInfo {
   raw?: unknown;
 }
 
+export type UserLinkType = 'device-group' | 'user-group' | 'device' | 'unknown';
+
+export interface UserLink {
+  id: string;
+  type: UserLinkType;
+  rights: number;
+}
+
 export interface ManagedUser {
   id: string;
   name: string;
@@ -80,6 +95,7 @@ export interface ManagedUser {
   previousLoginAt?: string;
   lastAccessAt?: string;
   passwordChangedAt?: string;
+  links?: UserLink[];
   raw: unknown;
 }
 

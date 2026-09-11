@@ -27,4 +27,5 @@ export { CommandsResource } from './resources/commands';
 export { CommandExecution } from './resources/CommandExecution';
 export { GroupsResource } from './resources/groups';
 export { EventsResource } from './resources/events';
+export { UserGroupsResource } from './resources/userGroups';
 export { UsersResource } from './resources/users';

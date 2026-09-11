@@ -54,6 +54,10 @@ describe('protocol normalizers', () => {
             pastlogin: 1_709_000_000,
             access: 1_710_000_200,
             passchange: 1_700_000_000,
+            links: {
+              'mesh//one': { rights: -1 },
+              'ugrp//operators': { rights: 1 },
+            },
           },
         },
       })[0],
@@ -64,6 +68,10 @@ describe('protocol normalizers', () => {
       siteRights: 0xffffffff,
       locked: false,
       createdAt: '2024-03-09T16:00:00.000Z',
+      links: [
+        { id: 'mesh//one', type: 'device-group', rights: 0xffffffff },
+        { id: 'ugrp//operators', type: 'user-group', rights: 1 },
+      ],
     });
     expect(normalizeSiteRights(-1)).toBe(0xffffffff);
     expect(isFullAdministrator(-1)).toBe(true);
