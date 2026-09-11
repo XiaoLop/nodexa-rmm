@@ -82,6 +82,41 @@ describe('resources', () => {
       meshname: 'Servers',
       meshtype: 2,
     });
+
+    const grant = groups.setUserRights('mesh//servers', 'Servers', 'user//test', 3);
+    expect(client.sent.at(-1)).toEqual({
+      action: 'addmeshuser',
+      meshid: 'mesh//servers',
+      meshname: 'Servers',
+      userids: ['user//test'],
+      meshadmin: 3,
+      remove: false,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        account: { _id: 'user//test' },
+      },
+    });
+    await expect(grant).resolves.toMatchObject({ action: 'accountchange' });
+
+    const remove = groups.removeUser('mesh//servers', 'user//test');
+    expect(client.sent.at(-1)).toEqual({
+      action: 'removemeshuser',
+      meshid: 'mesh//servers',
+      userid: 'user//test',
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        account: { _id: 'user//test' },
+      },
+    });
+    await expect(remove).resolves.toMatchObject({ action: 'accountchange' });
     client.responses.push({ events: [{ action: 'agentlog', nodeid: 'one', msg: 'Uploaded' }] });
     await expect(events.listByDevice('one')).resolves.toMatchObject([
       { type: 'agentLog', deviceId: 'one' },
@@ -210,6 +245,18 @@ describe('resources', () => {
       },
     });
     await expect(remove).resolves.toMatchObject({ action: 'accountremove' });
+  });
+
+  it('rejects invalid group membership mutations', () => {
+    const groups = new GroupsResource(new FakeClient());
+    expect(() => groups.setUserRights(' ', 'Servers', 'user//test', 3)).toThrow(GatewayValidationError);
+    expect(() => groups.setUserRights('mesh//servers', 'Servers', 'user//test', -1)).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => groups.setUserRights('mesh//servers', 'Servers', 'user//test', 0x100000000)).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => groups.removeUser('mesh//servers', ' ')).toThrow(GatewayValidationError);
   });
 
   it('rejects invalid user mutations', async () => {

@@ -1,13 +1,62 @@
-import { GatewayValidationError } from '../errors';
+import {
+  GatewayConnectionClosedError,
+  GatewayRequestTimeoutError,
+  GatewayServerError,
+  GatewayValidationError,
+} from '../errors';
 import { isRecord, normalizeGroups } from '../protocol/normalizers';
-import type { DeviceGroup, GroupCreateOptions, GroupUpdate } from '../types';
+import type {
+  ConnectionStateChange,
+  DeviceGroup,
+  GatewayClientEvents,
+  GatewayEventChannel,
+  GatewayListener,
+  GroupCreateOptions,
+  GroupUpdate,
+} from '../types';
 
 interface ResourceClient {
+  send(payload: unknown): void;
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
+  on<K extends GatewayEventChannel>(
+    channel: K,
+    listener: GatewayListener<GatewayClientEvents[K]>,
+  ): () => void;
 }
+
+const GROUP_MEMBERSHIP_CONFIRMATION_TIMEOUT_MS = 5_000;
+
 const required = (value: string, name: string) => {
   if (!value.trim()) throw new GatewayValidationError(`${name} is required.`);
 };
+
+function membershipError(message: unknown, action: string): string | undefined {
+  if (!isRecord(message) || message.action !== action) return undefined;
+  const error = message.error ?? message.err;
+  if (typeof error === 'string' && error) return error;
+  if (
+    typeof message.result === 'string' &&
+    !['ok', 'success'].includes(message.result.toLowerCase())
+  ) {
+    return message.result;
+  }
+  return undefined;
+}
+
+function membershipEvent(message: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(message)) return undefined;
+  const event = isRecord(message.event) ? message.event : message;
+  return event.action === 'accountchange' && event.etype === 'user' ? event : undefined;
+}
+
+function eventUserId(event: Record<string, unknown>): string | undefined {
+  const account = isRecord(event.account) ? event.account : undefined;
+  return typeof account?._id === 'string'
+    ? account._id
+    : typeof event.userid === 'string'
+      ? event.userid
+      : undefined;
+}
 
 export class GroupsResource {
   constructor(private readonly client: ResourceClient) {}
@@ -38,5 +87,84 @@ export class GroupsResource {
   remove(groupId: string): Promise<unknown> {
     required(groupId, 'Group ID');
     return this.client.request({ action: 'deletemesh', meshid: groupId });
+  }
+
+  setUserRights(groupId: string, groupName: string, userId: string, rights: number): Promise<unknown> {
+    required(groupId, 'Group ID');
+    required(groupName, 'Group name');
+    required(userId, 'User ID');
+    if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
+      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+    }
+    return this.mutateMembership(
+      {
+        action: 'addmeshuser',
+        meshid: groupId,
+        meshname: groupName,
+        userids: [userId],
+        meshadmin: rights >>> 0,
+        remove: false,
+      },
+      userId,
+    );
+  }
+
+  removeUser(groupId: string, userId: string): Promise<unknown> {
+    required(groupId, 'Group ID');
+    required(userId, 'User ID');
+    return this.mutateMembership(
+      { action: 'removemeshuser', meshid: groupId, userid: userId },
+      userId,
+    );
+  }
+
+  private mutateMembership(payload: Record<string, unknown>, userId: string): Promise<unknown> {
+    const action = payload.action as string;
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        unsubscribeMessage();
+        unsubscribeConnection();
+        callback();
+      };
+      const unsubscribeMessage = this.client.on('message', (message) => {
+        const error = membershipError(message, action);
+        if (error) {
+          finish(() => reject(new GatewayServerError(error, { action })));
+          return;
+        }
+        const event = membershipEvent(message);
+        if (event && eventUserId(event) === userId) finish(() => resolve(event));
+      });
+      const unsubscribeConnection = this.client.on(
+        'connection',
+        (change: ConnectionStateChange) => {
+          if (change.current === 'disconnected' || change.current === 'error') {
+            finish(() =>
+              reject(new GatewayConnectionClosedError('Connection closed during membership update.')),
+            );
+          }
+        },
+      );
+      const timeout = setTimeout(
+        () =>
+          finish(() =>
+            reject(
+              new GatewayRequestTimeoutError(`Timed out waiting for ${action} confirmation.`, {
+                action,
+              }),
+            ),
+          ),
+        GROUP_MEMBERSHIP_CONFIRMATION_TIMEOUT_MS,
+      );
+      try {
+        this.client.send(payload);
+      } catch (error) {
+        finish(() => reject(error));
+      }
+    });
   }
 }

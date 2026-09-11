@@ -2,7 +2,10 @@ import {
   ApartmentOutlined,
   AuditOutlined,
   ClockCircleFilled,
+  DeleteOutlined,
   DesktopOutlined,
+  EditOutlined,
+  PlusOutlined,
   LaptopOutlined,
   MailOutlined,
   SafetyCertificateFilled,
@@ -18,10 +21,13 @@ import type {
   UserLink,
 } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
-import { Alert, Button, Empty, Spin, Tag } from 'antd';
+import { Alert, Button, Empty, Modal, Space, Spin, Tag, Tooltip, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { summarizeMeshRights } from '../features/users/meshPermissions';
+import { isCurrentUser } from '../features/users/userProtection';
 
 type DetailTab = 'overview' | 'device-groups' | 'user-groups' | 'shared-devices' | 'logs';
 
@@ -29,6 +35,7 @@ type AccessRow = {
   id: string;
   name: string;
   permission: string;
+  rights: number;
 };
 
 const tabs: Array<{ key: DetailTab; label: string; icon: ReactNode }> = [
@@ -72,8 +79,7 @@ function errorMessage(error: unknown): string {
 }
 
 function permissionLabel(rights: number): string {
-  const normalized = rights >>> 0;
-  return normalized === 0xffffffff ? '全部权限' : `权限值 0x${normalized.toString(16).toUpperCase()}`;
+  return summarizeMeshRights(rights);
 }
 
 function resolveAccessRows<T extends { id: string; name: string }>(
@@ -88,6 +94,7 @@ function resolveAccessRows<T extends { id: string; name: string }>(
       id: link.id,
       name: names.get(link.id) ?? link.id,
       permission: permissionLabel(link.rights),
+      rights: link.rights,
     }));
 }
 
@@ -100,15 +107,52 @@ function SummaryCard({ icon, title, value, tone }: { icon: ReactNode; title: str
   );
 }
 
-function AccessCard({ icon, title, rows, tone, constrained = false }: { icon: ReactNode; title: string; rows: AccessRow[]; tone: string; constrained?: boolean }) {
+function AccessCard({
+  icon,
+  title,
+  rows,
+  tone,
+  constrained = false,
+  editable = false,
+  onAdd,
+  onEdit,
+  onRemove,
+  addDisabled = false,
+  editDisabled = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  rows: AccessRow[];
+  tone: string;
+  constrained?: boolean;
+  editable?: boolean;
+  onAdd?: () => void;
+  onEdit?: (row: AccessRow) => void;
+  onRemove?: (row: AccessRow) => void;
+  addDisabled?: boolean;
+  editDisabled?: boolean;
+}) {
   return (
     <article className={`user-detail-access-card${constrained ? ' constrained' : ''}`}>
-      <header><h2><span className={tone}>{icon}</span>{title}</h2><span>{rows.length} 项</span></header>
-      <div className="user-detail-access-head"><span>名称</span><span>权限</span></div>
+      <header>
+        <h2><span className={tone}>{icon}</span>{title}</h2>
+        {editable ? <Button type="link" size="small" icon={<PlusOutlined />} disabled={addDisabled} onClick={onAdd}>添加</Button> : <span>{rows.length} 项</span>}
+      </header>
+      <div className={`user-detail-access-head${editable ? ' editable' : ''}`}><span>名称</span><span>权限</span>{editable ? <span>操作</span> : null}</div>
       <div className="user-detail-access-body">
         {rows.length ? rows.map((row) => (
-          <div className="user-detail-access-row" key={row.id}>
+          <div className={`user-detail-access-row${editable ? ' editable' : ''}`} key={row.id}>
             <span>{row.name}</span><span>{row.permission}</span>
+            {editable ? (
+              <Space size={0}>
+                <Tooltip title={editDisabled ? '不能修改当前登录用户的设备组权限。' : undefined}>
+                  <Button type="link" size="small" icon={<EditOutlined />} disabled={editDisabled} onClick={() => onEdit?.(row)}>编辑</Button>
+                </Tooltip>
+                <Tooltip title={editDisabled ? '不能移除当前登录用户的设备组。' : undefined}>
+                  <Button type="link" danger size="small" icon={<DeleteOutlined />} disabled={editDisabled} onClick={() => onRemove?.(row)}>移除</Button>
+                </Tooltip>
+              </Space>
+            ) : null}
           </div>
         )) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`暂无${title}`} />}
       </div>
@@ -141,7 +185,7 @@ function EventTable({ events, devices, groups }: { events: GatewayEvent[]; devic
 export function UserDetailsPage() {
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
-  const { client, status, devices, groups: gatewayGroups } = useGatewayData();
+  const { client, status, devices, groups: gatewayGroups, userInfo } = useGatewayData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [user, setUser] = useState<ManagedUser>();
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
@@ -149,6 +193,10 @@ export function UserDetailsPage() {
   const [sessionCount, setSessionCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string>();
+  const [permissionEditor, setPermissionEditor] = useState<{ groupId: string; rights: number } | 'new'>();
+  const [permissionSubmitting, setPermissionSubmitting] = useState(false);
+  const [messageApi, messageContextHolder] = message.useMessage();
+  const [modalApi, modalContextHolder] = Modal.useModal();
   const requestSequence = useRef(0);
 
   const loadDetails = useCallback(async () => {
@@ -196,6 +244,63 @@ export function UserDetailsPage() {
     [devices, user],
   );
   const online = sessionCount > 0;
+  const isViewingCurrentUser = Boolean(user && isCurrentUser(user, userInfo?.id));
+  const deviceGroupManagementDisabled = status !== 'connected' || isViewingCurrentUser;
+
+  useEffect(() => {
+    if (isViewingCurrentUser) setPermissionEditor(undefined);
+  }, [isViewingCurrentUser]);
+
+  const saveDeviceGroupPermission = async ({ groupId, rights }: { groupId: string; rights: number }) => {
+    if (!client || !user) return;
+    if (isCurrentUser(user, userInfo?.id)) {
+      setPermissionEditor(undefined);
+      void messageApi.error('不能修改当前登录用户的设备组权限。');
+      return;
+    }
+    const group = availableGroups.find((item) => item.id === groupId);
+    if (!group) {
+      void messageApi.error('目标设备组不存在或已被删除。');
+      return;
+    }
+    setPermissionSubmitting(true);
+    try {
+      await client.groups.setUserRights(group.id, group.name, user.id, rights);
+      await loadDetails();
+      void messageApi.success(permissionEditor === 'new' ? `已添加设备组「${group.name}」` : `已更新「${group.name}」的权限`);
+      setPermissionEditor(undefined);
+    } catch (error) {
+      void messageApi.error(`保存设备组权限失败：${errorMessage(error)}`);
+    } finally {
+      setPermissionSubmitting(false);
+    }
+  };
+
+  const confirmDeviceGroupRemoval = (row: AccessRow) => {
+    if (!client || !user) return;
+    if (isCurrentUser(user, userInfo?.id)) {
+      setPermissionEditor(undefined);
+      void messageApi.error('不能移除当前登录用户的设备组。');
+      return;
+    }
+    modalApi.confirm({
+      title: '移除设备组权限',
+      content: `确定移除用户「${user.name}」对设备组「${row.name}」的直接权限吗？用户仍可能通过用户组继承访问权限。`,
+      okText: '确认移除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await client.groups.removeUser(row.id, user.id);
+          await loadDetails();
+          void messageApi.success(`已移除设备组「${row.name}」`);
+        } catch (error) {
+          void messageApi.error(`移除设备组权限失败：${errorMessage(error)}`);
+          throw error;
+        }
+      },
+    });
+  };
 
   if (!user && loading) {
     return <main className="user-details-page user-detail-placeholder"><Spin size="large" /><p>正在加载用户详情</p></main>;
@@ -224,6 +329,8 @@ export function UserDetailsPage() {
 
   return (
     <main className="user-details-page page-stack">
+      {messageContextHolder}
+      {modalContextHolder}
       <nav className="user-detail-breadcrumb" aria-label="面包屑">
         <button onClick={() => navigate('/admin/users')}>用户管理</button><span>›</span><strong>{user.name}</strong>
       </nav>
@@ -279,12 +386,37 @@ export function UserDetailsPage() {
       ) : activeTab === 'logs' ? (
         <EventTable events={events} devices={devices} groups={availableGroups} />
       ) : activeTab === 'device-groups' ? (
-        <AccessCard icon={<ApartmentOutlined />} title={activeTitle ?? '设备组'} rows={deviceGroupRows} tone="blue-text" />
+        <AccessCard
+          editable
+          icon={<ApartmentOutlined />}
+          title={activeTitle ?? '设备组'}
+          rows={deviceGroupRows}
+          tone="blue-text"
+          addDisabled={deviceGroupManagementDisabled}
+          editDisabled={deviceGroupManagementDisabled}
+          onAdd={() => {
+            if (!deviceGroupManagementDisabled) setPermissionEditor('new');
+          }}
+          onEdit={(row) => {
+            if (!deviceGroupManagementDisabled) setPermissionEditor({ groupId: row.id, rights: row.rights });
+          }}
+          onRemove={confirmDeviceGroupRemoval}
+        />
       ) : activeTab === 'user-groups' ? (
         <AccessCard icon={<TeamOutlined />} title={activeTitle ?? '用户组'} rows={userGroupRows} tone="purple-text" />
       ) : (
         <AccessCard icon={<DesktopOutlined />} title={activeTitle ?? '共用设备'} rows={sharedDeviceRows} tone="blue-text" />
       )}
+
+      <DeviceGroupPermissionModal
+        open={Boolean(permissionEditor) && !deviceGroupManagementDisabled}
+        groups={availableGroups}
+        currentGroupIds={deviceGroupRows.map((row) => row.id)}
+        editing={permissionEditor && permissionEditor !== 'new' ? permissionEditor : undefined}
+        submitting={permissionSubmitting}
+        onCancel={() => setPermissionEditor(undefined)}
+        onSubmit={saveDeviceGroupPermission}
+      />
     </main>
   );
 }
