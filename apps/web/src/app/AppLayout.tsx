@@ -69,6 +69,9 @@ function resolvePageMeta(pathname: string) {
   if (/^\/devices\/[^/]+\/workspace$/.test(pathname)) {
     return { selectedKey: '/devices', title: '设备管理 / 设备工作台' };
   }
+  if (/^\/admin\/users\/[^/]+$/.test(pathname)) {
+    return { selectedKey: '/admin/users', title: '管理 / 用户详情' };
+  }
   const selectedKey = Object.keys(pageTitles).find((key) => pathname === key) ?? pathname;
   return { selectedKey, title: pageTitles[selectedKey] ?? 'MeshCentral 控制台' };
 }

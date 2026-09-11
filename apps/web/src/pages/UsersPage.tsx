@@ -29,8 +29,8 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserCreateModal } from '../components/users/UserCreateModal';
-import { UserDetailsDrawer } from '../components/users/UserDetailsDrawer';
 import { UserEditDrawer } from '../components/users/UserEditDrawer';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
@@ -61,6 +61,7 @@ function findLatestUser(users: ManagedUser[], userId: string): ManagedUser {
 }
 
 export function UsersPage() {
+  const navigate = useNavigate();
   const { client, status, userInfo } = useGatewayData();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
@@ -73,7 +74,6 @@ export function UsersPage() {
   const [filter, setFilter] = useState<UserFilter>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser>();
-  const [selectedUser, setSelectedUser] = useState<ManagedUser>();
   const [submitting, setSubmitting] = useState(false);
   const [deletingUser, setDeletingUser] = useState<ManagedUser>();
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -237,7 +237,7 @@ export function UsersPage() {
       fixed: 'left',
       width: 250,
       render: (_, user) => (
-        <button className="user-identity" onClick={() => setSelectedUser(user)}>
+        <button className="user-identity" onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}>
           <span className="user-identity-icon">
             <UserOutlined />
           </span>
@@ -298,7 +298,7 @@ export function UsersPage() {
         const protectsAdmin = isLastActiveAdministrator(user, users);
         return (
           <Space size="small">
-            <Button type="link" size="small" onClick={() => setSelectedUser(user)}>
+            <Button type="link" size="small" onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}>
               查看
             </Button>
             <Button
@@ -441,12 +441,6 @@ export function UsersPage() {
         submitting={submitting}
         onClose={() => setEditingUser(undefined)}
         onSubmit={updateUser}
-      />
-      <UserDetailsDrawer
-        user={selectedUser}
-        sessionCount={selectedUser ? sessionCounts[selectedUser.id] : undefined}
-        sessionsKnown={sessionsKnown}
-        onClose={() => setSelectedUser(undefined)}
       />
       <Modal
         title="删除用户"
