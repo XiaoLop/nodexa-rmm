@@ -1,22 +1,40 @@
 import { Button, Empty, message } from 'antd';
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceInfoPanel } from '../components/device-workspace/DeviceInfoPanel';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
 import { RemoteDesktopPanel } from '../components/device-workspace/RemoteDesktopPanel';
 import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
 import { WorkspaceTabs } from '../components/device-workspace/WorkspaceTabs';
+import { TerminalPanel } from '../components/device-workspace/terminal/TerminalPanel';
 import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel';
 import type { WorkspaceTab } from '../features/device-workspace/types';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+
+const WORKSPACE_TABS: WorkspaceTab[] = [
+  'overview',
+  'desktop',
+  'terminal',
+  'files',
+  'processes',
+  'services',
+  'logs',
+  'monitoring',
+  'security',
+];
+
+function workspaceTab(value: string | null): WorkspaceTab {
+  return WORKSPACE_TABS.includes(value as WorkspaceTab) ? (value as WorkspaceTab) : 'overview';
+}
 
 export function DeviceWorkspacePage() {
   const data = useGatewayData();
   const navigate = useNavigate();
   const { deviceId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [messageApi, messageContextHolder] = message.useMessage();
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
+  const activeTab = workspaceTab(searchParams.get('tab'));
   const [scale, setScale] = useState('fit');
   const [settings, setSettings] = useState<WorkspaceSettingsValue>({
     keyboard: true,
@@ -28,6 +46,12 @@ export function DeviceWorkspacePage() {
   });
   const device = data.devices.find((item) => item.id === deviceId);
   const model = useMemo(() => (device ? createDeviceWorkspaceModel(device) : undefined), [device]);
+  const setActiveTab = (tab: WorkspaceTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'overview') next.delete('tab');
+    else next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
 
   if (!model) {
     return (
@@ -69,6 +93,13 @@ export function DeviceWorkspacePage() {
             onEndSession={() => void messageApi.info('静态演示会话已重置。')}
           />
         </div>
+      ) : activeTab === 'terminal' ? (
+        <TerminalPanel
+          device={model.device}
+          gatewayClient={data.client}
+          gatewayConnected={data.status === 'connected'}
+          terminalAllowed={model.terminalAllowed}
+        />
       ) : (
         <section className="console-card workspace-tab-empty">
           <Empty description="该工作区将在后续版本接入">

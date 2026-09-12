@@ -1,4 +1,6 @@
 export const MESH_RIGHT_ADMIN = 0xffffffff;
+export const MESH_RIGHT_TERMINAL = 0x00000010;
+export const MESH_RIGHT_NO_TERMINAL = 0x00000200;
 
 export type MeshPermission = {
   flag: number;
@@ -49,6 +51,15 @@ export function normalizeMeshRights(rights: number): number {
 export function hasMeshRight(rights: number, flag: number): boolean {
   const normalized = normalizeMeshRights(rights);
   return normalized === MESH_RIGHT_ADMIN || (normalized & flag) === flag;
+}
+
+export function canUseTerminal(rights: number): boolean {
+  const normalized = normalizeMeshRights(rights);
+  if (normalized === MESH_RIGHT_ADMIN) return true;
+  return (
+    (normalized & MESH_RIGHT_TERMINAL) === MESH_RIGHT_TERMINAL &&
+    (normalized & MESH_RIGHT_NO_TERMINAL) === 0
+  );
 }
 
 export function composeMeshRights(flags: number[]): number {

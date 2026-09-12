@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MESH_RIGHT_ADMIN,
+  canUseTerminal,
   composeMeshRights,
   hasMeshRight,
   normalizeMeshRights,
@@ -22,5 +23,12 @@ describe('mesh permissions', () => {
     expect(summarizeMeshRights(0)).toBe('仅设备组可见');
     expect(summarizeMeshRights(0x8 | 0x10)).toBe('远程桌面控制、终端控制台');
     expect(summarizeMeshRights(0x8 | 0x10 | 0x20)).toContain('等 3 项');
+  });
+
+  it('evaluates terminal capability without treating administrator restriction bits as denial', () => {
+    expect(canUseTerminal(MESH_RIGHT_ADMIN)).toBe(true);
+    expect(canUseTerminal(0x10)).toBe(true);
+    expect(canUseTerminal(0x10 | 0x200)).toBe(false);
+    expect(canUseTerminal(0x8)).toBe(false);
   });
 });

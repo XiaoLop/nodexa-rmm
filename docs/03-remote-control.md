@@ -51,10 +51,23 @@ wss://<server>/<domain>/meshrelay.ashx?browser=1&p=1&nodeid=<urlencoded-nodeid>&
 
 终端协议使用 `p=1`。握手过程：
 
-1. 中继 WebSocket 打开后等待 Agent 返回单字符 `c`。
-2. 客户端发送终端大小控制消息，可选。
-3. 客户端发送字符串 `1`，表示启动终端。
-4. 后续客户端输入直接写入中继 WebSocket，服务端输出从中继 WebSocket 收到。
+1. 中继 WebSocket 打开后等待 Agent 返回 `c` 或录制会话标识 `cr`。
+2. 客户端发送包含 Shell 协议及初始尺寸的 `options` 文本帧。
+3. 客户端发送字符串 `1`，表示启动普通终端 Shell。
+4. 启动帧全部发送成功后中继进入 `ready`。
+5. 后续尺寸变化通过 `termsize` 控制消息发送，终端输入按 UTF-8 二进制帧发送。
+6. 服务端字符串或二进制输出按接收顺序交给 xterm.js。
+
+初始配置示例：
+
+```json
+{
+  "type": "options",
+  "protocol": 1,
+  "cols": 120,
+  "rows": 30
+}
+```
 
 终端大小控制消息示例：
 
@@ -83,14 +96,16 @@ dir\r
 }
 ```
 
-封装建议：终端模块暴露为 Node.js `Duplex` 或事件接口：
+仓库通过 `TerminalSession` 暴露事件接口：
 
 ```js
-terminal.on('data', chunk => process.stdout.write(chunk));
+terminal.onData(chunk => xterm.write(chunk));
 terminal.write('whoami\r');
 terminal.resize({ cols: 120, rows: 30 });
 terminal.close();
 ```
+
+Web 工作台使用 `@xterm/xterm`、FitAddon 和 SearchAddon，终端输出不进入 React state。当前实现包含连接、断开、尺寸同步、搜索、复制、粘贴确认、清屏、全屏、延迟和录制提示。目标 MeshCentral 版本的 Linux/macOS、PowerShell、权限失败、主动关闭和 `cr` 行为仍需真实设备兼容验收。
 
 ## 远程桌面
 

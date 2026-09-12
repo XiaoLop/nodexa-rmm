@@ -54,7 +54,22 @@ export {
   type UploadFileOptions,
   type UploadSource,
 } from './protocols/files';
-export { terminalRelayProtocol } from './protocols/terminal';
+export {
+  TERMINAL_CONTROL_CHANNEL,
+  TerminalSession,
+  TerminalSessionError,
+  createTerminalOptionsMessage,
+  createTerminalResizeMessage,
+  createTerminalRttMessage,
+  parseTerminalControlMessage,
+  terminalRelayProtocol,
+  type TerminalControlMessage,
+  type TerminalControlMessageType,
+  type TerminalSessionErrorCode,
+  type TerminalSessionOptions,
+  type TerminalSessionState,
+  type TerminalSize,
+} from './protocols/terminal';
 export {
   RELAY_PROTOCOLS,
   type BuiltInRelayProtocol,

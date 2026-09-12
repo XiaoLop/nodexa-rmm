@@ -1,4 +1,5 @@
 import type { Device } from '@meshcentral/shared-state';
+import { canUseTerminal } from '../users/meshPermissions';
 import { createLatencyTrend, createWorkspaceMetrics, workspaceEvents } from './mockWorkspaceData';
 import type { DeviceWorkspaceModel } from './types';
 
@@ -15,6 +16,12 @@ function rawString(device: Device, keys: string[]) {
     if (typeof value === 'string' && value.trim()) return value;
   }
   return undefined;
+}
+
+function terminalPermission(device: Device): boolean | undefined {
+  const raw = rawRecord(device);
+  const rights = raw?.effectiveRights ?? raw?.meshrights;
+  return typeof rights === 'number' && Number.isFinite(rights) ? canUseTerminal(rights) : undefined;
 }
 
 export function createDeviceWorkspaceModel(device: Device): DeviceWorkspaceModel {
@@ -35,5 +42,6 @@ export function createDeviceWorkspaceModel(device: Device): DeviceWorkspaceModel
     latencyTrend,
     events: workspaceEvents,
     sessionStartedAt: '1 小时',
+    terminalAllowed: terminalPermission(device),
   };
 }

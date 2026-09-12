@@ -40,4 +40,5 @@ export interface DeviceWorkspaceModel {
   latencyTrend: number[];
   events: SessionEvent[];
   sessionStartedAt: string;
+  terminalAllowed?: boolean;
 }

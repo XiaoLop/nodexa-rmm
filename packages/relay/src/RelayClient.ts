@@ -81,6 +81,8 @@ export class RelayClient {
         connectionTimeoutMs: options.connectionTimeoutMs ?? this.options.connectionTimeoutMs,
         handshakeTimeoutMs: options.handshakeTimeoutMs ?? this.options.handshakeTimeoutMs,
         binaryType: 'arraybuffer',
+        createStartupMessages: options.createStartupMessages,
+        onHandshakeMessage: options.onHandshakeMessage,
         onRawMessage: options.onRawMessage,
       });
       connection.on('state', ({ current, error }) => setState(current, error));

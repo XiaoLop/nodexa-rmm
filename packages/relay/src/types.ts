@@ -76,6 +76,8 @@ export interface RelayConnectionOptions extends RelayUrlOptions {
   handshakeTimeoutMs?: number;
   binaryType?: string;
   isHandshakeMessage?: (data: RelayInboundData) => boolean;
+  createStartupMessages?: (handshake: RelayInboundData) => readonly RelayOutboundData[];
+  onHandshakeMessage?: (data: RelayInboundData) => void;
   onRawMessage?: (data: RelayInboundData) => void;
 }
 
@@ -87,6 +89,8 @@ export interface CreateRelaySessionOptions {
   authorizationTimeoutMs?: number;
   connectionTimeoutMs?: number;
   handshakeTimeoutMs?: number;
+  createStartupMessages?: (handshake: RelayInboundData) => readonly RelayOutboundData[];
+  onHandshakeMessage?: (data: RelayInboundData) => void;
   signal?: AbortSignal;
   onStateChange?: (event: RelayStateChangeEvent) => void;
   onRawMessage?: (data: RelayInboundData) => void;

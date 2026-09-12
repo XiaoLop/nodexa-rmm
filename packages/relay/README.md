@@ -6,20 +6,21 @@ MeshCentral `meshrelay.ashx` 中继客户端及协议适配层。包内负责申
 
 - 通用 `RelayClient`、`RelayConnection` 和 `RelaySession`。
 - 文件管理协议 `p=5` 的 `FilesSession`。
+- 终端协议 `p=1` 的 `TerminalSession`。
 - 目录读取和归一化。
 - 单设备单文件分块上传。
 - 单设备单文件流式下载。
 - 上传和下载进度、取消、无活动超时和连接中断处理。
 - Windows、Linux 和 macOS 路径处理。
 
-终端和桌面目前仍只提供协议描述符及通用中继能力。
+桌面目前仍只提供协议描述符及通用中继能力。
 
 ## 边界
 
 - 不维护设备、分组或登录状态。
 - 不依赖 React 或应用层状态。
 - 核心中继层不解释文件、终端或桌面业务消息。
-- 文件协议通过独立的 `FilesSession` 实现，不向通用 `RelaySession` 添加文件操作。
+- 文件和终端协议分别通过 `FilesSession`、`TerminalSession` 实现，不向通用 `RelaySession` 添加协议业务。
 - 不自动重连或重放文件传输；断开后由调用方决定是否创建新会话。
 - 不实现断点续传、离线队列和跨会话恢复。
 
@@ -47,7 +48,40 @@ const relaySession = await relayClient.createSession({
 
 现有 `GatewayClient` 可直接满足该接口，中继包不会访问其内部控制 WebSocket。
 
-中继收到 MeshCentral 的 `c` 或 `cr` 握手后，会自动发送当前协议号，例如文件协议发送文本 `5`。调用方不需要手动发送协议启动标识。
+中继收到 MeshCentral 的 `c` 或 `cr` 握手后，默认自动发送当前协议号，例如文件协议发送文本 `5`。需要在协议号前发送配置的协议可以提供 `createStartupMessages`，启动帧全部发送后连接才进入 `ready`。
+
+## 终端会话
+
+终端必须在握手后先发送 `options`，再发送 Shell 协议号：
+
+```ts
+import {
+  RELAY_PROTOCOLS,
+  TerminalSession,
+  createTerminalOptionsMessage,
+} from '@meshcentral/relay';
+
+const initialSize = { cols: 120, rows: 30 };
+let recorded = false;
+const relay = await relayClient.createSession({
+  deviceId: 'node//device-id',
+  protocol: RELAY_PROTOCOLS.terminal,
+  onHandshakeMessage: (message) => {
+    recorded = message === 'cr';
+  },
+  createStartupMessages: () => [createTerminalOptionsMessage(1, initialSize), '1'],
+});
+
+const terminal = new TerminalSession(relay, { initialSize, recorded });
+terminal.onData((data) => xterm.write(data));
+terminal.onLatencyChange((latencyMs) => console.log(latencyMs));
+terminal.write('whoami\r');
+terminal.resize({ cols: 132, rows: 36 });
+```
+
+字符串输入会按 UTF-8 编码为二进制帧。二进制输出以保留 `byteOffset` 和 `byteLength` 的 `Uint8Array` 发布，Blob 与其他消息通过串行队列保持接收顺序。只有 `ctrlChannel` 为 `102938` 且类型已知的 JSON 才会被识别为控制消息，普通 JSON 文本仍作为终端输出。
+
+`TerminalSession` 默认每 10 秒发送一次 RTT 探测，支持尺寸去重和范围校验，并在待处理输出超过上限时关闭中继。`dispose()` 只释放适配层，`close()` 同时关闭底层中继。
 
 ## 文件管理会话
 

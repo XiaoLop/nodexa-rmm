@@ -5,7 +5,11 @@ import { FakeRelayWebSocket } from './testing';
 
 function createConnection(
   socket: FakeRelayWebSocket,
-  options: { connectionTimeoutMs?: number; handshakeTimeoutMs?: number } = {},
+  options: {
+    connectionTimeoutMs?: number;
+    handshakeTimeoutMs?: number;
+    createStartupMessages?: () => readonly string[];
+  } = {},
 ) {
   return new RelayConnection({
     baseUrl: 'wss://mesh.example.com/domain',
@@ -68,6 +72,28 @@ describe('RelayConnection', () => {
     await connecting;
     expect(connection.state).toBe('ready');
     expect(socket.sent).toEqual(['5']);
+  });
+
+  it('sends protocol-specific startup messages before becoming ready', async () => {
+    const socket = new FakeRelayWebSocket();
+    const connection = createConnection(socket, {
+      createStartupMessages: () => [
+        JSON.stringify({ type: 'options', protocol: 1, cols: 120, rows: 30 }),
+        '1',
+      ],
+    });
+    const states: string[] = [];
+    connection.on('state', ({ current }) => states.push(current));
+    const connecting = connection.connect();
+    socket.open();
+    socket.message('c');
+
+    await connecting;
+    expect(socket.sent).toEqual([
+      '{"type":"options","protocol":1,"cols":120,"rows":30}',
+      '1',
+    ]);
+    expect(states).toEqual(['connecting', 'handshaking', 'ready']);
   });
 
   it('times out while waiting for the handshake', async () => {

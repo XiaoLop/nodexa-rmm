@@ -127,7 +127,11 @@ export class RelayConnection {
           settled = true;
           clearTimers();
           removeAbortListener();
-          socket.send(String(this.options.protocol));
+          this.options.onHandshakeMessage?.(event.data);
+          const startupMessages = this.options.createStartupMessages?.(event.data) ?? [
+            String(this.options.protocol),
+          ];
+          for (const message of startupMessages) socket.send(message);
           this.setState('ready');
           resolve();
           return;
