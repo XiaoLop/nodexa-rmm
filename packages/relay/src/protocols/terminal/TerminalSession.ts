@@ -174,7 +174,6 @@ export class TerminalSession {
       this.rttTimeout = undefined;
       for (const listener of this.latencyListeners) listener(latency);
     }
-    if (message.type === 'disconnect') this.finish('closed');
   }
 
   private startRtt(): void {

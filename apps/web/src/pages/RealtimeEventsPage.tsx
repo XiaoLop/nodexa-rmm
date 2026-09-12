@@ -92,6 +92,14 @@ function rawValue(event: GatewayEvent, field: string) {
   return value === undefined || value === null ? undefined : String(value);
 }
 
+function terminalRelayEventLabel(event: GatewayEvent): string | undefined {
+  if (event.type !== 'relayLog' || rawValue(event, 'protocol') !== '1') return undefined;
+  const messageId = rawValue(event, 'msgid');
+  if (messageId === '14') return '终端会话开始';
+  if (messageId === '10') return '终端会话结束';
+  return undefined;
+}
+
 function EventDetailsDrawer({
   event,
   onClose,
@@ -104,6 +112,7 @@ function EventDetailsDrawer({
   const target = event ? getEventTargetName(event, devices) : undefined;
   const relayDetails = event?.type === 'relayLog';
   const agentDetails = event?.type === 'agentLog';
+  const terminalRelayLabel = event ? terminalRelayEventLabel(event) : undefined;
   return (
     <Drawer
       title="事件详情"
@@ -133,20 +142,28 @@ function EventDetailsDrawer({
                 {relayDetails ? '中继扩展字段' : 'Agent 扩展字段'}
               </Typography.Title>
               <Descriptions column={1} size="small" bordered>
+                {terminalRelayLabel && (
+                  <Descriptions.Item label="终端审计事件">
+                    {terminalRelayLabel}
+                  </Descriptions.Item>
+                )}
                 {relayDetails && (
                   <Descriptions.Item label="协议">
                     {rawValue(event, 'protocol') || '—'}
                   </Descriptions.Item>
                 )}
                 {relayDetails && (
-                  <Descriptions.Item label="上行流量">
+                  <Descriptions.Item label="服务端接收字节">
                     {rawValue(event, 'bytesin') || '—'}
                   </Descriptions.Item>
                 )}
                 {relayDetails && (
-                  <Descriptions.Item label="下行流量">
+                  <Descriptions.Item label="服务端发送字节">
                     {rawValue(event, 'bytesout') || '—'}
                   </Descriptions.Item>
+                )}
+                {terminalRelayLabel === '终端会话结束' && (
+                  <Descriptions.Item label="结束原因">未知</Descriptions.Item>
                 )}
                 {agentDetails && (
                   <Descriptions.Item label="消息 ID">

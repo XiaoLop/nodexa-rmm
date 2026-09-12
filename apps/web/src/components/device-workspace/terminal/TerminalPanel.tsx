@@ -1,5 +1,6 @@
 import {
   ClearOutlined,
+  CloseOutlined,
   CopyOutlined,
   DisconnectOutlined,
   ExpandOutlined,
@@ -9,6 +10,8 @@ import {
 import type { GatewayClient } from '@meshcentral/control-client';
 import {
   RELAY_PROTOCOLS,
+  RelayAgentRouteError,
+  RelayCancelledError,
   RelayClient,
   TerminalSession,
   createTerminalOptionsMessage,
@@ -21,7 +24,33 @@ import { useEffect, useRef, useState } from 'react';
 import { GATEWAY_RELAY_URL } from '../../../config/gateway';
 import { XtermTerminal, type XtermTerminalHandle } from './XtermTerminal';
 
-type TerminalConnectionState = 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
+type TerminalConnectionState =
+  | 'idle'
+  | 'authorizing'
+  | 'notifying'
+  | 'connecting'
+  | 'handshaking'
+  | 'ready'
+  | 'closed'
+  | 'error';
+
+const CONNECTING_STATES = new Set<TerminalConnectionState>([
+  'authorizing',
+  'notifying',
+  'connecting',
+  'handshaking',
+]);
+
+const STATUS_LABELS: Record<TerminalConnectionState, string> = {
+  idle: '未连接',
+  authorizing: '正在申请中继授权',
+  notifying: '正在通知设备 Agent',
+  connecting: '正在连接中继',
+  handshaking: '正在等待终端配对',
+  ready: '已连接',
+  closed: '会话已结束',
+  error: '连接失败',
+};
 
 interface TerminalPanelProps {
   device: Device;
@@ -43,6 +72,14 @@ function pastePreview(text: string): string {
 function isUnsafeControlCharacter(character: string): boolean {
   const code = character.charCodeAt(0);
   return (code >= 0 && code <= 8) || code === 11 || code === 12 || (code >= 14 && code <= 31) || code === 127;
+}
+
+function connectionErrorMessage(error: unknown): string {
+  if (error instanceof RelayAgentRouteError) {
+    return '设备 Agent 当前无法建立终端通道，请稍后重试。';
+  }
+  if (error instanceof RelayCancelledError) return '终端连接已取消。';
+  return error instanceof Error ? error.message : '终端中继连接失败。';
 }
 
 export function TerminalPanel({ device, gatewayClient, gatewayConnected, terminalAllowed }: TerminalPanelProps) {
@@ -73,12 +110,24 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
     setLatency(undefined);
   };
 
+  const cancelConnection = () => {
+    abortRef.current?.abort();
+    abortRef.current = undefined;
+    setStatus('closed');
+    setError(undefined);
+  };
+
   useEffect(() => () => disconnect('Terminal panel unmounted.'), []);
   useEffect(() => {
     disconnect('Terminal device changed.');
     setStatus('idle');
     setError(undefined);
   }, [device.id, gatewayClient]);
+  useEffect(() => {
+    if (gatewayConnected || (!sessionRef.current && !abortRef.current)) return;
+    disconnect('Gateway connection was lost.');
+    setError('网关连接已断开，终端会话已结束。');
+  }, [gatewayConnected]);
   useEffect(() => {
     if (!startedAt || status !== 'ready') return;
     const update = () => setDuration(Math.floor((Date.now() - startedAt) / 1000));
@@ -88,7 +137,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
   }, [startedAt, status]);
 
   const connect = async () => {
-    if (status === 'connecting' || status === 'ready') return;
+    if (CONNECTING_STATES.has(status) || status === 'ready') return;
     if (!device.online || !gatewayConnected || !gatewayClient || terminalAllowed === false) {
       setError(
         terminalAllowed === false
@@ -113,6 +162,16 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
         deviceId: device.id,
         protocol: RELAY_PROTOCOLS.terminal,
         signal: controller.signal,
+        onStateChange: ({ current }) => {
+          if (
+            current === 'authorizing' ||
+            current === 'notifying' ||
+            current === 'connecting' ||
+            current === 'handshaking'
+          ) {
+            setStatus(current);
+          }
+        },
         onHandshakeMessage: (handshake) => {
           sessionRecorded = handshake === 'cr';
         },
@@ -137,8 +196,11 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
       xtermRef.current?.writeLocal('\r\n\x1b[32m已建立新的终端会话。\x1b[0m\r\n');
       xtermRef.current?.focus();
     } catch (connectionError) {
-      if (controller.signal.aborted) return;
-      setError(connectionError instanceof Error ? connectionError.message : '终端中继连接失败。');
+      if (controller.signal.aborted) {
+        setStatus('closed');
+        return;
+      }
+      setError(connectionErrorMessage(connectionError));
       setStatus('error');
     }
   };
@@ -188,17 +250,21 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
 
   const durationText = `${String(Math.floor(duration / 60)).padStart(2, '0')}:${String(duration % 60).padStart(2, '0')}`;
   const unavailable = !device.online || !gatewayConnected || terminalAllowed === false;
+  const connecting = CONNECTING_STATES.has(status);
 
   return (
     <section ref={shellRef} className="console-card terminal-panel">
       {messageContextHolder}
       <div className="terminal-toolbar">
         <Space size={4}>
-          {status !== 'ready' ? (
+          {connecting ? (
+            <Button icon={<CloseOutlined />} onClick={cancelConnection}>
+              取消连接
+            </Button>
+          ) : status !== 'ready' ? (
             <Button
               type="primary"
               icon={<LinkOutlined />}
-              loading={status === 'connecting'}
               disabled={unavailable}
               onClick={() => void connect()}
             >
@@ -242,13 +308,13 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
         />
         {status !== 'ready' ? (
           <div className="terminal-overlay">
-            <strong>{status === 'connecting' ? '正在建立终端中继' : unavailable ? '终端当前不可用' : '终端尚未连接'}</strong>
-            <span>{terminalAllowed === false ? '当前账户没有终端权限' : !device.online ? '设备离线' : !gatewayConnected ? '网关已断开' : '连接后可开始交互式 Shell 会话'}</span>
+            <strong>{connecting ? STATUS_LABELS[status] : unavailable ? '终端当前不可用' : STATUS_LABELS[status]}</strong>
+            <span>{terminalAllowed === false ? '当前账户没有终端权限' : !device.online ? '设备离线' : !gatewayConnected ? '网关已断开' : connecting ? '可以取消本次连接' : '连接后可开始交互式 Shell 会话'}</span>
           </div>
         ) : null}
       </div>
       <footer className="terminal-statusbar">
-        <span><i className={status === 'ready' ? 'is-ready' : ''} />{status === 'ready' ? '已连接' : status === 'connecting' ? '连接中' : '未连接'}</span>
+        <span><i className={status === 'ready' ? 'is-ready' : ''} />{STATUS_LABELS[status]}</span>
         <span>{size.cols} × {size.rows}</span>
         <span>{latency === undefined ? '延迟 —' : `延迟 ${latency} ms`}</span>
         <span>会话 {durationText}</span>

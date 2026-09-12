@@ -2,15 +2,7 @@ import type { TerminalControlMessage, TerminalSize } from './types';
 
 export const TERMINAL_CONTROL_CHANNEL = '102938';
 
-const CONTROL_MESSAGE_TYPES = new Set([
-  'termsize',
-  'options',
-  'ping',
-  'pong',
-  'rtt',
-  'metadata',
-  'disconnect',
-]);
+const CONFIRMED_INBOUND_CONTROL_MESSAGE_TYPES = new Set(['rtt']);
 
 export function parseTerminalControlMessage(text: string): TerminalControlMessage | undefined {
   let value: unknown;
@@ -22,7 +14,10 @@ export function parseTerminalControlMessage(text: string): TerminalControlMessag
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
   const message = value as Record<string, unknown>;
   if (String(message.ctrlChannel) !== TERMINAL_CONTROL_CHANNEL) return undefined;
-  if (typeof message.type !== 'string' || !CONTROL_MESSAGE_TYPES.has(message.type)) {
+  if (
+    typeof message.type !== 'string' ||
+    !CONFIRMED_INBOUND_CONTROL_MESSAGE_TYPES.has(message.type)
+  ) {
     return undefined;
   }
   return message as TerminalControlMessage;

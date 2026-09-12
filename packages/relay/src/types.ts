@@ -87,6 +87,7 @@ export interface CreateRelaySessionOptions {
   usage?: number;
   relayId?: string;
   authorizationTimeoutMs?: number;
+  notificationTimeoutMs?: number;
   connectionTimeoutMs?: number;
   handshakeTimeoutMs?: number;
   createStartupMessages?: (handshake: RelayInboundData) => readonly RelayOutboundData[];
@@ -104,6 +105,7 @@ export interface RelayClientOptions {
   webSocketFactory?: RelayWebSocketFactory;
   createRelayId?: () => string;
   authorizationTimeoutMs?: number;
+  notificationTimeoutMs?: number;
   connectionTimeoutMs?: number;
   handshakeTimeoutMs?: number;
 }

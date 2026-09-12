@@ -46,7 +46,7 @@ const relaySession = await relayClient.createSession({
 - `request(payload, timeoutMs)`：发送请求并等待控制通道响应。
 - `send(payload)`：发送无需等待响应的控制消息。
 
-现有 `GatewayClient` 可直接满足该接口，中继包不会访问其内部控制 WebSocket。
+现有 `GatewayClient` 可直接满足该接口，中继包不会访问其内部控制 WebSocket。Agent tunnel 通知会等待带 `responseid` 的结果；目标服务端返回 `OK` 后才创建 Relay WebSocket，`Unable to route` 会抛出可重试的 `RelayAgentRouteError`。
 
 中继收到 MeshCentral 的 `c` 或 `cr` 握手后，默认自动发送当前协议号，例如文件协议发送文本 `5`。需要在协议号前发送配置的协议可以提供 `createStartupMessages`，启动帧全部发送后连接才进入 `ready`。
 
@@ -79,7 +79,9 @@ terminal.write('whoami\r');
 terminal.resize({ cols: 132, rows: 36 });
 ```
 
-字符串输入会按 UTF-8 编码为二进制帧。二进制输出以保留 `byteOffset` 和 `byteLength` 的 `Uint8Array` 发布，Blob 与其他消息通过串行队列保持接收顺序。只有 `ctrlChannel` 为 `102938` 且类型已知的 JSON 才会被识别为控制消息，普通 JSON 文本仍作为终端输出。
+字符串输入会按 UTF-8 编码为二进制帧。二进制输出以保留 `byteOffset` 和 `byteLength` 的 `Uint8Array` 发布，Blob 与其他消息通过串行队列保持接收顺序。当前目标版本只确认入站 RTT 控制响应，因此只有 `ctrlChannel` 为 `102938` 且 `type` 为 `rtt` 的 JSON 会被过滤；尚未确认的 `ping`、`pong`、`metadata` 和 `disconnect` 仍作为普通终端文本交付。
+
+已确认的最小脱敏协议夹具位于 `src/testing/fixtures/terminal/`。夹具只保留帧方向、消息形状、帧长度、正常关闭和 relaylog 字段，不包含终端内容、用户、设备、地址、Cookie 或真实会话标识。
 
 `TerminalSession` 默认每 10 秒发送一次 RTT 探测，支持尺寸去重和范围校验，并在待处理输出超过上限时关闭中继。`dispose()` 只释放适配层，`close()` 同时关闭底层中继。
 

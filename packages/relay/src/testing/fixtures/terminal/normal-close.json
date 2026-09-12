@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "initiator": "client",
+  "client": {
+    "code": 1000,
+    "reason": "Manual terminal capture completed."
+  },
+  "server": {
+    "code": 1000,
+    "reasonEchoed": true,
+    "wasClean": true
+  },
+  "stateSequence": ["ready", "closing", "closed"],
+  "confirmed": true
+}

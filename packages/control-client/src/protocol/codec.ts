@@ -15,8 +15,6 @@ export interface DecodedPush {
 export const requiredConnectionSignals = [
   'serverinfo',
   'userinfo',
-  'traceinfo',
-  'serverwarnings',
 ] as const;
 
 export function inspectConnectionMessage(payload: unknown): ConnectionInspection {

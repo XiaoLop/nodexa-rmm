@@ -108,7 +108,7 @@
 - [~] 支持会话权限检查和审计记录。
 - [~] 从设备列表和远程管理菜单进入终端。
 
-**当前情况：** 已实现 `c/cr → options → Shell 协议号` 启动扩展、`TerminalSession`、控制消息过滤、RTT、二进制输入输出、Blob 顺序、尺寸同步和输出上限。设备工作台已接入 xterm.js，支持 URL 恢复终端标签、连接与断开、搜索、复制、粘贴确认、清屏、全屏、延迟和录制提示。权限层已增加管理员语义正确的 `canUseTerminal()`；仅当设备快照提供 `effectiveRights` 或 `meshrights` 时进行可信前端门控，最终授权仍由 MeshCentral 服务端执行。真实设备协议夹具、Linux/macOS/PowerShell 兼容、自动重连、移动辅助键、服务端审计与设备列表独立入口尚未完成，因此本节保持部分完成。
+**当前情况：** 已实现 `c/cr → options → Shell 协议号` 启动扩展、`TerminalSession`、已确认 RTT 控制消息过滤、二进制输入输出、Blob 顺序、尺寸同步和输出上限。Windows CMD 成功采集已整理为最小脱敏夹具，并确认二进制输入输出、正常关闭以及 `relaylog msgid 14/10` 的开始结束事件。Agent tunnel 现在等待服务端 `OK` 后再打开 Relay WebSocket，`Unable to route` 映射为可重试路由失败。设备工作台已接入真实授权、通知、连接和握手阶段，支持取消连接、网关断开清理、URL 恢复终端标签、搜索、复制、粘贴确认、清屏、全屏、延迟和录制提示。权限层已增加管理员语义正确的 `canUseTerminal()`；最终授权仍由 MeshCentral 服务端执行。Linux/macOS/PowerShell、真实 resize、录制会话、权限拒绝、自动重连、移动辅助键、完整 Web 测试和设备列表独立入口尚未完成，因此本节保持部分完成。
 
 ### 9. 远程桌面
 

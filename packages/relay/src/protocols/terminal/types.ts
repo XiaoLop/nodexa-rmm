@@ -7,14 +7,7 @@ export interface TerminalSize {
   rows: number;
 }
 
-export type TerminalControlMessageType =
-  | 'termsize'
-  | 'options'
-  | 'ping'
-  | 'pong'
-  | 'rtt'
-  | 'metadata'
-  | 'disconnect';
+export type TerminalControlMessageType = 'rtt';
 
 export interface TerminalControlMessage extends Record<string, unknown> {
   ctrlChannel: string | number;

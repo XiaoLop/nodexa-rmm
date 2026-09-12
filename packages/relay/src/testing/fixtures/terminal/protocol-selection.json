@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "direction": "client-to-server",
+  "frameType": "text",
+  "payload": "1",
+  "confirmed": true
+}

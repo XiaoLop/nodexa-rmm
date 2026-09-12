@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "etype": "relay",
+  "action": "relaylog",
+  "msgid": 14,
+  "protocol": 1,
+  "hasUserId": true,
+  "hasUsername": true,
+  "hasNodeId": true,
+  "hasTime": true,
+  "confirmed": true
+}

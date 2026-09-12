@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { RelayAuthenticationError } from './errors';
+import { describe, expect, it, vi } from 'vitest';
+import { RelayAgentRouteError, RelayAuthenticationError } from './errors';
 import { RelayClient } from './RelayClient';
 import { FakeRelayControlChannel, FakeRelayWebSocket } from './testing';
 
 describe('RelayClient', () => {
   it('authorizes, notifies the agent and opens a ready session', async () => {
     const control = new FakeRelayControlChannel();
+    control.responses = [control.response, { action: 'msg', result: 'OK' }];
     const socket = new FakeRelayWebSocket();
     let connectedUrl = '';
     const client = new RelayClient({
@@ -24,13 +25,13 @@ describe('RelayClient', () => {
       protocol: 5,
       onStateChange: ({ current }) => states.push(current),
     });
-    await Promise.resolve();
+    await vi.waitFor(() => expect(control.requests).toHaveLength(2));
     socket.open();
     socket.message('c');
     const session = await creating;
 
-    expect(control.requests).toEqual([{ action: 'authcookie' }]);
-    expect(control.sent).toEqual([
+    expect(control.requests).toEqual([
+      { action: 'authcookie' },
       {
         action: 'msg',
         nodeid: 'node//one',
@@ -40,6 +41,7 @@ describe('RelayClient', () => {
         responseid: 'relay-fixed-relay-id',
       },
     ]);
+    expect(control.sent).toEqual([]);
     expect(new URL(connectedUrl).searchParams.get('auth')).toBe('browser-cookie');
     expect(socket.sent).toEqual(['5']);
     expect(session.id).toBe('fixed-relay-id');
@@ -81,8 +83,35 @@ describe('RelayClient', () => {
     expect(states).toEqual(['authorizing', 'error']);
   });
 
+  it('rejects an Agent tunnel route failure before opening the relay socket', async () => {
+    const control = new FakeRelayControlChannel();
+    control.responses = [control.response, { action: 'msg', result: 'Unable to route' }];
+    let socketCreated = false;
+    const client = new RelayClient({
+      baseUrl: 'wss://mesh.example.com',
+      control,
+      webSocketFactory: () => {
+        socketCreated = true;
+        return new FakeRelayWebSocket();
+      },
+    });
+    const states: string[] = [];
+
+    await expect(
+      client.createSession({
+        deviceId: 'node//one',
+        protocol: 1,
+        onStateChange: ({ current }) => states.push(current),
+      }),
+    ).rejects.toBeInstanceOf(RelayAgentRouteError);
+
+    expect(socketCreated).toBe(false);
+    expect(states).toEqual(['authorizing', 'notifying', 'error']);
+  });
+
   it('exposes the handshake message and close event during session creation', async () => {
     const control = new FakeRelayControlChannel();
+    control.responses = [control.response, { action: 'msg', result: 'OK' }];
     const socket = new FakeRelayWebSocket();
     const client = new RelayClient({
       baseUrl: 'wss://mesh.example.com',
@@ -98,7 +127,7 @@ describe('RelayClient', () => {
       onRawMessage: (data) => messages.push(data),
       onClose: (event) => closeCodes.push(event.code),
     });
-    await Promise.resolve();
+    await vi.waitFor(() => expect(control.requests).toHaveLength(2));
     socket.open();
     socket.message('c');
     const session = await creating;

@@ -1,4 +1,4 @@
-import { RelayAuthenticationError, RelayCancelledError } from './errors';
+import { RelayAgentRouteError, RelayAuthenticationError, RelayCancelledError } from './errors';
 import { RelayConnection } from './RelayConnection';
 import { buildAgentRelayPath } from './relayUrl';
 import { RelaySession } from './RelaySession';
@@ -32,6 +32,15 @@ function parseAuthorization(value: unknown): RelayAuthorization {
   return { cookie: response.cookie, rcookie: response.rcookie };
 }
 
+function assertTunnelRouteAccepted(value: unknown): void {
+  if (!isRecord(value) || typeof value.result !== 'string') {
+    throw new RelayAgentRouteError('The Agent tunnel response was invalid.');
+  }
+  if (value.result.trim().toLowerCase() !== 'ok') {
+    throw new RelayAgentRouteError(`The device Agent could not route the relay tunnel: ${value.result}`);
+  }
+}
+
 export class RelayClient {
   constructor(private readonly options: RelayClientOptions) {}
 
@@ -56,19 +65,23 @@ export class RelayClient {
       const relayId = options.relayId ?? this.options.createRelayId?.() ?? defaultRelayId();
 
       setState('notifying');
-      this.options.control.send({
-        action: 'msg',
-        nodeid: options.deviceId,
-        type: 'tunnel',
-        usage: options.usage ?? options.protocol,
-        value: buildAgentRelayPath(
-          options.deviceId,
-          options.protocol,
-          relayId,
-          authorization.rcookie,
-        ),
-        responseid: `relay-${relayId}`,
-      });
+      const routeResponse = await this.options.control.request(
+        {
+          action: 'msg',
+          nodeid: options.deviceId,
+          type: 'tunnel',
+          usage: options.usage ?? options.protocol,
+          value: buildAgentRelayPath(
+            options.deviceId,
+            options.protocol,
+            relayId,
+            authorization.rcookie,
+          ),
+          responseid: `relay-${relayId}`,
+        },
+        options.notificationTimeoutMs ?? this.options.notificationTimeoutMs ?? 15_000,
+      );
+      assertTunnelRouteAccepted(routeResponse);
       if (options.signal?.aborted) throw new RelayCancelledError();
 
       const connection = new RelayConnection({

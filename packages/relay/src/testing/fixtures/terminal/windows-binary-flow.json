@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "platform": "windows",
+  "shell": "cmd",
+  "clientInput": {
+    "frameType": "binary",
+    "frameLengths": [4]
+  },
+  "serverOutput": {
+    "frameType": "binary",
+    "frameLengths": [16, 96, 140]
+  },
+  "rawBytesRetained": false,
+  "confirmed": true
+}

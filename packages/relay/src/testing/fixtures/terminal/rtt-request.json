@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "direction": "client-to-server",
+  "frameType": "text",
+  "payload": {
+    "ctrlChannel": "102938",
+    "type": "rtt",
+    "time": 1000
+  },
+  "responseObserved": false,
+  "confirmed": true
+}

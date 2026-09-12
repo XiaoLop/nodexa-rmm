@@ -26,8 +26,6 @@ describe('GatewayClient', () => {
     socket.open();
     socket.message({ action: 'serverinfo' });
     socket.message({ action: 'userinfo', userinfo: { _id: 'user//admin' } });
-    socket.message({ action: 'traceinfo' });
-    socket.message({ action: 'serverwarnings' });
     await connecting;
     expect(client.connectionStatus).toBe('connected');
     socket.message({

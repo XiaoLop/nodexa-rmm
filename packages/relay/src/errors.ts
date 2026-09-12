@@ -23,6 +23,13 @@ export class RelayConnectionError extends RelayError {
   }
 }
 
+export class RelayAgentRouteError extends RelayError {
+  constructor(message = 'The device Agent could not route the relay tunnel.', options?: ErrorOptions) {
+    super(message, 'RELAY_AGENT_ROUTE_FAILED', options);
+    this.name = 'RelayAgentRouteError';
+  }
+}
+
 export class RelayHandshakeError extends RelayError {
   constructor(message = 'Relay handshake failed.', options?: ErrorOptions) {
     super(message, 'RELAY_HANDSHAKE_FAILED', options);

@@ -1,4 +1,5 @@
 export {
+  RelayAgentRouteError,
   RelayAuthenticationError,
   RelayCancelledError,
   RelayConnectionError,

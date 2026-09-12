@@ -86,6 +86,16 @@ describe('TerminalSession', () => {
     terminal.close();
   });
 
+  it('preserves unconfirmed control-shaped JSON as terminal output', async () => {
+    const { socket, terminal } = await createTerminalSession();
+    const output: Array<string | Uint8Array> = [];
+    terminal.onData((data) => output.push(data));
+    const message = '{"ctrlChannel":"102938","type":"disconnect"}';
+
+    socket.message(message);
+    await vi.waitFor(() => expect(output).toEqual([message]));
+  });
+
   it('encodes keyboard input as binary and deduplicates validated resize messages', async () => {
     const { socket, terminal } = await createTerminalSession();
     terminal.write('echo ok\r');

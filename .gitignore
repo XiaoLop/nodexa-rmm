@@ -13,6 +13,7 @@ ios/
 meshcentral-data/
 meshcentral-files/
 meshcentral-backups/
+test/captures/
 .env
 .env.*
 !.env.example

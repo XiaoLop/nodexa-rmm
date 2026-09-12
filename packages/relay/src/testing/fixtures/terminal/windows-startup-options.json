@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "direction": "client-to-server",
+  "frameType": "text",
+  "payload": {
+    "type": "options",
+    "protocol": 1,
+    "cols": 120,
+    "rows": 30
+  },
+  "confirmed": true
+}
