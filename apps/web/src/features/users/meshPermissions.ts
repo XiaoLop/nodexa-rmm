@@ -1,7 +1,16 @@
-export const MESH_RIGHT_ADMIN = 0xffffffff;
-export const MESH_RIGHT_TERMINAL = 0x00000010;
-export const MESH_RIGHT_NO_TERMINAL = 0x00000200;
-export type DesktopAccess = 'denied' | 'view-only' | 'control';
+import {
+  MeshRight,
+  canUseTerminal,
+  composeMeshRights,
+  getDesktopAccess,
+  hasMeshRight,
+  normalizeMeshRights,
+  type DesktopAccess,
+} from '@meshcentral/control-client';
+
+export const MESH_RIGHT_ADMIN = MeshRight.Administrator;
+export { canUseTerminal, composeMeshRights, getDesktopAccess, hasMeshRight, normalizeMeshRights };
+export type { DesktopAccess };
 
 export type MeshPermission = {
   flag: number;
@@ -44,36 +53,6 @@ export const MESH_PERMISSION_CATEGORIES = [
   { key: 'operations', label: '设备操作' },
   { key: 'restrictions', label: '限制项（选中即限制）' },
 ] as const;
-
-export function normalizeMeshRights(rights: number): number {
-  return rights >>> 0;
-}
-
-export function hasMeshRight(rights: number, flag: number): boolean {
-  const normalized = normalizeMeshRights(rights);
-  return normalized === MESH_RIGHT_ADMIN || (normalized & flag) === flag;
-}
-
-export function canUseTerminal(rights: number): boolean {
-  const normalized = normalizeMeshRights(rights);
-  if (normalized === MESH_RIGHT_ADMIN) return true;
-  return (
-    (normalized & MESH_RIGHT_TERMINAL) === MESH_RIGHT_TERMINAL &&
-    (normalized & MESH_RIGHT_NO_TERMINAL) === 0
-  );
-}
-
-export function getDesktopAccess(rights: number): DesktopAccess {
-  const normalized = normalizeMeshRights(rights);
-  if (normalized === MESH_RIGHT_ADMIN) return 'control';
-  if ((normalized & 0x00010000) !== 0 || (normalized & 0x00000008) === 0) return 'denied';
-  if ((normalized & 0x00000100) !== 0 || (normalized & 0x00001000) !== 0) return 'view-only';
-  return 'control';
-}
-
-export function composeMeshRights(flags: number[]): number {
-  return flags.reduce((rights, flag) => (rights | flag) >>> 0, 0);
-}
 
 export function summarizeMeshRights(rights: number): string {
   const normalized = normalizeMeshRights(rights);

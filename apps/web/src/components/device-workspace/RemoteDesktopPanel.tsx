@@ -47,7 +47,7 @@ const STATUS_LABELS: Record<ConnectionState, string> = {
   error: '连接失败',
 };
 
-type DesktopAccess = 'denied' | 'view-only' | 'control';
+type DesktopAccess = 'denied' | 'view-only' | 'limited-input' | 'control';
 
 interface RemoteDesktopPanelProps {
   model: DeviceWorkspaceModel;
@@ -295,6 +295,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
               {CONNECTING_STATES.has(status) ? '连接中' : '连接桌面'}
             </Button>
             {desktopAccess === 'view-only' && <Tag color="gold">只读</Tag>}
+            {desktopAccess === 'limited-input' && <Tag color="orange">受限输入</Tag>}
             {desktopAccess === undefined && <Tag>权限待服务端确认</Tag>}
             {recorded && <Tag color="blue">已录制</Tag>}
           </Space>

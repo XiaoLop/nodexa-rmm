@@ -27,8 +27,8 @@ describe('mesh permissions', () => {
 
   it('evaluates terminal capability without treating administrator restriction bits as denial', () => {
     expect(canUseTerminal(MESH_RIGHT_ADMIN)).toBe(true);
-    expect(canUseTerminal(0x10)).toBe(true);
-    expect(canUseTerminal(0x10 | 0x200)).toBe(false);
-    expect(canUseTerminal(0x8)).toBe(false);
+    expect(canUseTerminal(0x8)).toBe(true);
+    expect(canUseTerminal(0x8 | 0x200)).toBe(false);
+    expect(canUseTerminal(0x10)).toBe(false);
   });
 });

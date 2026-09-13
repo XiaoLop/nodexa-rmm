@@ -100,4 +100,17 @@ describe('protocol normalizers', () => {
       normalizeEvent({ ...event, time: 1_710_000_001 })?.id,
     );
   });
+
+  it('normalizes effective device rights as unsigned masks', () => {
+    expect(
+      normalizeDevices({
+        'mesh//one': [{ _id: 'node//one', name: 'One', conn: 1, meshrights: -1 }],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        id: 'node//one',
+        effectiveRights: 0xffffffff,
+      }),
+    ]);
+  });
 });

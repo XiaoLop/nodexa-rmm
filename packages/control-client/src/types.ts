@@ -14,6 +14,7 @@ export interface Device {
   groupId?: string;
   groupName?: string;
   online: boolean;
+  effectiveRights?: number;
   agentVersion?: string;
   platform?: string;
   lastSeenAt?: string;

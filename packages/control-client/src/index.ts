@@ -1,6 +1,10 @@
 export { GatewayClient } from './client/GatewayClient';
 export * from './errors';
 export * from './types';
+export * from './permissions/bitmask';
+export * from './permissions/capabilities';
+export * from './permissions/meshRights';
+export * from './permissions/siteRights';
 export {
   normalizeDevice,
   normalizeDevices,

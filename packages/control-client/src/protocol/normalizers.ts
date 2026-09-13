@@ -1,4 +1,5 @@
 import type { Device, DeviceGroup, GatewayEvent, UserInfo } from '../types';
+import { normalizeRights } from '../permissions/bitmask';
 
 type UnknownRecord = Record<string, unknown>;
 export const isRecord = (value: unknown): value is UnknownRecord =>
@@ -38,12 +39,22 @@ export function normalizeDevice(
   ) {
     agentVersion = String(value.agent.ver);
   }
+  const rawRights =
+    typeof value.effectiveRights === 'number'
+      ? value.effectiveRights
+      : typeof value.meshrights === 'number'
+        ? value.meshrights
+        : undefined;
   return {
     id,
     name: stringValue(value.name) ?? stringValue(value.rname) ?? stringValue(value.host) ?? id,
     groupId: stringValue(value.groupId) ?? stringValue(value.meshid) ?? fallbackGroupId,
     groupName: stringValue(value.groupName) ?? stringValue(value.meshname),
     online: online as boolean,
+    effectiveRights:
+      typeof rawRights === 'number' && Number.isFinite(rawRights)
+        ? normalizeRights(rawRights)
+        : undefined,
     agentVersion,
     platform: stringValue(value.platform) ?? stringValue(value.osdesc),
     lastSeenAt: timestampValue(value.lastSeenAt) ?? timestampValue(value.lastconnect),

@@ -19,12 +19,16 @@ function rawString(device: Device, keys: string[]) {
 }
 
 function terminalPermission(device: Device): boolean | undefined {
+  if (device.effectiveRights !== undefined) return canUseTerminal(device.effectiveRights);
   const raw = rawRecord(device);
   const rights = raw?.effectiveRights ?? raw?.meshrights;
   return typeof rights === 'number' && Number.isFinite(rights) ? canUseTerminal(rights) : undefined;
 }
 
-function desktopPermission(device: Device): 'denied' | 'view-only' | 'control' | undefined {
+function desktopPermission(
+  device: Device,
+): 'denied' | 'view-only' | 'limited-input' | 'control' | undefined {
+  if (device.effectiveRights !== undefined) return getDesktopAccess(device.effectiveRights);
   const raw = rawRecord(device);
   const rights = raw?.effectiveRights ?? raw?.meshrights;
   return typeof rights === 'number' && Number.isFinite(rights) ? getDesktopAccess(rights) : undefined;

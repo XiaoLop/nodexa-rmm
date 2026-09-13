@@ -1,24 +1,29 @@
 import type { ManagedUser, UserLink, UserLinkType, UserSessionCounts } from '../types';
 import { isRecord, stringValue, timestampValue } from './normalizers';
 
-export const SITE_RIGHT_LOCKED = 0x00000020;
+import {
+  SiteRight,
+  isSiteAccountLocked,
+  isSiteAdministrator,
+  setSiteAccountLocked,
+} from '../permissions/siteRights';
+import { normalizeRights } from '../permissions/bitmask';
+export const SITE_RIGHT_LOCKED = SiteRight.Locked;
 
 export function normalizeSiteRights(value: number): number {
-  return value >>> 0;
+  return normalizeRights(value);
 }
 
 export function isUserLocked(value: number): boolean {
-  const rights = normalizeSiteRights(value);
-  return rights !== 0xffffffff && (rights & SITE_RIGHT_LOCKED) === SITE_RIGHT_LOCKED;
+  return isSiteAccountLocked(value);
 }
 
 export function setUserLocked(value: number, locked: boolean): number {
-  const rights = normalizeSiteRights(value);
-  return locked ? (rights | SITE_RIGHT_LOCKED) >>> 0 : (rights & ~SITE_RIGHT_LOCKED) >>> 0;
+  return setSiteAccountLocked(value, locked);
 }
 
 export function isFullAdministrator(value: number): boolean {
-  return normalizeSiteRights(value) === 0xffffffff;
+  return isSiteAdministrator(value);
 }
 
 function userNameFromId(id: string): string {
