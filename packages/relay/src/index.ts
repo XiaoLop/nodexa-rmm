@@ -12,7 +12,27 @@ export { RelayClient } from './RelayClient';
 export { RelayConnection } from './RelayConnection';
 export { RelaySession, type RelaySessionOptions } from './RelaySession';
 export { buildAgentRelayPath, buildRelayUrl } from './relayUrl';
-export { desktopRelayProtocol } from './protocols/desktop';
+export {
+  DesktopProtocolParser,
+  DesktopSession,
+  DesktopSessionError,
+  desktopRelayProtocol,
+  detectImageFormat,
+  parseDesktopControlMessage,
+  parseDisplayGeometry,
+  parseScreenSize,
+  parseTile,
+  type DesktopControlMessage,
+  type DesktopDisplayGeometry,
+  type DesktopImageFormat,
+  type DesktopMetadataMessage,
+  type DesktopProtocolCommand,
+  type DesktopScreenSize,
+  type DesktopSessionErrorCode,
+  type DesktopSessionOptions,
+  type DesktopSessionState,
+  type DesktopTile,
+} from './protocols/desktop';
 export {
   FileOperationError,
   FilesSession,

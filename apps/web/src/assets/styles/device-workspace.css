@@ -219,12 +219,14 @@
 .remote-screen {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  min-height: 260px;
-  overflow: hidden;
+  height: 520px;
+  overflow: auto;
   border: 1px solid #25364d;
   background: #03152d;
 }
+.remote-screen[data-scale='fit'] { display: grid; place-items: center; overflow: hidden; }
+.remote-screen-shell:fullscreen { padding: 0; background: #03152d; }
+.remote-screen-shell:fullscreen .remote-screen { height: 100vh; border: 0; }
 .desktop-wallpaper { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(circle at 65% 40%, #1779ff 0 6%, #0b42a4 25%, #061d4d 55%, #031226 100%); }
 .desktop-wallpaper::before,
 .desktop-wallpaper::after,
@@ -339,7 +341,7 @@
   .workspace-left-column { grid-template-columns: 1fr 1fr; }
   .workspace-left-column .workspace-panel:first-child { grid-column: 1 / -1; }
   .workspace-right-column { grid-template-columns: 1fr 1fr; }
-  .remote-screen { min-height: 0; }
+  .remote-screen { height: 360px; }
   .workspace-overview-main,
   .workspace-overview-bottom { grid-template-columns: 1fr; }
 }
@@ -361,3 +363,5 @@
   .terminal-stage { height: calc(100dvh - 280px); min-height: 300px; }
   .terminal-statusbar { gap: 9px; overflow-x: auto; }
 }
+.desktop-canvas { display: block; margin: auto; image-rendering: auto; }
+.remote-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 11px; }

@@ -81,9 +81,12 @@ export function DeviceWorkspacePage() {
         <div className="device-workspace-grid">
           <RemoteDesktopPanel
             model={model}
+            device={model.device}
+            gatewayClient={data.client}
+            gatewayConnected={data.status === 'connected'}
+            desktopAccess={model.desktopAccess}
             scale={scale}
             onScaleChange={setScale}
-            onAction={(action) => void messageApi.info(`${action}为静态演示，未向设备发送指令。`)}
           />
           <WorkspaceSettings
             model={model}

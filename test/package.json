@@ -8,7 +8,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "capture": "node --env-file=.env ./node_modules/vitest/vitest.mjs run manual/terminal-data.capture.test.ts --reporter=verbose"
+    "capture": "pnpm capture:terminal",
+    "capture:terminal": "node --env-file=.env ./node_modules/vitest/vitest.mjs run manual/terminal-data.capture.test.ts --reporter=verbose",
+    "capture:desktop": "node --env-file=.env ./node_modules/vitest/vitest.mjs run manual/desktop-data.capture.test.ts --reporter=verbose",
+    "test:desktop-captures": "vitest run desktop"
   },
   "dependencies": {
     "@meshcentral/control-client": "workspace:*",

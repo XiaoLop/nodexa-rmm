@@ -41,4 +41,5 @@ export interface DeviceWorkspaceModel {
   events: SessionEvent[];
   sessionStartedAt: string;
   terminalAllowed?: boolean;
+  desktopAccess?: 'denied' | 'view-only' | 'control';
 }

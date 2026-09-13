@@ -50,3 +50,26 @@ MANUAL_TERMINAL_INPUT=ver\r
 ```
 
 采集器会递归遮蔽 Cookie、Token、认证参数和常见设备/用户/会话 ID，并且不会保存二进制终端内容。提交任何采集文件前仍必须人工检查，确认其中没有用户名、IP 地址、主机名、命令输出或其他业务数据。
+
+## 手动采集远程桌面数据
+
+桌面采集按 `DESKTOP_CAPTURE_SCENARIO` 创建 `captures/desktop/<case-id>/`，其中包含 `manifest.json`、三个 JSONL 索引、完整二进制应用消息和截图目录。二进制消息不会截断、移除 padding 或拆分 jumbo。
+
+最小连接基线：
+
+```dotenv
+RUN_MANUAL_INTEGRATION=1
+DESKTOP_CAPTURE_SCENARIO=connection-basic
+MESH_DEVICE_ID=node//authorized-test-device
+```
+
+运行：
+
+```sh
+pnpm --filter @meshcentral/test capture:desktop
+pnpm --filter @meshcentral/test test:desktop-captures
+```
+
+`connection-basic` 在 `c/cr` 后只发送文本协议号 `"2"`。如果没有画面，应按计划分别运行 `connection-with-refresh`、`connection-with-unpause`、`connection-with-compression`，最后才运行 `connection-with-full-startup`。控制和输入场景使用固定环境参数；当前入口已覆盖刷新、暂停/恢复、压缩、显示器、输入锁、基础鼠标、基础键盘、Unicode 和 CAD 候选消息。
+
+`DESKTOP_READY_AFTER_TILES` 默认为 `0`，因此采集器不会把第一条图块误判为完整桌面。只有固定测试桌面的图块覆盖条件已知时，才把它设为形成完整可见桌面所需的图块数量。画面内容属于敏感原始数据，采集目录被 Git 忽略，分享前必须人工审核。

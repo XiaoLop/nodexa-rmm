@@ -1,6 +1,7 @@
 export const MESH_RIGHT_ADMIN = 0xffffffff;
 export const MESH_RIGHT_TERMINAL = 0x00000010;
 export const MESH_RIGHT_NO_TERMINAL = 0x00000200;
+export type DesktopAccess = 'denied' | 'view-only' | 'control';
 
 export type MeshPermission = {
   flag: number;
@@ -60,6 +61,14 @@ export function canUseTerminal(rights: number): boolean {
     (normalized & MESH_RIGHT_TERMINAL) === MESH_RIGHT_TERMINAL &&
     (normalized & MESH_RIGHT_NO_TERMINAL) === 0
   );
+}
+
+export function getDesktopAccess(rights: number): DesktopAccess {
+  const normalized = normalizeMeshRights(rights);
+  if (normalized === MESH_RIGHT_ADMIN) return 'control';
+  if ((normalized & 0x00010000) !== 0 || (normalized & 0x00000008) === 0) return 'denied';
+  if ((normalized & 0x00000100) !== 0 || (normalized & 0x00001000) !== 0) return 'view-only';
+  return 'control';
 }
 
 export function composeMeshRights(flags: number[]): number {
