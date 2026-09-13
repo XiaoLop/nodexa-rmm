@@ -209,6 +209,12 @@
 .workspace-tags-panel > div:last-child { padding: 13px; }
 .workspace-tags-panel .ant-tag { margin-bottom: 7px; font-size: 9px; }
 .remote-desktop-card { overflow: hidden; }
+.remote-desktop-card:fullscreen { display: flex; flex-direction: column; width: 100vw; height: 100vh; border: 0; border-radius: 0; background: #0b1522; }
+.remote-desktop-card:fullscreen .remote-toolbar,
+.remote-desktop-card:fullscreen .remote-status-row,
+.remote-desktop-card:fullscreen > .ant-alert { flex: 0 0 auto; }
+.remote-desktop-card:fullscreen .remote-screen-shell { flex: 1 1 auto; min-height: 0; padding: 0; background: #03152d; }
+.remote-desktop-card:fullscreen .remote-screen { height: 100%; border: 0; }
 .remote-toolbar { min-height: 42px; display: flex; align-items: center; gap: 1px; padding: 5px 8px; border-bottom: 1px solid var(--border); overflow-x: auto; }
 .remote-toolbar .ant-btn { flex: 0 0 auto; font-size: 10px; padding-inline: 8px; }
 .remote-status-row { min-height: 34px; justify-content: space-between; gap: 12px; padding: 5px 9px; color: var(--muted); font-size: 9px; }
@@ -225,8 +231,6 @@
   background: #03152d;
 }
 .remote-screen[data-scale='fit'] { display: grid; place-items: center; overflow: hidden; }
-.remote-screen-shell:fullscreen { padding: 0; background: #03152d; }
-.remote-screen-shell:fullscreen .remote-screen { height: 100vh; border: 0; }
 .desktop-wallpaper { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(circle at 65% 40%, #1779ff 0 6%, #0b42a4 25%, #061d4d 55%, #031226 100%); }
 .desktop-wallpaper::before,
 .desktop-wallpaper::after,
@@ -363,5 +367,6 @@
   .terminal-stage { height: calc(100dvh - 280px); min-height: 300px; }
   .terminal-statusbar { gap: 9px; overflow-x: auto; }
 }
-.desktop-canvas { display: block; margin: auto; image-rendering: auto; }
+.desktop-canvas { display: block; margin: auto; outline: none; image-rendering: auto; touch-action: none; }
+.desktop-canvas:focus-visible { box-shadow: inset 0 0 0 2px #2f80ff; }
 .remote-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 11px; }

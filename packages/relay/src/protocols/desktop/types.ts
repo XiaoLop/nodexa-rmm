@@ -66,3 +66,11 @@ export interface DesktopSessionOptions {
   onUnknownCommand?: (command: DesktopProtocolCommand) => void;
   onUnhandledMessage?: (message: RelayInboundData) => void;
 }
+
+export interface DesktopPoint {
+  x: number;
+  y: number;
+}
+
+export type DesktopMouseButton = 'left' | 'right' | 'middle';
+export type DesktopKeyPhase = 'down' | 'up';

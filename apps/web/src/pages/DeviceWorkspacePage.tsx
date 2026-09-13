@@ -1,9 +1,9 @@
 import { Button, Empty, message } from 'antd';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
-import { RemoteDesktopPanel } from '../components/device-workspace/RemoteDesktopPanel';
+import { RemoteDesktopPanel, type RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
 import { WorkspaceTabs } from '../components/device-workspace/WorkspaceTabs';
 import { TerminalPanel } from '../components/device-workspace/terminal/TerminalPanel';
@@ -32,9 +32,11 @@ export function DeviceWorkspacePage() {
   const navigate = useNavigate();
   const { deviceId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [messageApi, messageContextHolder] = message.useMessage();
+  const [, messageContextHolder] = message.useMessage();
+  const desktopPanelRef = useRef<RemoteDesktopPanelHandle>(null);
   const activeTab = workspaceTab(searchParams.get('tab'));
   const [scale, setScale] = useState('fit');
+  const [desktopSessionActive, setDesktopSessionActive] = useState(false);
   const [settings, setSettings] = useState<WorkspaceSettingsValue>({
     keyboard: true,
     mouse: true,
@@ -80,19 +82,25 @@ export function DeviceWorkspacePage() {
       ) : activeTab === 'desktop' ? (
         <div className="device-workspace-grid">
           <RemoteDesktopPanel
+            ref={desktopPanelRef}
             model={model}
             device={model.device}
             gatewayClient={data.client}
             gatewayConnected={data.status === 'connected'}
             desktopAccess={model.desktopAccess}
+            keyboardEnabled={settings.keyboard}
+            mouseEnabled={settings.mouse}
             scale={scale}
             onScaleChange={setScale}
+            onSessionActiveChange={setDesktopSessionActive}
           />
           <WorkspaceSettings
             model={model}
             value={settings}
             onChange={setSettings}
-            onEndSession={() => void messageApi.info('静态演示会话已重置。')}
+            controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
+            sessionActive={desktopSessionActive}
+            onEndSession={() => desktopPanelRef.current?.disconnect()}
           />
         </div>
       ) : activeTab === 'terminal' ? (

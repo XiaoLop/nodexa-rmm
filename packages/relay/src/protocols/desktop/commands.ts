@@ -1,4 +1,76 @@
-import type { DesktopProtocolCommand, DesktopScreenSize, DesktopTile, DesktopDisplayGeometry } from './types';
+import type {
+  DesktopDisplayGeometry,
+  DesktopKeyPhase,
+  DesktopMouseButton,
+  DesktopPoint,
+  DesktopProtocolCommand,
+  DesktopScreenSize,
+  DesktopTile,
+} from './types';
+
+const MOUSE_FLAGS: Record<DesktopMouseButton, { down: number; up: number }> = {
+  left: { down: 2, up: 4 },
+  right: { down: 8, up: 16 },
+  middle: { down: 32, up: 64 },
+};
+
+function outboundCommand(command: number, body: number[] = []): Uint8Array {
+  const bytes = new Uint8Array(4 + body.length);
+  const data = new DataView(bytes.buffer);
+  data.setUint16(0, command);
+  data.setUint16(2, bytes.byteLength);
+  bytes.set(body, 4);
+  return bytes;
+}
+
+function assertUint16(value: number, name: string): void {
+  if (!Number.isInteger(value) || value < 0 || value > 0xffff) throw new RangeError(`${name} must be an unsigned 16-bit integer.`);
+}
+
+function uint16(value: number): [number, number] {
+  return [(value >> 8) & 0xff, value & 0xff];
+}
+
+export function createMouseMoveMessage(point: DesktopPoint): Uint8Array {
+  return createMouseMessage(0, point);
+}
+
+export function createMouseButtonMessage(button: DesktopMouseButton, phase: DesktopKeyPhase, point: DesktopPoint): Uint8Array {
+  return createMouseMessage(MOUSE_FLAGS[button][phase], point);
+}
+
+export function createMouseDoubleClickMessage(point: DesktopPoint): Uint8Array {
+  return createMouseMessage(0x88, point);
+}
+
+export function createMouseWheelMessage(point: DesktopPoint, delta: number): Uint8Array {
+  assertUint16(point.x, 'Mouse x');
+  assertUint16(point.y, 'Mouse y');
+  if (!Number.isInteger(delta) || delta < -0x7fff || delta > 0x7fff) throw new RangeError('Mouse wheel delta is outside the supported range.');
+  const encoded = delta < 0 ? (~Math.abs(delta)) & 0xffff : delta;
+  return outboundCommand(2, [0, 0, ...uint16(point.x), ...uint16(point.y), ...uint16(encoded)]);
+}
+
+export function createKeyMessage(keyCode: number, phase: DesktopKeyPhase, extended = false): Uint8Array {
+  if (!Number.isInteger(keyCode) || keyCode < 0 || keyCode > 0xff) throw new RangeError('Desktop key code must be an unsigned byte.');
+  const flag = extended ? (phase === 'down' ? 4 : 3) : phase === 'down' ? 0 : 1;
+  return outboundCommand(1, [flag, keyCode]);
+}
+
+export function createUnicodeMessage(codeUnit: number, phase: DesktopKeyPhase): Uint8Array {
+  assertUint16(codeUnit, 'Unicode code unit');
+  return outboundCommand(85, [phase === 'down' ? 0 : 1, ...uint16(codeUnit)]);
+}
+
+export function createCadMessage(): Uint8Array {
+  return outboundCommand(10);
+}
+
+function createMouseMessage(flags: number, point: DesktopPoint): Uint8Array {
+  assertUint16(point.x, 'Mouse x');
+  assertUint16(point.y, 'Mouse y');
+  return outboundCommand(2, [0, flags, ...uint16(point.x), ...uint16(point.y)]);
+}
 
 function view(command: DesktopProtocolCommand): DataView {
   return new DataView(command.bytes.buffer, command.bytes.byteOffset, command.bytes.byteLength);

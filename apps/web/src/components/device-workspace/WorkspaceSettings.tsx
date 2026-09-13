@@ -11,11 +11,13 @@ export interface WorkspaceSettingsValue {
   quality: number;
 }
 
-export function WorkspaceSettings({ model, value, onChange, onEndSession }: {
+export function WorkspaceSettings({ model, value, onChange, onEndSession, controlAvailable, sessionActive }: {
   model: DeviceWorkspaceModel;
   value: WorkspaceSettingsValue;
   onChange: (value: WorkspaceSettingsValue) => void;
   onEndSession: () => void;
+  controlAvailable: boolean;
+  sessionActive: boolean;
 }) {
   const set = <Key extends keyof WorkspaceSettingsValue>(key: Key, next: WorkspaceSettingsValue[Key]) => onChange({ ...value, [key]: next });
   return (
@@ -23,9 +25,9 @@ export function WorkspaceSettings({ model, value, onChange, onEndSession }: {
       <section className="console-card workspace-panel">
         <div className="card-header"><h2>远程控制</h2></div>
         <div className="workspace-setting-list">
-          <label><span>启用键盘输入</span><Switch size="small" checked={value.keyboard} onChange={(checked) => set('keyboard', checked)} /></label>
-          <label><span>启用鼠标控制</span><Switch size="small" checked={value.mouse} onChange={(checked) => set('mouse', checked)} /></label>
-          <label><span>屏幕用户输入</span><Switch size="small" checked={value.screenInput} onChange={(checked) => set('screenInput', checked)} /></label>
+          <label><span>启用键盘输入</span><Switch size="small" checked={value.keyboard} disabled={!controlAvailable} onChange={(checked) => set('keyboard', checked)} /></label>
+          <label><span>启用鼠标控制</span><Switch size="small" checked={value.mouse} disabled={!controlAvailable} onChange={(checked) => set('mouse', checked)} /></label>
+          <label><span>屏幕用户输入</span><Switch size="small" checked={false} disabled /></label>
         </div>
       </section>
       <section className="console-card workspace-panel">
@@ -43,7 +45,7 @@ export function WorkspaceSettings({ model, value, onChange, onEndSession }: {
       </section>
       <section className="console-card workspace-panel workspace-end-session">
         <div className="card-header"><h2>会话操作</h2></div>
-        <Button danger onClick={() => Modal.confirm({ title: '结束当前会话？', content: '这是静态演示，不会向设备发送指令。', okText: '确认结束', cancelText: '取消', okButtonProps: { danger: true }, onOk: onEndSession })}>结束会话</Button>
+        <Button danger disabled={!sessionActive} onClick={() => Modal.confirm({ title: '结束当前会话？', content: '远程桌面连接将立即关闭。', okText: '确认结束', cancelText: '取消', okButtonProps: { danger: true }, onOk: onEndSession })}>结束会话</Button>
       </section>
     </aside>
   );

@@ -3,8 +3,8 @@ import type { RelayInboundData } from '../../types';
 import { RELAY_PROTOCOLS } from '../types';
 import { DesktopProtocolParser } from './DesktopProtocolParser';
 import { parseDesktopControlMessage } from './controlMessages';
-import { parseDisplayGeometry, parseScreenSize, parseTile } from './commands';
-import { DesktopSessionError, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile } from './types';
+import { createCadMessage, createKeyMessage, createMouseButtonMessage, createMouseDoubleClickMessage, createMouseMoveMessage, createMouseWheelMessage, createUnicodeMessage, parseDisplayGeometry, parseScreenSize, parseTile } from './commands';
+import { DesktopSessionError, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile } from './types';
 
 function inboundSize(data: RelayInboundData): number {
   if (typeof data === 'string') return new TextEncoder().encode(data).byteLength;
@@ -60,7 +60,21 @@ export class DesktopSession {
     this.relay.close(code, reason);
   }
 
+  sendMouseMove(point: DesktopPoint): void { this.sendInput(createMouseMoveMessage(point)); }
+  sendMouseButton(button: DesktopMouseButton, phase: DesktopKeyPhase, point: DesktopPoint): void { this.sendInput(createMouseButtonMessage(button, phase, point)); }
+  sendMouseDoubleClick(point: DesktopPoint): void { this.sendInput(createMouseDoubleClickMessage(point)); }
+  sendMouseWheel(point: DesktopPoint, delta: number): void { this.sendInput(createMouseWheelMessage(point, delta)); }
+  sendKey(keyCode: number, phase: DesktopKeyPhase, extended = false): void { this.sendInput(createKeyMessage(keyCode, phase, extended)); }
+  sendUnicode(codeUnit: number, phase: DesktopKeyPhase): void { this.sendInput(createUnicodeMessage(codeUnit, phase)); }
+  sendCad(): void { this.sendInput(createCadMessage()); }
+
   dispose(): void { if (!this.disposed) this.finish(this.relay.state === 'error' ? 'error' : 'closed'); }
+
+  private sendInput(message: Uint8Array): void {
+    if (!this.options.inputAllowed) throw new DesktopSessionError('Desktop input is not allowed.', 'input-not-allowed');
+    if (this.disposed || this.relay.state !== 'ready') throw new DesktopSessionError('Desktop relay session is not ready.', 'connection-lost');
+    this.relay.sendBinary(message);
+  }
 
   private enqueue(data: RelayInboundData): void {
     if (this.disposed) return;
