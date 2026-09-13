@@ -1,7 +1,6 @@
 import { Button, Empty, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { DeviceInfoPanel } from '../components/device-workspace/DeviceInfoPanel';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
 import { RemoteDesktopPanel } from '../components/device-workspace/RemoteDesktopPanel';
@@ -80,7 +79,6 @@ export function DeviceWorkspacePage() {
         />
       ) : activeTab === 'desktop' ? (
         <div className="device-workspace-grid">
-          <DeviceInfoPanel model={model} />
           <RemoteDesktopPanel
             model={model}
             scale={scale}
@@ -88,6 +86,7 @@ export function DeviceWorkspacePage() {
             onAction={(action) => void messageApi.info(`${action}为静态演示，未向设备发送指令。`)}
           />
           <WorkspaceSettings
+            model={model}
             value={settings}
             onChange={setSettings}
             onEndSession={() => void messageApi.info('静态演示会话已重置。')}

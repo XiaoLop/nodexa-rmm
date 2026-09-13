@@ -54,9 +54,6 @@ export function RemoteDesktopPanel({ model, scale, onScaleChange, onAction }: {
           </div>
         </div>
       </section>
-      <SessionPanels model={model} />
     </div>
   );
 }
-
-import { SessionPanels } from './SessionPanels';

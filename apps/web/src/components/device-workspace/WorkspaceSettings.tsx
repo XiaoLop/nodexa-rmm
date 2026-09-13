@@ -1,5 +1,6 @@
-import { LockOutlined } from '@ant-design/icons';
 import { Button, Modal, Select, Slider, Switch } from 'antd';
+import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
+import { ConnectionSparkline } from './ConnectionSparkline';
 
 export interface WorkspaceSettingsValue {
   keyboard: boolean;
@@ -10,7 +11,8 @@ export interface WorkspaceSettingsValue {
   quality: number;
 }
 
-export function WorkspaceSettings({ value, onChange, onEndSession }: {
+export function WorkspaceSettings({ model, value, onChange, onEndSession }: {
+  model: DeviceWorkspaceModel;
   value: WorkspaceSettingsValue;
   onChange: (value: WorkspaceSettingsValue) => void;
   onEndSession: () => void;
@@ -34,13 +36,10 @@ export function WorkspaceSettings({ value, onChange, onEndSession }: {
           <label className="workspace-quality-slider"><span>画质</span><Slider min={10} max={100} value={value.quality} onChange={(next) => set('quality', next)} /><small>{value.quality < 40 ? '流畅' : value.quality > 75 ? '高清' : '中等'}</small></label>
         </div>
       </section>
-      <section className="console-card workspace-panel">
-        <div className="card-header"><h2>安全信息</h2></div>
-        <div className="workspace-security-list">
-          <div><span><LockOutlined /> 会话加密</span><b>已加密</b></div>
-          <div><span>连接管理员</span><strong>admin</strong></div>
-          <div><span>会话超时</span><strong>1 小时</strong></div>
-        </div>
+      <section className="console-card workspace-panel workspace-quality-panel">
+        <div className="card-header"><h2>连接质量</h2><span>延迟：{model.latency} ms</span></div>
+        <div className="workspace-quality-state"><i />{model.latency < 60 ? '良好' : '存在波动'}</div>
+        <ConnectionSparkline values={model.latencyTrend} />
       </section>
       <section className="console-card workspace-panel workspace-end-session">
         <div className="card-header"><h2>会话操作</h2></div>
