@@ -1,19 +1,20 @@
 # @meshcentral/relay
 
-MeshCentral `meshrelay.ashx` 中继客户端及协议适配层。包内负责申请中继认证、通知 Agent、创建独立 WebSocket、完成握手、启动指定协议，以及统一传输文本、JSON 和二进制数据。
+`@meshcentral/relay` 是 MeshCentral `meshrelay.ashx` 的中继客户端和协议适配包。它负责通过现有控制通道申请中继凭据、通知目标 Agent、建立独立 WebSocket、完成 MeshCentral 握手，并为终端、文件管理和远程桌面提供可直接使用的会话 API。
+
+这个包适合放在浏览器、React Native 或其他应用层与 MeshCentral 服务之间。应用负责登录、设备选择、权限判断和 UI；本包负责中继连接和协议数据。
 
 目前已实现：
 
 - 通用 `RelayClient`、`RelayConnection` 和 `RelaySession`。
 - 文件管理协议 `p=5` 的 `FilesSession`。
 - 终端协议 `p=1` 的 `TerminalSession`。
+- 桌面协议 `p=2` 的 `DesktopSession`、二进制命令解析和输入消息编码。
 - 目录读取和归一化。
 - 单设备单文件分块上传。
 - 单设备单文件流式下载。
 - 上传和下载进度、取消、无活动超时和连接中断处理。
 - Windows、Linux 和 macOS 路径处理。
-
-桌面目前仍只提供协议描述符及通用中继能力。
 
 ## 边界
 
@@ -50,6 +51,8 @@ const relaySession = await relayClient.createSession({
 
 中继收到 MeshCentral 的 `c` 或 `cr` 握手后，默认自动发送当前协议号，例如文件协议发送文本 `5`。需要在协议号前发送配置的协议可以提供 `createStartupMessages`，启动帧全部发送后连接才进入 `ready`。
 
+所有 `onStateChange`、`onMessage`、`onError` 和 `onClose` 监听方法都会返回取消监听函数。完整的连接状态、事件载荷、原始发送 API 和关闭语义见 [核心中继文档](docs/01-core-relay.md)。
+
 ## 终端会话
 
 终端必须在握手后先发送 `options`，再发送 Shell 协议号：
@@ -84,6 +87,8 @@ terminal.resize({ cols: 132, rows: 36 });
 已确认的最小脱敏协议夹具位于 `src/testing/fixtures/terminal/`。夹具只保留帧方向、消息形状、帧长度、正常关闭和 relaylog 字段，不包含终端内容、用户、设备、地址、Cookie 或真实会话标识。
 
 `TerminalSession` 默认每 10 秒发送一次 RTT 探测，支持尺寸去重和范围校验，并在待处理输出超过上限时关闭中继。`dispose()` 只释放适配层，`close()` 同时关闭底层中继。
+
+终端可发送的启动、输入、resize 和 RTT 消息，以及每个事件的用途见 [终端协议文档](docs/02-terminal.md)。
 
 ## 文件管理会话
 
@@ -250,6 +255,52 @@ relaySession.sendBinary(new Uint8Array([1, 2, 3]));
 
 对于文件管理，应优先使用 `FilesSession`，避免调用方自行处理请求路由、二进制 JSON、上传确认和数据块转义。
 
+目录、上传、下载的完整请求响应时序及消息字段见 [文件协议文档](docs/03-files.md)。
+
+## 远程桌面会话
+
+```ts
+import { DesktopSession, RELAY_PROTOCOLS } from '@meshcentral/relay';
+
+const relay = await relayClient.createSession({
+  deviceId: 'node//device-id',
+  protocol: RELAY_PROTOCOLS.desktop,
+});
+
+const desktop = new DesktopSession(relay, { inputAllowed: true });
+
+desktop.onScreenSize(({ width, height }) => console.log(width, height));
+desktop.onDisplayGeometry((geometry) => console.log(geometry));
+desktop.onTile(({ x, y, image, imageFormat }) => {
+  renderTile(x, y, image, imageFormat);
+});
+desktop.onError((error) => console.error(error.code, error.message));
+
+desktop.sendMouseMove({ x: 400, y: 240 });
+desktop.sendMouseButton('left', 'down', { x: 400, y: 240 });
+desktop.sendMouseButton('left', 'up', { x: 400, y: 240 });
+desktop.sendKey(0x41, 'down');
+desktop.sendKey(0x41, 'up');
+```
+
+桌面输入默认关闭，只有显式设置 `inputAllowed: true` 后才会发送输入命令。`DesktopSession` 当前解释屏幕尺寸、JPEG/PNG/WebP 图像块、显示器几何和 metadata，并将未知命令交给 `onUnknownCommand`。详细的二进制帧格式、事件与输入命令见 [远程桌面协议文档](docs/04-desktop.md)。
+
+## 事件概览
+
+| 来源 | 事件或监听方法 | 用途 |
+| --- | --- | --- |
+| `RelaySession` | `onStateChange` | 观察授权、通知、连接、握手、就绪、关闭和错误状态 |
+| `RelaySession` | `onMessage` | 接收未经过协议适配器解释的原始入站消息 |
+| `RelaySession` | `onError` / `onClose` | 处理连接错误和 WebSocket 关闭信息 |
+| `TerminalSession` | `onData` | 接收终端文本或二进制输出 |
+| `TerminalSession` | `onLatencyChange` | 获取 RTT 毫秒值，超时为 `undefined` |
+| `FilesSession` | 操作的 `onProgress` | 获取上传确认进度或下载接收进度 |
+| `DesktopSession` | `onScreenSize` / `onDisplayGeometry` | 获取画布和显示器布局 |
+| `DesktopSession` | `onTile` | 获取可绘制的桌面图像块 |
+| `DesktopSession` | `onControlMessage` / `onUnknownCommand` | 处理 metadata 或保留尚未适配的命令 |
+
+完整事件载荷与可发送消息的横向索引见 [事件与消息速查](docs/05-events-and-messages.md)。
+
 ## 生命周期
 
 通用中继生命周期：
@@ -290,6 +341,16 @@ files.close(1000, 'File operations completed.');
 - `FakeRelayWebSocket`
 
 可用于验证中继会话调度、协议适配器、超时、取消、断线和请求响应顺序。
+
+## 详细文档
+
+- [文档目录和编写约定](docs/README.md)
+- [架构、连接、生命周期与事件](docs/01-core-relay.md)
+- [终端协议](docs/02-terminal.md)
+- [文件管理协议](docs/03-files.md)
+- [远程桌面协议](docs/04-desktop.md)
+- [事件与消息速查](docs/05-events-and-messages.md)
+- [公开 API、错误与测试](docs/06-api-and-testing.md)
 
 包内命令：
 
