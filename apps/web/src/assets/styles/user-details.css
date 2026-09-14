@@ -82,6 +82,19 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
+.user-detail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-edit-avatar-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .user-detail-avatar.is-online {
   background: linear-gradient(135deg, #1e60b5 0%, #0d7f72 100%);
   color: #e0f2fe;

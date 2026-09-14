@@ -20,7 +20,6 @@ import {
 } from '@ant-design/icons';
 import {
   isFullAdministrator,
-  type UserUpdate,
   type Device,
   type DeviceGroup,
   type GatewayEvent,
@@ -35,7 +34,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
 import { SitePermissionModal } from '../components/users/SitePermissionModal';
-import { UserEditDrawer } from '../components/users/UserEditDrawer';
+import {
+  UserEditDrawer,
+  type UserEditSubmission,
+} from '../components/users/UserEditDrawer';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
 import { preserveLatestAccountLock, summarizeSiteRights } from '../features/users/sitePermissions';
@@ -294,17 +296,21 @@ export function UserDetailsPage() {
     return { latest, users };
   };
 
-  const updateUser = async (updates: UserUpdate) => {
+  const updateUser = async ({ updates, image }: UserEditSubmission) => {
     if (!client || !user) return;
-    if (!Object.keys(updates).length) {
+    if (!Object.keys(updates).length && !image) {
       void messageApi.info('用户资料没有变化。');
       return;
     }
     setUserMutationSubmitting(true);
     try {
       const { latest } = await findLatestUser();
-      await client.users.update(latest.id, updates);
+      if (Object.keys(updates).length) await client.users.update(latest.id, updates);
+      if (image) client.users.updateImage(latest.id, image);
       await loadDetails();
+      if (image) {
+        setUser((current) => current?.id === latest.id ? { ...current, image } : current);
+      }
       setEditingProfile(false);
       void messageApi.success(`已更新用户「${latest.name}」`);
     } catch (error) {
@@ -521,7 +527,7 @@ export function UserDetailsPage() {
         <div className="user-detail-profile">
           <div className="user-detail-avatar-wrapper">
             <span className={`user-detail-avatar ${user.locked ? 'is-locked' : online ? 'is-online' : 'is-offline'}`}>
-              <UserOutlined />
+              {user.image ? <img src={user.image} alt="" /> : <UserOutlined />}
             </span>
             <span
               className={`user-detail-status-indicator ${user.locked ? 'status-locked' : online ? 'status-online' : 'status-offline'}`}

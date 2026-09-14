@@ -165,10 +165,23 @@ describe('resources', () => {
     const client = new FakeClient();
     const users = new UsersResource(client);
     client.responses.push({
-      users: [{ _id: 'user//admin', name: 'admin', siteadmin: -1 }],
+      users: [
+        {
+          _id: 'user//admin',
+          name: 'admin',
+          image: 'data:image/png;base64,YWRtaW4=',
+          siteadmin: -1,
+        },
+      ],
     });
     await expect(users.list()).resolves.toMatchObject([
-      { id: 'user//admin', name: 'admin', siteRights: 0xffffffff, locked: false },
+      {
+        id: 'user//admin',
+        name: 'admin',
+        image: 'data:image/png;base64,YWRtaW4=',
+        siteRights: 0xffffffff,
+        locked: false,
+      },
     ]);
 
     client.responses.push({ action: 'wssessioncount', wssessions: { 'user//admin': 2 } });
@@ -228,6 +241,13 @@ describe('resources', () => {
       },
     });
     await expect(update).resolves.toMatchObject({ action: 'accountchange' });
+
+    users.updateImage('user//new-user', 'data:image/jpeg;base64,YXZhdGFy');
+    expect(client.sent.at(-1)).toEqual({
+      action: 'updateUserImage',
+      userid: 'user//new-user',
+      image: 'data:image/jpeg;base64,YXZhdGFy',
+    });
 
     const lock = users.setLocked('user//new-user', true, 0x100);
     await Promise.resolve();
@@ -321,6 +341,9 @@ describe('resources', () => {
       GatewayValidationError,
     );
     expect(() => users.update('user//one', {})).toThrow(GatewayValidationError);
+    expect(() => users.updateImage('user//one', 'https://example.com/avatar.jpg')).toThrow(
+      GatewayValidationError,
+    );
     expect(() => users.remove(' ')).toThrow(GatewayValidationError);
   });
 

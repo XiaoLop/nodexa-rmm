@@ -85,6 +85,7 @@ export interface UserLink {
 export interface ManagedUser {
   id: string;
   name: string;
+  image?: string;
   realName?: string;
   email?: string;
   phone?: string;

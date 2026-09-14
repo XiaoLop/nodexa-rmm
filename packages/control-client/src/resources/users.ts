@@ -148,6 +148,14 @@ export class UsersResource {
     });
   }
 
+  updateImage(userId: string, image: string): void {
+    const userid = required(userId, 'User ID');
+    if (!/^data:image\/(?:jpeg|png|gif|webp);base64,[a-z\d+/]+=*$/i.test(image)) {
+      throw new GatewayValidationError('User image must be a base64 image data URL.');
+    }
+    this.client.send({ action: 'updateUserImage', userid, image });
+  }
+
   setLocked(userId: string, locked: boolean, currentSiteRights: number): Promise<unknown> {
     const id = required(userId, 'User ID');
     return this.mutate({
