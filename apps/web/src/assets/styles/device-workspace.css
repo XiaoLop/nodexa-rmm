@@ -149,8 +149,8 @@
   color: #6e7c90;
 }
 .workspace-health-grid > div > span { min-width: 0; color: var(--muted); font-size: 9px; }
-.workspace-health-grid > div > span strong { display: block; margin-top: 3px; overflow: hidden; color: #d3dce8; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.workspace-health-grid > div > :first-child { width: 28px; height: 28px; padding: 6px; border-radius: 4px; background: #172438; color: #7f91a9; }
+.workspace-health-grid > div > span strong { display: block; margin-top: 4px; overflow: hidden; color: #d3dce8; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-health-grid > div > :first-child { box-sizing: border-box; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; padding: 8px; border-radius: 5px; background: #172438; color: #7f91a9; }
 .workspace-health-grid > div > :last-child { color: #526076; }
 .workspace-health-grid > div.is-healthy { border-color: rgba(45, 204, 112, .24); }
 .workspace-health-grid > div.is-healthy > :first-child { color: var(--success); background: rgba(45, 204, 112, .1); }

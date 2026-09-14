@@ -56,7 +56,11 @@ export function DeviceWorkspacePage() {
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [data.client, data.status, device?.id, deviceId]);
-  const model = useMemo(() => (device ? createDeviceWorkspaceModel(device, deviceDetails) : undefined), [device, deviceDetails]);
+  const model = useMemo(() => {
+    if (!device) return undefined;
+    const groupName = data.groups.find((group) => group.id === device.groupId)?.name;
+    return createDeviceWorkspaceModel(device, deviceDetails, groupName);
+  }, [data.groups, device, deviceDetails]);
   const setActiveTab = (tab: WorkspaceTab) => {
     const next = new URLSearchParams(searchParams);
     if (tab === 'overview') next.delete('tab');

@@ -252,7 +252,7 @@ function desktopPermission(
   return typeof rights === 'number' && Number.isFinite(rights) ? getDesktopAccess(rights) : undefined;
 }
 
-export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetails): DeviceWorkspaceModel {
+export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetails, groupName?: string): DeviceWorkspaceModel {
   const resolvedDevice = details?.device ?? device;
   const hardware = staticDetails(details);
   const platformKey = Object.keys(hardwareRecord(details) ?? {})[0];
@@ -269,7 +269,7 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     currentUser: rawString(resolvedDevice, ['user', 'currentUser'], resolvedDevice.raw) ?? '—',
     uptime: formatUptime(osInfo?.LastBootUpTime),
     lastHeartbeat: resolvedDevice.lastSeenAt ?? '刚刚',
-    groupName: resolvedDevice.groupName ?? '未分组',
+    groupName: groupName ?? resolvedDevice.groupName ?? '未分组',
     tags: [],
     ...hardware,
     events: workspaceEvents,

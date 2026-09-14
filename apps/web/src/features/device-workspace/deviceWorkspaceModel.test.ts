@@ -99,4 +99,14 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.lastConnectAddr).toBe('172.18.0.1:39564');
     expect(model.hardware.primaryNic).toContain('以太网');
   });
+
+  it('uses the resolved group name when the device only contains a group id', () => {
+    const model = createDeviceWorkspaceModel(
+      { id: 'node-3', name: 'Node 3', online: true, groupId: 'mesh/domain/group-1' },
+      undefined,
+      '办公室',
+    );
+
+    expect(model.groupName).toBe('办公室');
+  });
 });
