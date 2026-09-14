@@ -147,18 +147,228 @@ describe('resources', () => {
     });
   });
 
+  it('builds user group target permission requests', async () => {
+    const client = new FakeClient();
+    const groups = new GroupsResource(client);
+    const devices = new DevicesResource(client);
+    const userGroupId = 'ugrp//operators';
+
+    const groupGrant = groups.setUserGroupRights('mesh//servers', 'Servers', userGroupId, 0xffffffff);
+    expect(client.sent.at(-1)).toEqual({
+      action: 'addmeshuser',
+      meshid: 'mesh//servers',
+      meshname: 'Servers',
+      userids: [userGroupId],
+      meshadmin: 0xffffffff,
+      remove: false,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: { etype: 'ugrp', action: 'usergroupchange', ugrpid: userGroupId, links: {} },
+    });
+    await expect(groupGrant).resolves.toMatchObject({ ugrpid: userGroupId });
+
+    const groupRemove = groups.removeUserGroup('mesh//servers', userGroupId);
+    expect(client.sent.at(-1)).toEqual({
+      action: 'removemeshuser',
+      meshid: 'mesh//servers',
+      userid: userGroupId,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: { etype: 'ugrp', action: 'usergroupchange', ugrpid: userGroupId, links: {} },
+    });
+    await expect(groupRemove).resolves.toMatchObject({ ugrpid: userGroupId });
+
+    const deviceGrant = devices.setUserGroupRights('node//one', 'One', userGroupId, 8);
+    expect(client.sent.at(-1)).toEqual({
+      action: 'adddeviceuser',
+      nodeid: 'node//one',
+      nodename: 'One',
+      userids: [userGroupId],
+      rights: 8,
+      remove: false,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: { etype: 'ugrp', action: 'usergroupchange', ugrpid: userGroupId, links: {} },
+    });
+    await expect(deviceGrant).resolves.toMatchObject({ ugrpid: userGroupId });
+
+    const deviceRemove = devices.removeUserGroup('node//one', userGroupId);
+    expect(client.sent.at(-1)).toEqual({
+      action: 'adddeviceuser',
+      nodeid: 'node//one',
+      userids: [userGroupId],
+      rights: 0,
+      remove: true,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: { etype: 'ugrp', action: 'usergroupchange', ugrpid: userGroupId, links: {} },
+    });
+    await expect(deviceRemove).resolves.toMatchObject({ ugrpid: userGroupId });
+  });
+
   it('builds and normalizes user group requests', async () => {
     const client = new FakeClient();
     const userGroups = new UserGroupsResource(client);
     client.responses.push({
       ugroups: {
-        'ugrp//operators': { name: 'Operators', desc: 'Operations team' },
+        'ugrp//operators': {
+          name: 'Operators',
+          desc: 'Operations team',
+          domain: '',
+          flags: 2,
+          consent: 0,
+          links: {
+            'user//root': { userid: 'user//root', name: 'root', rights: 1 },
+            'mesh//servers': { rights: -1 },
+            'node//one': { rights: 8 },
+          },
+        },
       },
     });
     await expect(userGroups.list()).resolves.toMatchObject([
-      { id: 'ugrp//operators', name: 'Operators', description: 'Operations team' },
+      {
+        id: 'ugrp//operators',
+        name: 'Operators',
+        description: 'Operations team',
+        flags: 2,
+        consent: 0,
+        links: [
+          { id: 'user//root', type: 'user', name: 'root', rights: 1 },
+          { id: 'mesh//servers', type: 'device-group', rights: 0xffffffff },
+          { id: 'node//one', type: 'device', rights: 8 },
+        ],
+      },
     ]);
     expect(client.requests.at(-1)).toEqual({ action: 'usergroups' });
+  });
+
+  it('builds and confirms user group mutations', async () => {
+    const client = new FakeClient();
+    const userGroups = new UserGroupsResource(client);
+
+    const create = userGroups.create({ name: ' test22 ', description: ' 123 ' });
+    await vi.waitFor(() => expect(client.sent).toHaveLength(1));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'createusergroup',
+      name: 'test22',
+      desc: '123',
+    });
+    client.emit('message', {
+      action: 'createusergroup',
+      result: 'ok',
+      ugrpid: 'ugrp//test22',
+      links: {},
+    });
+    await expect(create).resolves.toMatchObject({ ugrpid: 'ugrp//test22' });
+
+    const clone = userGroups.create({
+      name: 'test-copy',
+      description: 'copy',
+      cloneUserGroupId: 'ugrp//test22',
+    });
+    await vi.waitFor(() => expect(client.sent).toHaveLength(2));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'createusergroup',
+      name: 'test-copy',
+      desc: 'copy',
+      clone: 'ugrp//test22',
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'ugrp',
+        action: 'createusergroup',
+        ugrpid: 'ugrp//test-copy',
+        name: 'test-copy',
+      },
+    });
+    await expect(clone).resolves.toMatchObject({ ugrpid: 'ugrp//test-copy' });
+
+    const update = userGroups.update('ugrp//test22', {
+      name: 'test22',
+      description: '123123',
+    });
+    await vi.waitFor(() => expect(client.sent).toHaveLength(3));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'editusergroup',
+      ugrpid: 'ugrp//test22',
+      name: 'test22',
+      desc: '123123',
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'ugrp',
+        action: 'usergroupchange',
+        ugrpid: 'ugrp//test22',
+        name: 'test22',
+      },
+    });
+    await expect(update).resolves.toMatchObject({ action: 'usergroupchange' });
+
+    const addUsers = userGroups.addUsers('ugrp//test22', [' root ', 'root']);
+    await vi.waitFor(() => expect(client.sent).toHaveLength(4));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'addusertousergroup',
+      ugrpid: 'ugrp//test22',
+      usernames: ['root'],
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'ugrp',
+        action: 'usergroupchange',
+        ugrpid: 'ugrp//test22',
+        links: { 'user//root': { userid: 'user//root', name: 'root', rights: 1 } },
+      },
+    });
+    await expect(addUsers).resolves.toMatchObject({ action: 'usergroupchange' });
+
+    const removeUser = userGroups.removeUser('ugrp//test22', 'user//root');
+    await vi.waitFor(() => expect(client.sent).toHaveLength(5));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'removeuserfromusergroup',
+      ugrpid: 'ugrp//test22',
+      userid: 'user//root',
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'ugrp',
+        action: 'usergroupchange',
+        ugrpid: 'ugrp//test22',
+        links: {},
+      },
+    });
+    await expect(removeUser).resolves.toMatchObject({ action: 'usergroupchange' });
+
+    const remove = userGroups.remove('ugrp//test22');
+    await vi.waitFor(() => expect(client.sent).toHaveLength(6));
+    expect(client.sent.at(-1)).toEqual({
+      action: 'deleteusergroup',
+      ugrpid: 'ugrp//test22',
+    });
+    client.emit('message', {
+      action: 'deleteusergroup',
+      result: 'ok',
+      ugrpid: 'ugrp//test22',
+    });
+    await expect(remove).resolves.toMatchObject({ ugrpid: 'ugrp//test22' });
+  });
+
+  it('rejects invalid user group mutations', () => {
+    const userGroups = new UserGroupsResource(new FakeClient());
+    expect(() => userGroups.create({ name: ' ' })).toThrow(GatewayValidationError);
+    expect(() => userGroups.create({ name: 'copy', cloneUserGroupId: 'invalid' })).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => userGroups.update('invalid', { name: 'test' })).toThrow(GatewayValidationError);
+    expect(() => userGroups.addUsers('ugrp//test', [])).toThrow(GatewayValidationError);
+    expect(() => userGroups.removeUser('ugrp//test', 'root')).toThrow(GatewayValidationError);
   });
 
   it('builds and normalizes user requests', async () => {

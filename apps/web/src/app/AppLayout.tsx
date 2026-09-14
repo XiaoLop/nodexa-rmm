@@ -47,7 +47,7 @@ const menuItems = [
     label: '管理',
     children: [
       { key: '/admin/users', icon: <TeamOutlined />, label: '用户管理' },
-      { key: '/admin/roles', icon: <UserOutlined />, label: '角色与权限' },
+      { key: '/admin/roles', icon: <UserOutlined />, label: '用户组' },
       { key: '/settings', icon: <SettingOutlined />, label: '设置' },
     ],
   },
@@ -61,7 +61,7 @@ const pageTitles: Record<string, string> = {
   '/monitoring/alerts': '监控与事件 / 告警规则',
   '/monitoring/audit': '监控与事件 / 审计日志',
   '/admin/users': '管理 / 用户管理',
-  '/admin/roles': '管理 / 角色与权限',
+  '/admin/roles': '管理 / 用户组',
   '/settings': '管理 / 设置',
 };
 
@@ -71,6 +71,9 @@ function resolvePageMeta(pathname: string) {
   }
   if (/^\/admin\/users\/[^/]+$/.test(pathname)) {
     return { selectedKey: '/admin/users', title: '管理 / 用户详情' };
+  }
+  if (/^\/admin\/roles\/[^/]+$/.test(pathname)) {
+    return { selectedKey: '/admin/roles', title: '管理 / 用户组详情' };
   }
   const selectedKey = Object.keys(pageTitles).find((key) => pathname === key) ?? pathname;
   return { selectedKey, title: pageTitles[selectedKey] ?? 'MeshCentral 控制台' };

@@ -5,6 +5,7 @@ export * from './permissions/bitmask';
 export * from './permissions/capabilities';
 export * from './permissions/meshRights';
 export * from './permissions/siteRights';
+export * from './permissions/userGroupRights';
 export {
   normalizeDevice,
   normalizeDevices,

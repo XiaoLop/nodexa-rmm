@@ -46,7 +46,9 @@ function membershipError(message: unknown, action: string): string | undefined {
 function membershipEvent(message: unknown): Record<string, unknown> | undefined {
   if (!isRecord(message)) return undefined;
   const event = isRecord(message.event) ? message.event : message;
-  return event.action === 'accountchange' && event.etype === 'user' ? event : undefined;
+  if (event.etype === 'user' && event.action === 'accountchange') return event;
+  if (event.etype === 'ugrp' && event.action === 'usergroupchange') return event;
+  return undefined;
 }
 
 function eventUserId(event: Record<string, unknown>): string | undefined {
@@ -105,7 +107,7 @@ export class GroupsResource {
         meshadmin: rights >>> 0,
         remove: false,
       },
-      userId,
+      (event) => eventUserId(event) === userId,
     );
   }
 
@@ -114,11 +116,54 @@ export class GroupsResource {
     required(userId, 'User ID');
     return this.mutateMembership(
       { action: 'removemeshuser', meshid: groupId, userid: userId },
-      userId,
+      (event) => eventUserId(event) === userId,
     );
   }
 
-  private mutateMembership(payload: Record<string, unknown>, userId: string): Promise<unknown> {
+  setUserGroupRights(
+    groupId: string,
+    groupName: string,
+    userGroupId: string,
+    rights: number,
+  ): Promise<unknown> {
+    required(groupId, 'Group ID');
+    required(groupName, 'Group name');
+    required(userGroupId, 'User group ID');
+    if (!userGroupId.startsWith('ugrp//')) {
+      throw new GatewayValidationError('User group ID must start with ugrp//.');
+    }
+    if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
+      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+    }
+    return this.mutateMembership(
+      {
+        action: 'addmeshuser',
+        meshid: groupId,
+        meshname: groupName,
+        userids: [userGroupId],
+        meshadmin: rights >>> 0,
+        remove: false,
+      },
+      (event) => event.ugrpid === userGroupId,
+    );
+  }
+
+  removeUserGroup(groupId: string, userGroupId: string): Promise<unknown> {
+    required(groupId, 'Group ID');
+    required(userGroupId, 'User group ID');
+    if (!userGroupId.startsWith('ugrp//')) {
+      throw new GatewayValidationError('User group ID must start with ugrp//.');
+    }
+    return this.mutateMembership(
+      { action: 'removemeshuser', meshid: groupId, userid: userGroupId },
+      (event) => event.ugrpid === userGroupId,
+    );
+  }
+
+  private mutateMembership(
+    payload: Record<string, unknown>,
+    matchesEvent: (event: Record<string, unknown>) => boolean,
+  ): Promise<unknown> {
     const action = payload.action as string;
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -137,7 +182,7 @@ export class GroupsResource {
           return;
         }
         const event = membershipEvent(message);
-        if (event && eventUserId(event) === userId) finish(() => resolve(event));
+        if (event && matchesEvent(event)) finish(() => resolve(event));
       });
       const unsubscribeConnection = this.client.on(
         'connection',

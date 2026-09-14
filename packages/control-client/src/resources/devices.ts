@@ -1,4 +1,9 @@
-import { GatewayValidationError } from '../errors';
+import {
+  GatewayConnectionClosedError,
+  GatewayRequestTimeoutError,
+  GatewayServerError,
+  GatewayValidationError,
+} from '../errors';
 import {
   isRecord,
   normalizeDevice,
@@ -16,12 +21,22 @@ import type {
   Device,
   DeviceDetails,
   DeviceUpdate,
+  ConnectionStateChange,
+  GatewayClientEvents,
+  GatewayEventChannel,
+  GatewayListener,
   PowerAction,
 } from '../types';
 
 interface ResourceClient {
+  send(payload: unknown): void;
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
+  on<K extends GatewayEventChannel>(
+    channel: K,
+    listener: GatewayListener<GatewayClientEvents[K]>,
+  ): () => void;
 }
+const DEVICE_USER_GROUP_CONFIRMATION_TIMEOUT_MS = 5_000;
 const DEVICE_USER_RIGHTS_MASK =
   0x00000008 |
   0x00000010 |
@@ -180,6 +195,130 @@ export class DevicesResource {
       usernames: [username],
       rights: 0,
       remove: true,
+    });
+  }
+
+  setUserGroupRights(
+    deviceId: string,
+    deviceName: string,
+    userGroupId: string,
+    rights: number,
+  ): Promise<unknown> {
+    required(deviceId, 'Device ID');
+    required(deviceName, 'Device name');
+    required(userGroupId, 'User group ID');
+    if (!userGroupId.startsWith('ugrp//')) {
+      throw new GatewayValidationError('User group ID must start with ugrp//.');
+    }
+    if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
+      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+    }
+    if ((rights & ~DEVICE_USER_RIGHTS_MASK) !== 0) {
+      throw new GatewayValidationError(
+        'Device user group rights contain permissions that are not valid for a single device.',
+      );
+    }
+    return this.mutateUserGroupRights({
+      action: 'adddeviceuser',
+      nodeid: deviceId,
+      nodename: deviceName,
+      userids: [userGroupId],
+      rights: rights >>> 0,
+      remove: false,
+    }, userGroupId);
+  }
+
+  removeUserGroup(deviceId: string, userGroupId: string): Promise<unknown> {
+    required(deviceId, 'Device ID');
+    required(userGroupId, 'User group ID');
+    if (!userGroupId.startsWith('ugrp//')) {
+      throw new GatewayValidationError('User group ID must start with ugrp//.');
+    }
+    return this.mutateUserGroupRights(
+      {
+        action: 'adddeviceuser',
+        nodeid: deviceId,
+        userids: [userGroupId],
+        rights: 0,
+        remove: true,
+      },
+      userGroupId,
+    );
+  }
+
+  private mutateUserGroupRights(
+    payload: Record<string, unknown>,
+    userGroupId: string,
+  ): Promise<unknown> {
+    const action = payload.action as string;
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        unsubscribeMessage();
+        unsubscribeConnection();
+        callback();
+      };
+      const unsubscribeMessage = this.client.on('message', (message) => {
+        if (!isRecord(message)) return;
+        if (message.action === action) {
+          const error = message.error ?? message.err;
+          const result = message.result;
+          if (typeof error === 'string' && error) {
+            finish(() => reject(new GatewayServerError(error, { action })));
+            return;
+          }
+          if (
+            typeof result === 'string' &&
+            !['ok', 'success'].includes(result.toLowerCase())
+          ) {
+            finish(() => reject(new GatewayServerError(result, { action })));
+            return;
+          }
+        }
+        const event = isRecord(message.event) ? message.event : message;
+        if (
+          event.etype === 'ugrp' &&
+          event.action === 'usergroupchange' &&
+          event.ugrpid === userGroupId
+        ) {
+          finish(() => resolve(event));
+        }
+      });
+      const unsubscribeConnection = this.client.on(
+        'connection',
+        (change: ConnectionStateChange) => {
+          if (change.current === 'disconnected' || change.current === 'error') {
+            finish(() =>
+              reject(
+                new GatewayConnectionClosedError(
+                  'Connection closed during device user group permission update.',
+                  { action, retryable: true },
+                ),
+              ),
+            );
+          }
+        },
+      );
+      const timeout = setTimeout(
+        () =>
+          finish(() =>
+            reject(
+              new GatewayRequestTimeoutError(`Timed out waiting for ${action} confirmation.`, {
+                action,
+                retryable: true,
+              }),
+            ),
+          ),
+        DEVICE_USER_GROUP_CONFIRMATION_TIMEOUT_MS,
+      );
+      try {
+        this.client.send(payload);
+      } catch (error) {
+        finish(() => reject(error instanceof Error ? error : new Error(String(error))));
+      }
     });
   }
 

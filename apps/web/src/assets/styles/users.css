@@ -6,6 +6,41 @@
   width: 160px;
 }
 
+.user-group-filter-select {
+  width: 150px;
+}
+
+.user-group-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1024px) {
+  .user-group-metrics {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .user-group-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-group-identity-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4a3d82;
+  border-radius: 7px;
+  color: #c4b5fd;
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
 .user-identity {
   width: 100%;
   min-width: 0;

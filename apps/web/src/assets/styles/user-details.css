@@ -528,3 +528,104 @@
   .user-detail-actions { flex-wrap: wrap; }
   .user-detail-sessions-card { padding: 12px 14px; }
 }
+
+/* User Group Details Extensions */
+.user-detail-avatar.is-usergroup {
+  background: linear-gradient(135deg, #312e81 0%, #1e1b4b 50%, #0e7490 100%);
+  color: #e0e7ff;
+  border: 2px solid rgba(129, 140, 248, 0.45);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.user-group-id-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(51, 65, 85, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #94a3b8;
+  max-width: 100%;
+}
+
+.user-group-id-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-group-id-copy {
+  flex: 0 0 auto;
+  cursor: pointer;
+  color: #60a5fa;
+  transition: color 0.15s ease;
+}
+
+.user-group-id-copy:hover {
+  color: #93c5fd;
+}
+
+.user-group-inheritance-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-group-inheritance-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .user-group-inheritance-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-group-step-card {
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-group-step-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.user-group-step-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.user-group-member-link {
+  color: inherit;
+  font-weight: 600;
+  transition: color 0.15s ease;
+  cursor: pointer;
+}
+
+.user-group-member-link:hover {
+  color: #38bdf8;
+  text-decoration: underline;
+}
+
+.user-group-tab-search {
+  width: min(280px, 100%);
+}
+

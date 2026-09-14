@@ -28,11 +28,36 @@ export interface DeviceGroup {
   raw?: unknown;
 }
 
+export type UserGroupLinkType = 'user' | 'device-group' | 'device' | 'unknown';
+
+export interface UserGroupLink {
+  id: string;
+  type: UserGroupLinkType;
+  rights: number;
+  name?: string;
+  raw?: unknown;
+}
+
 export interface UserGroup {
   id: string;
   name: string;
   description?: string;
+  domain?: string;
+  flags: number;
+  consent: number;
+  links: UserGroupLink[];
   raw?: unknown;
+}
+
+export interface UserGroupCreateOptions {
+  name: string;
+  description?: string;
+  cloneUserGroupId?: string;
+}
+
+export interface UserGroupUpdate {
+  name: string;
+  description?: string;
 }
 
 export type GatewayEventType =
