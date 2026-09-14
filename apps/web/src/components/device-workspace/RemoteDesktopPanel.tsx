@@ -9,7 +9,7 @@ import {
   type DesktopSessionState,
 } from '@meshcentral/relay';
 import type { Device } from '@meshcentral/shared-state';
-import { Alert, Button, Modal, Select, Space, Tag, message } from 'antd';
+import { Alert, Button, Input, Modal, Select, Space, Tag, message } from 'antd';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { GATEWAY_RELAY_URL } from '../../config/gateway';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
@@ -91,6 +91,10 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   const [recorded, setRecorded] = useState(false);
   const [desktopSession, setDesktopSession] = useState<DesktopSession>();
   const [fullscreen, setFullscreen] = useState(false);
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [manualPasteRequired, setManualPasteRequired] = useState(false);
+  const [pasteSubmitting, setPasteSubmitting] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<DesktopCanvasHandle>(null);
   const sessionRef = useRef<DesktopSession | undefined>(undefined);
@@ -225,24 +229,34 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         void messageApi.info('本地剪贴板为空。');
         return;
       }
-      Modal.confirm({
-        title: '粘贴本地剪贴板到远端？',
-        content: `将向 ${model.hostname} 提交 ${text.length} 个字符。`,
-        okText: '粘贴到远端',
-        cancelText: '取消',
-        onOk: async () => {
-          setRemoteClipboard(gatewayClient, device.id, text);
-          await new Promise((resolve) => window.setTimeout(resolve, 150));
-          if (sessionRef.current !== desktopSession) throw new Error('远程桌面会话已结束。');
-          desktopSession.sendKey(17, 'down');
-          desktopSession.sendKey(86, 'down');
-          desktopSession.sendKey(86, 'up');
-          desktopSession.sendKey(17, 'up');
-          void messageApi.success('剪贴板内容已提交，并触发远端 Ctrl+V。');
-        },
-      });
+      setPasteText(text);
+      setManualPasteRequired(false);
     } catch {
-      void messageApi.error('无法读取本地剪贴板，请确认页面使用 HTTPS 且已授予剪贴板权限。');
+      setPasteText('');
+      setManualPasteRequired(true);
+    }
+    setPasteModalOpen(true);
+  };
+
+  const submitClipboardToRemote = async () => {
+    if (!gatewayClient || !desktopSession || !pasteText) return;
+    setPasteSubmitting(true);
+    try {
+      if (sessionRef.current !== desktopSession) throw new Error('远程桌面会话已结束。');
+      setRemoteClipboard(gatewayClient, device.id, pasteText);
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+      if (sessionRef.current !== desktopSession) throw new Error('远程桌面会话已结束。');
+      desktopSession.sendKey(17, 'down');
+      desktopSession.sendKey(86, 'down');
+      desktopSession.sendKey(86, 'up');
+      desktopSession.sendKey(17, 'up');
+      setPasteModalOpen(false);
+      setPasteText('');
+      void messageApi.success('剪贴板内容已提交，并触发远端 Ctrl+V。');
+    } catch (clipboardError) {
+      void messageApi.error(clipboardError instanceof Error ? clipboardError.message : '粘贴到远端失败。');
+    } finally {
+      setPasteSubmitting(false);
     }
   };
 
@@ -337,6 +351,30 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
           </div>
         </div>
       </section>
+      <Modal
+        title="粘贴本地剪贴板到远端？"
+        open={pasteModalOpen}
+        okText="粘贴到远端"
+        cancelText="取消"
+        okButtonProps={{ disabled: !pasteText }}
+        confirmLoading={pasteSubmitting}
+        onCancel={() => {
+          setPasteModalOpen(false);
+          setPasteText('');
+        }}
+        onOk={() => void submitClipboardToRemote()}
+      >
+        {manualPasteRequired && <Alert type="info" showIcon message="浏览器无法自动读取剪贴板，请在下方粘贴内容。" />}
+        <Input.TextArea
+          autoFocus
+          value={pasteText}
+          onChange={(event) => setPasteText(event.target.value)}
+          placeholder="在此粘贴本地剪贴板内容"
+          autoSize={{ minRows: 4, maxRows: 12 }}
+          style={{ marginTop: manualPasteRequired ? 12 : 0 }}
+        />
+        <div style={{ marginTop: 8 }}>将向 {model.hostname} 提交 {pasteText.length} 个字符。</div>
+      </Modal>
     </div>
   );
 });
