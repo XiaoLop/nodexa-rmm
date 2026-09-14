@@ -12,7 +12,7 @@ MeshCentral 采用基于 **32 位整型位掩码（Bitmask）** 的权限体系�
 - [四、获取设备组权限（Device Group / Mesh Rights）](#四获取设备组权限device-group--mesh-rights)
 - [五、获取单设备权限（Device / Node Rights）](#五获取单设备权限device--node-rights)
 - [六、权限码位掩码（Bitmask）对照表](#六权限码位掩码bitmask对照表)
-- [七、权限计算与叠加判定示例（JavaScript）](#七权限计算与叠加判定示例javascript)
+- [七、control-client 权限封装与调用](#七control-client-权限封装与调用)
 
 ---
 
@@ -262,8 +262,8 @@ node meshctrl.js DeviceInfo --id "node//xYz98765..." --url wss://127.0.0.1 --log
 | `MESHRIGHT_MANAGEUSERS` | `0x00000002` | `2` | 管理组内用户及其权限 |
 | `MESHRIGHT_MANAGECOMPUTERS` | `0x00000004` | `4` | 管理设备（编辑/删除/移动） |
 | `MESHRIGHT_REMOTECONTROL` | `0x00000008` | `8` | 远程桌面控制 |
-| `MESHRIGHT_AGENTCONSOLE` | `0x00000010` | `16` | 终端/命令 Shell 控制台 |
-| `MESHRIGHT_SERVERFILES` | `0x00000020` | `32` | 远程文件管理（上传/下载） |
+| `MESHRIGHT_AGENTCONSOLE` | `0x00000010` | `16` | Mesh Agent 后台控制台，不是普通设备终端 |
+| `MESHRIGHT_SERVERFILES` | `0x00000020` | `32` | MeshCentral 服务器端设备组文件空间，不是目标设备文件传输 |
 | `MESHRIGHT_WAKEDEVICE` | `0x00000040` | `64` | 唤醒设备（Wake-on-LAN） |
 | `MESHRIGHT_SETNOTES` | `0x00000080` | `128` | 修改设备备注 |
 | `MESHRIGHT_REMOTEVIEWONLY` | `0x00000100` | `256` | 仅远程查看（只读桌面） |
@@ -285,56 +285,61 @@ node meshctrl.js DeviceInfo --id "node//xYz98765..." --url wss://127.0.0.1 --log
 
 ---
 
-## 七、权限计算与叠加判定示例（JavaScript）
+## 七、control-client 权限封装与调用
 
-```javascript
-const SITE_MANAGE_USERS = 0x00000002;
+项目已在 `@meshcentral/control-client` 中封装权限常量、无符号 32 位处理和常用设备能力判断：
 
-const MESH_DESKTOP = 0x00000008;
-const MESH_TERMINAL = 0x00000010;
-const MESH_FILES = 0x00000020;
+```typescript
+import {
+  MeshRight,
+  SiteRight,
+  canUseDeviceFiles,
+  canUseTerminal,
+  composeMeshRights,
+  getDesktopAccess,
+  hasMeshRight,
+  hasSiteRight,
+  normalizeRights,
+} from '@meshcentral/control-client';
 
-/** 校验用户是否具备某个权限位。 */
-function hasPermission(currentRights, requiredFlag) {
-  if (currentRights === 0xffffffff || currentRights === 4294967295) return true;
-  return (currentRights & requiredFlag) === requiredFlag;
+const groupRights = composeMeshRights([
+  MeshRight.RemoteControl,
+  MeshRight.WakeDevice,
+  MeshRight.DeviceDetails,
+]);
+
+hasMeshRight(groupRights, MeshRight.WakeDevice); // true
+hasSiteRight(currentUser.siteadmin ?? 0, SiteRight.ManageUsers);
+normalizeRights(-1); // 4294967295
+
+const devices = await client.devices.list();
+const rights = devices[0]?.effectiveRights;
+
+if (rights !== undefined) {
+  getDesktopAccess(rights); // denied | view-only | limited-input | control
+  canUseTerminal(rights);
+  canUseDeviceFiles(rights);
 }
-
-/** 计算用户对特定设备的最终有效权限。 */
-function getEffectiveNodeRights(user, meshId, nodeId) {
-  if (user.siteadmin === 0xffffffff || user.siteadmin === 4294967295) {
-    return 0xffffffff;
-  }
-
-  if (!user.links) return 0;
-
-  let effectiveRights = 0;
-  const meshRights = user.links[meshId]?.rights ?? 0;
-  const nodeRights = user.links[nodeId]?.rights ?? 0;
-
-  if (meshRights === 0xffffffff || nodeRights === 0xffffffff) return 0xffffffff;
-
-  effectiveRights |= meshRights;
-  effectiveRights |= nodeRights;
-
-  if (user.removeRights) effectiveRights &= ~user.removeRights;
-
-  return effectiveRights;
-}
-
-const user = {
-  _id: 'user//tom',
-  siteadmin: 0,
-  links: {
-    'mesh//group1': { rights: MESH_DESKTOP },
-    'node//deviceA': { rights: MESH_FILES | MESH_TERMINAL },
-  },
-};
-
-const effective = getEffectiveNodeRights(user, 'mesh//group1', 'node//deviceA');
-
-console.log('有效权限码:', effective); // 56 (8 | 32 | 16)
-console.log('能否使用远程桌面:', hasPermission(effective, MESH_DESKTOP)); // true
-console.log('能否使用文件传输:', hasPermission(effective, MESH_FILES)); // true
-console.log('能否使用终端 Shell:', hasPermission(effective, MESH_TERMINAL)); // true
 ```
+
+### 能力位与限制位
+
+- 普通设备终端要求 `MESHRIGHT_REMOTECONTROL`，并且不能包含 `MESHRIGHT_NOTERMINAL`。
+- 目标设备文件浏览和传输要求 `MESHRIGHT_REMOTECONTROL`，并且不能包含 `MESHRIGHT_NOFILES`。
+- `MESHRIGHT_AGENTCONSOLE` 只控制 Mesh Agent 后台控制台。
+- `MESHRIGHT_SERVERFILES` 只控制 MeshCentral 服务器端设备组文件空间。
+- 桌面访问还需要处理 `NODESKTOP`、`REMOTEVIEWONLY` 和 `DESKLIMITEDINPUT` 的优先级。
+
+### 不在客户端重算完整有效权限
+
+客户端不应通过 `user.links` 自行实现完整的 `GetMeshRights()` 或 `GetNodeRights()`。服务端计算还涉及用户组授权、单设备授权、域范围、`managealldevicegroups`、可见性以及 `user.removeRights`。
+
+尤其不能使用以下简化逻辑：
+
+```typescript
+effectiveRights &= ~user.removeRights;
+```
+
+MeshCentral 的 `removeRights` 会清除部分正向能力位，同时注入 `NoDesktop`、`NoTerminal`、`NoFiles` 等限制位；对管理员权限还会先展开明确能力。因此界面应优先使用设备列表标准化后的 `Device.effectiveRights`，所有实际操作仍由服务端执行最终鉴权。
+
+完整 API 说明见 [`packages/control-client/docs/permissions.md`](../packages/control-client/docs/permissions.md)。

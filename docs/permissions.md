@@ -8,7 +8,7 @@
 
 MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（什么资产）”** 拥有 **“何种操作权限”** 进行设计，主要包含以下四种权限维度：
 
-```
+```text
                     ┌─────────────────────────┐
                     │      1. 用户权限         │
                     │ (Site Admin & 账号限制) │
@@ -29,18 +29,21 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
 ```
 
 ### 1. 用户权限（User / Site Rights）
+
 - **定位**：绑定在用户账号（User Account）本体上的全局属性。
 - **组成**：
   - **站点管理权限（`siteadmin`）**：决定用户在整个服务器/域系统层级的管理权（如备份还原、全局用户管理、日志审计、超管特权等）。
   - **全局剥夺限制（`removeRights`）**：由超管为该账号附加的强制性“安全缰绳”，无论该用户在任何设备组或单设备获得多高权限，该限制都拥有终审一票否决权。
 
 ### 2. 设备组权限（Device Group / Mesh Rights）
+
 - **定位**：用户或用户组在特定“设备组（Mesh）”范围内的控制基线。
 - **作用**：
   - **组级管理权**：如重命名组、管理组内用户及授权、跨组移动/添加设备等。
   - **组内设备的基线权限**：作为该组下所有纳管计算机的**默认继承权限**。
 
 ### 3. 用户组权限（User Group Rights）
+
 - **定位**：用户组本身是一个**权限承载与传递容器（Principal）**，并非独立的权限位。
 - **作用**：
   - 将多个用户组织成组（如运维组、客服部）。
@@ -48,6 +51,7 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
   - 组内成员自动继承该用户组所获得的所有设备组及设备操作权限。
 
 ### 4. 单设备权限（Device / Node Rights）
+
 - **定位**：针对某台具体计算机（Node）的特化授权。
 - **作用**：
   - 针对具体设备进行权限**微调与增补**（如某技术员对全组只读，但对特定开发机拥有完全控制权）。
@@ -98,20 +102,23 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
 ```
 
 ### 2. 核心优先级特征
-1. **超级管理员拥有最高权限**：`siteadmin === 0xFFFFFFFF` 的用户具备跨组穿透能力。
+
+1. **站点管理员具有最高站点权限**：设备组跨组访问还会受服务端 `managealldevicegroups` 配置、域范围及 `removeRights` 约束，客户端不应仅凭 `siteadmin === 0xFFFFFFFF` 推断任意设备操作权限。
 2. **正向权限累加并集（Additive / Bitwise OR）**：
    - 单设备权限与设备组权限是**叠加关系**，而非“就近覆盖”。
-   - 如果设备组赋予了“终端权限”，单设备即使未配置，用户依然拥有该设备的终端权限；
+   - 普通终端能力以 `MESHRIGHT_REMOTECONTROL` 为基础，并受 `MESHRIGHT_NOTERMINAL` 限制；`MESHRIGHT_AGENTCONSOLE` 是独立的 Agent 后台控制台权限；
    - 如果设备组只有“查看”，单设备单独勾选了“控制输入”，合并后用户即拥有控制输入能力。
 3. **用户组属于中继容器**：用户加入多个用户组时，各组获得的设备/设备组权限会直接**并集累加**。
 4. **全局剥夺限制（`removeRights`）具有终审否决权**：
    - 即使设备组和单设备均赋予完全管理员权限（`0xFFFFFFFF`），若用户账号配置了剥夺项（如禁止文件传输），最终结算时文件管理权限依然会被强行剔除。
+   - 服务端会清除部分正向能力位，并注入 `NoDesktop`、`NoTerminal`、`NoFiles` 等限制位，不能简化为统一的 `rights &= ~removeRights`。
 
 ---
 
 ## 三、 全量权限码与功能对照表
 
 ### 1. 设备组 / 单设备权限码（Mesh & Node Rights）
+
 设备组和单设备共用同一套 32 位位掩码：
 
 | 权限常量名 | 十六进制值 | 十进制值 | UI 显示名称 | 类别 | 详细作用与说明 |
@@ -145,6 +152,7 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
 ---
 
 ### 2. 站点系统管理权限码（Site Admin Rights）
+
 控制用户在站点/服务器范围内的系统特权（存储在 `user.siteadmin`）：
 
 | 权限常量名 | 十六进制值 | 十进制值 | UI 显示名称 | 详细说明 |
@@ -167,6 +175,7 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
 ---
 
 ### 3. 用户账号全局剥夺限制码（`user.removeRights`）
+
 由管理员在“用户详情 -> 功能特征（Features）”中设置。用于针对特定人员设立全局防线：
 
 | 剥夺项目 | 掩码值（十六进制/十进制） | 最终生效效果（无论设备组/设备如何授权） |
@@ -176,7 +185,7 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
 | **Remote View Only** | `0x00000100` (256) | 全局桌面锁定为仅观察模式，禁止键鼠控制输入 |
 | **No Terminal Access** | `0x00000200` (512) | 全局禁止使用远程命令行终端 |
 | **No File Access** | `0x00000400` (1024) | 全局禁止文件上传、下载与浏览 |
-| **No Registry Access**| `0x00400000` (4194304) | 全局禁止修改或浏览 Windows 注册表 |
+| **No Registry Access** | `0x00400000` (4194304) | 全局禁止修改或浏览 Windows 注册表 |
 | **No Software** | `0x00800000` (8388608) | 全局禁止查看或变更安装软件列表 |
 | **No Agent Console** | `0x00000010` (16) | 全局禁止访问 Agent 控制台 |
 | **No Uninstall** | `0x00008000` (32768) | 全局禁止远程卸载客户端或删除节点 |
@@ -190,7 +199,44 @@ MeshCentral 的权限模型围绕 **“主体（谁）”** 对 **“对象（�
 
 | 角色类型 | 推荐配置方案 | 包含的权限码组合 |
 | :--- | :--- | :--- |
-| **一线技术支持（Helpdesk）** | 允许桌面协助、文字沟通，禁止危险操作。 | `0x00000008` (Control) + `0x00004000` (Chat) + `0x00000080` (Notes)<br>*(不给 32768 卸载、不给 262144 关机重启、不给 131072 执行命令)* |
+| **一线技术支持（Helpdesk）** | 允许桌面协助、文字沟通，禁止危险操作。 | `0x00000008` (Control) + `0x00004000` (Chat) + `0x00000080` (Notes)；不给 32768 卸载、262144 关机重启、131072 执行命令 |
 | **合规审计员（Auditor）** | 允许实时查看监视屏幕，无任何干预能力。 | `0x00000008` (Control) + 限制位：`0x00000100` (View Only) + `0x00000200` (No Terminal) + `0x00000400` (No Files) |
-| **外包运维人员（Vendor）** | 通过用户组统一纳管，并在其个人账号设置全局兜底约束。 | 1. 组赋予特定设备组操作权限；<br>2. 用户账号附加 `removeRights`: `0x00000400` (禁止文件外发) 与 `0x00008000` (禁止卸载 Agent)。 |
+| **外包运维人员（Vendor）** | 通过用户组统一纳管，并在其个人账号设置全局兜底约束。 | 组赋予特定设备组操作权限；用户账号附加 `removeRights`: `0x00000400` (禁止文件外发) 与 `0x00008000` (禁止卸载 Agent) |
 | **部门分权管理（RBAC）** | 避免对个人逐一授权。 | 建立“运维部”、“质检组”等**用户组**，将设备组授权给用户组。人员流动仅需调整用户组人员归属。 |
+
+---
+
+## 五、项目中的权限封装
+
+本项目将权限常量和通用判定集中在 `@meshcentral/control-client`：
+
+```typescript
+import {
+   MeshRight,
+   SiteRight,
+   canUseDeviceFiles,
+   canUseTerminal,
+   getDesktopAccess,
+   hasMeshRight,
+   hasSiteRight,
+} from '@meshcentral/control-client';
+
+hasSiteRight(user.siteRights, SiteRight.ManageUsers);
+hasMeshRight(groupRights, MeshRight.ManageComputers);
+
+if (device.effectiveRights !== undefined) {
+   getDesktopAccess(device.effectiveRights);
+   canUseTerminal(device.effectiveRights);
+   canUseDeviceFiles(device.effectiveRights);
+}
+```
+
+封装边界如下：
+
+- `SiteRight`、`MeshRight`：权限常量；
+- `normalizeRights()`、`composeRights()`、`hasAllRights()`：无符号 32 位基础运算；
+- `getDesktopAccess()`、`canUseTerminal()`、`canUseDeviceFiles()`：同时考虑能力位和限制位的业务判断；
+- `Device.effectiveRights`：服务端下发并由客户端标准化后的当前用户设备有效权限；
+- `ManagedUser.links`：权限管理界面的原始授权关系，不等同于最终有效权限。
+
+客户端判断用于界面显示、按钮禁用和授权编辑，不能替代服务端鉴权。完整使用说明见 [`packages/control-client/docs/permissions.md`](../packages/control-client/docs/permissions.md)。

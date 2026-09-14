@@ -6,6 +6,7 @@
 
 - [资源 API 与消息清单](messages-and-resources.md)：每个公开方法发送的 action、返回内容和适用场景。
 - [事件、订阅通道与诊断](events.md)：六个订阅通道、领域事件类型、字段和处理建议。
+- [权限 API](permissions.md)：权限常量、位掩码工具、设备能力判断和服务端授权边界。
 - [原始 request/send 消息指南](raw-messages.md)：尚未封装 action 的调用方式、响应关联、兼容和安全要求。
 
 ## 如何选择文档位置
@@ -15,6 +16,7 @@
 | 包定位、安装、最小示例、能力导航 | 根目录 `README.md` |
 | 一个资源的完整方法清单和协议 action | `messages-and-resources.md` |
 | 推送事件、订阅通道或诊断行为 | `events.md` |
+| 权限常量、能力判断和有效权限边界 | `permissions.md` |
 | 原始协议调用、抓包证据和新 action 接入原则 | `raw-messages.md` 或独立主题文档 |
 | 较大的独立功能 | 新建 kebab-case 文件，并在本页加入链接 |
 

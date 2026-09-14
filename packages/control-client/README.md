@@ -11,6 +11,7 @@
 - 执行单设备或多设备电源操作、分组迁移和 Agent 邀请。
 - 提交命令，或持续跟踪每台设备的输出、退出码和最终状态。
 - 管理设备组，设置或移除用户的设备组权限。
+- 标准化站点和设备权限，判断桌面、终端、设备文件等常用能力。
 - 查询历史事件，订阅设备上下线、命令执行等实时事件。
 - 查询用户组、用户和在线会话数，创建、编辑、锁定和删除用户。
 - 通过 `request()` 和 `send()` 调用尚未封装的 MeshCentral action。
@@ -125,6 +126,36 @@ const events = await client.events.listByDevice('node//device-id', {
 const users = await client.users.list();
 const sessionCounts = await client.users.listSessionCounts();
 ```
+
+## 权限判断
+
+```ts
+import {
+  MeshRight,
+  SiteRight,
+  canUseDeviceFiles,
+  canUseTerminal,
+  getDesktopAccess,
+  hasMeshRight,
+  hasSiteRight,
+} from '@meshcentral/control-client';
+
+const users = await client.users.list();
+const canManageUsers = hasSiteRight(users[0].siteRights, SiteRight.ManageUsers);
+
+const devices = await client.devices.list();
+const rights = devices[0].effectiveRights;
+if (rights !== undefined) {
+  console.log(getDesktopAccess(rights));
+  console.log(canUseTerminal(rights));
+  console.log(canUseDeviceFiles(rights));
+  console.log(hasMeshRight(rights, MeshRight.WakeDevice));
+}
+```
+
+普通设备终端和目标设备文件传输都以 `MeshRight.RemoteControl` 为基础，并分别受 `NoTerminal`、`NoFiles` 限制。`AgentConsole` 与 `ServerFiles` 是不同功能，不应代替上述能力判断。
+
+客户端权限 API 只用于标准化、界面控制和授权编辑。服务端仍是最终安全边界；调用方不应通过遍历 `ManagedUser.links` 自行重算完整有效权限。完整说明见 [权限 API](docs/permissions.md)。
 
 完整方法、底层 action、返回值和使用场景见 [docs/messages-and-resources.md](docs/messages-and-resources.md)。
 

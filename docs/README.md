@@ -21,7 +21,9 @@ MeshCentral 的管理能力主要不是标准 REST API，而是通过 WebSocket 
 - [05-events.md](05-events.md)：实时事件、设备在线/离线消息、断线重连
 - [06-other-apis.md](06-other-apis.md)：用户、权限、邀请、共享、报表等补充接口
 - [07-nodejs-wrapper-design.md](07-nodejs-wrapper-design.md)：推荐 SDK 结构、请求关联、示例代码
-- [08-permissions.md](08-permissions.md)：用户全局权限、设备组权限、单设备权限与位掩码计算
+- [07-permissions.md](07-permissions.md)：权限获取接口、位掩码常量与 `control-client` 调用示例
+- [permissions.md](permissions.md)：权限继承、用户组、`removeRights` 与典型配置的完整技术手册
+- [../packages/control-client/docs/permissions.md](../packages/control-client/docs/permissions.md)：客户端权限常量、能力判断与安全边界
 - [../packages/shared-state/README.md](../packages/shared-state/README.md)：前端共享状态与网关客户端 (@meshcentral/shared-state) 架构与使用说明
 
 ## 推荐封装层级
