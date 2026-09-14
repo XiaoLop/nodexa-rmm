@@ -57,9 +57,11 @@ interface RemoteDesktopPanelProps {
   desktopAccess?: DesktopAccess;
   keyboardEnabled: boolean;
   mouseEnabled: boolean;
+  quality: number;
   scale: string;
   onScaleChange: (value: string) => void;
   onSessionActiveChange?: (active: boolean) => void;
+  onLatencyChange?: (latencyMs: number | undefined) => void;
 }
 
 export interface RemoteDesktopPanelHandle {
@@ -80,9 +82,11 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   desktopAccess,
   keyboardEnabled,
   mouseEnabled,
+  quality,
   scale,
   onScaleChange,
   onSessionActiveChange,
+  onLatencyChange,
 }, ref) {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [status, setStatus] = useState<ConnectionState>('idle');
@@ -106,6 +110,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     sessionRef.current?.close(1000, reason);
     sessionRef.current = undefined;
     setDesktopSession(undefined);
+    onLatencyChange?.(undefined);
     onSessionActiveChange?.(false);
     canvasRef.current?.clear();
     setScreen(undefined);
@@ -133,6 +138,19 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     handleFullscreenChange();
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+  useEffect(() => {
+    if (!desktopSession || !screen) return;
+    const timeout = window.setTimeout(() => {
+      try {
+        desktopSession.setCompression({ quality });
+      } catch (compressionError) {
+        if (sessionRef.current === desktopSession) {
+          void messageApi.error(compressionError instanceof Error ? compressionError.message : '更新远程桌面画质失败。');
+        }
+      }
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [desktopSession, messageApi, quality, screen]);
 
   const connect = async () => {
     if (CONNECTING_STATES.has(status) || status === 'connected') return;
@@ -184,6 +202,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         canvasRef.current?.setScreen(nextScreen);
       });
       session.onTile((nextTile) => canvasRef.current?.drawTile(nextTile));
+      session.onLatencyChange(onLatencyChange ?? (() => undefined));
       session.onStateChange((next: DesktopSessionState) => {
         if (next === 'screen-known') setStatus('waiting-screen');
         if (next === 'desktop-ready') setStatus('connected');

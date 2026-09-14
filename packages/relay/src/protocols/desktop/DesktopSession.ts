@@ -2,9 +2,9 @@ import type { RelaySession } from '../../RelaySession';
 import type { RelayInboundData } from '../../types';
 import { RELAY_PROTOCOLS } from '../types';
 import { DesktopProtocolParser } from './DesktopProtocolParser';
-import { parseDesktopControlMessage } from './controlMessages';
-import { createCadMessage, createKeyMessage, createMouseButtonMessage, createMouseDoubleClickMessage, createMouseMoveMessage, createMouseWheelMessage, createUnicodeMessage, parseDisplayGeometry, parseScreenSize, parseTile } from './commands';
-import { DesktopSessionError, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile } from './types';
+import { createDesktopRttMessage, parseDesktopControlMessage } from './controlMessages';
+import { createCadMessage, createCompressionMessage, createKeyMessage, createMouseButtonMessage, createMouseDoubleClickMessage, createMouseMoveMessage, createMouseWheelMessage, createUnicodeMessage, parseDisplayGeometry, parseScreenSize, parseTile } from './commands';
+import { DesktopSessionError, type DesktopCompressionOptions, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile } from './types';
 
 function inboundSize(data: RelayInboundData): number {
   if (typeof data === 'string') return new TextEncoder().encode(data).byteLength;
@@ -24,6 +24,9 @@ export class DesktopSession {
   private disposed = false;
   private pendingBytes = 0;
   private inboundQueue = Promise.resolve();
+  private rttTimer?: ReturnType<typeof setInterval>;
+  private rttTimeout?: ReturnType<typeof setTimeout>;
+  private pendingRtt?: number;
   private readonly parser: DesktopProtocolParser;
   private readonly removeListeners: Array<() => void> = [];
   private readonly stateListeners = new Set<(state: DesktopSessionState) => void>();
@@ -31,18 +34,22 @@ export class DesktopSession {
   private readonly geometryListeners = new Set<(geometry: DesktopDisplayGeometry) => void>();
   private readonly tileListeners = new Set<(tile: DesktopTile) => void>();
   private readonly controlListeners = new Set<(message: DesktopControlMessage) => void>();
+  private readonly latencyListeners = new Set<(latencyMs: number | undefined) => void>();
   private readonly unknownListeners = new Set<(command: DesktopProtocolCommand) => void>();
   private readonly errorListeners = new Set<(error: DesktopSessionError) => void>();
+  private readonly now: () => number;
 
   constructor(readonly relay: RelaySession, private readonly options: DesktopSessionOptions = {}) {
     if (relay.protocol !== RELAY_PROTOCOLS.desktop) throw new DesktopSessionError('DesktopSession requires a p=2 relay session.', 'protocol');
     if (relay.state !== 'ready') throw new DesktopSessionError('Desktop relay session is not ready.', 'connection-lost');
     this.parser = new DesktopProtocolParser(options);
+    this.now = options.now ?? Date.now;
     this.removeListeners.push(
       relay.onMessage((data) => this.enqueue(data)),
       relay.onError((error) => this.fail(new DesktopSessionError(error.message, 'connection-lost', { cause: error }))),
       relay.onClose(() => this.finish(relay.state === 'error' ? 'error' : 'closed')),
     );
+    this.startRtt();
   }
 
   get state(): DesktopSessionState { return this.stateValue; }
@@ -51,6 +58,7 @@ export class DesktopSession {
   onDisplayGeometry(listener: (geometry: DesktopDisplayGeometry) => void): () => void { this.geometryListeners.add(listener); return () => this.geometryListeners.delete(listener); }
   onTile(listener: (tile: DesktopTile) => void): () => void { this.tileListeners.add(listener); return () => this.tileListeners.delete(listener); }
   onControlMessage(listener: (message: DesktopControlMessage) => void): () => void { this.controlListeners.add(listener); return () => this.controlListeners.delete(listener); }
+  onLatencyChange(listener: (latencyMs: number | undefined) => void): () => void { this.latencyListeners.add(listener); return () => this.latencyListeners.delete(listener); }
   onUnknownCommand(listener: (command: DesktopProtocolCommand) => void): () => void { this.unknownListeners.add(listener); return () => this.unknownListeners.delete(listener); }
   onError(listener: (error: DesktopSessionError) => void): () => void { this.errorListeners.add(listener); return () => this.errorListeners.delete(listener); }
 
@@ -67,11 +75,16 @@ export class DesktopSession {
   sendKey(keyCode: number, phase: DesktopKeyPhase, extended = false): void { this.sendInput(createKeyMessage(keyCode, phase, extended)); }
   sendUnicode(codeUnit: number, phase: DesktopKeyPhase): void { this.sendInput(createUnicodeMessage(codeUnit, phase)); }
   sendCad(): void { this.sendInput(createCadMessage()); }
+  setCompression(options: DesktopCompressionOptions): void { this.sendCommand(createCompressionMessage(options)); }
 
   dispose(): void { if (!this.disposed) this.finish(this.relay.state === 'error' ? 'error' : 'closed'); }
 
   private sendInput(message: Uint8Array): void {
     if (!this.options.inputAllowed) throw new DesktopSessionError('Desktop input is not allowed.', 'input-not-allowed');
+    this.sendCommand(message);
+  }
+
+  private sendCommand(message: Uint8Array): void {
     if (this.disposed || this.relay.state !== 'ready') throw new DesktopSessionError('Desktop relay session is not ready.', 'connection-lost');
     this.relay.sendBinary(message);
   }
@@ -100,6 +113,13 @@ export class DesktopSession {
       if (control) {
         this.options.onControlMessage?.(control);
         for (const listener of this.controlListeners) listener(control);
+        if (control.type === 'rtt' && control.time === this.pendingRtt) {
+          const latency = Math.max(0, this.now() - control.time);
+          this.pendingRtt = undefined;
+          if (this.rttTimeout) clearTimeout(this.rttTimeout);
+          this.rttTimeout = undefined;
+          for (const listener of this.latencyListeners) listener(latency);
+        }
       } else this.options.onUnhandledMessage?.(data);
       return;
     }
@@ -134,6 +154,26 @@ export class DesktopSession {
     for (const listener of this.stateListeners) listener(state);
   }
 
+  private startRtt(): void {
+    const interval = this.options.rttIntervalMs ?? 5_000;
+    if (interval <= 0) return;
+    this.sendRtt();
+    this.rttTimer = setInterval(() => this.sendRtt(), interval);
+  }
+
+  private sendRtt(): void {
+    if (this.disposed || this.pendingRtt !== undefined) return;
+    const time = this.now();
+    this.pendingRtt = time;
+    this.relay.sendJson(createDesktopRttMessage(time));
+    const timeout = this.options.rttTimeoutMs ?? 15_000;
+    this.rttTimeout = setTimeout(() => {
+      this.pendingRtt = undefined;
+      this.rttTimeout = undefined;
+      for (const listener of this.latencyListeners) listener(undefined);
+    }, timeout);
+  }
+
   private fail(error: DesktopSessionError): void {
     if (this.disposed) return;
     for (const listener of this.errorListeners) listener(error);
@@ -144,6 +184,8 @@ export class DesktopSession {
     if (this.disposed) return;
     this.disposed = true;
     this.stateValue = state;
+    if (this.rttTimer) clearInterval(this.rttTimer);
+    if (this.rttTimeout) clearTimeout(this.rttTimeout);
     for (const remove of this.removeListeners.splice(0)) remove();
     for (const listener of this.stateListeners) listener(state);
   }

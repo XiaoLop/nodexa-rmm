@@ -2,9 +2,10 @@ import { RELAY_PROTOCOLS, type RelayProtocolDescriptor } from '../types';
 
 export { DesktopProtocolParser } from './DesktopProtocolParser';
 export { DesktopSession } from './DesktopSession';
-export { parseDesktopControlMessage } from './controlMessages';
+export { DESKTOP_CONTROL_CHANNEL, createDesktopRttMessage, parseDesktopControlMessage } from './controlMessages';
 export {
   createCadMessage,
+  createCompressionMessage,
   createKeyMessage,
   createMouseButtonMessage,
   createMouseDoubleClickMessage,
@@ -18,11 +19,13 @@ export {
 } from './commands';
 export {
   DesktopSessionError,
+  type DesktopCompressionOptions,
   type DesktopControlMessage,
   type DesktopDisplayGeometry,
   type DesktopImageFormat,
   type DesktopKeyPhase,
   type DesktopMetadataMessage,
+  type DesktopRttMessage,
   type DesktopMouseButton,
   type DesktopPoint,
   type DesktopProtocolCommand,

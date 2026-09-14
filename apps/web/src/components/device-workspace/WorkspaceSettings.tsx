@@ -1,5 +1,4 @@
 import { Button, Modal, Select, Slider, Switch } from 'antd';
-import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
 import { ConnectionSparkline } from './ConnectionSparkline';
 
 export interface WorkspaceSettingsValue {
@@ -11,15 +10,18 @@ export interface WorkspaceSettingsValue {
   quality: number;
 }
 
-export function WorkspaceSettings({ model, value, onChange, onEndSession, controlAvailable, sessionActive }: {
-  model: DeviceWorkspaceModel;
+export function WorkspaceSettings({ value, onChange, onEndSession, controlAvailable, sessionActive, latency, latencyTrend, latencyTimedOut }: {
   value: WorkspaceSettingsValue;
   onChange: (value: WorkspaceSettingsValue) => void;
   onEndSession: () => void;
   controlAvailable: boolean;
   sessionActive: boolean;
+  latency?: number;
+  latencyTrend: number[];
+  latencyTimedOut: boolean;
 }) {
   const set = <Key extends keyof WorkspaceSettingsValue>(key: Key, next: WorkspaceSettingsValue[Key]) => onChange({ ...value, [key]: next });
+  const latencyTone = latency === undefined ? (latencyTimedOut ? 'error' : 'idle') : latency < 60 ? 'good' : latency < 150 ? 'warning' : 'error';
   return (
     <aside className="workspace-right-column">
       <section className="console-card workspace-panel">
@@ -39,9 +41,9 @@ export function WorkspaceSettings({ model, value, onChange, onEndSession, contro
         </div>
       </section>
       <section className="console-card workspace-panel workspace-quality-panel">
-        <div className="card-header"><h2>连接质量</h2><span>延迟：{model.latency} ms</span></div>
-        <div className="workspace-quality-state"><i />{model.latency < 60 ? '良好' : '存在波动'}</div>
-        <ConnectionSparkline values={model.latencyTrend} />
+        <div className="card-header"><h2>连接质量</h2><span>{latency === undefined ? '延迟：—' : `延迟：${latency} ms`}</span></div>
+        <div className={`workspace-quality-state is-${latencyTone}`}><i />{latency === undefined ? (latencyTimedOut ? '无响应' : sessionActive ? '测量中' : '未测量') : latency < 60 ? '良好' : latency < 150 ? '一般' : '较差'}</div>
+        <ConnectionSparkline values={latencyTrend} />
       </section>
       <section className="console-card workspace-panel workspace-end-session">
         <div className="card-header"><h2>会话操作</h2></div>

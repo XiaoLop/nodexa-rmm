@@ -4,6 +4,13 @@ export type DesktopSessionState = 'ready' | 'screen-known' | 'desktop-ready' | '
 
 export type DesktopImageFormat = 'jpeg' | 'png' | 'webp' | 'unknown';
 
+export interface DesktopCompressionOptions {
+  imageFormat?: Exclude<DesktopImageFormat, 'unknown'>;
+  quality: number;
+  scaling?: number;
+  frameTimer?: number;
+}
+
 export interface DesktopProtocolCommand {
   command: number;
   size: number;
@@ -38,7 +45,13 @@ export interface DesktopMetadataMessage extends Record<string, unknown> {
   type: 'metadata';
 }
 
-export type DesktopControlMessage = DesktopMetadataMessage;
+export interface DesktopRttMessage extends Record<string, unknown> {
+  ctrlChannel: string | number;
+  type: 'rtt';
+  time: number;
+}
+
+export type DesktopControlMessage = DesktopMetadataMessage | DesktopRttMessage;
 
 export type DesktopSessionErrorCode =
   | 'protocol'
@@ -62,6 +75,9 @@ export interface DesktopSessionOptions {
   maxPendingProtocolBytes?: number;
   maxCommandBytes?: number;
   maxJumboBytes?: number;
+  rttIntervalMs?: number;
+  rttTimeoutMs?: number;
+  now?: () => number;
   onControlMessage?: (message: DesktopControlMessage) => void;
   onUnknownCommand?: (command: DesktopProtocolCommand) => void;
   onUnhandledMessage?: (message: RelayInboundData) => void;

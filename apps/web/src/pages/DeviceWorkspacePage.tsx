@@ -37,6 +37,9 @@ export function DeviceWorkspacePage() {
   const activeTab = workspaceTab(searchParams.get('tab'));
   const [scale, setScale] = useState('fit');
   const [desktopSessionActive, setDesktopSessionActive] = useState(false);
+  const [desktopLatency, setDesktopLatency] = useState<number>();
+  const [desktopLatencyTrend, setDesktopLatencyTrend] = useState<number[]>([]);
+  const [desktopLatencyTimedOut, setDesktopLatencyTimedOut] = useState(false);
   const [settings, setSettings] = useState<WorkspaceSettingsValue>({
     keyboard: true,
     mouse: true,
@@ -52,6 +55,19 @@ export function DeviceWorkspacePage() {
     if (tab === 'overview') next.delete('tab');
     else next.set('tab', tab);
     setSearchParams(next, { replace: true });
+  };
+  const handleDesktopLatencyChange = (latencyMs: number | undefined) => {
+    setDesktopLatency(latencyMs);
+    setDesktopLatencyTimedOut(latencyMs === undefined);
+    if (latencyMs !== undefined) setDesktopLatencyTrend((current) => [...current.slice(-19), latencyMs]);
+  };
+  const handleDesktopSessionActiveChange = (active: boolean) => {
+    setDesktopSessionActive(active);
+    if (!active) {
+      setDesktopLatency(undefined);
+      setDesktopLatencyTrend([]);
+      setDesktopLatencyTimedOut(false);
+    }
   };
 
   if (!model) {
@@ -90,16 +106,20 @@ export function DeviceWorkspacePage() {
             desktopAccess={model.desktopAccess}
             keyboardEnabled={settings.keyboard}
             mouseEnabled={settings.mouse}
+            quality={settings.quality}
             scale={scale}
             onScaleChange={setScale}
-            onSessionActiveChange={setDesktopSessionActive}
+            onSessionActiveChange={handleDesktopSessionActiveChange}
+            onLatencyChange={handleDesktopLatencyChange}
           />
           <WorkspaceSettings
-            model={model}
             value={settings}
             onChange={setSettings}
             controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
             sessionActive={desktopSessionActive}
+            latency={desktopLatency}
+            latencyTrend={desktopLatencyTrend}
+            latencyTimedOut={desktopLatencyTimedOut}
             onEndSession={() => desktopPanelRef.current?.disconnect()}
           />
         </div>

@@ -46,6 +46,9 @@
   box-shadow: 0 0 8px rgba(45, 204, 112, .65);
 }
 .workspace-device-title .is-offline i { background: var(--muted); box-shadow: none; }
+.workspace-quality-state.is-idle i { background: var(--muted); box-shadow: none; }
+.workspace-quality-state.is-warning i { background: var(--warning); box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 65%, transparent); }
+.workspace-quality-state.is-error i { background: var(--danger); box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 65%, transparent); }
 .workspace-device-identity small,
 .workspace-header-meta span { color: var(--muted); font-size: 10px; }
 .workspace-header-metrics { justify-content: space-between; gap: 16px; }
