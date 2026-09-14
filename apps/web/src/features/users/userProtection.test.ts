@@ -1,7 +1,7 @@
 import type { ManagedUser } from '@meshcentral/control-client';
 import { describe, expect, it } from 'vitest';
 import { filterManagedUsers } from './userFilters';
-import { isCurrentUser, isLastActiveAdministrator } from './userProtection';
+import { canChangeSiteRights, isCurrentUser, isLastActiveAdministrator } from './userProtection';
 
 const user = (overrides: Partial<ManagedUser>): ManagedUser => ({
   id: 'user//one',
@@ -38,6 +38,23 @@ describe('user management helpers', () => {
     ).toBe(false);
     expect(
       isLastActiveAdministrator({ ...admin, locked: true }, [{ ...admin, locked: true }]),
+    ).toBe(true);
+  });
+
+  it('blocks self permission changes and protects the last active administrator', () => {
+    const admin = user({ id: 'user//admin', name: 'admin', siteRights: 0xffffffff });
+    const regular = user({ id: 'user//regular', name: 'regular' });
+
+    expect(canChangeSiteRights(admin, [admin, regular], admin.id, 0)).toBe(false);
+    expect(canChangeSiteRights(admin, [admin, regular], regular.id, 0)).toBe(false);
+    expect(canChangeSiteRights(regular, [admin, regular], admin.id, 2)).toBe(true);
+    expect(
+      canChangeSiteRights(
+        admin,
+        [admin, user({ id: 'user//other', siteRights: 0xffffffff })],
+        regular.id,
+        0,
+      ),
     ).toBe(true);
   });
 });

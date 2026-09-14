@@ -39,7 +39,6 @@ import {
 import { classifyCommandRisk, mayContainSecret } from '../features/commands/commandRisk';
 import { cleanCommandOutput } from '../features/commands/commandOutput';
 import {
-  prepareCommandForDevice,
   resolveCommandShell,
   supportsRemoteCommand,
 } from '../features/commands/commandShell';
@@ -180,11 +179,10 @@ export function CommandExecutionModal({
     >();
     for (const device of eligibleDevices) {
       const resolved = resolveCommandShell(device, shell);
-      const preparedCommand = prepareCommandForDevice(device, resolved, command);
-      const key = `${resolved}\0${preparedCommand}`;
+      const key = `${resolved}\0${command}`;
       const group = groups.get(key) ?? {
         shell: resolved,
-        command: preparedCommand,
+        command,
         devices: [],
       };
       group.devices.push(device);

@@ -69,6 +69,23 @@ describe('resources', () => {
       nodeid: 'one',
       name: 'Renamed',
     });
+
+    client.responses.push({ ok: true }, { ok: true });
+    await devices.setUserRights('node//one', 'operator', 8);
+    expect(client.requests.at(-1)).toEqual({
+      action: 'adddeviceuser',
+      nodeid: 'node//one',
+      usernames: ['operator'],
+      rights: 8,
+    });
+    await devices.removeUser('node//one', 'operator');
+    expect(client.requests.at(-1)).toEqual({
+      action: 'adddeviceuser',
+      nodeid: 'node//one',
+      usernames: ['operator'],
+      rights: 0,
+      remove: true,
+    });
   });
 
   it('builds group and history requests', async () => {
@@ -229,6 +246,23 @@ describe('resources', () => {
     });
     await expect(lock).resolves.toMatchObject({ action: 'accountchange' });
 
+    const siteRights = users.setSiteRights('user//new-user', 4);
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'edituser',
+      id: 'user//new-user',
+      siteadmin: 4,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        account: { _id: 'user//new-user', siteadmin: 4 },
+      },
+    });
+    await expect(siteRights).resolves.toMatchObject({ action: 'accountchange' });
+
     const remove = users.remove('user//new-user', 'new-user');
     await Promise.resolve();
     expect(client.sent.at(-1)).toEqual({
@@ -257,6 +291,25 @@ describe('resources', () => {
       GatewayValidationError,
     );
     expect(() => groups.removeUser('mesh//servers', ' ')).toThrow(GatewayValidationError);
+  });
+
+  it('rejects invalid device permission mutations', () => {
+    const devices = new DevicesResource(new FakeClient());
+    expect(() => devices.setUserRights(' ', 'operator', 8)).toThrow(GatewayValidationError);
+    expect(() => devices.setUserRights('node//one', ' ', 8)).toThrow(GatewayValidationError);
+    expect(() => devices.setUserRights('node//one', 'operator', -1)).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => devices.setUserRights('node//one', 'operator', 0x100000000)).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => devices.setUserRights('node//one', 'operator', 0xffffffff)).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => devices.setUserRights('node//one', 'operator', 0x00000004)).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => devices.removeUser('node//one', ' ')).toThrow(GatewayValidationError);
   });
 
   it('rejects invalid user mutations', async () => {

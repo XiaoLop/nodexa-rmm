@@ -1,0 +1,11 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "action": "accountchange",
+    "account": {
+      "_id": "user//new-user",
+      "name": "new-user"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "action": "accountremove",
+    "userid": "user//new-user",
+    "username": "new-user"
+  }
+}

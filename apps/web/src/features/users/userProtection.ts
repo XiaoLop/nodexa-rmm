@@ -11,3 +11,16 @@ export function isLastActiveAdministrator(target: ManagedUser, users: ManagedUse
   );
   return otherActiveAdministrators.length === 0;
 }
+
+export function canChangeSiteRights(
+  target: ManagedUser,
+  users: ManagedUser[],
+  currentUserId: string | undefined,
+  nextSiteRights: number,
+): boolean {
+  if (isCurrentUser(target, currentUserId)) return false;
+  if (isFullAdministrator(target.siteRights) && !isFullAdministrator(nextSiteRights)) {
+    return !isLastActiveAdministrator(target, users);
+  }
+  return true;
+}

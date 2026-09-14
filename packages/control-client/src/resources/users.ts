@@ -165,6 +165,22 @@ export class UsersResource {
     });
   }
 
+  setSiteRights(userId: string, siteRights: number): Promise<unknown> {
+    const id = required(userId, 'User ID');
+    if (!Number.isInteger(siteRights) || siteRights < 0 || siteRights > 0xffffffff) {
+      throw new GatewayValidationError('Site rights must be an unsigned 32-bit integer.');
+    }
+    return this.mutate({
+      action: 'edituser',
+      payload: { action: 'edituser', id, siteadmin: siteRights >>> 0 },
+      matchesEvent: (event) => event.action === 'accountchange' && matchesUserId(event, id),
+      verify: async () => {
+        const user = (await this.list()).find((item) => item.id === id);
+        return user?.siteRights === (siteRights >>> 0) ? user : undefined;
+      },
+    });
+  }
+
   remove(userId: string, username?: string): Promise<unknown> {
     const userid = required(userId, 'User ID');
     const normalizedUsername = required(

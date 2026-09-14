@@ -13,7 +13,6 @@ import {
   type ManagedUser,
   type UserCreateOptions,
   type UserSessionCounts,
-  type UserUpdate,
 } from '@meshcentral/control-client';
 import {
   Alert,
@@ -31,7 +30,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserCreateModal } from '../components/users/UserCreateModal';
-import { UserEditDrawer } from '../components/users/UserEditDrawer';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
 import { useGatewayData } from '../features/gateway/useGatewayData';
@@ -73,7 +71,6 @@ export function UsersPage() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<UserFilter>('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<ManagedUser>();
   const [submitting, setSubmitting] = useState(false);
   const [deletingUser, setDeletingUser] = useState<ManagedUser>();
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -138,27 +135,6 @@ export function UsersPage() {
       if (refreshed) setCreateOpen(false);
     } catch (error) {
       void messageApi.error(`创建用户失败：${errorMessage(error)}`);
-      throw error;
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const updateUser = async (updates: UserUpdate) => {
-    if (!client || status !== 'connected' || !editingUser) return;
-    if (Object.keys(updates).length === 0) {
-      void messageApi.info('用户资料没有变化。');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const latestUsers = await client.users.list();
-      const latest = findLatestUser(latestUsers, editingUser.id);
-      await client.users.update(latest.id, updates);
-      const refreshed = await refreshAfterMutation(`已更新用户「${latest.name}」`);
-      if (refreshed) setEditingUser(undefined);
-    } catch (error) {
-      void messageApi.error(`更新用户失败：${errorMessage(error)}`);
       throw error;
     } finally {
       setSubmitting(false);
@@ -306,7 +282,7 @@ export function UsersPage() {
               size="small"
               icon={<EditOutlined />}
               disabled={!connected}
-              onClick={() => setEditingUser(user)}
+              onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}
             >
               编辑
             </Button>
@@ -435,12 +411,6 @@ export function UsersPage() {
         submitting={submitting}
         onCancel={() => setCreateOpen(false)}
         onSubmit={createUser}
-      />
-      <UserEditDrawer
-        user={editingUser}
-        submitting={submitting}
-        onClose={() => setEditingUser(undefined)}
-        onSubmit={updateUser}
       />
       <Modal
         title="删除用户"

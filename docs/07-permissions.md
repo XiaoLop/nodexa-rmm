@@ -253,7 +253,7 @@ node meshctrl.js DeviceInfo --id "node//xYz98765..." --url wss://127.0.0.1 --log
 
 ### 2. 设备组 / 单设备权限码（`MESHRIGHT_*`）
 
-设备组与单设备使用同一套权限位定义：
+设备组与单设备使用同一套权限位定义来表达有效权限，但写入范围不同。设备组授权可使用下表完整集合；`adddeviceuser` 单设备授权只接受 `REMOTECONTROL`、`AGENTCONSOLE`、`SERVERFILES`、`WAKEDEVICE`、`SETNOTES`、`CHATNOTIFY` 和 `UNINSTALL`，全部单设备权限值为 `49400`。不要向单设备授权发送 `MESHRIGHT_ADMIN` (`0xffffffff`)。
 
 | 常量名称 | 十六进制（Hex） | 十进制 | 权限说明 |
 | :--- | :--- | :--- | :--- |

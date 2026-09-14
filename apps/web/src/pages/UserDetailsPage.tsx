@@ -1,33 +1,49 @@
 import {
   ApartmentOutlined,
+  ApiOutlined,
   AuditOutlined,
   ClockCircleFilled,
   DeleteOutlined,
   DesktopOutlined,
   EditOutlined,
-  PlusOutlined,
+  IdcardOutlined,
+  KeyOutlined,
   LaptopOutlined,
+  LockOutlined,
   MailOutlined,
+  PlusOutlined,
   SafetyCertificateFilled,
+  SafetyCertificateOutlined,
   TeamOutlined,
+  UnlockOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import type {
-  Device,
-  DeviceGroup,
-  GatewayEvent,
-  ManagedUser,
-  UserGroup,
-  UserLink,
+import {
+  isFullAdministrator,
+  type UserUpdate,
+  type Device,
+  type DeviceGroup,
+  type GatewayEvent,
+  type ManagedUser,
+  type UserGroup,
+  type UserLink,
 } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Modal, Space, Spin, Tag, Tooltip, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
+import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
+import { SitePermissionModal } from '../components/users/SitePermissionModal';
+import { UserEditDrawer } from '../components/users/UserEditDrawer';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
-import { isCurrentUser } from '../features/users/userProtection';
+import { preserveLatestAccountLock, summarizeSiteRights } from '../features/users/sitePermissions';
+import {
+  canChangeSiteRights,
+  isCurrentUser,
+  isLastActiveAdministrator,
+} from '../features/users/userProtection';
 
 type DetailTab = 'overview' | 'device-groups' | 'user-groups' | 'shared-devices' | 'logs';
 
@@ -75,7 +91,14 @@ function formatDateTime(value?: string, missing = '未提供') {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '未知错误';
+  if (!(error instanceof Error)) return '未知错误';
+  const serverMessages: Record<string, string> = {
+    'Invalid rights': '所选权限不适用于单台设备，请重新选择。',
+    'Access denied': '当前账户没有执行此操作的权限。',
+    'Invalid user': '目标用户不存在或不可用。',
+    'Invalid device': '目标设备不存在或不可用。',
+  };
+  return serverMessages[error.message] ?? error.message;
 }
 
 function permissionLabel(rights: number): string {
@@ -119,6 +142,7 @@ function AccessCard({
   onRemove,
   addDisabled = false,
   editDisabled = false,
+  disabledReason = '当前操作不可用。',
 }: {
   icon: ReactNode;
   title: string;
@@ -131,6 +155,7 @@ function AccessCard({
   onRemove?: (row: AccessRow) => void;
   addDisabled?: boolean;
   editDisabled?: boolean;
+  disabledReason?: string;
 }) {
   return (
     <article className={`user-detail-access-card${constrained ? ' constrained' : ''}`}>
@@ -145,10 +170,10 @@ function AccessCard({
             <span>{row.name}</span><span>{row.permission}</span>
             {editable ? (
               <Space size={0}>
-                <Tooltip title={editDisabled ? '不能修改当前登录用户的设备组权限。' : undefined}>
+                <Tooltip title={editDisabled ? disabledReason : undefined}>
                   <Button type="link" size="small" icon={<EditOutlined />} disabled={editDisabled} onClick={() => onEdit?.(row)}>编辑</Button>
                 </Tooltip>
-                <Tooltip title={editDisabled ? '不能移除当前登录用户的设备组。' : undefined}>
+                <Tooltip title={editDisabled ? disabledReason : undefined}>
                   <Button type="link" danger size="small" icon={<DeleteOutlined />} disabled={editDisabled} onClick={() => onRemove?.(row)}>移除</Button>
                 </Tooltip>
               </Space>
@@ -194,6 +219,12 @@ export function UserDetailsPage() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string>();
   const [permissionEditor, setPermissionEditor] = useState<{ groupId: string; rights: number } | 'new'>();
+  const [devicePermissionEditor, setDevicePermissionEditor] = useState<
+    { deviceId: string; rights: number } | 'new'
+  >();
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [sitePermissionOpen, setSitePermissionOpen] = useState(false);
+  const [userMutationSubmitting, setUserMutationSubmitting] = useState(false);
   const [permissionSubmitting, setPermissionSubmitting] = useState(false);
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modalApi, modalContextHolder] = Modal.useModal();
@@ -248,8 +279,108 @@ export function UserDetailsPage() {
   const deviceGroupManagementDisabled = status !== 'connected' || isViewingCurrentUser;
 
   useEffect(() => {
-    if (isViewingCurrentUser) setPermissionEditor(undefined);
+    if (isViewingCurrentUser) {
+      setPermissionEditor(undefined);
+      setDevicePermissionEditor(undefined);
+      setSitePermissionOpen(false);
+    }
   }, [isViewingCurrentUser]);
+
+  const findLatestUser = async () => {
+    if (!client || !user) throw new Error('用户数据尚未加载。');
+    const users = await client.users.list();
+    const latest = users.find((item) => item.id === user.id);
+    if (!latest) throw new Error('目标用户已不存在，请返回用户列表。');
+    return { latest, users };
+  };
+
+  const updateUser = async (updates: UserUpdate) => {
+    if (!client || !user) return;
+    if (!Object.keys(updates).length) {
+      void messageApi.info('用户资料没有变化。');
+      return;
+    }
+    setUserMutationSubmitting(true);
+    try {
+      const { latest } = await findLatestUser();
+      await client.users.update(latest.id, updates);
+      await loadDetails();
+      setEditingProfile(false);
+      void messageApi.success(`已更新用户「${latest.name}」`);
+    } catch (error) {
+      void messageApi.error(`更新用户失败：${errorMessage(error)}`);
+      throw error;
+    } finally {
+      setUserMutationSubmitting(false);
+    }
+  };
+
+  const saveSitePermissions = async (proposedRights: number) => {
+    if (!client || !user) return;
+    setUserMutationSubmitting(true);
+    try {
+      const { latest, users } = await findLatestUser();
+      const nextRights = preserveLatestAccountLock(proposedRights, latest.siteRights);
+      if (!canChangeSiteRights(latest, users, userInfo?.id, nextRights)) {
+        throw new Error(
+          isCurrentUser(latest, userInfo?.id)
+            ? '不能修改当前登录用户自己的权限。'
+            : '不能取消最后一个可登录用户的全站管理员权限。',
+        );
+      }
+      await client.users.setSiteRights(latest.id, nextRights);
+      await loadDetails();
+      setSitePermissionOpen(false);
+      void messageApi.success(`已更新用户「${latest.name}」的站点权限`);
+    } catch (error) {
+      void messageApi.error(`设置用户权限失败：${errorMessage(error)}`);
+    } finally {
+      setUserMutationSubmitting(false);
+    }
+  };
+
+  const confirmLockChange = () => {
+    if (!client || !user) return;
+    const locking = !user.locked;
+    modalApi.confirm({
+      title: locking ? '禁用用户' : '启用用户',
+      content: `确定要${locking ? '禁用' : '启用'}用户「${user.name}」吗？`,
+      okText: locking ? '禁用用户' : '启用用户',
+      cancelText: '取消',
+      okButtonProps: { danger: locking },
+      onOk: async () => {
+        const { latest, users } = await findLatestUser();
+        if (isCurrentUser(latest, userInfo?.id)) throw new Error('不能禁用或启用当前登录用户。');
+        if (locking && isLastActiveAdministrator(latest, users)) {
+          throw new Error('不能禁用最后一个可登录的全站管理员。');
+        }
+        await client.users.setLocked(latest.id, locking, latest.siteRights);
+        await loadDetails();
+        void messageApi.success(`账户「${latest.name}」已${locking ? '禁用' : '启用'}`);
+      },
+    });
+  };
+
+  const confirmDeleteUser = () => {
+    if (!client || !user) return;
+    modalApi.confirm({
+      title: '删除用户',
+      content: `确定永久删除用户「${user.name}」吗？此操作无法撤销。`,
+      okText: '永久删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        const { latest, users } = await findLatestUser();
+        if (isCurrentUser(latest, userInfo?.id)) throw new Error('不能删除当前登录用户。');
+        if (isLastActiveAdministrator(latest, users)) {
+          throw new Error('不能删除最后一个可登录的全站管理员。');
+        }
+        await client.users.remove(latest.id, latest.name);
+        void messageApi.success(`已删除用户「${latest.name}」`);
+        navigate('/admin/users');
+      },
+    });
+  };
 
   const saveDeviceGroupPermission = async ({ groupId, rights }: { groupId: string; rights: number }) => {
     if (!client || !user) return;
@@ -302,6 +433,55 @@ export function UserDetailsPage() {
     });
   };
 
+  const saveDevicePermission = async ({ deviceId, rights }: { deviceId: string; rights: number }) => {
+    if (!client || !user) return;
+    if (isCurrentUser(user, userInfo?.id)) {
+      setDevicePermissionEditor(undefined);
+      void messageApi.error('不能修改当前登录用户的设备权限。');
+      return;
+    }
+    const device = devices.find((item) => item.id === deviceId);
+    if (!device) {
+      void messageApi.error('目标设备不存在或已被删除。');
+      return;
+    }
+    setPermissionSubmitting(true);
+    try {
+      const { latest } = await findLatestUser();
+      if (isCurrentUser(latest, userInfo?.id)) throw new Error('不能修改当前登录用户的设备权限。');
+      await client.devices.setUserRights(device.id, latest.name, rights);
+      await loadDetails();
+      void messageApi.success(
+        devicePermissionEditor === 'new'
+          ? `已添加设备「${device.name}」`
+          : `已更新「${device.name}」的权限`,
+      );
+      setDevicePermissionEditor(undefined);
+    } catch (error) {
+      void messageApi.error(`保存设备权限失败：${errorMessage(error)}`);
+    } finally {
+      setPermissionSubmitting(false);
+    }
+  };
+
+  const confirmDevicePermissionRemoval = (row: AccessRow) => {
+    if (!client || !user) return;
+    modalApi.confirm({
+      title: '移除设备权限',
+      content: `确定移除用户「${user.name}」对设备「${row.name}」的直接权限吗？`,
+      okText: '确认移除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        const { latest } = await findLatestUser();
+        if (isCurrentUser(latest, userInfo?.id)) throw new Error('不能修改当前登录用户的设备权限。');
+        await client.devices.removeUser(row.id, latest.name);
+        await loadDetails();
+        void messageApi.success(`已移除设备「${row.name}」`);
+      },
+    });
+  };
+
   if (!user && loading) {
     return <main className="user-details-page user-detail-placeholder"><Spin size="large" /><p>正在加载用户详情</p></main>;
   }
@@ -339,25 +519,133 @@ export function UserDetailsPage() {
 
       <section className="user-detail-hero">
         <div className="user-detail-profile">
-          <span className="user-detail-avatar"><UserOutlined /></span>
+          <div className="user-detail-avatar-wrapper">
+            <span className={`user-detail-avatar ${user.locked ? 'is-locked' : online ? 'is-online' : 'is-offline'}`}>
+              <UserOutlined />
+            </span>
+            <span
+              className={`user-detail-status-indicator ${user.locked ? 'status-locked' : online ? 'status-online' : 'status-offline'}`}
+              title={user.locked ? '已锁定' : online ? '在线' : '离线'}
+            />
+          </div>
           <div className="user-detail-name">
-            <div><h1>{user.name}</h1><Tag color={user.locked ? 'error' : online ? 'success' : 'default'}>{user.locked ? '已锁定' : online ? '在线' : '离线'}</Tag></div>
-            <p>{user.realName || '未提供真实姓名'}</p>
-            <small><MailOutlined /> {user.email || '未提供邮箱'}</small>
+            <div className="user-detail-title-row">
+              <h1>{user.name}</h1>
+              <Tag
+                className={`user-status-tag ${user.locked ? 'tag-locked' : online ? 'tag-online' : 'tag-offline'}`}
+                color={user.locked ? 'error' : online ? 'success' : 'default'}
+              >
+                <span className="user-status-dot" />
+                {user.locked ? '已锁定' : online ? '在线' : '离线'}
+              </Tag>
+              {isFullAdministrator(user.siteRights) ? (
+                <Tag color="blue" className="user-role-tag">全站管理员</Tag>
+              ) : null}
+            </div>
+            <div className="user-detail-subinfo">
+              <span className="user-detail-realname">{user.realName || '未提供真实姓名'}</span>
+              <span className="user-detail-divider">•</span>
+              <span className="user-detail-email">
+                <MailOutlined /> {user.email || '未提供邮箱'}
+              </span>
+            </div>
+            <div className="user-detail-actions">
+              <Button size="small" icon={<EditOutlined />} onClick={() => setEditingProfile(true)}>
+                编辑资料
+              </Button>
+              <Tooltip title={isViewingCurrentUser ? '不能修改当前登录用户自己的权限。' : undefined}>
+                <Button
+                  size="small"
+                  icon={<SafetyCertificateOutlined />}
+                  disabled={status !== 'connected' || isViewingCurrentUser}
+                  onClick={() => setSitePermissionOpen(true)}
+                >
+                  设置权限
+                </Button>
+              </Tooltip>
+              <Button
+                size="small"
+                danger={!user.locked}
+                icon={user.locked ? <UnlockOutlined /> : <LockOutlined />}
+                disabled={status !== 'connected' || isViewingCurrentUser}
+                onClick={confirmLockChange}
+              >
+                {user.locked ? '启用' : '禁用'}
+              </Button>
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                disabled={status !== 'connected' || isViewingCurrentUser}
+                onClick={confirmDeleteUser}
+              >
+                删除
+              </Button>
+            </div>
           </div>
         </div>
 
-        <dl className="user-detail-meta">
-          <div><dt><UserOutlined /> 用户 ID</dt><dd>{user.id}</dd></div>
-          <div><dt><ClockCircleFilled /> 创建时间</dt><dd>{formatDateTime(user.createdAt)}</dd></div>
-          <div><dt><ClockCircleFilled /> 最近登录</dt><dd>{formatDateTime(user.lastLoginAt, '从未登录')}</dd></div>
-          <div><dt><ClockCircleFilled /> 最近访问</dt><dd>{formatDateTime(user.lastAccessAt)}</dd></div>
-          <div><dt><ClockCircleFilled /> 密码修改</dt><dd>{formatDateTime(user.passwordChangedAt)}</dd></div>
-        </dl>
+        <div className="user-detail-meta-container">
+          <div className="user-detail-meta-grid">
+            <div className="user-detail-meta-item">
+              <dt><IdcardOutlined /> 用户 ID</dt>
+              <dd>
+                <Tooltip title={user.id}>
+                  <span className="user-detail-meta-value mono">{user.id}</span>
+                </Tooltip>
+              </dd>
+            </div>
+            <div className="user-detail-meta-item">
+              <dt><ClockCircleFilled /> 创建时间</dt>
+              <dd>
+                <span className="user-detail-meta-value">{formatDateTime(user.createdAt)}</span>
+              </dd>
+            </div>
+            <div className="user-detail-meta-item">
+              <dt><ClockCircleFilled /> 最近登录</dt>
+              <dd>
+                <span className="user-detail-meta-value">{formatDateTime(user.lastLoginAt, '从未登录')}</span>
+              </dd>
+            </div>
+            <div className="user-detail-meta-item">
+              <dt><ClockCircleFilled /> 最近访问</dt>
+              <dd>
+                <span className="user-detail-meta-value">{formatDateTime(user.lastAccessAt)}</span>
+              </dd>
+            </div>
+            <div className="user-detail-meta-item">
+              <dt><KeyOutlined /> 密码修改</dt>
+              <dd>
+                <span className="user-detail-meta-value">{formatDateTime(user.passwordChangedAt)}</span>
+              </dd>
+            </div>
+            <div className="user-detail-meta-item">
+              <dt><SafetyCertificateFilled /> 站点权限</dt>
+              <dd>
+                <Tooltip title={summarizeSiteRights(user.siteRights)}>
+                  <span className="user-detail-meta-value">{summarizeSiteRights(user.siteRights)}</span>
+                </Tooltip>
+              </dd>
+            </div>
+          </div>
+        </div>
 
         <div className="user-detail-sessions">
-          <span><SafetyCertificateFilled /></span>
-          <div><strong>{sessionCount} 个活跃会话</strong><small>{online ? '该用户当前在线' : '该用户当前离线'}</small></div>
+          <div className={`user-detail-sessions-card ${online ? 'is-online' : ''}`}>
+            <span className="user-detail-sessions-icon">
+              <ApiOutlined />
+            </span>
+            <div className="user-detail-sessions-body">
+              <div className="user-detail-sessions-count">
+                <strong>{sessionCount}</strong>
+                <span className="user-detail-sessions-unit">活跃会话</span>
+              </div>
+              <div className="user-detail-sessions-status">
+                <span className={`user-detail-pulse-dot ${online ? 'online' : 'offline'}`} />
+                <small>{online ? '该用户当前在线' : '该用户当前离线'}</small>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -405,7 +693,23 @@ export function UserDetailsPage() {
       ) : activeTab === 'user-groups' ? (
         <AccessCard icon={<TeamOutlined />} title={activeTitle ?? '用户组'} rows={userGroupRows} tone="purple-text" />
       ) : (
-        <AccessCard icon={<DesktopOutlined />} title={activeTitle ?? '共用设备'} rows={sharedDeviceRows} tone="blue-text" />
+        <AccessCard
+          editable
+          icon={<DesktopOutlined />}
+          title={activeTitle ?? '共用设备'}
+          rows={sharedDeviceRows}
+          tone="blue-text"
+          addDisabled={deviceGroupManagementDisabled}
+          editDisabled={deviceGroupManagementDisabled}
+          disabledReason="不能修改当前登录用户的设备权限。"
+          onAdd={() => {
+            if (!deviceGroupManagementDisabled) setDevicePermissionEditor('new');
+          }}
+          onEdit={(row) => {
+            if (!deviceGroupManagementDisabled) setDevicePermissionEditor({ deviceId: row.id, rights: row.rights });
+          }}
+          onRemove={confirmDevicePermissionRemoval}
+        />
       )}
 
       <DeviceGroupPermissionModal
@@ -416,6 +720,29 @@ export function UserDetailsPage() {
         submitting={permissionSubmitting}
         onCancel={() => setPermissionEditor(undefined)}
         onSubmit={saveDeviceGroupPermission}
+      />
+      <DevicePermissionModal
+        open={Boolean(devicePermissionEditor) && !deviceGroupManagementDisabled}
+        groups={availableGroups}
+        devices={devices}
+        currentDeviceIds={sharedDeviceRows.map((row) => row.id)}
+        editing={devicePermissionEditor && devicePermissionEditor !== 'new' ? devicePermissionEditor : undefined}
+        submitting={permissionSubmitting}
+        onCancel={() => setDevicePermissionEditor(undefined)}
+        onSubmit={saveDevicePermission}
+      />
+      <SitePermissionModal
+        open={sitePermissionOpen && !isViewingCurrentUser}
+        user={user}
+        submitting={userMutationSubmitting}
+        onCancel={() => setSitePermissionOpen(false)}
+        onSubmit={saveSitePermissions}
+      />
+      <UserEditDrawer
+        user={editingProfile ? user : undefined}
+        submitting={userMutationSubmitting}
+        onClose={() => setEditingProfile(false)}
+        onSubmit={updateUser}
       />
     </main>
   );

@@ -1,0 +1,8 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "action": "accountcreate",
+    "username": "new-user"
+  }
+}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEVICE_PERMISSIONS,
+  DEVICE_RIGHT_FULL,
   MESH_RIGHT_ADMIN,
   canUseTerminal,
   composeMeshRights,
@@ -30,5 +32,18 @@ describe('mesh permissions', () => {
     expect(canUseTerminal(0x8)).toBe(true);
     expect(canUseTerminal(0x8 | 0x200)).toBe(false);
     expect(canUseTerminal(0x10)).toBe(false);
+  });
+
+  it('uses the server-supported permission set for direct device grants', () => {
+    expect(DEVICE_RIGHT_FULL).toBe(49400);
+    expect(DEVICE_PERMISSIONS.map(({ flag }) => flag)).toEqual([
+      0x00000008,
+      0x00000010,
+      0x00000020,
+      0x00004000,
+      0x00000040,
+      0x00000080,
+      0x00008000,
+    ]);
   });
 });

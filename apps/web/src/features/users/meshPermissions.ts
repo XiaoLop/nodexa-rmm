@@ -54,6 +54,26 @@ export const MESH_PERMISSION_CATEGORIES = [
   { key: 'restrictions', label: '限制项（选中即限制）' },
 ] as const;
 
+const DEVICE_PERMISSION_FLAGS = new Set<number>([
+  MeshRight.RemoteControl,
+  MeshRight.AgentConsole,
+  MeshRight.ServerFiles,
+  MeshRight.WakeDevice,
+  MeshRight.SetNotes,
+  MeshRight.ChatNotify,
+  MeshRight.Uninstall,
+]);
+
+export const DEVICE_PERMISSIONS = MESH_PERMISSIONS.filter(({ flag }) =>
+  DEVICE_PERMISSION_FLAGS.has(flag),
+);
+
+export const DEVICE_PERMISSION_CATEGORIES = MESH_PERMISSION_CATEGORIES.filter(({ key }) =>
+  DEVICE_PERMISSIONS.some((permission) => permission.category === key),
+);
+
+export const DEVICE_RIGHT_FULL = composeMeshRights(DEVICE_PERMISSIONS.map(({ flag }) => flag));
+
 export function summarizeMeshRights(rights: number): string {
   const normalized = normalizeMeshRights(rights);
   if (normalized === MESH_RIGHT_ADMIN) return '全部权限';

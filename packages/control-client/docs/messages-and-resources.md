@@ -23,6 +23,8 @@
 | `details(id)` | 并行发送 `nodes`、`getnetworkinfo`、`lastconnect`、`getsysinfo` | `DeviceDetails` | 一次组装设备详情页所需数据 |
 | `update(id, patch)` | `changedevice` | 原始确认响应 | 修改名称、描述、设备组或标签 |
 | `remove(id)` | `removedevices`, `nodeids` | 原始确认响应 | 删除设备 |
+| `setUserRights(id, username, rights)` | `adddeviceuser`, `nodeid`, `usernames`, `rights` | 原始确认响应 | 设置用户对单台设备的直接权限 |
+| `removeUser(id, username)` | `adddeviceuser`, `rights: 0`, `remove: true` | 原始确认响应 | 移除用户对单台设备的直接权限 |
 | `powerAction(id, action)` | `wakenode` 或 `poweraction` | 原始确认响应 | 唤醒、重启、关机或休眠 |
 | `updateManyGroup(ids, groupId)` | 每台设备发送 `changedevice`，并发上限 4 | `BatchOperationResult` | 批量迁移设备并得到逐设备提交结果 |
 | `powerMany(ids, 'wake')` | 单次 `wakedevices`, `nodeids` | `BatchOperationResult` | 批量唤醒设备 |
@@ -32,6 +34,8 @@
 | `normalize(value)` | 不发送消息 | `Device \| undefined` | 复用包内设备标准化逻辑 |
 
 `details()` 使用并行 fail-fast 策略，任一请求失败时整个调用失败。`raw` 保留四项原始响应。
+
+单设备直接授权只接受远程控制、Agent 控制台、服务器文件、唤醒、设置备注、聊天通知和卸载 Agent 权限，全部单设备权限的组合值为 `49400`。不要向 `adddeviceuser` 发送设备组管理权限、限制位或 `0xffffffff`，服务端会返回 `result: "Invalid rights"`。
 
 电源 action 支持 `wake`、`reset`、`poweroff` 和 `sleep`。电源请求得到响应只表示网关处理了请求；设备是否真正完成操作应结合后续事件或状态刷新判断。
 
@@ -130,7 +134,17 @@ unsubscribe();
 | `create(options)` | 先 `users` 去重，再单向发送 `adduser` | 等待 `accountcreate`，超时后用 `users` 验证 | 创建账号，可使用随机密码 |
 | `update(userId, patch)` | 单向发送 `edituser` | 等待 `accountchange`，超时后查询验证 | 修改邮箱、真实姓名或电话 |
 | `setLocked(userId, locked, rights)` | 单向发送 `edituser` | 等待事件，超时后查询验证 | 修改 `siteadmin` 中的锁定位 |
+| `setSiteRights(userId, siteRights)` | 单向发送 `edituser` | 等待 `accountchange`，超时后查询验证 | 替换用户的完整站点权限掩码 |
 | `remove(userId, username?)` | 单向发送 `deleteuser` | 等待 `accountremove`，超时后查询验证 | 删除账号 |
+
+`setSiteRights()` 要求 `siteRights` 是无符号 32 位整数，发送的字段为 `siteadmin`。例如：
+
+```ts
+await client.users.setSiteRights('user//test', 4);
+// { action: 'edituser', id: 'user//test', siteadmin: 4 }
+```
+
+服务端成功后通常通过 `event` 消息广播 `etype: 'user'`、`action: 'accountchange'`，客户端会用用户 ID 匹配该事件并完成操作确认。
 
 用户变更按客户端串行执行，避免多个无 `responseid` 的确认事件相互匹配。确认等待时间为 5 秒；查询验证成功时方法也会正常完成。
 

@@ -90,7 +90,14 @@ export class RequestManager {
     if (!match) return false;
     clearTimeout(match.timer);
     this.pending.delete(match.id);
-    const error = record.error ?? record.err;
+    const explicitError = record.error ?? record.err;
+    const resultError =
+      typeof record.result === 'string' &&
+      record.result &&
+      !['ok', 'success'].includes(record.result.toLowerCase())
+        ? record.result
+        : undefined;
+    const error = explicitError ?? resultError;
     if (typeof error === 'string' && error)
       match.reject(
         new GatewayServerError(error, {

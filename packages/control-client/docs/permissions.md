@@ -63,7 +63,7 @@ const nextRights = setSiteAccountLocked(user.siteRights, true);
 
 ## 设备组与设备权限
 
-`MeshRight` 包含 `MESHRIGHT_*` 常量。设备组和单设备授权使用同一套掩码。
+`MeshRight` 包含 `MESHRIGHT_*` 常量，可用于解析设备组和单设备权限。但两类授权的可写范围不同：设备组可使用完整权限集合，`adddeviceuser` 单设备授权只接受远程控制、Agent 控制台、服务器文件、唤醒、设置备注、聊天通知和卸载 Agent。单设备全部权限组合值是 `49400`，不能发送 `0xffffffff`。
 
 ```ts
 import {

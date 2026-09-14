@@ -22,6 +22,14 @@ import type {
 interface ResourceClient {
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
 }
+const DEVICE_USER_RIGHTS_MASK =
+  0x00000008 |
+  0x00000010 |
+  0x00000020 |
+  0x00000040 |
+  0x00000080 |
+  0x00004000 |
+  0x00008000;
 const required = (value: string, name: string) => {
   if (!value.trim()) throw new GatewayValidationError(`${name} is required.`);
 };
@@ -142,6 +150,37 @@ export class DevicesResource {
   async remove(deviceId: string): Promise<unknown> {
     required(deviceId, 'Device ID');
     return this.client.request({ action: 'removedevices', nodeids: [deviceId] });
+  }
+
+  setUserRights(deviceId: string, username: string, rights: number): Promise<unknown> {
+    required(deviceId, 'Device ID');
+    required(username, 'Username');
+    if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
+      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+    }
+    if ((rights & ~DEVICE_USER_RIGHTS_MASK) !== 0) {
+      throw new GatewayValidationError(
+        'Device user rights contain permissions that are not valid for a single device.',
+      );
+    }
+    return this.client.request({
+      action: 'adddeviceuser',
+      nodeid: deviceId,
+      usernames: [username],
+      rights: rights >>> 0,
+    });
+  }
+
+  removeUser(deviceId: string, username: string): Promise<unknown> {
+    required(deviceId, 'Device ID');
+    required(username, 'Username');
+    return this.client.request({
+      action: 'adddeviceuser',
+      nodeid: deviceId,
+      usernames: [username],
+      rights: 0,
+      remove: true,
+    });
   }
 
   async powerAction(deviceId: string, action: PowerAction): Promise<unknown> {
