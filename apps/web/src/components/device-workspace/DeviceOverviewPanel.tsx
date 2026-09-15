@@ -15,9 +15,10 @@ import {
   UserOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import type { GatewayEvent } from '@meshcentral/control-client';
+import type { GatewayClient, GatewayEvent } from '@meshcentral/control-client';
 import { formatEventMessage } from '@meshcentral/shared-state';
 import { Button, Empty, Progress, Tag } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   DeviceWorkspaceModel,
   WorkspaceTab,
@@ -50,17 +51,44 @@ function statusIndicator(status: string | undefined, okValue = 'OK') {
 export function DeviceOverviewPanel({
   model,
   events,
+  gatewayClient,
   gatewayConnected,
   onNavigate,
 }: {
   model: DeviceWorkspaceModel;
   events: GatewayEvent[];
+  gatewayClient?: GatewayClient;
   gatewayConnected: boolean;
   onNavigate: (tab: WorkspaceTab) => void;
 }) {
   const hw = model.hardware;
   const sec = hw?.security;
-  const recentEvents = events.filter((event) => event.deviceId === model.device.id).slice(0, 6);
+  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHistoryEvents([]);
+    if (!gatewayClient || !gatewayConnected) return;
+    void gatewayClient.events
+      .listByDevice(model.device.id, { limit: 20 })
+      .then((result) => {
+        if (!cancelled) setHistoryEvents(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [gatewayClient, gatewayConnected, model.device.id]);
+
+  const recentEvents = useMemo(() => {
+    const byId = new Map(historyEvents.map((event) => [event.id, event]));
+    for (const event of events) {
+      if (event.deviceId === model.device.id) byId.set(event.id, event);
+    }
+    return [...byId.values()]
+      .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
+      .slice(0, 20);
+  }, [events, historyEvents, model.device.id]);
 
   const avStatus = statusIndicator(sec?.antiVirus);
   const fwStatus = statusIndicator(sec?.firewall);
@@ -160,14 +188,6 @@ export function DeviceOverviewPanel({
                 <span>实时保护<strong>{rtpStatus.text}</strong></span>
                 {rtpStatus.icon}
               </div>
-            </div>
-
-            <div className="workspace-overview-actions">
-              <Button type="primary" icon={<DesktopOutlined />} onClick={() => onNavigate('desktop')}>
-                打开远程桌面
-              </Button>
-              <Button onClick={() => onNavigate('terminal')}>远程终端</Button>
-              <Button onClick={() => onNavigate('files')}>文件管理</Button>
             </div>
           </section>
 

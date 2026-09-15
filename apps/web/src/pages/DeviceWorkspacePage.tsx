@@ -8,6 +8,7 @@ import { Button, Empty, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
+import { DeviceLogsPanel } from '../components/device-workspace/DeviceLogsPanel';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
 import { RemoteDesktopPanel, type RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
@@ -139,11 +140,6 @@ export function DeviceWorkspacePage() {
             <span className="workspace-loading-line is-meta-value" />
             <span className="workspace-loading-line is-meta-note" />
           </div>
-          <div className="workspace-header-meta workspace-loading-meta">
-            <span className="workspace-loading-line is-meta-label" />
-            <span className="workspace-loading-line is-meta-value" />
-            <span className="workspace-loading-line is-meta-note" />
-          </div>
           <span className="workspace-loading-line is-header-status" />
         </header>
 
@@ -224,6 +220,7 @@ export function DeviceWorkspacePage() {
         <DeviceOverviewPanel
           model={model}
           events={data.events}
+          gatewayClient={data.client}
           gatewayConnected={data.status === 'connected'}
           onNavigate={setActiveTab}
         />
@@ -261,6 +258,13 @@ export function DeviceWorkspacePage() {
           gatewayClient={data.client}
           gatewayConnected={data.status === 'connected'}
           terminalAllowed={model.terminalAllowed}
+        />
+      ) : activeTab === 'logs' ? (
+        <DeviceLogsPanel
+          device={model.device}
+          events={data.events}
+          gatewayClient={data.client}
+          gatewayConnected={data.status === 'connected'}
         />
       ) : (
         <section className="console-card workspace-tab-empty">

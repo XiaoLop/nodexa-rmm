@@ -5,7 +5,7 @@
 .workspace-device-header {
   min-height: 82px;
   display: grid;
-  grid-template-columns: minmax(280px, 1.4fr) minmax(360px, 1.8fr) minmax(110px, .55fr) minmax(145px, .7fr) auto;
+  grid-template-columns: minmax(280px, 1.4fr) minmax(360px, 1.8fr) minmax(145px, .7fr) auto;
   align-items: center;
   gap: 20px;
   padding: 12px 18px;
@@ -68,7 +68,7 @@
 .workspace-header-meta strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #d7e3f2; }
 .workspace-header-meta small { color: #7a8fa6; font-size: 9px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-tabs {
-  height: 42px;
+  height: 43px;
   display: flex;
   gap: 2px;
   overflow-x: auto;
@@ -184,7 +184,8 @@
 .workspace-profile-list dt .anticon { width: 18px; color: #6f89ad; }
 .workspace-profile-list dd { margin: 0; overflow: hidden; color: #d2dce8; font-size: 10px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-overview-bottom { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(290px, .85fr); gap: 10px; }
-.workspace-overview-event-list { min-height: 146px; padding: 6px 13px 12px; }
+.workspace-overview-event-list { height: 240px; overflow-y: auto; padding: 6px 13px 12px; scrollbar-color: #34475d transparent; }
+.workspace-overview-event-list > .ant-empty { height: 100%; display: grid; align-content: center; margin: 0; }
 .workspace-overview-event-list > div:not(.ant-empty) { min-height: 38px; display: grid; grid-template-columns: 7px minmax(0, 1fr) 62px; align-items: center; gap: 10px; border-bottom: 1px solid rgba(36, 51, 72, .65); }
 .workspace-overview-event-list > div:last-child { border-bottom: 0; }
 .workspace-overview-event-list > div > i { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 7px rgba(47, 128, 255, .55); }
@@ -296,6 +297,30 @@
 .workspace-latency-summary span.is-timeout { color: var(--danger); }
 .workspace-security-list b { color: var(--success); background: rgba(45,204,112,.12); padding: 2px 5px; border-radius: 3px; font-size: 9px; }
 .workspace-end-session .ant-btn { width: calc(100% - 26px); margin: 14px 13px; }
+.workspace-logs-panel { min-width: 0; overflow: hidden; }
+.workspace-logs-toolbar { gap: 16px; }
+.workspace-logs-toolbar h2 { display: flex; align-items: center; gap: 7px; }
+.workspace-logs-toolbar h2 .anticon { color: #62a7ff; }
+.workspace-logs-toolbar > .ant-space { justify-content: flex-end; }
+.workspace-logs-toolbar .ant-input-search { width: 220px; }
+.workspace-logs-toolbar .ant-select { width: 122px; }
+.workspace-logs-toolbar .ant-select:nth-of-type(2) { width: 94px; }
+.workspace-logs-table .ant-table { font-size: 11px; }
+.workspace-logs-table .ant-table-cell { vertical-align: middle; }
+.workspace-logs-table .ant-table-row { cursor: default; }
+.workspace-log-raw {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #070c12;
+  color: #c8d5e5;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .workspace-tab-empty,
 .workspace-missing { min-height: 420px; display: grid; place-items: center; }
 .workspace-loading {
@@ -455,6 +480,8 @@
   .remote-screen { height: 360px; }
   .workspace-overview-main,
   .workspace-overview-bottom { grid-template-columns: 1fr; }
+  .workspace-logs-toolbar { align-items: stretch; flex-direction: column; }
+  .workspace-logs-toolbar > .ant-space { justify-content: flex-start; }
 }
 @media (max-width: 520px) {
   .workspace-device-header { padding: 12px; }
@@ -473,6 +500,10 @@
   .terminal-toolbar .ant-btn > span { display: none; }
   .terminal-stage { height: calc(100dvh - 280px); min-height: 300px; }
   .terminal-statusbar { gap: 9px; overflow-x: auto; }
+  .workspace-logs-toolbar .ant-input-search { width: 100%; }
+  .workspace-logs-toolbar .ant-space-item:has(.ant-input-search) { width: 100%; }
+  .workspace-logs-toolbar .ant-select { width: 118px; }
+  .workspace-logs-toolbar .ant-btn > span { display: none; }
 }
 .desktop-canvas { display: block; margin: auto; outline: none; image-rendering: auto; touch-action: none; }
 .desktop-canvas:focus-visible { box-shadow: inset 0 0 0 2px #2f80ff; }

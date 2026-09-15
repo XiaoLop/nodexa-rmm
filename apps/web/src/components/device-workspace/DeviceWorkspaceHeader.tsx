@@ -5,7 +5,6 @@ import {
   DatabaseOutlined,
   DesktopOutlined,
   ThunderboltOutlined,
-  UserOutlined,
   WarningOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
@@ -73,12 +72,6 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
           <strong title={hw?.gpuName || '—'}>{hw?.gpuName || '标准显示'}</strong>
           <small>{hw?.gpuResolution || hw?.primaryNic || '—'}</small>
         </div>
-      </div>
-
-      <div className="workspace-header-meta">
-        <span><UserOutlined /> 当前用户</span>
-        <strong>{model.currentUser}</strong>
-        <small>{model.ipAddress}</small>
       </div>
 
       <div className="workspace-header-meta">
