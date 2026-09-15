@@ -19,6 +19,7 @@ interface PendingRequest {
 const RESPONSE_ID_OPTIONAL_ACTIONS = new Set([
   'authcookie',
   'events',
+  'getDeviceDetails',
   'meshes',
   'usergroups',
   'users',

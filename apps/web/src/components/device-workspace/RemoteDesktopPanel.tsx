@@ -61,7 +61,6 @@ interface RemoteDesktopPanelProps {
   scale: string;
   onScaleChange: (value: string) => void;
   onSessionActiveChange?: (active: boolean) => void;
-  onLatencyChange?: (latencyMs: number | undefined) => void;
 }
 
 export interface RemoteDesktopPanelHandle {
@@ -86,7 +85,6 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   scale,
   onScaleChange,
   onSessionActiveChange,
-  onLatencyChange,
 }, ref) {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [status, setStatus] = useState<ConnectionState>('idle');
@@ -110,7 +108,6 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     sessionRef.current?.close(1000, reason);
     sessionRef.current = undefined;
     setDesktopSession(undefined);
-    onLatencyChange?.(undefined);
     onSessionActiveChange?.(false);
     canvasRef.current?.clear();
     setScreen(undefined);
@@ -202,7 +199,6 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         canvasRef.current?.setScreen(nextScreen);
       });
       session.onTile((nextTile) => canvasRef.current?.drawTile(nextTile));
-      session.onLatencyChange(onLatencyChange ?? (() => undefined));
       session.onStateChange((next: DesktopSessionState) => {
         if (next === 'screen-known') setStatus('waiting-screen');
         if (next === 'desktop-ready') setStatus('connected');

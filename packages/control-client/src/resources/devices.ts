@@ -132,19 +132,36 @@ export class DevicesResource {
 
   async details(deviceId: string): Promise<DeviceDetails> {
     required(deviceId, 'Device ID');
-    const [nodes, networkInfo, lastConnect, systemInfo] = await Promise.all([
-      this.client.request<unknown>({ action: 'nodes' }),
-      this.networkInfo(deviceId),
-      this.lastConnect(deviceId),
-      this.systemInfo(deviceId),
-    ]);
-    const devices = normalizeDevices(isRecord(nodes) ? (nodes.nodes ?? nodes.devices) : undefined);
+    const response = await this.client.request<unknown>({
+      action: 'getDeviceDetails',
+      nodeids: [deviceId],
+      tz: 'Asia/Shanghai',
+      tf: -480,
+      l: 'zh-CN',
+      type: 'json',
+    });
+    const payload = isRecord(response) ? response.data : response;
+    let entries: unknown = payload;
+    if (typeof payload === 'string') {
+      try {
+        entries = JSON.parse(payload);
+      } catch {
+        entries = undefined;
+      }
+    }
+    const detail = Array.isArray(entries) ? entries[0] : entries;
+    const detailRecord = isRecord(detail) ? detail : undefined;
+    const node = detailRecord?.node;
+    const device = normalizeDevice(node, deviceId);
+    const networkInfo = detailRecord?.net;
+    const lastConnect = detailRecord?.lastConnect;
+    const systemInfo = detailRecord?.sys;
     return {
-      device: devices.find((device) => device.id === deviceId),
+      device,
       networkInfo,
       lastConnect,
       systemInfo,
-      raw: { nodes, networkInfo, lastConnect, systemInfo },
+      raw: { detail, networkInfo, lastConnect, systemInfo },
     };
   }
 

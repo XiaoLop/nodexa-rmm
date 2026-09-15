@@ -1,5 +1,5 @@
 import { Button, Empty, message } from 'antd';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
@@ -37,9 +37,7 @@ export function DeviceWorkspacePage() {
   const activeTab = workspaceTab(searchParams.get('tab'));
   const [scale, setScale] = useState('fit');
   const [desktopSessionActive, setDesktopSessionActive] = useState(false);
-  const [desktopLatency, setDesktopLatency] = useState<number>();
-  const [desktopLatencyTrend, setDesktopLatencyTrend] = useState<number[]>([]);
-  const [desktopLatencyTimedOut, setDesktopLatencyTimedOut] = useState(false);
+  const [deviceDetails, setDeviceDetails] = useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
   const [settings, setSettings] = useState<WorkspaceSettingsValue>({
     keyboard: true,
     mouse: true,
@@ -49,25 +47,24 @@ export function DeviceWorkspacePage() {
     quality: 58,
   });
   const device = data.devices.find((item) => item.id === deviceId);
-  const model = useMemo(() => (device ? createDeviceWorkspaceModel(device) : undefined), [device]);
+  useEffect(() => {
+    let cancelled = false;
+    setDeviceDetails(undefined);
+    if (!deviceId || !device || data.status !== 'connected' || !data.client) return;
+    void data.client.devices.details(deviceId).then((details) => {
+      if (!cancelled) setDeviceDetails(details);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [data.client, data.status, device?.id, deviceId]);
+  const model = useMemo(() => (device ? createDeviceWorkspaceModel(device, deviceDetails) : undefined), [device, deviceDetails]);
   const setActiveTab = (tab: WorkspaceTab) => {
     const next = new URLSearchParams(searchParams);
     if (tab === 'overview') next.delete('tab');
     else next.set('tab', tab);
     setSearchParams(next, { replace: true });
   };
-  const handleDesktopLatencyChange = (latencyMs: number | undefined) => {
-    setDesktopLatency(latencyMs);
-    setDesktopLatencyTimedOut(latencyMs === undefined);
-    if (latencyMs !== undefined) setDesktopLatencyTrend((current) => [...current.slice(-19), latencyMs]);
-  };
   const handleDesktopSessionActiveChange = (active: boolean) => {
     setDesktopSessionActive(active);
-    if (!active) {
-      setDesktopLatency(undefined);
-      setDesktopLatencyTrend([]);
-      setDesktopLatencyTimedOut(false);
-    }
   };
 
   if (!model) {
@@ -110,16 +107,12 @@ export function DeviceWorkspacePage() {
             scale={scale}
             onScaleChange={setScale}
             onSessionActiveChange={handleDesktopSessionActiveChange}
-            onLatencyChange={handleDesktopLatencyChange}
           />
           <WorkspaceSettings
             value={settings}
             onChange={setSettings}
             controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
             sessionActive={desktopSessionActive}
-            latency={desktopLatency}
-            latencyTrend={desktopLatencyTrend}
-            latencyTimedOut={desktopLatencyTimedOut}
             onEndSession={() => desktopPanelRef.current?.disconnect()}
           />
         </div>

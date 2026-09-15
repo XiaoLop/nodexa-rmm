@@ -133,50 +133,16 @@
 
 ## 获取设备详情
 
-`meshctrl DeviceInfo` 实际会并行发送 4 个请求：
+发送
 
 ```json
-{ "action": "nodes" }
+{"action":"getDeviceDetails","nodeids":["node//irp@PMVBXa6YUpY1863bvVkBaRMggkSdmHf06gMnNioipkXzIGt2orh7fYFq$dMl"],"tz":"Asia/Shanghai","tf":-480,"l":"zh-CN","type":"json"}
 ```
+
+响应
 
 ```json
-{
-  "action": "getnetworkinfo",
-  "nodeid": "node//yyyyyyyy",
-  "responseid": "req-network"
-}
-```
-
-```json
-{
-  "action": "lastconnect",
-  "nodeid": "node//yyyyyyyy",
-  "responseid": "req-lastconnect"
-}
-```
-
-```json
-{
-  "action": "getsysinfo",
-  "nodeid": "node//yyyyyyyy",
-  "nodeinfo": true,
-  "responseid": "req-sysinfo"
-}
-```
-
-封装建议：
-
-```js
-async function getDeviceDetails(client, nodeid) {
-  const [nodes, network, lastconnect, sysinfo] = await Promise.all([
-    client.send({ action: 'nodes' }),
-    client.send({ action: 'getnetworkinfo', nodeid }),
-    client.send({ action: 'lastconnect', nodeid }),
-    client.send({ action: 'getsysinfo', nodeid, nodeinfo: true })
-  ]);
-
-  return { nodes, network, lastconnect, sysinfo };
-}
+{"action":"getDeviceDetails","data":"[{\"node\":{\"_id\":\"node//irp@PMVBXa6YUpY1863bvVkBaRMggkSdmHf06gMnNioipkXzIGt2orh7fYFq$dMl\",\"type\":\"node\",\"mtype\":2,\"icon\":1,\"meshid\":\"mesh//m7o$qNO9pkX$nd9cHiQErtY1BCyNqtQPBUBQNrhQ$M1sBZbSaMpFlYaYuoGZX$jQ\",\"name\":\"zqy\",\"rname\":\"BF-202507082050\",\"domain\":\"\",\"agent\":{\"ver\":0,\"id\":4,\"caps\":31,\"core\":\"Mar 6 2025, 369122844\",\"root\":true},\"host\":\"172.18.0.1\",\"firstconnect\":1788839508820,\"ip\":\"172.18.0.1\",\"osdesc\":\"Microsoft Windows 11 专业版 - 24H2/26100\",\"av\":[],\"wsc\":{\"antiVirus\":\"WARNING\",\"autoUpdate\":\"OK\",\"firewall\":\"PROBLEM\"},\"defender\":{\"RealTimeProtection\":false,\"TamperProtected\":false},\"users\":[\"BF-202507082050\\\\Administrator\"],\"lusers\":[],\"lastbootuptime\":1788971686000,\"conn\":1,\"pwr\":1,\"agct\":1789416924057,\"groupname\":\"公司\"},\"sys\":{\"_id\":\"sinode//irp@PMVBXa6YUpY1863bvVkBaRMggkSdmHf06gMnNioipkXzIGt2orh7fYFq$dMl\",\"hardware\":{\"windows\":{\"memory\":[{\"Attributes\":4,\"BankLabel\":\"NODE 1\",\"Capacity\":\"34359738368\",\"Caption\":\"物理内存\",\"ConfiguredClockSpeed\":1866,\"CreationClassName\":\"Win32_PhysicalMemory\",\"DataWidth\":72,\"Description\":\"物理内存\",\"DeviceLocator\":\"DIMM_A1\",\"FormFactor\":8,\"Manufacturer\":\"Samsung\",\"MaxVoltage\":1260,\"MemoryType\":24,\"MinVoltage\":1140,\"Name\":\"物理内存\",\"PartNumber\":\"M386B4G70DM0-CMA4 \",\"PositionInRow\":1,\"SerialNumber\":\"39FDB4DC\",\"SMBIOSMemoryType\":24,\"Speed\":1867,\"Tag\":\"Physical Memory 0\",\"TotalWidth\":72,\"TypeDetail\":128},{\"Attributes\":4,\"BankLabel\":\"NODE 2\",\"Capacity\":\"34359738368\",\"Caption\":\"物理内存\",\"ConfiguredClockSpeed\":1866,\"CreationClassName\":\"Win32_PhysicalMemory\",\"DataWidth\":72,\"Description\":\"物理内存\",\"DeviceLocator\":\"DIMM_C1\",\"FormFactor\":8,\"Manufacturer\":\"Samsung\",\"MaxVoltage\":1260,\"MemoryType\":24,\"MinVoltage\":1140,\"Name\":\"物理内存\",\"PartNumber\":\"M386B4G70DM0-CMA3 \",\"PositionInRow\":1,\"SerialNumber\":\"4127D2DE\",\"SMBIOSMemoryType\":24,\"Speed\":1867,\"Tag\":\"Physical Memory 2\",\"TotalWidth\":72,\"TypeDetail\":128}],\"osinfo\":{\"BootDevice\":\"\\\\Device\\\\HarddiskVolume1\",\"BuildNumber\":\"26100\",\"BuildType\":\"Multiprocessor Free\",\"Caption\":\"Microsoft Windows 11 专业版\",\"CodeSet\":\"936\",\"CountryCode\":\"86\",\"CreationClassName\":\"Win32_OperatingSystem\",\"CSCreationClassName\":\"Win32_ComputerSystem\",\"CSName\":\"BF-202507082050\",\"CurrentTimeZone\":480,\"DataExecutionPrevention_32BitApplications\":true,\"DataExecutionPrevention_Available\":true,\"DataExecutionPrevention_Drivers\":true,\"DataExecutionPrevention_SupportPolicy\":2,\"EncryptionLevel\":256,\"ForegroundApplicationBoost\":2,\"InstallDate\":\"20250708205414.000000+480\",\"LastBootUpTime\":\"20260910003446.500000+480\",\"Locale\":\"0804\",\"Manufacturer\":\"Microsoft Corporation\",\"MaxNumberOfProcesses\":-1,\"Name\":\"Microsoft Windows 11 专业版|C:\\\\Windows|\\\\Device\\\\Harddisk0\\\\Partition3\",\"NumberOfProcesses\":341,\"NumberOfUsers\":1,\"OperatingSystemSKU\":48,\"Organization\":\"Microsoft\",\"OSArchitecture\":\"64 位\",\"OSLanguage\":2052,\"OSProductSuite\":256,\"OSType\":18,\"Primary\":true,\"ProductType\":1,\"RegisteredUser\":\"Windows 用户\",\"SerialNumber\":\"00330-80000-00000-AA736\",\"SizeStoredInPagingFiles\":\"4194304\",\"Status\":\"OK\",\"SuiteMask\":272,\"SystemDevice\":\"\\\\Device\\\\HarddiskVolume3\",\"SystemDirectory\":\"C:\\\\Windows\\\\system32\",\"SystemDrive\":\"C:\",\"Version\":\"10.0.26100\"},\"partitions\":[{\"BlockSize\":\"512\",\"Bootable\":true,\"BootPartition\":true,\"Caption\":\"磁盘 #0，分区 #0\",\"CreationClassName\":\"Win32_DiskPartition\",\"Description\":\"GPT: 系统\",\"DeviceID\":\"Disk #0, Partition #0\",\"Name\":\"磁盘 #0，分区 #0\",\"NumberOfBlocks\":\"614400\",\"PrimaryPartition\":true,\"Size\":\"314572800\",\"StartingOffset\":\"2097152\",\"SystemCreationClassName\":\"Win32_ComputerSystem\",\"SystemName\":\"BF-202507082050\"},{\"BlockSize\":\"512\",\"Caption\":\"磁盘 #0，分区 #1\",\"CreationClassName\":\"Win32_DiskPartition\",\"Description\":\"GPT: 基本数据\",\"DeviceID\":\"Disk #0, Partition #1\",\"Index\":1,\"Name\":\"磁盘 #0，分区 #1\",\"NumberOfBlocks\":\"796921856\",\"PrimaryPartition\":true,\"Size\":\"408023990272\",\"StartingOffset\":\"450887680\",\"SystemCreationClassName\":\"Win32_ComputerSystem\",\"SystemName\":\"BF-202507082050\"},{\"BlockSize\":\"512\",\"Caption\":\"磁盘 #0，分区 #2\",\"CreationClassName\":\"Win32_DiskPartition\",\"Description\":\"GPT: 基本数据\",\"DeviceID\":\"Disk #0, Partition #2\",\"Index\":2,\"Name\":\"磁盘 #0，分区 #2\",\"NumberOfBlocks\":\"765021839\",\"PrimaryPartition\":true,\"Size\":\"391691181568\",\"StartingOffset\":\"408474877952\",\"SystemCreationClassName\":\"Win32_ComputerSystem\",\"SystemName\":\"BF-202507082050\"}],\"cpu\":[{\"Caption\":\"Intel64 Family 6 Model 63 Stepping 2\",\"DeviceID\":\"CPU0\",\"Manufacturer\":\"GenuineIntel\",\"MaxClockSpeed\":2401,\"Name\":\"Intel(R) Xeon(R) CPU E5-2673 v3 @ 2.40GHz\",\"SocketDesignation\":\"SOCKET 0\"}],\"gpu\":[{\"Name\":\"OrayIddDriver Device\",\"CurrentHorizontalResolution\":null,\"CurrentVerticalResolution\":null},{\"Name\":\"wjIddDriver Device\",\"CurrentHorizontalResolution\":1600,\"CurrentVerticalResolution\":1024},{\"Name\":\"NVIDIA GeForce GT 720\",\"CurrentHorizontalResolution\":1920,\"CurrentVerticalResolution\":1200}],\"drives\":[{\"Caption\":\"INTEL SSDSC2BB800G6L\",\"DeviceID\":\"\\\\\\\\.\\\\PHYSICALDRIVE0\",\"Model\":\"INTEL SSDSC2BB800G6L\",\"Partitions\":3,\"Size\":\"800163463680\",\"Status\":\"OK\"}],\"volumes\":{\"C\":{\"type\":\"NTFS\",\"size\":408023986176,\"sizeremaining\":129287561216},\"D\":{\"name\":\"软件\",\"type\":\"NTFS\",\"size\":391691177984,\"sizeremaining\":176420347904}}},\"identifiers\":{\"bios_date\":\"20230905000000.000000+000\",\"bios_vendor\":\"American Megatrends Inc.\",\"bios_version\":\"5.11\",\"bios_serial\":\"Default string\",\"bios_mode\":\"Legacy\",\"board_name\":\"X99\",\"board_serial\":\"Default string\",\"board_vendor\":\"INTEL\",\"board_version\":\"Default string\",\"product_uuid\":\"03000200-0400-0500-0006-000700080009\",\"product_name\":\"X99\",\"gpu_name\":[\"OrayIddDriver Device\",\"wjIddDriver Device\",\"NVIDIA GeForce GT 720\"],\"storage_devices\":[{\"Caption\":\"INTEL SSDSC2BB800G6L\",\"Model\":\"INTEL SSDSC2BB800G6L\",\"Size\":\"800163463680\"}],\"cpu_name\":\"Intel(R) Xeon(R) CPU E5-2673 v3 @ 2.40GHz\"},\"agentvers\":{\"openssl\":\"1.1.1s\",\"duktape\":\"v2.6.0\",\"commitDate\":\"2025-03-06T21:44:07.000Z\",\"commitHash\":\"28d67274264e140e0c7a4254ad0e32865d5c4a13\",\"compileTime\":\"18:56:58, Mar  6 2025\"},\"network\":{\"dns\":[\"198.18.0.2\",\"114.114.114.114\",\"223.5.5.5\"]}},\"pendingReboot\":\"File Rename\",\"hash\":\"35976128AE41D551145D9BAB7AB672E0D766CDF21A3CB6BC5B19DAA0BB10D0E7171CAE07B097CAE9F9D6EB9012C003E2\",\"type\":\"sysinfo\",\"domain\":\"\",\"time\":1789416928845},\"net\":{\"_id\":\"ifnode//irp@PMVBXa6YUpY1863bvVkBaRMggkSdmHf06gMnNioipkXzIGt2orh7fYFq$dMl\",\"netif2\":{\"Meta\":[{\"address\":\"198.18.0.1\",\"gateway\":\"198.18.0.2\",\"fqdn\":\"\",\"family\":\"IPv4\",\"netmask\":\"255.255.255.252\",\"mac\":\"00:00:00:00:00:00\",\"index\":3,\"status\":\"up\",\"type\":\"other\",\"speed\":100000000000}],\"以太网\":[{\"address\":\"fe80::31dc:7d14:d485:a646%14\",\"fqdn\":\"\",\"family\":\"IPv6\",\"mac\":\"00:E0:1D:7E:61:16\",\"index\":14,\"status\":\"up\",\"type\":\"ethernet\",\"speed\":1000000000},{\"address\":\"192.168.9.27\",\"gateway\":\"192.168.9.1\",\"fqdn\":\"\",\"family\":\"IPv4\",\"netmask\":\"255.255.255.0\",\"mac\":\"00:E0:1D:7E:61:16\",\"index\":14,\"status\":\"up\",\"type\":\"ethernet\",\"speed\":1000000000}],\"Loopback Pseudo-Interface 1\":[{\"address\":\"::1\",\"fqdn\":\"\",\"family\":\"IPv6\",\"mac\":\"00:00:00:00:00:00\",\"index\":1,\"status\":\"up\",\"type\":\"loopback\",\"speed\":0},{\"address\":\"127.0.0.1\",\"fqdn\":\"\",\"family\":\"IPv4\",\"netmask\":\"255.0.0.0\",\"mac\":\"00:00:00:00:00:00\",\"index\":1,\"status\":\"up\",\"type\":\"loopback\",\"speed\":0}]},\"updateTime\":1789358242048,\"domain\":\"\",\"type\":\"ifinfo\"},\"lastConnect\":{\"time\":1789416924057,\"cause\":1,\"connectType\":1,\"addr\":\"172.18.0.1:39564\"}}]","type":"json"}
 ```
 
 ## 获取 Agent 安装包与安装脚本

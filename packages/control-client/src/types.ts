@@ -310,7 +310,13 @@ export interface DeviceDetails {
   networkInfo: unknown;
   lastConnect: unknown;
   systemInfo: unknown;
-  raw: { nodes: unknown; networkInfo: unknown; lastConnect: unknown; systemInfo: unknown };
+  raw: {
+    nodes?: unknown;
+    networkInfo?: unknown;
+    lastConnect?: unknown;
+    systemInfo?: unknown;
+    detail?: unknown;
+  };
 }
 
 export interface GroupCreateOptions {
