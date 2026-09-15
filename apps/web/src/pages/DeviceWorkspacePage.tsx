@@ -1,3 +1,9 @@
+import {
+  AppstoreOutlined,
+  DatabaseOutlined,
+  DesktopOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import { Button, Empty, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -50,6 +56,12 @@ export function DeviceWorkspacePage() {
     quality: 58,
   });
   const device = data.devices.find((item) => item.id === deviceId);
+  const workspaceLoading =
+    !device &&
+    (data.initializing ||
+      data.status === 'idle' ||
+      data.status === 'connecting' ||
+      data.status === 'reconnecting');
   useEffect(() => {
     let cancelled = false;
     setDeviceDetails(undefined);
@@ -86,6 +98,109 @@ export function DeviceWorkspacePage() {
       setDesktopLatencyTimedOut(false);
     }
   };
+
+  if (workspaceLoading) {
+    return (
+      <main
+        className="device-workspace-page page-stack workspace-loading"
+        aria-busy="true"
+        aria-label="正在加载设备工作区"
+      >
+        {messageContextHolder}
+        <header className="workspace-device-header console-card workspace-loading-header" aria-hidden="true">
+          <div className="workspace-device-identity">
+            <span className="workspace-device-icon workspace-loading-device-icon">
+              <DesktopOutlined />
+            </span>
+            <div className="workspace-loading-identity-copy">
+              <span className="workspace-loading-line is-device-name" />
+              <div className="workspace-loading-badges">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          </div>
+
+          <div className="workspace-header-metrics">
+            {[ThunderboltOutlined, AppstoreOutlined, DatabaseOutlined, DesktopOutlined].map(
+              (MetricIcon, index) => (
+                <div className="workspace-header-metric workspace-loading-metric" key={index}>
+                  <span><MetricIcon /> <i className="workspace-loading-line is-metric-label" /></span>
+                  <i className="workspace-loading-line is-metric-value" />
+                  <i className="workspace-loading-line is-metric-note" />
+                </div>
+              ),
+            )}
+          </div>
+
+          <div className="workspace-header-meta workspace-loading-meta">
+            <span className="workspace-loading-line is-meta-label" />
+            <span className="workspace-loading-line is-meta-value" />
+            <span className="workspace-loading-line is-meta-note" />
+          </div>
+          <div className="workspace-header-meta workspace-loading-meta">
+            <span className="workspace-loading-line is-meta-label" />
+            <span className="workspace-loading-line is-meta-value" />
+            <span className="workspace-loading-line is-meta-note" />
+          </div>
+          <span className="workspace-loading-line is-header-status" />
+        </header>
+
+        <div className="workspace-tabs workspace-loading-tabs" aria-hidden="true">
+          {Array.from({ length: 9 }, (_, index) => <span className={index === 0 ? 'is-active' : ''} key={index} />)}
+        </div>
+
+        <section className="workspace-overview workspace-loading-overview" aria-hidden="true">
+          <div className="workspace-overview-metrics">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div className="workspace-overview-metric workspace-loading-summary" key={index}>
+                <div>
+                  <span className="workspace-loading-line is-summary-label" />
+                  <span className="workspace-loading-line is-summary-value" />
+                  <span className="workspace-loading-line is-summary-note" />
+                </div>
+                <span className="workspace-loading-summary-icon" />
+              </div>
+            ))}
+          </div>
+
+          <div className="workspace-overview-main workspace-loading-main">
+            <section className="console-card workspace-loading-panel">
+              <div className="workspace-loading-panel-heading">
+                <span className="workspace-loading-line is-panel-title" />
+                <span className="workspace-loading-line is-panel-action" />
+              </div>
+              <div className="workspace-loading-panel-grid">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <div key={index}>
+                    <span className="workspace-loading-tile-icon" />
+                    <span className="workspace-loading-line is-tile-label" />
+                    <span className="workspace-loading-line is-tile-value" />
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="console-card workspace-loading-panel">
+              <div className="workspace-loading-panel-heading">
+                <span className="workspace-loading-line is-panel-title" />
+              </div>
+              <div className="workspace-loading-list">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div key={index}>
+                    <span className="workspace-loading-line is-list-label" />
+                    <span className="workspace-loading-line is-list-value" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <span className="workspace-loading-announcement">正在连接网关并加载设备信息...</span>
+      </main>
+    );
+  }
 
   if (!model) {
     return (
