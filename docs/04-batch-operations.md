@@ -91,8 +91,7 @@ MeshCtrl 的组消息实现是先获取分组下的设备，再逐台发送：
 ```json
 {
   "action": "wakedevices",
-  "nodeids": ["node//a", "node//b"],
-  "responseid": "req-wake"
+  "nodeids": ["node//a", "node//b"]
 }
 ```
 
@@ -102,17 +101,22 @@ MeshCtrl 的组消息实现是先获取分组下的设备，再逐台发送：
 {
   "action": "poweraction",
   "nodeids": ["node//a", "node//b"],
-  "actiontype": 2,
-  "responseid": "req-power"
+  "actiontype": 2
 }
 ```
 
-不同版本对 `actiontype` 命名可能有差异，封装时建议做枚举并用实际环境测试：
+当前网关使用以下 `actiontype` 数值：
 
 - `wake`：使用 `wakedevices`。
-- `reset` / `reboot`：重启。
-- `sleep`：睡眠。
-- `off`：关机。
+- `poweroff`：`2`，关机。
+- `reset`：`3`，重启。
+- `sleep`：`4`，睡眠。
+
+已验证的确认响应格式如下。响应不一定包含 `responseid` 或设备 ID，只表示网关已接收请求：
+
+```json
+{ "action": "poweraction" }
+```
 
 ## 批量上传文件
 

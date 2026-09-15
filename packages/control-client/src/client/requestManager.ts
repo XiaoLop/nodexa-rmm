@@ -21,10 +21,18 @@ const RESPONSE_ID_OPTIONAL_ACTIONS = new Set([
   'events',
   'getDeviceDetails',
   'meshes',
+  'poweraction',
   'usergroups',
   'users',
+  'wakedevices',
   'wssessioncount',
 ]);
+
+function isSuccessfulResult(action: string | undefined, result: string) {
+  const normalized = result.toLowerCase();
+  if (normalized === 'ok' || normalized === 'success') return true;
+  return action === 'wakedevices' && /^used \d+ device\(s\) to send wake packets$/i.test(result);
+}
 
 export class RequestManager {
   private readonly pending = new Map<string, PendingRequest>();
@@ -95,7 +103,7 @@ export class RequestManager {
     const resultError =
       typeof record.result === 'string' &&
       record.result &&
-      !['ok', 'success'].includes(record.result.toLowerCase())
+      !isSuccessfulResult(action, record.result)
         ? record.result
         : undefined;
     const error = explicitError ?? resultError;

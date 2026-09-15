@@ -1,4 +1,5 @@
 import { Button, Modal, Select, Slider, Switch } from 'antd';
+import { ConnectionSparkline } from './ConnectionSparkline';
 
 export interface WorkspaceSettingsValue {
   keyboard: boolean;
@@ -9,12 +10,24 @@ export interface WorkspaceSettingsValue {
   quality: number;
 }
 
-export function WorkspaceSettings({ value, onChange, onEndSession, controlAvailable, sessionActive }: {
+export function WorkspaceSettings({
+  value,
+  onChange,
+  onEndSession,
+  controlAvailable,
+  sessionActive,
+  latency,
+  latencyTrend,
+  latencyTimedOut,
+}: {
   value: WorkspaceSettingsValue;
   onChange: (value: WorkspaceSettingsValue) => void;
   onEndSession: () => void;
   controlAvailable: boolean;
   sessionActive: boolean;
+  latency?: number;
+  latencyTrend: number[];
+  latencyTimedOut: boolean;
 }) {
   const set = <Key extends keyof WorkspaceSettingsValue>(key: Key, next: WorkspaceSettingsValue[Key]) => onChange({ ...value, [key]: next });
   return (
@@ -34,6 +47,16 @@ export function WorkspaceSettings({ value, onChange, onEndSession, controlAvaila
           <label><span>色深</span><Select size="small" value={value.colorDepth} onChange={(next) => set('colorDepth', next)} options={[{ value: '32 位', label: '32 位' }, { value: '16 位', label: '16 位' }]} /></label>
           <label className="workspace-quality-slider"><span>画质</span><Slider min={10} max={100} value={value.quality} onChange={(next) => set('quality', next)} /><small>{value.quality < 40 ? '流畅' : value.quality > 75 ? '高清' : '中等'}</small></label>
         </div>
+      </section>
+      <section className="console-card workspace-panel workspace-latency-panel">
+        <div className="card-header"><h2>连接延迟</h2></div>
+        <div className="workspace-latency-summary">
+          <strong>{latency === undefined ? '—' : latency}<small> ms</small></strong>
+          <span className={latencyTimedOut ? 'is-timeout' : ''}>
+            {latencyTimedOut ? '响应超时' : sessionActive ? latency === undefined ? '等待响应' : '实时 RTT' : '未连接'}
+          </span>
+        </div>
+        <ConnectionSparkline values={latencyTrend} />
       </section>
       <section className="console-card workspace-panel workspace-end-session">
         <div className="card-header"><h2>会话操作</h2></div>

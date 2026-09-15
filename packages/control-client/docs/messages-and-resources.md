@@ -25,10 +25,10 @@
 | `remove(id)` | `removedevices`, `nodeids` | 原始确认响应 | 删除设备 |
 | `setUserRights(id, username, rights)` | `adddeviceuser`, `nodeid`, `usernames`, `rights` | 原始确认响应 | 设置用户对单台设备的直接权限 |
 | `removeUser(id, username)` | `adddeviceuser`, `rights: 0`, `remove: true` | 原始确认响应 | 移除用户对单台设备的直接权限 |
-| `powerAction(id, action)` | `wakenode` 或 `poweraction` | 原始确认响应 | 唤醒、重启、关机或休眠 |
+| `powerAction(id, action)` | `wakenode` 或单元素 `poweraction.nodeids` | 原始确认响应 | 唤醒、重启、关机或休眠 |
 | `updateManyGroup(ids, groupId)` | 每台设备发送 `changedevice`，并发上限 4 | `BatchOperationResult` | 批量迁移设备并得到逐设备提交结果 |
 | `powerMany(ids, 'wake')` | 单次 `wakedevices`, `nodeids` | `BatchOperationResult` | 批量唤醒设备 |
-| `powerMany(ids, other)` | 每台设备发送 `poweraction`，并发上限 4 | `BatchOperationResult` | 批量重启、关机或休眠 |
+| `powerMany(ids, other)` | 单次 `poweraction`，包含 `nodeids` 和 `actiontype` | `BatchOperationResult` | 批量重启、关机或休眠 |
 | `inviteByEmail(options)` | `inviteAgent` | `{ raw }` | 通过邮件邀请安装 Agent |
 | `createInviteLink(options)` | `createInviteLink` | `{ url?, raw }` | 生成 Agent 安装邀请链接 |
 | `normalize(value)` | 不发送消息 | `Device \| undefined` | 复用包内设备标准化逻辑 |
@@ -37,7 +37,7 @@
 
 单设备直接授权只接受远程控制、Agent 控制台、服务器文件、唤醒、设置备注、聊天通知和卸载 Agent 权限，全部单设备权限的组合值为 `49400`。不要向 `adddeviceuser` 发送设备组管理权限、限制位或 `0xffffffff`，服务端会返回 `result: "Invalid rights"`。
 
-电源 action 支持 `wake`、`reset`、`poweroff` 和 `sleep`。电源请求得到响应只表示网关处理了请求；设备是否真正完成操作应结合后续事件或状态刷新判断。
+电源 action 支持 `wake`、`reset`、`poweroff` 和 `sleep`。`poweraction.actiontype` 映射为：关机 `2`、重启 `3`、睡眠 `4`。电源请求得到响应只表示网关处理了请求；设备是否真正完成操作应结合后续事件或状态刷新判断。`poweraction` 确认响应可能只有 `{ "action": "poweraction" }`，不包含 `responseid` 或设备 ID，因此同类请求必须顺序匹配。
 
 ```ts
 const result = await client.devices.powerMany(

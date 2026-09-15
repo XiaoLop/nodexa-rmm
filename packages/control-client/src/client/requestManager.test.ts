@@ -33,6 +33,41 @@ describe('RequestManager', () => {
     await expect(request).resolves.toMatchObject({ result: 'ok' });
   });
 
+  it('accepts the descriptive wakedevices result without a response id', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const manager = new RequestManager(
+      (payload) => sent.push(payload as Record<string, unknown>),
+      1_000,
+      () => undefined,
+    );
+    const request = manager.request({ action: 'wakedevices', nodeids: ['node//one'] });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    expect(manager.consume({ action: 'wakedevices', result: 'Used 1 device(s) to send wake packets' })).toBe(
+      true,
+    );
+    await expect(request).resolves.toMatchObject({ action: 'wakedevices' });
+  });
+
+  it('serializes poweraction requests whose confirmations have no correlation fields', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const manager = new RequestManager(
+      (payload) => sent.push(payload as Record<string, unknown>),
+      1_000,
+      () => undefined,
+    );
+    const first = manager.request({ action: 'poweraction', nodeid: 'node//one' });
+    const second = manager.request({ action: 'poweraction', nodeid: 'node//two' });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    expect(manager.consume({ action: 'poweraction' })).toBe(true);
+    await expect(first).resolves.toMatchObject({ action: 'poweraction' });
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+
+    expect(manager.consume({ action: 'poweraction' })).toBe(true);
+    await expect(second).resolves.toMatchObject({ action: 'poweraction' });
+  });
+
   it('serializes responseid-less device detail requests', async () => {
     const sent: Record<string, unknown>[] = [];
     const manager = new RequestManager(

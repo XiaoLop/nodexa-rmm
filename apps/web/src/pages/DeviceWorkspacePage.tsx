@@ -7,7 +7,7 @@ import { RemoteDesktopPanel, type RemoteDesktopPanelHandle } from '../components
 import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
 import { WorkspaceTabs } from '../components/device-workspace/WorkspaceTabs';
 import { TerminalPanel } from '../components/device-workspace/terminal/TerminalPanel';
-import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel';
+import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel.ts';
 import type { WorkspaceTab } from '../features/device-workspace/types';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 
@@ -38,6 +38,9 @@ export function DeviceWorkspacePage() {
   const [scale, setScale] = useState('fit');
   const [desktopSessionActive, setDesktopSessionActive] = useState(false);
   const [deviceDetails, setDeviceDetails] = useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
+  const [desktopLatency, setDesktopLatency] = useState<number>();
+  const [desktopLatencyTrend, setDesktopLatencyTrend] = useState<number[]>([]);
+  const [desktopLatencyTimedOut, setDesktopLatencyTimedOut] = useState(false);
   const [settings, setSettings] = useState<WorkspaceSettingsValue>({
     keyboard: true,
     mouse: true,
@@ -51,9 +54,12 @@ export function DeviceWorkspacePage() {
     let cancelled = false;
     setDeviceDetails(undefined);
     if (!deviceId || !device || data.status !== 'connected' || !data.client) return;
-    void data.client.devices.details(deviceId).then((details) => {
-      if (!cancelled) setDeviceDetails(details);
-    }).catch(() => undefined);
+    void data.client.devices
+      .details(deviceId)
+      .then((details) => {
+        if (!cancelled) setDeviceDetails(details);
+      })
+      .catch(() => undefined);
     return () => { cancelled = true; };
   }, [data.client, data.status, device?.id, deviceId]);
   const model = useMemo(() => {
@@ -67,8 +73,18 @@ export function DeviceWorkspacePage() {
     else next.set('tab', tab);
     setSearchParams(next, { replace: true });
   };
+  const handleDesktopLatencyChange = (latencyMs: number | undefined) => {
+    setDesktopLatency(latencyMs);
+    setDesktopLatencyTimedOut(latencyMs === undefined);
+    if (latencyMs !== undefined) setDesktopLatencyTrend((current) => [...current.slice(-19), latencyMs]);
+  };
   const handleDesktopSessionActiveChange = (active: boolean) => {
     setDesktopSessionActive(active);
+    if (!active) {
+      setDesktopLatency(undefined);
+      setDesktopLatencyTrend([]);
+      setDesktopLatencyTimedOut(false);
+    }
   };
 
   if (!model) {
@@ -111,12 +127,16 @@ export function DeviceWorkspacePage() {
             scale={scale}
             onScaleChange={setScale}
             onSessionActiveChange={handleDesktopSessionActiveChange}
+            onLatencyChange={handleDesktopLatencyChange}
           />
           <WorkspaceSettings
             value={settings}
             onChange={setSettings}
             controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
             sessionActive={desktopSessionActive}
+            latency={desktopLatency}
+            latencyTrend={desktopLatencyTrend}
+            latencyTimedOut={desktopLatencyTimedOut}
             onEndSession={() => desktopPanelRef.current?.disconnect()}
           />
         </div>
@@ -130,7 +150,7 @@ export function DeviceWorkspacePage() {
       ) : (
         <section className="console-card workspace-tab-empty">
           <Empty description="该工作区将在后续版本接入">
-            <Button type="primary" onClick={() => setActiveTab('desktop')}>返回远程桌面</Button>
+            <Button type="primary" onClick={() => setActiveTab('overview')}>回到概览</Button>
           </Empty>
         </section>
       )}

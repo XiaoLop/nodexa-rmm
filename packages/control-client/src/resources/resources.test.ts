@@ -588,6 +588,25 @@ describe('resources', () => {
     client.responses.push({ ok: true });
     await devices.powerMany(['one', 'two'], 'wake');
     expect(client.requests.at(-1)).toEqual({ action: 'wakedevices', nodeids: ['one', 'two'] });
+    client.responses.push({ ok: true }, { ok: true }, { ok: true });
+    await devices.powerAction('one', 'poweroff');
+    expect(client.requests.at(-1)).toEqual({
+      action: 'poweraction',
+      nodeids: ['one'],
+      actiontype: 2,
+    });
+    await devices.powerAction('one', 'reset');
+    expect(client.requests.at(-1)).toEqual({
+      action: 'poweraction',
+      nodeids: ['one'],
+      actiontype: 3,
+    });
+    await devices.powerAction('one', 'sleep');
+    expect(client.requests.at(-1)).toEqual({
+      action: 'poweraction',
+      nodeids: ['one'],
+      actiontype: 4,
+    });
     client.responses.push({ ok: true });
     await commands.run(['one'], 'hostname', { shell: 'powershell' });
     expect(client.requests.at(-1)).toMatchObject({
@@ -644,16 +663,19 @@ describe('resources', () => {
     });
   });
 
-  it('limits non-wake batch power requests to four concurrent devices', async () => {
+  it('sends non-wake batch power actions in one request', async () => {
     const client = new ControllableClient();
     const devices = new DevicesResource(client);
     const operation = devices.powerMany(['one', 'two', 'three', 'four', 'five'], 'reset');
 
     await Promise.resolve();
-    expect(client.requests).toHaveLength(4);
-    client.pending.splice(0, 4).forEach(({ resolve }) => resolve({ ok: true }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(client.requests).toHaveLength(5);
+    expect(client.requests).toEqual([
+      {
+        action: 'poweraction',
+        nodeids: ['one', 'two', 'three', 'four', 'five'],
+        actiontype: 3,
+      },
+    ]);
     client.pending.splice(0).forEach(({ resolve }) => resolve({ ok: true }));
     await expect(operation).resolves.toMatchObject({
       results: expect.arrayContaining([

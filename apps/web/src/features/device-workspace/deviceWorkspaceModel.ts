@@ -1,5 +1,5 @@
-import type { Device } from '@meshcentral/shared-state';
 import type { DeviceDetails } from '@meshcentral/control-client';
+import type { Device } from '@meshcentral/shared-state';
 import { canUseTerminal, getDesktopAccess } from '../users/meshPermissions';
 import { workspaceEvents } from './mockWorkspaceData';
 import type {
@@ -74,15 +74,15 @@ function simplifyCpuName(name: string | undefined): string {
 function parseVolumes(volumesRecord: unknown): StorageVolume[] {
   if (!volumesRecord || typeof volumesRecord !== 'object') return [];
   return Object.entries(volumesRecord as Record<string, unknown>).map(([letter, item]) => {
-    const rec = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-    const size = typeof rec.size === 'number' ? rec.size : 0;
-    const remaining = typeof rec.sizeremaining === 'number' ? rec.sizeremaining : 0;
+    const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+    const size = typeof record.size === 'number' ? record.size : 0;
+    const remaining = typeof record.sizeremaining === 'number' ? record.sizeremaining : 0;
     const used = Math.max(0, size - remaining);
     const usedPercent = size > 0 ? Math.min(100, Math.round((used / size) * 100)) : 0;
     return {
       letter: `${letter.toUpperCase()}:`,
-      name: stringFrom(rec.name),
-      type: stringFrom(rec.type) ?? 'NTFS',
+      name: stringFrom(record.name),
+      type: stringFrom(record.type) ?? 'NTFS',
       sizeBytes: size,
       remainingBytes: remaining,
       sizeFormatted: formatBytes(size) ?? '—',
@@ -94,17 +94,16 @@ function parseVolumes(volumesRecord: unknown): StorageVolume[] {
 
 function parseInterfaces(networkInfo: unknown): NetworkInterfaceInfo[] {
   if (!networkInfo || typeof networkInfo !== 'object') return [];
-  const rec = networkInfo as Record<string, unknown>;
-  const netif2 = rec.netif2;
+  const record = networkInfo as Record<string, unknown>;
+  const netif2 = record.netif2;
   if (!netif2 || typeof netif2 !== 'object') return [];
   const list: NetworkInterfaceInfo[] = [];
 
   for (const [name, items] of Object.entries(netif2 as Record<string, unknown>)) {
     if (name.toLowerCase().includes('loopback') || name.toLowerCase() === 'meta') continue;
     if (Array.isArray(items)) {
-      const ipv4 = items.find((it) => it && typeof it === 'object' && (it as Record<string, unknown>).family === 'IPv4') as Record<string, unknown> | undefined;
-      const anyItem = items[0] as Record<string, unknown> | undefined;
-      const target = ipv4 ?? anyItem;
+      const ipv4 = items.find((item) => item && typeof item === 'object' && (item as Record<string, unknown>).family === 'IPv4') as Record<string, unknown> | undefined;
+      const target = ipv4 ?? items[0] as Record<string, unknown> | undefined;
       if (target) {
         const speedNum = typeof target.speed === 'number' ? target.speed : undefined;
         let speedText: string | undefined;
@@ -133,18 +132,18 @@ function staticDetails(details: DeviceDetails | undefined) {
     ? (platformHardware as Record<string, unknown>)
     : undefined;
   const cpu = Array.isArray(platformRecord?.cpu) ? platformRecord.cpu[0] : undefined;
-  const cpuRec = cpu && typeof cpu === 'object' ? (cpu as Record<string, unknown>) : undefined;
-  const rawCpuName = stringFrom(cpuRec?.Name);
-  const cpuMaxClock = typeof cpuRec?.MaxClockSpeed === 'number' ? `${(cpuRec.MaxClockSpeed / 1000).toFixed(2)} GHz` : undefined;
+  const cpuRecord = cpu && typeof cpu === 'object' ? (cpu as Record<string, unknown>) : undefined;
+  const rawCpuName = stringFrom(cpuRecord?.Name);
+  const cpuMaxClock = typeof cpuRecord?.MaxClockSpeed === 'number' ? `${(cpuRecord.MaxClockSpeed / 1000).toFixed(2)} GHz` : undefined;
 
   const memory = Array.isArray(platformRecord?.memory) ? platformRecord.memory : [];
   const memorySlots = memory.length;
-  const firstMem = memory[0] && typeof memory[0] === 'object' ? (memory[0] as Record<string, unknown>) : undefined;
-  const memorySpeed = typeof firstMem?.Speed === 'number' ? `${firstMem.Speed} MHz` : undefined;
+  const firstMemory = memory[0] && typeof memory[0] === 'object' ? (memory[0] as Record<string, unknown>) : undefined;
+  const memorySpeed = typeof firstMemory?.Speed === 'number' ? `${firstMemory.Speed} MHz` : undefined;
 
   const volumes = parseVolumes(platformRecord?.volumes);
   const drives = Array.isArray(platformRecord?.drives) ? platformRecord.drives : [];
-  const driveNames = drives.map((d) => (d && typeof d === 'object' ? stringFrom((d as Record<string, unknown>).Model) ?? stringFrom((d as Record<string, unknown>).Caption) : undefined)).filter(Boolean) as string[];
+  const driveNames = drives.map((drive) => (drive && typeof drive === 'object' ? stringFrom((drive as Record<string, unknown>).Model) ?? stringFrom((drive as Record<string, unknown>).Caption) : undefined)).filter(Boolean) as string[];
 
   const totalMemory = memory.reduce<number>((sum, item) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : undefined;
@@ -153,28 +152,28 @@ function staticDetails(details: DeviceDetails | undefined) {
   const totalStorage = volumes.reduce<number>((sum, item) => sum + item.sizeBytes, 0);
   const totalRemaining = volumes.reduce<number>((sum, item) => sum + item.remainingBytes, 0);
 
-  const sysRec = detailRecord(details, 'systemInfo');
-  const networkRec = detailRecord(details, 'networkInfo');
-  const lastConnectRec = detailRecord(details, 'lastConnect');
-  const interfaces = parseInterfaces(networkRec);
-  const primaryIf = interfaces[0];
+  const systemRecord = detailRecord(details, 'systemInfo');
+  const networkRecord = detailRecord(details, 'networkInfo');
+  const lastConnectRecord = detailRecord(details, 'lastConnect');
+  const interfaces = parseInterfaces(networkRecord);
+  const primaryInterface = interfaces[0];
 
-  const identifiers = sysRec?.identifiers && typeof sysRec.identifiers === 'object' ? (sysRec.identifiers as Record<string, unknown>) : undefined;
+  const identifiers = systemRecord?.identifiers && typeof systemRecord.identifiers === 'object' ? (systemRecord.identifiers as Record<string, unknown>) : undefined;
   const boardName = stringFrom(identifiers?.board_name) ?? stringFrom(identifiers?.product_name) ?? '—';
   const biosVersion = stringFrom(identifiers?.bios_version)
     ? `${stringFrom(identifiers?.bios_vendor) ?? ''} ${String(identifiers?.bios_version ?? '')}`.trim()
     : '—';
 
   const gpus = Array.isArray(platformRecord?.gpu) ? platformRecord.gpu : [];
-  const activeGpu = gpus.find((g) => g && typeof g === 'object' && (g as Record<string, unknown>).CurrentHorizontalResolution) ?? gpus[0];
-  const activeGpuRec = activeGpu && typeof activeGpu === 'object' ? (activeGpu as Record<string, unknown>) : undefined;
-  const gpuName = stringFrom(activeGpuRec?.Name) ?? (Array.isArray(identifiers?.gpu_name) ? identifiers?.gpu_name[0] : undefined) ?? '—';
-  const gpuResolution = activeGpuRec?.CurrentHorizontalResolution && activeGpuRec?.CurrentVerticalResolution
-    ? `${activeGpuRec.CurrentHorizontalResolution} × ${activeGpuRec.CurrentVerticalResolution}`
+  const activeGpu = gpus.find((gpu) => gpu && typeof gpu === 'object' && (gpu as Record<string, unknown>).CurrentHorizontalResolution) ?? gpus[0];
+  const activeGpuRecord = activeGpu && typeof activeGpu === 'object' ? (activeGpu as Record<string, unknown>) : undefined;
+  const gpuName = stringFrom(activeGpuRecord?.Name) ?? (Array.isArray(identifiers?.gpu_name) ? identifiers?.gpu_name[0] : undefined) ?? '—';
+  const gpuResolution = activeGpuRecord?.CurrentHorizontalResolution && activeGpuRecord?.CurrentVerticalResolution
+    ? `${activeGpuRecord.CurrentHorizontalResolution} × ${activeGpuRecord.CurrentVerticalResolution}`
     : undefined;
 
-  const dns = (sysRec?.network && typeof sysRec.network === 'object' && Array.isArray((sysRec.network as Record<string, unknown>).dns)
-    ? (sysRec.network as Record<string, unknown>).dns
+  const dns = (systemRecord?.network && typeof systemRecord.network === 'object' && Array.isArray((systemRecord.network as Record<string, unknown>).dns)
+    ? (systemRecord.network as Record<string, unknown>).dns
     : []) as string[];
 
   const detailRaw = details?.raw?.detail && typeof details.raw.detail === 'object' ? (details.raw.detail as Record<string, unknown>) : undefined;
@@ -189,7 +188,7 @@ function staticDetails(details: DeviceDetails | undefined) {
     autoUpdate: stringFrom(wsc?.autoUpdate),
     realTimeProtection: typeof defender?.RealTimeProtection === 'boolean' ? defender.RealTimeProtection : undefined,
     tamperProtected: typeof defender?.TamperProtected === 'boolean' ? defender.TamperProtected : undefined,
-    pendingReboot: stringFrom(sysRec?.pendingReboot),
+    pendingReboot: stringFrom(systemRecord?.pendingReboot),
   };
 
   const securityParts: string[] = [];
@@ -212,16 +211,16 @@ function staticDetails(details: DeviceDetails | undefined) {
     gpuResolution,
     boardName,
     biosVersion,
-    primaryNic: primaryIf ? `${primaryIf.name}${primaryIf.speed ? ` (${primaryIf.speed})` : ''}` : '未提供',
-    primarySpeed: primaryIf?.speed,
+    primaryNic: primaryInterface ? `${primaryInterface.name}${primaryInterface.speed ? ` (${primaryInterface.speed})` : ''}` : '未提供',
+    primarySpeed: primaryInterface?.speed,
     dns,
     interfaces,
     security,
     agentVersion: agent ? `v${agent.ver}` : undefined,
     agentCore: stringFrom(agent?.core),
     agentIsRoot: typeof agent?.root === 'boolean' ? agent.root : undefined,
-    lastConnectAddr: stringFrom(lastConnectRec?.addr),
-    lastConnectTime: typeof lastConnectRec?.time === 'number' ? new Date(lastConnectRec.time).toLocaleString('zh-CN') : undefined,
+    lastConnectAddr: stringFrom(lastConnectRecord?.addr),
+    lastConnectTime: typeof lastConnectRecord?.time === 'number' ? new Date(lastConnectRecord.time).toLocaleString('zh-CN') : undefined,
   };
 
   return {

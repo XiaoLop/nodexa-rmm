@@ -19,9 +19,9 @@ const device: Device = {
 
 describe('createDeviceWorkspaceModel', () => {
   it('uses real device identity without generating dynamic metrics', () => {
-    const first = createDeviceWorkspaceModel(device);
+    const model = createDeviceWorkspaceModel(device);
 
-    expect(first).toMatchObject({
+    expect(model).toMatchObject({
       hostname: 'DESKTOP-7F3A9K2',
       platform: 'Windows 11',
       ipAddress: '192.168.1.23',
@@ -29,9 +29,10 @@ describe('createDeviceWorkspaceModel', () => {
       currentUser: 'Administrator',
       groupName: '办公室',
     });
-    expect(first.cpuName).toBe('未提供');
-    expect(first.memorySummary).toBe('未提供');
-    expect(first.networkSummary).toBe('未提供');
+    expect(model.cpuName).toBe('未提供');
+    expect(model.memorySummary).toBe('未提供');
+    expect(model.networkSummary).toBe('未提供');
+    expect(model.hardware.volumes).toEqual([]);
   });
 
   it('uses readable fallbacks when optional fields are absent', () => {

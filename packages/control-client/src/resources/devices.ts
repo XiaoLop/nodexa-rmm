@@ -77,6 +77,10 @@ function normalizeBatchTargets(targets: Array<string | BatchDeviceTarget>): Batc
   return normalized;
 }
 
+function powerActionType(action: Exclude<PowerAction, 'wake'>) {
+  return { poweroff: 2, reset: 3, sleep: 4 }[action];
+}
+
 function batchResult(
   target: BatchDeviceTarget,
   status: BatchDeviceResult['status'],
@@ -343,7 +347,11 @@ export class DevicesResource {
     required(deviceId, 'Device ID');
     return action === 'wake'
       ? this.client.request({ action: 'wakenode', nodeid: deviceId })
-      : this.client.request({ action: 'poweraction', nodeid: deviceId, subaction: action });
+      : this.client.request({
+          action: 'poweraction',
+          nodeids: [deviceId],
+          actiontype: powerActionType(action),
+        });
   }
 
   async updateManyGroup(
@@ -392,29 +400,19 @@ export class DevicesResource {
         return { results, raw: error };
       }
     }
-    const results = new Map<string, BatchDeviceResult>();
-    await runWithConcurrency(targets, async (target) => {
-      const startedAt = Date.now();
-      try {
-        await this.powerAction(target.id, action);
-        results.set(target.id, batchResult(target, 'submitted', startedAt));
-      } catch (error) {
-        results.set(
-          target.id,
-          batchResult(
-            target,
-            'failed',
-            startedAt,
-            error instanceof Error ? error.message : 'Power request failed.',
-          ),
-        );
-      }
-    });
-    const ordered = targets.map((target) => results.get(target.id)!);
-    return {
-      results: ordered,
-      raw: ordered,
-    };
+    const startedAt = Date.now();
+    try {
+      const raw = await this.client.request({
+        action: 'poweraction',
+        nodeids: targets.map(({ id }) => id),
+        actiontype: powerActionType(action),
+      });
+      return { results: targets.map((target) => batchResult(target, 'submitted', startedAt)), raw };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Power request failed.';
+      const results = targets.map((target) => batchResult(target, 'failed', startedAt, message));
+      return { results, raw: error };
+    }
   }
 
   async inviteByEmail(options: AgentEmailInviteOptions): Promise<AgentInviteResult> {

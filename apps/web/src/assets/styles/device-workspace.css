@@ -289,6 +289,11 @@
 .workspace-quality-slider { display: grid !important; grid-template-columns: 34px 1fr 28px; }
 .workspace-quality-slider .ant-slider { margin: 4px 0; }
 .workspace-quality-slider small { color: var(--muted); text-align: right; }
+.workspace-latency-summary { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 12px 13px 4px; }
+.workspace-latency-summary strong { color: #eef5ff; font-size: 24px; line-height: 1; }
+.workspace-latency-summary strong small { color: var(--muted); font-size: 10px; }
+.workspace-latency-summary span { color: var(--success); font-size: 9px; }
+.workspace-latency-summary span.is-timeout { color: var(--danger); }
 .workspace-security-list b { color: var(--success); background: rgba(45,204,112,.12); padding: 2px 5px; border-radius: 3px; font-size: 9px; }
 .workspace-end-session .ant-btn { width: calc(100% - 26px); margin: 14px 13px; }
 .workspace-tab-empty,
