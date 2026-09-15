@@ -3,9 +3,7 @@ import {
   DashboardOutlined,
   DesktopOutlined,
   FileOutlined,
-  HddOutlined,
   MonitorOutlined,
-  SafetyCertificateOutlined,
   SettingOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -19,8 +17,6 @@ const tabs: Array<{ key: WorkspaceTab; label: string; icon: React.ReactNode }> =
   { key: 'processes', label: '进程', icon: <MonitorOutlined /> },
   { key: 'services', label: '服务', icon: <SettingOutlined /> },
   { key: 'logs', label: '日志', icon: <UnorderedListOutlined /> },
-  { key: 'monitoring', label: '监控', icon: <HddOutlined /> },
-  { key: 'security', label: '安全', icon: <SafetyCertificateOutlined /> },
 ];
 
 export function WorkspaceTabs({ active, onChange }: { active: WorkspaceTab; onChange: (tab: WorkspaceTab) => void }) {
