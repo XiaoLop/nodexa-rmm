@@ -1,6 +1,15 @@
-# MeshCentral Client Monorepo
+# MeshCentral 二次开发项目
 
-跨 Web 与 React Native 的客户端工程骨架。Web 端用于后台管理，移动端基于 Expo；两端通过共享 Zustand 状态包消费业务 WebSocket 网关。
+本项目以 [MeshCentral](https://github.com/Ylianst/MeshCentral) 为基础进行二次开发，目标是在保留其远程设备管理能力的基础上，重新设计客户端界面，并逐步完善适合实际业务场景的管理与远程控制功能。
+
+目前项目仍处于早期开发阶段，仅实现了基于 MeshCentral 网关的 Web 管理页面重设计，现有页面和功能尚未完善。React Native 移动端、共享状态包及相关 SDK 目前主要作为后续开发的工程骨架，不代表已经具备完整可用的业务能力。
+
+## 当前进度
+
+- 已搭建 Web、React Native 和共享包的 Monorepo 工程结构
+- 已接入 MeshCentral 网关，并开始重新设计 Web 管理页面
+- Web 页面及业务功能仍在持续完善
+- 移动端、远程会话及其他扩展能力尚处于规划或基础建设阶段
 
 ## 项目结构
 
@@ -52,9 +61,9 @@ Web 使用 `VITE_GATEWAY_AUTH_URL` 与 `VITE_GATEWAY_WS_URL`。认证接口接�
 
 ## 控制客户端与状态
 
-`@meshcentral/control-client` 负责 WebSocket、鉴权、心跳、退避重连、请求响应关联、协议标准化和 `devices`、`groups`、`events` 资源 API。它不依赖 React 或 Zustand。
+规划中，`@meshcentral/control-client` 用于承载 WebSocket、鉴权、心跳、退避重连、请求响应关联、协议标准化以及 `devices`、`groups`、`events` 等资源 API。它不依赖 React 或 Zustand。
 
-`@meshcentral/shared-state` 只负责缓存、selector、React Hook 和 `bindGatewayClient()`。Binding 在首次连接与重连成功后同步设备、分组和最后连接时间，并将实时领域事件映射到 Store。
+`@meshcentral/shared-state` 用于承载缓存、selector、React Hook 和客户端状态绑定。相关能力仍会随 Web 页面和业务功能的开发持续调整与完善。
 
 ## 安全边界
 
