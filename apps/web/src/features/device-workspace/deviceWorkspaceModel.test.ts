@@ -1,5 +1,5 @@
 import type { Device } from '@meshcentral/shared-state';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDeviceWorkspaceModel } from './deviceWorkspaceModel';
 
 const device: Device = {
@@ -18,6 +18,10 @@ const device: Device = {
 };
 
 describe('createDeviceWorkspaceModel', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('uses real device identity without generating dynamic metrics', () => {
     const model = createDeviceWorkspaceModel(device);
 
@@ -42,6 +46,63 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.ipAddress).toBe('—');
     expect(model.macAddress).toBe('—');
     expect(model.groupName).toBe('未分组');
+  });
+
+  it('calculates uptime from the device last boot timestamp', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-16T08:00:00.000Z'));
+
+    const model = createDeviceWorkspaceModel({
+      id: 'node-uptime',
+      name: 'Node Uptime',
+      online: true,
+      raw: { lastbootuptime: Date.parse('2026-09-14T05:30:00.000Z') },
+    });
+
+    expect(model.uptime).toBe('2 天 2 小时');
+  });
+
+  it('stops counting uptime at the last online time for an offline device', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-16T08:00:00.000Z'));
+
+    const model = createDeviceWorkspaceModel({
+      id: 'node-offline-uptime',
+      name: 'Offline Node',
+      online: false,
+      lastSeenAt: '2026-09-12T08:00:00.000Z',
+      raw: { lastbootuptime: Date.parse('2026-09-10T05:30:00.000Z') },
+    });
+
+    expect(model.uptime).toBe('2 天 2 小时');
+  });
+
+  it('does not infer uptime for an offline device without a valid last online time', () => {
+    const model = createDeviceWorkspaceModel({
+      id: 'node-offline-no-last-seen',
+      name: 'Offline Node',
+      online: false,
+      raw: { lastbootuptime: Date.parse('2026-09-10T05:30:00.000Z') },
+    });
+
+    expect(model.uptime).toBe('—');
+  });
+
+  it('parses the Windows DMTF boot time from system details', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-10T10:00:00.000Z'));
+
+    const model = createDeviceWorkspaceModel(device, {
+      systemInfo: {
+        hardware: {
+          windows: {
+            osinfo: { LastBootUpTime: '20260910003446.500000+480' },
+          },
+        },
+      },
+    } as any);
+
+    expect(model.uptime).toBe('17 小时 25 分钟');
   });
 
   it('populates structured hardware, volumes, security, and connection info from device details', () => {

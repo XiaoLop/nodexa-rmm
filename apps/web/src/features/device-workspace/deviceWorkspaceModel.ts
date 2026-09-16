@@ -52,10 +52,30 @@ function formatBytes(value: unknown) {
   return `${current.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-function formatUptime(value: unknown) {
-  const timestamp = typeof value === 'number' ? value : typeof value === 'string' ? Date.parse(value) : NaN;
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return '—';
-  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+function bootTimestamp(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 100_000_000_000 ? value * 1000 : value;
+  }
+  if (typeof value !== 'string') return NaN;
+  if (/^\d+$/.test(value)) {
+    const numericValue = Number(value);
+    return numericValue < 100_000_000_000 ? numericValue * 1000 : numericValue;
+  }
+  const dmtf = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\.\d+)?([+-])(\d{3})$/.exec(value);
+  if (dmtf) {
+    const [, year, month, day, hour, minute, second, sign, offset] = dmtf;
+    const localTimestamp = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    const offsetMilliseconds = Number(offset) * 60_000 * (sign === '+' ? 1 : -1);
+    return localTimestamp - offsetMilliseconds;
+  }
+  return Date.parse(value);
+}
+
+function formatUptime(value: unknown, endTime: unknown) {
+  const timestamp = bootTimestamp(value);
+  const endTimestamp = bootTimestamp(endTime);
+  if (!Number.isFinite(timestamp) || timestamp <= 0 || !Number.isFinite(endTimestamp) || endTimestamp < timestamp) return '—';
+  const minutes = Math.floor((endTimestamp - timestamp) / 60_000);
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
   if (days > 0) return `${days} 天 ${hours} 小时`;
@@ -258,6 +278,7 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
   const platformHardware = platformKey && hardwareRecord(details)?.[platformKey];
   const platformRecord = platformHardware && typeof platformHardware === 'object' ? platformHardware as Record<string, unknown> : undefined;
   const osInfo = platformRecord?.osinfo && typeof platformRecord.osinfo === 'object' ? platformRecord.osinfo as Record<string, unknown> : undefined;
+  const uptimeEndTime = resolvedDevice.online ? Date.now() : resolvedDevice.lastSeenAt;
   return {
     device: resolvedDevice,
     details,
@@ -266,7 +287,7 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     ipAddress: rawString(resolvedDevice, ['ip', 'host'], resolvedDevice.raw) ?? '—',
     macAddress: rawString(resolvedDevice, ['mac', 'macaddr'], resolvedDevice.raw) ?? '—',
     currentUser: rawString(resolvedDevice, ['user', 'currentUser'], resolvedDevice.raw) ?? '—',
-    uptime: formatUptime(osInfo?.LastBootUpTime),
+    uptime: formatUptime(osInfo?.LastBootUpTime ?? rawRecord(resolvedDevice)?.lastbootuptime, uptimeEndTime),
     lastHeartbeat: resolvedDevice.lastSeenAt ?? '刚刚',
     groupName: groupName ?? resolvedDevice.groupName ?? '未分组',
     tags: [],
