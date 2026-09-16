@@ -134,13 +134,6 @@
   .relay-files-toolbar .ant-input {
     grid-column: 1 / -1;
   }
-  .file-explorer-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .file-explorer-upload {
-    grid-template-columns: 1fr;
-  }
   .batch-upload-form-grid,
   .batch-upload-summary {
     grid-template-columns: 1fr 1fr;

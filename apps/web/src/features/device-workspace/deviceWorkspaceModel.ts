@@ -1,6 +1,6 @@
 import type { DeviceDetails } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
-import { canUseTerminal, getDesktopAccess } from '../users/meshPermissions';
+import { canUseDeviceFiles, canUseTerminal, getDesktopAccess } from '../users/meshPermissions';
 import { workspaceEvents } from './mockWorkspaceData';
 import type {
   DeviceHardwareInfo,
@@ -262,6 +262,15 @@ function terminalPermission(device: Device): boolean | undefined {
   return typeof rights === 'number' && Number.isFinite(rights) ? canUseTerminal(rights) : undefined;
 }
 
+function filesPermission(device: Device): boolean | undefined {
+  if (device.effectiveRights !== undefined) return canUseDeviceFiles(device.effectiveRights);
+  const raw = rawRecord(device);
+  const rights = raw?.effectiveRights ?? raw?.meshrights;
+  return typeof rights === 'number' && Number.isFinite(rights)
+    ? canUseDeviceFiles(rights)
+    : undefined;
+}
+
 function desktopPermission(
   device: Device,
 ): 'denied' | 'view-only' | 'limited-input' | 'control' | undefined {
@@ -295,6 +304,7 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     events: workspaceEvents,
     sessionStartedAt: '—',
     terminalAllowed: terminalPermission(resolvedDevice),
+    filesAllowed: filesPermission(resolvedDevice),
     desktopAccess: desktopPermission(resolvedDevice),
   };
 }

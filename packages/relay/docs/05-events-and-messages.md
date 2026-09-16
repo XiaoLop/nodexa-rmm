@@ -62,6 +62,15 @@
 | 下载非最终块 | `download/ack` | 下一二进制块 | 持续写入 sink |
 | 取消下载 | `download/stop` | 不等待稳定响应 | 调用 `sink.abort` |
 | 下载最终块 | 无额外完成请求 | flags 标记最终块 | `sink.close` 和 `FileDownloadResult` |
+| `createDirectory` | `mkdir` | 无 | 本地 `FileCommandReceipt` |
+| `removeEntries` | `rm` | 无 | 本地 `FileCommandReceipt` |
+| `renameEntry` | `rename` | 无 | 本地 `FileCommandReceipt` |
+| `copyFiles` | `copy` | 无 | 本地 `FileCommandReceipt` |
+| `moveFiles` | `move` | 无 | 本地 `FileCommandReceipt` |
+| `createZip` | `zip` | 会话级 `dialogmessage`、`refresh` | 阶段与刷新事件，无可靠结果 |
+| `extractZip` | `unzip` | 会话级 `dialogmessage`、`refresh` | 阶段与刷新事件，无可靠结果 |
+
+文件管理控制 JSON 与 `ls` 使用相同的 `RelaySession.sendJson()` 编码和发送路径。无响应命令不会建立等待远端确认的 Promise，也不会占用目录、上传或下载的活动操作槽位。
 
 ## 桌面消息
 

@@ -8,64 +8,6 @@
 .devices-toolbar > .ant-select {
   width: 140px;
 }
-.file-explorer-modal {
-  display: grid;
-  gap: 14px;
-}
-.file-explorer-location {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #0e1825;
-}
-.file-explorer-location > div {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-.file-explorer-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.file-explorer-table {
-  overflow: hidden;
-  border: 1px solid #25364d;
-  border-radius: 6px;
-}
-.file-explorer-directory-row {
-  cursor: pointer;
-}
-.file-explorer-directory-row:hover > td {
-  background: rgba(22, 119, 255, 0.12) !important;
-}
-.file-explorer-directory-row .anticon {
-  color: #69a9ff;
-}
-.file-explorer-entry-row .anticon {
-  color: var(--muted);
-}
-.file-explorer-upload {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px dashed #385174;
-  border-radius: 6px;
-  background: #0b1521;
-}
-.file-explorer-upload > div {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
 .batch-upload-modal {
   display: grid;
   gap: 16px;

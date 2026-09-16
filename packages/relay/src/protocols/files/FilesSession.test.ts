@@ -346,6 +346,67 @@ describe('FilesSession', () => {
     await expect(listing).rejects.toMatchObject({ code: 'connection-lost' });
   });
 
+  it('sends response-less file commands synchronously', async () => {
+    const ids = ['mkdir-1', 'rm-1', 'copy-1', 'move-1'];
+    const { socket, files } = await createFilesSession({ createRequestId: () => ids.shift()! });
+
+    expect(files.createDirectory('C:/test')).toEqual({ action: 'mkdir', requestId: 'mkdir-1' });
+    expect(files.removeEntries('C:', ['a.txt', 'folder'], { recursive: true })).toEqual({
+      action: 'rm',
+      requestId: 'rm-1',
+    });
+    expect(files.renameEntry('C:', 'a.txt', 'b.txt')).toEqual({ action: 'rename' });
+    expect(files.copyFiles('C:', 'C:/dest', ['b.txt'])).toEqual({
+      action: 'copy',
+      requestId: 'copy-1',
+    });
+    expect(files.moveFiles('C:', 'C:/dest', ['b.txt'])).toEqual({
+      action: 'move',
+      requestId: 'move-1',
+    });
+
+    expect(socket.sent.map((value) => JSON.parse(value as string))).toEqual([
+      { action: 'mkdir', reqid: 'mkdir-1', path: 'C:\\test' },
+      { action: 'rm', reqid: 'rm-1', path: 'C:\\', delfiles: ['a.txt', 'folder'], rec: true },
+      { action: 'rename', path: 'C:\\', oldname: 'a.txt', newname: 'b.txt' },
+      { action: 'copy', reqid: 'copy-1', scpath: 'C:\\', dspath: 'C:\\dest', names: ['b.txt'] },
+      { action: 'move', reqid: 'move-1', scpath: 'C:\\', dspath: 'C:\\dest', names: ['b.txt'] },
+    ]);
+    expect(files.state).toBe('ready');
+  });
+
+  it('routes archive events before active operation messages', async () => {
+    const dialogMessages: string[] = [];
+    const refresh = vi.fn();
+    const { socket, files } = await createFilesSession({ createRequestId: () => 'ls-events' });
+    files.onDialogMessage((message) => dialogMessages.push(message.type));
+    files.onRefreshRequested(refresh);
+
+    const listing = files.listDirectory('/tmp');
+    socket.message(JSON.stringify({ action: 'dialogmessage', msg: 'zipping' }));
+    socket.message(JSON.stringify({ action: 'refresh' }));
+    socket.message(JSON.stringify({ reqid: 'ls-events', path: '/tmp', dir: [] }));
+
+    await expect(listing).resolves.toEqual({ path: '/tmp', entries: [] });
+    expect(dialogMessages).toEqual(['zipping']);
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it('blocks conflicting operations until an archive dialog closes', async () => {
+    const { socket, files } = await createFilesSession();
+
+    expect(files.createZip('/tmp', ['a.txt'], 'a.zip')).toEqual({ action: 'zip' });
+    expect(files.state).toBe('busy');
+    expect(() => files.createDirectory('/tmp/new')).toThrow(FileOperationError);
+    await expect(
+      files.uploadFile('/tmp', { name: 'a.txt', size: 0, read: vi.fn() }),
+    ).rejects.toMatchObject({ code: 'busy' });
+
+    socket.message(JSON.stringify({ action: 'dialogmessage', msg: null }));
+    await vi.waitFor(() => expect(files.state).toBe('ready'));
+    expect(files.createDirectory('/tmp/new')).toMatchObject({ action: 'mkdir' });
+  });
+
   it('rejects unsafe paths and upload names', async () => {
     const { files } = await createFilesSession();
     expect(() => normalizeFilePath('../../secret')).toThrow(FileOperationError);

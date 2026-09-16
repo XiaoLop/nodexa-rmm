@@ -36,16 +36,44 @@ export function normalizeFilePath(value: string): string {
 }
 
 export function joinFilePath(parent: string, child: string): string {
-  if (!child || child === '.' || child === '..' || child.includes('/') || child.includes('\\')) {
-    throw new FileOperationError('File name must be a single safe path segment.', 'invalid-path');
-  }
+  const normalizedChild = normalizeFileName(child);
   const normalizedParent = normalizeFilePath(parent);
-  if (!normalizedParent) return child;
+  if (!normalizedParent) return normalizedChild;
   const separator =
     WINDOWS_DRIVE.test(normalizedParent) || normalizedParent.includes('\\') ? '\\' : '/';
   return normalizedParent.endsWith(separator)
-    ? `${normalizedParent}${child}`
-    : `${normalizedParent}${separator}${child}`;
+    ? `${normalizedParent}${normalizedChild}`
+    : `${normalizedParent}${separator}${normalizedChild}`;
+}
+
+export function normalizeFileName(name: string): string {
+  if (
+    !name ||
+    name === '.' ||
+    name === '..' ||
+    name.includes('/') ||
+    name.includes('\\') ||
+    name.includes('\0')
+  ) {
+    throw new FileOperationError('File name must be a single safe path segment.', 'invalid-path');
+  }
+  return name;
+}
+
+export function parentFilePath(path: string): string | undefined {
+  const normalized = normalizeFilePath(path);
+  if (!normalized) return undefined;
+  if (normalized === '/') return '';
+  if (/^[A-Z]:\\$/.test(normalized)) return '';
+
+  const separator = WINDOWS_DRIVE.test(normalized) || normalized.includes('\\') ? '\\' : '/';
+  const index = normalized.lastIndexOf(separator);
+  if (index < 0) return '';
+  if (index === 0) return '/';
+  if (separator === '\\' && index === 2 && WINDOWS_DRIVE.test(normalized)) {
+    return `${normalized.slice(0, 2)}\\`;
+  }
+  return normalized.slice(0, index);
 }
 
 function collapsePathParts(parts: string[], absolute: boolean): string[] {

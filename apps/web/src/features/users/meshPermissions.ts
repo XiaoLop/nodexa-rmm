@@ -1,5 +1,6 @@
 import {
   MeshRight,
+  canUseDeviceFiles,
   canUseTerminal,
   composeMeshRights,
   getDesktopAccess,
@@ -9,7 +10,14 @@ import {
 } from '@meshcentral/control-client';
 
 export const MESH_RIGHT_ADMIN = MeshRight.Administrator;
-export { canUseTerminal, composeMeshRights, getDesktopAccess, hasMeshRight, normalizeMeshRights };
+export {
+  canUseDeviceFiles,
+  canUseTerminal,
+  composeMeshRights,
+  getDesktopAccess,
+  hasMeshRight,
+  normalizeMeshRights,
+};
 export type { DesktopAccess };
 
 export type MeshPermission = {

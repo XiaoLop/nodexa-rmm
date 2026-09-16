@@ -240,6 +240,157 @@ Agent 返回 `download start` 后，客户端发送：
 }
 ```
 
+### 文件操作消息传输约定
+
+目标环境中的文件管理控制消息虽然内容为 JSON，但均通过 `p=5` 中继的二进制 WebSocket 帧发送。接收端应先按 UTF-8 解码二进制帧，再解析 JSON；不能假定这些消息一定以 WebSocket 文本帧到达。
+
+目录创建、删除、重命名、复制和移动操作发送后，Agent 不会返回任何响应。客户端应在发送后自动重新读取相关目录，以展示最新的目录内容。由于没有操作响应，`reqid` 不能用于关联结果，目录刷新也不能作为协议层面的成功确认。
+
+### 新建目录
+
+发送完整目标目录路径：
+
+```json
+{
+  "action": "mkdir",
+  "reqid": 1,
+  "path": "C:/test"
+}
+```
+
+Agent 不会返回响应。客户端发送后自动重新读取当前目录。
+
+### 删除目录或文件
+
+`path` 表示父目录，`delfiles` 表示需要删除的名称。删除目录时使用 `rec: true` 递归删除目录内容：
+
+```json
+{
+  "action": "rm",
+  "reqid": 1,
+  "path": "C:",
+  "delfiles": ["test"],
+  "rec": true
+}
+```
+
+Agent 不会返回响应。客户端发送后自动重新读取 `path` 对应的目录。删除属于高风险操作，调用方必须在发送前完成用户确认，并避免把未经校验的根目录或空名称传给 Agent。
+
+### 重命名
+
+`path` 表示父目录，`oldname` 和 `newname` 分别表示原名称和新名称：
+
+```json
+{
+  "action": "rename",
+  "path": "C:",
+  "oldname": "test",
+  "newname": "test123"
+}
+```
+
+Agent 不会返回响应。客户端发送后自动重新读取父目录。
+
+### 复制文件
+
+当前真实协议样本只确认复制文件，不支持据此推断可以复制目录。`scpath` 是源目录，`dspath` 是目标目录，`names` 是源目录中的文件名列表：
+
+```json
+{
+  "action": "copy",
+  "reqid": 1,
+  "scpath": "C:",
+  "dspath": "C:/test123",
+  "names": ["earnings.html"]
+}
+```
+
+Agent 不会返回响应。客户端发送后自动重新读取当前目录；用户进入目标目录时再读取目标目录的最新内容。
+
+### 移动文件
+
+当前真实协议样本只确认移动文件，不支持据此推断可以移动目录。字段含义与复制一致：
+
+```json
+{
+  "action": "move",
+  "reqid": 1,
+  "scpath": "C:",
+  "dspath": "C:/test123",
+  "names": ["earnings.html"]
+}
+```
+
+Agent 不会返回响应。客户端发送后自动重新读取当前目录；用户进入目标目录时再读取目标目录的最新内容。
+
+### 压缩为 ZIP
+
+`path` 表示待压缩条目的父目录，`files` 可以包含文件或目录名称，`output` 是输出 ZIP 文件名：
+
+```json
+{
+  "action": "zip",
+  "path": "C:",
+  "files": ["test123"],
+  "output": "test-123.zip"
+}
+```
+
+压缩期间 Agent 通过 `dialogmessage` 报告阶段和单文件进度：
+
+```json
+{ "action": "dialogmessage", "msg": "zipping" }
+{ "action": "dialogmessage", "msg": "zippingFile", "file": "C:\\test123\\earnings.html", "progress": 19 }
+{ "action": "dialogmessage", "msg": "zippingFile", "file": "C:\\test123\\earnings.html", "progress": 38 }
+{ "action": "dialogmessage", "msg": "zippingFile", "file": "C:\\test123\\earnings.html", "progress": 100 }
+{ "action": "dialogmessage", "msg": null }
+{ "action": "refresh" }
+```
+
+- `msg: "zipping"` 表示压缩开始。
+- `msg: "zippingFile"` 携带当前文件和百分比进度。
+- `msg: null` 表示进度对话状态结束，但不应单独视为可靠的成功确认。
+- `action: "refresh"` 表示客户端应重新读取当前目录；最终结果以目录列表中出现输出 ZIP 为准。
+
+### 解压 ZIP
+
+解压操作只适用于 ZIP 文件。`input` 是 ZIP 文件完整路径，`dest` 是目标目录完整路径：
+
+```json
+{
+  "action": "unzip",
+  "input": "C:\\test-123.zip",
+  "dest": "C:\\test-123\\"
+}
+```
+
+Agent 返回解压阶段和刷新消息：
+
+```json
+{ "action": "dialogmessage", "msg": "unzipping" }
+{ "action": "dialogmessage", "msg": null }
+{ "action": "refresh" }
+```
+
+收到 `refresh` 后重新读取目标目录。解压是否成功、是否发生同名覆盖以及是否存在部分失败，应以刷新后的目录内容为准；当前样本没有提供独立的完成结果或逐文件错误响应。
+
+### 当前确认的文件管理能力
+
+| 能力 | 请求 action | 响应与确认方式 |
+| --- | --- | --- |
+| 读取目录 | `ls` | 返回包含 `dir` 的目录列表 |
+| 新建目录 | `mkdir` | Agent 不响应，客户端自动重新读取父目录 |
+| 删除文件或目录 | `rm` | Agent 不响应，客户端自动重新读取父目录 |
+| 重命名 | `rename` | Agent 不响应，客户端自动重新读取父目录 |
+| 复制文件 | `copy` | Agent 不响应，客户端自动重新读取当前目录 |
+| 移动文件 | `move` | Agent 不响应，客户端自动重新读取当前目录 |
+| 压缩 ZIP | `zip` | `dialogmessage` 进度，随后 `refresh` |
+| 解压 ZIP | `unzip` | `dialogmessage` 阶段，随后 `refresh` |
+| 上传 | `upload` | `uploadstart`、`uploadack`、`uploaddone` |
+| 下载 | `download` | start JSON、二进制数据块和 ack |
+
+当前没有证据表明 `copy` 和 `move` 支持目录，也尚未确认同名目标处理、操作取消、断点续传和逐项批量结果。`mkdir`、`rm`、`rename`、`copy` 和 `move` 均没有 Agent 响应，客户端只能在发送后自动刷新目录，不得根据请求已发送或目录刷新完成直接报告操作成功。
+
 ## 远程打开 URL、消息框、Toast
 
 这些不需要中继，只走控制通道。

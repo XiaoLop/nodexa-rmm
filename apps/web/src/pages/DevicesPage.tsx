@@ -50,7 +50,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
 import { DeviceEditModal } from '../components/DeviceEditModal';
 import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent 安装引导弹窗
-import { FileUploadModal } from '../components/FileUploadModal';
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
 import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsModal';
 import { CommandExecutionModal } from '../components/CommandExecutionModal';
@@ -178,7 +177,6 @@ export function DevicesPage() {
   const [platform, setPlatform] = useState(() => searchParams.get('platform') ?? 'all');
   const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1);
   const [pageSize, setPageSize] = useState(() => Number(searchParams.get('pageSize')) || 20);
-  const [fileExplorerDevice, setFileExplorerDevice] = useState<Device | null>(null);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Key[]>([]);
   const [batchUploadOpen, setBatchUploadOpen] = useState(false);
   const [batchMoveOpen, setBatchMoveOpen] = useState(false);
@@ -542,7 +540,11 @@ export function DevicesPage() {
                   icon={<FolderOpenOutlined />}
                   disabled={unavailable || isOffline}
                   aria-label={`管理 ${device.name} 的文件`}
-                  onClick={() => setFileExplorerDevice(device)}
+                  onClick={() =>
+                    navigate(
+                      `/devices/${encodeURIComponent(device.id)}/workspace?tab=files`,
+                    )
+                  }
                 />
               </Tooltip>
               <Tooltip title="工作台">
@@ -806,14 +808,6 @@ export function DevicesPage() {
           groups={sortedGroups}
           serverInfo={deviceInviteServerInfo}
           onClose={() => setInviteOpen(false)}
-        />
-      )}
-      {fileExplorerDevice && (
-        <FileUploadModal
-          open
-          onClose={() => setFileExplorerDevice(null)}
-          device={fileExplorerDevice}
-          gatewayClient={client}
         />
       )}
       {batchUploadOpen && (

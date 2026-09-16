@@ -1,27 +1,38 @@
 import type { RelayInboundData } from '../../types';
 import type { RelaySession } from '../../RelaySession';
 import {
+  createCopyFilesMessage,
+  createDirectoryMessage,
   createDownloadAckMessage,
   createDownloadStartAckMessage,
   createDownloadStartMessage,
   createDownloadStopMessage,
   createListDirectoryMessage,
+  createMoveFilesMessage,
+  createRemoveEntriesMessage,
+  createRenameEntryMessage,
+  createUnzipMessage,
   createUploadCancelMessage,
   createUploadDoneMessage,
   createUploadMessage,
+  createZipMessage,
   errorFromMessage,
+  isFileRefreshMessage,
   isDirectoryListMessage,
   messageIndicatesError,
   parseDirectoryListing,
+  parseFileDialogMessage,
   parseFilesProtocolText,
   type FilesProtocolMessage,
 } from './messages';
-import { normalizeFilePath } from './path';
+import { normalizeFileName, normalizeFilePath } from './path';
 import {
   FileOperationError,
   type DownloadFileOptions,
   type DownloadSink,
   type DirectoryListing,
+  type FileCommandReceipt,
+  type FileDialogMessage,
   type FileDownloadProgress,
   type FileDownloadResult,
   type FileOperationState,
@@ -30,6 +41,7 @@ import {
   type FilesSessionOptions,
   type FilesSessionState,
   type ListDirectoryOptions,
+  type RemoveEntriesOptions,
   type UploadFileOptions,
   type UploadSource,
 } from './types';
@@ -74,10 +86,13 @@ interface UploadOperation extends ActiveOperation<FileUploadResult> {
 
 export class FilesSession {
   private active?: AnyActiveOperation;
+  private archiveBusy = false;
   private disposed = false;
   private requestSequence = 0;
   private inboundQueue = Promise.resolve();
   private readonly removeListeners: Array<() => void> = [];
+  private readonly dialogListeners = new Set<(message: FileDialogMessage) => void>();
+  private readonly refreshListeners = new Set<() => void>();
 
   constructor(
     readonly relay: RelaySession,
@@ -100,7 +115,7 @@ export class FilesSession {
 
   get state(): FilesSessionState {
     if (this.disposed) return this.relay.state === 'error' ? 'error' : 'closed';
-    return this.active ? 'busy' : 'ready';
+    return this.active || this.archiveBusy ? 'busy' : 'ready';
   }
 
   async listDirectory(path = '', options: ListDirectoryOptions = {}): Promise<DirectoryListing> {
@@ -199,6 +214,70 @@ export class FilesSession {
     return promise;
   }
 
+  createDirectory(path: string): FileCommandReceipt {
+    this.assertAvailable();
+    const requestId = this.nextRequestId('mkdir');
+    this.relay.sendJson(createDirectoryMessage(path, requestId));
+    return { action: 'mkdir', requestId };
+  }
+
+  removeEntries(
+    path: string,
+    names: string[],
+    options: RemoveEntriesOptions = {},
+  ): FileCommandReceipt {
+    this.assertAvailable();
+    const requestId = this.nextRequestId('rm');
+    this.relay.sendJson(
+      createRemoveEntriesMessage(path, names, options.recursive ?? false, requestId),
+    );
+    return { action: 'rm', requestId };
+  }
+
+  renameEntry(path: string, oldName: string, newName: string): FileCommandReceipt {
+    this.assertAvailable();
+    this.relay.sendJson(createRenameEntryMessage(path, oldName, newName));
+    return { action: 'rename' };
+  }
+
+  copyFiles(sourcePath: string, destinationPath: string, names: string[]): FileCommandReceipt {
+    this.assertAvailable();
+    const requestId = this.nextRequestId('copy');
+    this.relay.sendJson(createCopyFilesMessage(sourcePath, destinationPath, names, requestId));
+    return { action: 'copy', requestId };
+  }
+
+  moveFiles(sourcePath: string, destinationPath: string, names: string[]): FileCommandReceipt {
+    this.assertAvailable();
+    const requestId = this.nextRequestId('move');
+    this.relay.sendJson(createMoveFilesMessage(sourcePath, destinationPath, names, requestId));
+    return { action: 'move', requestId };
+  }
+
+  createZip(path: string, names: string[], outputName: string): FileCommandReceipt {
+    this.assertAvailable();
+    this.relay.sendJson(createZipMessage(path, names, outputName));
+    this.archiveBusy = true;
+    return { action: 'zip' };
+  }
+
+  extractZip(inputPath: string, destinationPath: string): FileCommandReceipt {
+    this.assertAvailable();
+    this.relay.sendJson(createUnzipMessage(inputPath, destinationPath));
+    this.archiveBusy = true;
+    return { action: 'unzip' };
+  }
+
+  onDialogMessage(listener: (message: FileDialogMessage) => void): () => void {
+    this.dialogListeners.add(listener);
+    return () => this.dialogListeners.delete(listener);
+  }
+
+  onRefreshRequested(listener: () => void): () => void {
+    this.refreshListeners.add(listener);
+    return () => this.refreshListeners.delete(listener);
+  }
+
   async downloadFile(
     path: string,
     sink: DownloadSink,
@@ -258,8 +337,11 @@ export class FilesSession {
   dispose(error = new FileOperationError('File session was disposed.', 'connection-lost')): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.archiveBusy = false;
     for (const remove of this.removeListeners.splice(0)) remove();
     this.active?.cancel(error, false);
+    this.dialogListeners.clear();
+    this.refreshListeners.clear();
   }
 
   private startOperation<T>(operation: ActiveOperation<T>, options: ListDirectoryOptions): void {
@@ -295,6 +377,16 @@ export class FilesSession {
     } catch (error) {
       if (this.active) this.finishFailure(this.active, toFileError(error, this.active.requestId));
       else this.options.onUnhandledMessage?.(text);
+      return;
+    }
+    const dialogMessage = parseFileDialogMessage(message);
+    if (dialogMessage) {
+      if (dialogMessage.type === 'closed') this.archiveBusy = false;
+      for (const listener of this.dialogListeners) listener(dialogMessage);
+      return;
+    }
+    if (isFileRefreshMessage(message)) {
+      for (const listener of this.refreshListeners) listener();
       return;
     }
     const operation = this.active;
@@ -518,6 +610,7 @@ export class FilesSession {
   }
 
   private failConnection(cause: Error): void {
+    this.archiveBusy = false;
     if (!this.active) return;
     this.active.cancel(
       new FileOperationError(
@@ -532,11 +625,11 @@ export class FilesSession {
     );
   }
 
-  private assertAvailable(): void {
+  private assertAvailable(checkArchive = true): void {
     if (this.disposed || this.relay.state !== 'ready') {
       throw new FileOperationError('File relay connection is not available.', 'connection-lost');
     }
-    if (this.active) {
+    if (this.active || (checkArchive && this.archiveBusy)) {
       throw new FileOperationError('Another file operation is already active.', 'busy');
     }
   }
@@ -559,12 +652,7 @@ export class FilesSession {
 }
 
 function assertUploadSource(source: UploadSource, name: string): void {
-  if (!name || name === '.' || name === '..' || name.includes('/') || name.includes('\\')) {
-    throw new FileOperationError(
-      'Upload file name must be a single safe path segment.',
-      'invalid-path',
-    );
-  }
+  normalizeFileName(name);
   if (!Number.isSafeInteger(source.size) || source.size < 0) {
     throw new FileOperationError(
       'Upload source size must be a non-negative safe integer.',

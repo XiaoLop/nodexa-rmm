@@ -1,5 +1,6 @@
 import { FileOperationError, type DirectoryListing, type FileEntry } from './types';
-import { joinFilePath, normalizeFilePath } from './path';
+import { joinFilePath, normalizeFileName, normalizeFilePath } from './path';
+import type { FileDialogMessage } from './types';
 
 export interface FilesProtocolMessage {
   action?: string;
@@ -17,6 +18,95 @@ export function createListDirectoryMessage(
   requestId: string,
 ): Record<string, unknown> {
   return { action: 'ls', reqid: requestId, path };
+}
+
+export function createDirectoryMessage(
+  path: string,
+  requestId: string,
+): Record<string, unknown> {
+  return { action: 'mkdir', reqid: requestId, path: normalizeFilePath(path) };
+}
+
+export function createRemoveEntriesMessage(
+  path: string,
+  names: string[],
+  recursive: boolean,
+  requestId: string,
+): Record<string, unknown> {
+  return {
+    action: 'rm',
+    reqid: requestId,
+    path: normalizeFilePath(path),
+    delfiles: normalizeFileNames(names),
+    rec: recursive,
+  };
+}
+
+export function createRenameEntryMessage(
+  path: string,
+  oldName: string,
+  newName: string,
+): Record<string, unknown> {
+  return {
+    action: 'rename',
+    path: normalizeFilePath(path),
+    oldname: normalizeFileName(oldName),
+    newname: normalizeFileName(newName),
+  };
+}
+
+export function createCopyFilesMessage(
+  sourcePath: string,
+  destinationPath: string,
+  names: string[],
+  requestId: string,
+): Record<string, unknown> {
+  return {
+    action: 'copy',
+    reqid: requestId,
+    scpath: normalizeFilePath(sourcePath),
+    dspath: normalizeFilePath(destinationPath),
+    names: normalizeFileNames(names),
+  };
+}
+
+export function createMoveFilesMessage(
+  sourcePath: string,
+  destinationPath: string,
+  names: string[],
+  requestId: string,
+): Record<string, unknown> {
+  return {
+    action: 'move',
+    reqid: requestId,
+    scpath: normalizeFilePath(sourcePath),
+    dspath: normalizeFilePath(destinationPath),
+    names: normalizeFileNames(names),
+  };
+}
+
+export function createZipMessage(
+  path: string,
+  names: string[],
+  outputName: string,
+): Record<string, unknown> {
+  return {
+    action: 'zip',
+    path: normalizeFilePath(path),
+    files: normalizeFileNames(names),
+    output: normalizeFileName(outputName),
+  };
+}
+
+export function createUnzipMessage(
+  inputPath: string,
+  destinationPath: string,
+): Record<string, unknown> {
+  return {
+    action: 'unzip',
+    input: normalizeFilePath(inputPath),
+    dest: normalizeFilePath(destinationPath),
+  };
 }
 
 export function createUploadMessage(
@@ -77,6 +167,37 @@ export function parseFilesProtocolText(text: string): FilesProtocolMessage {
     requestId: requestIdOf(value),
     raw: value,
   };
+}
+
+export function parseFileDialogMessage(
+  message: FilesProtocolMessage,
+): FileDialogMessage | undefined {
+  if (message.action !== 'dialogmessage') return undefined;
+  const rawType = message.raw.msg;
+  const type =
+    rawType === 'zipping'
+      ? 'zipping'
+      : rawType === 'zippingFile'
+        ? 'zipping-file'
+        : rawType === 'unzipping'
+          ? 'unzipping'
+          : rawType === null
+            ? 'closed'
+            : 'unknown';
+  const progress =
+    typeof message.raw.progress === 'number' && Number.isFinite(message.raw.progress)
+      ? message.raw.progress
+      : undefined;
+  return {
+    type,
+    ...(typeof message.raw.file === 'string' ? { file: message.raw.file } : {}),
+    ...(progress === undefined ? {} : { progress }),
+    raw: message.raw,
+  };
+}
+
+export function isFileRefreshMessage(message: FilesProtocolMessage): boolean {
+  return message.action === 'refresh';
 }
 
 export function isDirectoryListMessage(message: FilesProtocolMessage): boolean {
@@ -192,4 +313,12 @@ function dateOf(...values: unknown[]): Date | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeFileNames(names: string[]): string[] {
+  const normalized = [...new Set(names.map(normalizeFileName))];
+  if (normalized.length === 0) {
+    throw new FileOperationError('At least one file name is required.', 'invalid-path');
+  }
+  return normalized;
 }

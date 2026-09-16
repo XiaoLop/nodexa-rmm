@@ -1,3 +1,4 @@
+import { MeshRight } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDeviceWorkspaceModel } from './deviceWorkspaceModel';
@@ -170,5 +171,28 @@ describe('createDeviceWorkspaceModel', () => {
     );
 
     expect(model.groupName).toBe('办公室');
+  });
+
+  it('derives device file access while preserving unknown permissions', () => {
+    expect(
+      createDeviceWorkspaceModel({
+        id: 'files-allowed',
+        name: 'Allowed',
+        online: true,
+        effectiveRights: MeshRight.RemoteControl,
+      }).filesAllowed,
+    ).toBe(true);
+    expect(
+      createDeviceWorkspaceModel({
+        id: 'files-denied',
+        name: 'Denied',
+        online: true,
+        effectiveRights: MeshRight.RemoteControl | MeshRight.NoFiles,
+      }).filesAllowed,
+    ).toBe(false);
+    expect(
+      createDeviceWorkspaceModel({ id: 'files-unknown', name: 'Unknown', online: true })
+        .filesAllowed,
+    ).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 # 文件管理协议
 
-`FilesSession` 适配 MeshCentral 文件 relay 协议 `p=5`，提供目录读取、单文件分块上传和单文件流式下载。
+`FilesSession` 适配 MeshCentral 文件 relay 协议 `p=5`，提供目录读取、单文件分块上传和下载，以及已确认的目录、文件和 ZIP 管理命令。
 
 ## 创建会话
 
@@ -20,6 +20,35 @@ const files = new FilesSession(relay, {
 ```
 
 同一个 `FilesSession` 同时只允许一个活动操作。并发调用会抛出 `FileOperationError`，`code` 为 `busy`。需要并行传输时，应分别创建独立 relay 和 `FilesSession`。
+
+## 文件管理命令
+
+```ts
+files.createDirectory('C:\\Temp\\reports');
+files.removeEntries('C:\\Temp', ['old.txt', 'cache'], { recursive: true });
+files.renameEntry('C:\\Temp', 'draft.txt', 'report.txt');
+files.copyFiles('C:\\Temp', 'C:\\Archive', ['report.txt']);
+files.moveFiles('C:\\Temp', 'C:\\Archive', ['report.txt']);
+files.createZip('C:\\Temp', ['reports', 'notes.txt'], 'backup.zip');
+files.extractZip('C:\\Temp\\backup.zip', 'C:\\Temp\\backup');
+```
+
+`mkdir`、`rm`、`rename`、`copy` 和 `move` 没有远端成功或失败响应。这些同步方法返回的 `FileCommandReceipt` 只表示消息已成功写入本地 relay，不表示 Agent 已完成操作。调用方不应显示成功通知，也不应根据一次目录刷新未变化就判定失败。
+
+`copyFiles` 和 `moveFiles` 的协议类型只接受名称数组；当前确认能力仅限文件，调用方必须阻止目录复制和移动。
+
+ZIP 会话事件：
+
+```ts
+const removeDialogListener = files.onDialogMessage((event) => {
+  console.log(event.type, event.file, event.progress);
+});
+const removeRefreshListener = files.onRefreshRequested(() => {
+  void files.listDirectory(currentPath);
+});
+```
+
+`zipping`、`zipping-file` 和 `unzipping` 只描述阶段；`closed` 只表示对话状态结束。`refresh` 表示调用方应重新读取目录，但这些事件都不是可靠的成功回执。
 
 ## 读取目录
 

@@ -31,6 +31,29 @@ export interface DirectoryListing {
   entries: FileEntry[];
 }
 
+export interface FileCommandReceipt {
+  requestId?: string;
+  action: 'mkdir' | 'rm' | 'rename' | 'copy' | 'move' | 'zip' | 'unzip';
+}
+
+export type FileDialogMessageType =
+  | 'zipping'
+  | 'zipping-file'
+  | 'unzipping'
+  | 'closed'
+  | 'unknown';
+
+export interface FileDialogMessage {
+  type: FileDialogMessageType;
+  file?: string;
+  progress?: number;
+  raw: Readonly<Record<string, unknown>>;
+}
+
+export interface RemoveEntriesOptions {
+  recursive?: boolean;
+}
+
 export interface FilePath {
   value: string;
   style: 'windows' | 'posix' | 'root';

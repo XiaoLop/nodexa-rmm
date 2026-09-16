@@ -95,5 +95,6 @@ export interface DeviceWorkspaceModel {
   events: SessionEvent[];
   sessionStartedAt: string;
   terminalAllowed?: boolean;
+  filesAllowed?: boolean;
   desktopAccess?: 'denied' | 'view-only' | 'limited-input' | 'control';
 }

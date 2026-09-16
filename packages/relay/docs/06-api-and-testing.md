@@ -29,9 +29,10 @@ import { FakeRelayControlChannel, FakeRelayWebSocket } from '@meshcentral/relay/
 ### 文件
 
 - `FilesSession`、`FileOperationError`、`filesRelayProtocol`。
-- 目录、上传、下载消息构造器和解析函数。
-- Windows、POSIX 和根路径处理函数。
+- 目录、上传、下载、文件命令和 ZIP 消息构造器及解析函数。
+- Windows、POSIX 和根路径处理函数，包括安全名称和父目录计算。
 - `browserFileSource`、`UploadSource`、`DownloadSink` 及进度和结果类型。
+- `FileCommandReceipt`、`FileDialogMessage` 和无响应命令选项类型。
 
 ### 桌面
 
