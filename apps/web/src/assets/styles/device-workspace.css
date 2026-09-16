@@ -321,6 +321,28 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.workspace-system-panel { min-width: 0; overflow: hidden; }
+.workspace-system-toolbar { gap: 16px; }
+.workspace-system-toolbar h2 { display: flex; align-items: center; gap: 7px; }
+.workspace-system-toolbar h2 .anticon { color: #62a7ff; }
+.workspace-system-toolbar > .ant-space { justify-content: flex-end; }
+.workspace-system-toolbar .ant-input-affix-wrapper { width: 280px; }
+.workspace-system-toolbar .ant-select { width: 120px; }
+.workspace-system-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--border);
+  background: rgba(9, 19, 32, .55);
+}
+.workspace-system-summary > * { min-width: 0; padding: 12px 16px; border-right: 1px solid var(--border); }
+.workspace-system-summary > :last-child { border-right: 0; }
+.workspace-system-summary .ant-statistic-title,
+.workspace-system-summary > div > span { display: block; color: var(--muted); font-size: 10px; }
+.workspace-system-summary .ant-statistic-content { color: #eef5ff; font-size: 20px; }
+.workspace-system-summary > div > strong { display: block; margin-top: 6px; color: #d8e5f4; font-size: 12px; font-weight: 500; }
+.workspace-system-panel > .ant-alert { margin: 8px 9px 0; }
+.workspace-system-table .ant-table { font-size: 11px; }
+.workspace-system-table .ant-table-cell { vertical-align: middle; overflow-wrap: anywhere; }
 .workspace-tab-empty,
 .workspace-missing { min-height: 420px; display: grid; place-items: center; }
 .device-files-panel {
@@ -542,8 +564,10 @@
   .remote-screen { height: 360px; }
   .workspace-overview-main,
   .workspace-overview-bottom { grid-template-columns: 1fr; }
-  .workspace-logs-toolbar { align-items: stretch; flex-direction: column; }
-  .workspace-logs-toolbar > .ant-space { justify-content: flex-start; }
+  .workspace-logs-toolbar,
+  .workspace-system-toolbar { align-items: stretch; flex-direction: column; }
+  .workspace-logs-toolbar > .ant-space,
+  .workspace-system-toolbar > .ant-space { justify-content: flex-start; }
   .device-files-time-column { display: none; }
 }
 @media (max-width: 520px) {
@@ -558,6 +582,13 @@
   .workspace-health-grid { grid-template-columns: 1fr; }
   .workspace-overview-metric { min-height: 104px; }
   .workspace-overview-actions .ant-btn { flex: 1 1 100%; }
+  .workspace-system-toolbar .ant-input-affix-wrapper,
+  .workspace-system-toolbar .ant-select { width: 100%; }
+  .workspace-system-toolbar > .ant-space { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .workspace-system-toolbar > .ant-space > .ant-input-affix-wrapper { grid-column: 1 / -1; }
+  .workspace-system-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workspace-system-summary > :nth-child(2) { border-right: 0; }
+  .workspace-system-summary > :nth-child(-n + 2) { border-bottom: 1px solid var(--border); }
   .terminal-toolbar { align-items: stretch; flex-direction: column; }
   .terminal-toolbar > .ant-input-affix-wrapper { width: 100%; }
   .terminal-toolbar .ant-btn > span { display: none; }

@@ -10,6 +10,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceLogsPanel } from '../components/device-workspace/DeviceLogsPanel';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
+import {
+  DeviceProcessesPanel,
+  DeviceServicesPanel,
+} from '../components/device-workspace/SystemManagementPanels';
 import { DeviceFilesPanel } from '../components/device-workspace/files/DeviceFilesPanel';
 import { RemoteDesktopPanel, type RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
@@ -266,6 +270,18 @@ export function DeviceWorkspacePage() {
           gatewayClient={data.client}
           gatewayConnected={data.status === 'connected'}
           filesAllowed={model.filesAllowed}
+        />
+      ) : activeTab === 'processes' ? (
+        <DeviceProcessesPanel
+          device={model.device}
+          gatewayClient={data.client}
+          gatewayConnected={data.status === 'connected'}
+        />
+      ) : activeTab === 'services' ? (
+        <DeviceServicesPanel
+          device={model.device}
+          gatewayClient={data.client}
+          gatewayConnected={data.status === 'connected'}
         />
       ) : activeTab === 'logs' ? (
         <DeviceLogsPanel
