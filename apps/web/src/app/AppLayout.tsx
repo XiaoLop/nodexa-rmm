@@ -91,8 +91,8 @@ export function AppLayout() {
   const connected = status === 'connected';
   const pageMeta = useMemo(() => resolvePageMeta(location.pathname), [location.pathname]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login', { replace: true });
   };
 

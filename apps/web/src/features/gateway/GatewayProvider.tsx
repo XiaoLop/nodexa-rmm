@@ -15,12 +15,13 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { GATEWAY_CONTROL_URL } from '../../config/gateway';
+import {
+  GATEWAY_CONTROL_URL,
+  GATEWAY_LOGIN_URL,
+  GATEWAY_LOGOUT_URL,
+} from '../../config/gateway';
 
-const AUTH_STORAGE_KEY = 'meshcentral.web.auth';
-
-interface GatewayCredentials {
-  authParam: string;
+interface GatewaySession {
   username?: string;
 }
 
@@ -32,38 +33,21 @@ interface GatewayContextValue {
   initializing: boolean;
   username?: string;
   gatewayUrl?: string;
-  login: (username: string, password: string, remember: boolean) => Promise<void>;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   reconnect: () => Promise<void>;
   refreshSnapshot: () => Promise<void>;
 }
 
 const GatewayContext = createContext<GatewayContextValue | null>(null);
 
-function readStoredCredentials(): GatewayCredentials | undefined {
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!raw) return undefined;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<GatewayCredentials>;
-    if (typeof parsed.authParam !== 'string' || !parsed.authParam) throw new Error('Invalid auth');
-    return {
-      authParam: parsed.authParam,
-      username: typeof parsed.username === 'string' ? parsed.username : undefined,
-    };
-  } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    return undefined;
-  }
-}
-
 export function GatewayProvider({ children }: PropsWithChildren) {
   const store = useMemo(() => createGatewayStore(), []);
   const clientRef = useRef<GatewayClient | undefined>(undefined);
   const bindingRef = useRef<GatewayClientBinding | undefined>(undefined);
-  const credentialsRef = useRef<GatewayCredentials | undefined>(undefined);
+  const sessionRef = useRef<GatewaySession | undefined>(undefined);
   const [client, setClient] = useState<GatewayClient | undefined>();
-  const [credentials, setCredentials] = useState<GatewayCredentials | undefined>();
+  const [session, setSession] = useState<GatewaySession | undefined>();
   const [initializing, setInitializing] = useState(true);
   const gatewayUrl = GATEWAY_CONTROL_URL;
 
@@ -76,24 +60,18 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   }, []);
 
   const connectClient = useCallback(
-    async (nextCredentials: GatewayCredentials) => {
+    async (nextSession: GatewaySession = {}) => {
       destroyClient();
       store.getState().reset();
-      credentialsRef.current = nextCredentials;
-      setCredentials(nextCredentials);
 
-      const separator = gatewayUrl.includes('?') ? '&' : '?';
       const nextClient = new GatewayClient({
-        url: `${gatewayUrl}${separator}x-meshauth=${nextCredentials.authParam}`,
-        getAccessToken: () => import.meta.env.VITE_GATEWAY_ACCESS_TOKEN?.trim() || undefined,
+        url: gatewayUrl,
       });
       const binding = bindGatewayClient(store, nextClient);
       const unsubscribeAuthenticationError = nextClient.on('error', (error) => {
         if (!(error instanceof GatewayAuthenticationError)) return;
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        sessionStorage.removeItem(AUTH_STORAGE_KEY);
-        credentialsRef.current = undefined;
-        setCredentials(undefined);
+        sessionRef.current = undefined;
+        setSession(undefined);
       });
       bindingRef.current = {
         sync: () => binding.sync(),
@@ -106,45 +84,48 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       setClient(nextClient);
 
       await nextClient.connect();
+      sessionRef.current = nextSession;
+      setSession(nextSession);
     },
     [destroyClient, gatewayUrl, store],
   );
 
   const login = useCallback(
-    async (username: string, password: string, remember: boolean) => {
-      const authParam = encodeURIComponent(`${btoa(username)},${btoa(password)}`);
-      const nextCredentials: GatewayCredentials = { authParam, username };
+    async (username: string, password: string) => {
+      const response = await fetch(GATEWAY_LOGIN_URL, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ action: 'login', username, password }),
+      });
+
+      if (!response.ok) throw new GatewayAuthenticationError('登录失败，请检查用户名和密码。');
 
       try {
-        await connectClient(nextCredentials);
+        await connectClient({ username });
       } catch (error) {
         destroyClient();
         throw error;
-      }
-
-      if (remember) {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextCredentials));
-        sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      } else {
-        sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextCredentials));
-        localStorage.removeItem(AUTH_STORAGE_KEY);
       }
     },
     [connectClient, destroyClient],
   );
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    credentialsRef.current = undefined;
-    setCredentials(undefined);
+  const logout = useCallback(async () => {
+    sessionRef.current = undefined;
+    setSession(undefined);
     destroyClient();
     store.getState().reset();
+    try {
+      await fetch(GATEWAY_LOGOUT_URL, { credentials: 'include' });
+    } catch {
+      // The local session is already closed; a failed remote logout must not keep the UI signed in.
+    }
   }, [destroyClient, store]);
 
   const reconnect = useCallback(async () => {
-    if (!credentialsRef.current) throw new Error('当前没有可用的登录凭据。');
-    await connectClient(credentialsRef.current);
+    if (!sessionRef.current) throw new Error('当前没有可用的登录会话。');
+    await connectClient(sessionRef.current);
   }, [connectClient]);
 
   const refreshSnapshot = useCallback(async () => {
@@ -153,23 +134,14 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    const storedCredentials = readStoredCredentials();
-    if (!storedCredentials) {
-      setInitializing(false);
-      return;
-    }
-
     let mounted = true;
 
-    void connectClient(storedCredentials)
-      .catch((error) => {
+    void connectClient()
+      .catch(() => {
         if (!mounted) return;
-        if (error instanceof GatewayAuthenticationError) {
-          localStorage.removeItem(AUTH_STORAGE_KEY);
-          sessionStorage.removeItem(AUTH_STORAGE_KEY);
-          credentialsRef.current = undefined;
-          setCredentials(undefined);
-        }
+        sessionRef.current = undefined;
+        setSession(undefined);
+        destroyClient();
       })
       .finally(() => {
         if (mounted) setInitializing(false);
@@ -197,16 +169,16 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       store,
       client,
       configured: Boolean(gatewayUrl),
-      authenticated: Boolean(credentials),
+      authenticated: Boolean(session),
       initializing,
-      username: credentials?.username,
+      username: session?.username,
       gatewayUrl,
       login,
       logout,
       reconnect,
       refreshSnapshot,
     }),
-    [store, client, gatewayUrl, credentials, initializing, login, logout, reconnect, refreshSnapshot],
+    [store, client, gatewayUrl, session, initializing, login, logout, reconnect, refreshSnapshot],
   );
 
   return <GatewayContext.Provider value={value}>{children}</GatewayContext.Provider>;

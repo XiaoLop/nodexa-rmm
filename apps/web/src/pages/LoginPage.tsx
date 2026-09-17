@@ -9,7 +9,7 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Form, Input, Typography } from 'antd';
+import { Alert, Button, Form, Input, Typography } from 'antd';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { BrandLogo } from '../components/ConsoleUi';
@@ -18,7 +18,6 @@ import { useGateway } from '../features/gateway/GatewayProvider';
 interface LoginFormValue {
   username: string;
   password: string;
-  remember: boolean;
 }
 
 export function LoginPage() {
@@ -36,7 +35,7 @@ export function LoginPage() {
     setError(undefined);
     setLoading(true);
     try {
-      await gateway.login(values.username.trim(), values.password, values.remember);
+      await gateway.login(values.username.trim(), values.password);
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/dashboard', { replace: true });
     } catch (nextError) {
@@ -85,7 +84,6 @@ export function LoginPage() {
           {error && <Alert type="error" showIcon title={error} className="login-alert" />}
           <Form<LoginFormValue>
             layout="vertical"
-            initialValues={{ remember: true }}
             onFinish={(values) => void handleSubmit(values)}
             className="login-form"
           >
@@ -124,9 +122,7 @@ export function LoginPage() {
               />
             </Form.Item>
             <div className="login-meta">
-              <Form.Item name="remember" valuePropName="checked" noStyle>
-                <Checkbox>记住我</Checkbox>
-              </Form.Item>
+              <span />
               <Button type="link" disabled>
                 忘记密码？
               </Button>

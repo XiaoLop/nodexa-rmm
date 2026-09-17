@@ -20,12 +20,37 @@ action=login
 username=admin
 password=password
 
-# 响应cookie
-xid=xxx
-xid.sig=xxxx
+# 响应头
+Set-Cookie: xid=xxx; HttpOnly; Secure
+Set-Cookie: xid.sig=xxxx; HttpOnly; Secure
 ```
 
-将cookie中的 xid 和 xid.sig 携带到 ws 连接中, 就会鉴权成功
+浏览器登录请求需要设置 `credentials: 'include'`。登录成功后连接同源的
+`wss://<server>/<domain>/control.ashx`，浏览器会在 WebSocket 握手中自动携带
+`xid` 和 `xid.sig`，不应把 Cookie 拼接到 URL 或写入 Web Storage。
+
+```ts
+const response = await fetch('/login', {
+  method: 'POST',
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    action: 'login',
+    username: 'admin',
+    password: 'password',
+  }),
+});
+
+if (!response.ok) throw new Error('登录失败');
+
+const ws = new WebSocket('wss://mesh.example.com/control.ashx');
+```
+
+浏览器原生 `WebSocket` 不允许 JavaScript 手工设置 `Cookie` 请求头。跨域部署时应通过
+反向代理让登录接口与 WebSocket 对浏览器表现为同源，并正确配置 Cookie 的 `Domain`、
+`Path`、`SameSite` 和 `Secure` 属性。
 
 ## 账号密码鉴权
 

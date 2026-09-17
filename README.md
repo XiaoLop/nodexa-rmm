@@ -55,9 +55,9 @@ pnpm format
 - Web：复制 `apps/web/.env.example` 为 `apps/web/.env.local`
 - APP：复制 `apps/app/.env.example` 为 `apps/app/.env.local`
 
-Web 使用 `VITE_GATEWAY_AUTH_URL` 与 `VITE_GATEWAY_WS_URL`。认证接口接收 `{ username, password }`，成功时返回 `{ accessToken, username?, wsUrl? }`；Web 随后使用短期 `accessToken` 建立业务 WebSocket。APP 使用 `EXPO_PUBLIC_GATEWAY_WS_URL`。Android 模拟器访问宿主机时通常使用 `10.0.2.2`，真机需要使用开发机的局域网地址。
+Web 使用同源反向代理接口 `/api/login` 登录。该接口接收 `application/x-www-form-urlencoded` 格式的 `action=login`、`username` 和 `password`，并通过 `Set-Cookie` 建立会话；Web 随后通过 `VITE_GATEWAY_WS_URL` 或同源 `/api/control.ashx` 建立控制连接，由浏览器在 WebSocket 握手中自动携带 Cookie。APP 使用 `EXPO_PUBLIC_GATEWAY_WS_URL`。Android 模拟器访问宿主机时通常使用 `10.0.2.2`，真机需要使用开发机的局域网地址。
 
-`VITE_GATEWAY_ACCESS_TOKEN` 仅用于本地开发时绕过登录页。生产环境应由登录层提供可刷新、短期令牌，并优先使用安全 Cookie 承载刷新会话，避免将长期密钥打包进客户端。浏览器端不会把原始用户名或密码写入存储。
+Cookie 会话应由服务端设置 `HttpOnly`、`Secure` 和适当的 `SameSite` 属性。浏览器端不会把用户名、密码或认证 Cookie 写入 Web Storage，也不会把认证信息拼接到 WebSocket URL。
 
 ## 控制客户端与状态
 
