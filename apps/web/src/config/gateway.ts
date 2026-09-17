@@ -2,7 +2,7 @@ const DEFAULT_GATEWAY_BASE_URL = `${window.location.protocol === 'https:' ? 'wss
 const API_PREFIX = '/api';
 
 function buildGatewayEndpoint(path: string): string {
-  const baseUrl = import.meta.env.VITE_GATEWAY_WS_URL?.trim() || DEFAULT_GATEWAY_BASE_URL;
+  const baseUrl = DEFAULT_GATEWAY_BASE_URL;
   return `${baseUrl.replace(/\/+$/, '')}${API_PREFIX}/${path.replace(/^\/+/, '')}`;
 }
 
