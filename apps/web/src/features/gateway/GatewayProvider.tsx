@@ -133,12 +133,14 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     await bindingRef.current.sync();
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
+useEffect(() => {
+  let mounted = true;
 
+  const timer = window.setTimeout(() => {
     void connectClient()
       .catch(() => {
         if (!mounted) return;
+
         sessionRef.current = undefined;
         setSession(undefined);
         destroyClient();
@@ -146,12 +148,14 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       .finally(() => {
         if (mounted) setInitializing(false);
       });
+  }, 0);
 
-    return () => {
-      mounted = false;
-      destroyClient();
-    };
-  }, [connectClient, destroyClient]);
+  return () => {
+    mounted = false;
+    window.clearTimeout(timer);
+    destroyClient();
+  };
+}, [connectClient, destroyClient]);
 
   useEffect(() => {
     const handleOnline = () => {
