@@ -50,6 +50,7 @@ import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermi
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
+import '../assets/styles/user-details.css';
 
 type GroupPermissionEditor = 'new' | { groupId: string; rights: number };
 type DevicePermissionEditor = 'new' | { deviceId: string; rights: number };

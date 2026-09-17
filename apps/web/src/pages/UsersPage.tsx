@@ -33,6 +33,7 @@ import { UserCreateModal } from '../components/users/UserCreateModal';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import '../assets/styles/users.css';
 
 function formatDateTime(value?: string, missing = '未提供') {
   if (!value) return missing;

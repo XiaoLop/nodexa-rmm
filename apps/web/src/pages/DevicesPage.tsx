@@ -56,6 +56,9 @@ import { CommandExecutionModal } from '../components/CommandExecutionModal';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
 import { GATEWAY_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
+import '../assets/styles/commands.css';
+import '../assets/styles/device-details.css';
+import '../assets/styles/devices.css';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 

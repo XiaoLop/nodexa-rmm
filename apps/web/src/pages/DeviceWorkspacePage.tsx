@@ -5,7 +5,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Button, Empty, message } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceLogsPanel } from '../components/device-workspace/DeviceLogsPanel';
@@ -14,14 +14,29 @@ import {
   DeviceProcessesPanel,
   DeviceServicesPanel,
 } from '../components/device-workspace/SystemManagementPanels';
-import { DeviceFilesPanel } from '../components/device-workspace/files/DeviceFilesPanel';
-import { RemoteDesktopPanel, type RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
 import { WorkspaceTabs } from '../components/device-workspace/WorkspaceTabs';
-import { TerminalPanel } from '../components/device-workspace/terminal/TerminalPanel';
+import type { RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel.ts';
 import type { WorkspaceTab } from '../features/device-workspace/types';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import '../assets/styles/device-workspace.css';
+
+const DeviceFilesPanel = lazy(() =>
+  import('../components/device-workspace/files/DeviceFilesPanel').then((module) => ({
+    default: module.DeviceFilesPanel,
+  })),
+);
+const RemoteDesktopPanel = lazy(() =>
+  import('../components/device-workspace/RemoteDesktopPanel').then((module) => ({
+    default: module.RemoteDesktopPanel,
+  })),
+);
+const TerminalPanel = lazy(() =>
+  import('../components/device-workspace/terminal/TerminalPanel').then((module) => ({
+    default: module.TerminalPanel,
+  })),
+);
 
 const WORKSPACE_TABS: WorkspaceTab[] = [
   'overview',
@@ -221,82 +236,93 @@ export function DeviceWorkspacePage() {
       {messageContextHolder}
       <DeviceWorkspaceHeader model={model} />
       <WorkspaceTabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === 'overview' ? (
-        <DeviceOverviewPanel
-          model={model}
-          events={data.events}
-          gatewayClient={data.client}
-          gatewayConnected={data.status === 'connected'}
-          onNavigate={setActiveTab}
-        />
-      ) : activeTab === 'desktop' ? (
-        <div className="device-workspace-grid">
-          <RemoteDesktopPanel
-            ref={desktopPanelRef}
+      <Suspense fallback={<WorkspacePanelLoading />}>
+        {activeTab === 'overview' ? (
+          <DeviceOverviewPanel
             model={model}
+            events={data.events}
+            gatewayClient={data.client}
+            gatewayConnected={data.status === 'connected'}
+            onNavigate={setActiveTab}
+          />
+        ) : activeTab === 'desktop' ? (
+          <div className="device-workspace-grid">
+            <RemoteDesktopPanel
+              ref={desktopPanelRef}
+              model={model}
+              device={model.device}
+              gatewayClient={data.client}
+              gatewayConnected={data.status === 'connected'}
+              desktopAccess={model.desktopAccess}
+              keyboardEnabled={settings.keyboard}
+              mouseEnabled={settings.mouse}
+              quality={settings.quality}
+              scale={scale}
+              onScaleChange={setScale}
+              onSessionActiveChange={handleDesktopSessionActiveChange}
+              onLatencyChange={handleDesktopLatencyChange}
+            />
+            <WorkspaceSettings
+              value={settings}
+              onChange={setSettings}
+              controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
+              sessionActive={desktopSessionActive}
+              latency={desktopLatency}
+              latencyTrend={desktopLatencyTrend}
+              latencyTimedOut={desktopLatencyTimedOut}
+              onEndSession={() => desktopPanelRef.current?.disconnect()}
+            />
+          </div>
+        ) : activeTab === 'terminal' ? (
+          <TerminalPanel
             device={model.device}
             gatewayClient={data.client}
             gatewayConnected={data.status === 'connected'}
-            desktopAccess={model.desktopAccess}
-            keyboardEnabled={settings.keyboard}
-            mouseEnabled={settings.mouse}
-            quality={settings.quality}
-            scale={scale}
-            onScaleChange={setScale}
-            onSessionActiveChange={handleDesktopSessionActiveChange}
-            onLatencyChange={handleDesktopLatencyChange}
+            terminalAllowed={model.terminalAllowed}
           />
-          <WorkspaceSettings
-            value={settings}
-            onChange={setSettings}
-            controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
-            sessionActive={desktopSessionActive}
-            latency={desktopLatency}
-            latencyTrend={desktopLatencyTrend}
-            latencyTimedOut={desktopLatencyTimedOut}
-            onEndSession={() => desktopPanelRef.current?.disconnect()}
+        ) : activeTab === 'files' ? (
+          <DeviceFilesPanel
+            device={model.device}
+            gatewayClient={data.client}
+            gatewayConnected={data.status === 'connected'}
+            filesAllowed={model.filesAllowed}
           />
-        </div>
-      ) : activeTab === 'terminal' ? (
-        <TerminalPanel
-          device={model.device}
-          gatewayClient={data.client}
-          gatewayConnected={data.status === 'connected'}
-          terminalAllowed={model.terminalAllowed}
-        />
-      ) : activeTab === 'files' ? (
-        <DeviceFilesPanel
-          device={model.device}
-          gatewayClient={data.client}
-          gatewayConnected={data.status === 'connected'}
-          filesAllowed={model.filesAllowed}
-        />
-      ) : activeTab === 'processes' ? (
-        <DeviceProcessesPanel
-          device={model.device}
-          gatewayClient={data.client}
-          gatewayConnected={data.status === 'connected'}
-        />
-      ) : activeTab === 'services' ? (
-        <DeviceServicesPanel
-          device={model.device}
-          gatewayClient={data.client}
-          gatewayConnected={data.status === 'connected'}
-        />
-      ) : activeTab === 'logs' ? (
-        <DeviceLogsPanel
-          device={model.device}
-          events={data.events}
-          gatewayClient={data.client}
-          gatewayConnected={data.status === 'connected'}
-        />
-      ) : (
-        <section className="console-card workspace-tab-empty">
-          <Empty description="该工作区将在后续版本接入">
-            <Button type="primary" onClick={() => setActiveTab('overview')}>回到概览</Button>
-          </Empty>
-        </section>
-      )}
+        ) : activeTab === 'processes' ? (
+          <DeviceProcessesPanel
+            device={model.device}
+            gatewayClient={data.client}
+            gatewayConnected={data.status === 'connected'}
+          />
+        ) : activeTab === 'services' ? (
+          <DeviceServicesPanel
+            device={model.device}
+            gatewayClient={data.client}
+            gatewayConnected={data.status === 'connected'}
+          />
+        ) : activeTab === 'logs' ? (
+          <DeviceLogsPanel
+            device={model.device}
+            events={data.events}
+            gatewayClient={data.client}
+            gatewayConnected={data.status === 'connected'}
+          />
+        ) : (
+          <section className="console-card workspace-tab-empty">
+            <Empty description="该工作区将在后续版本接入">
+              <Button type="primary" onClick={() => setActiveTab('overview')}>回到概览</Button>
+            </Empty>
+          </section>
+        )}
+      </Suspense>
     </main>
+  );
+}
+
+function WorkspacePanelLoading() {
+  return (
+    <section className="console-card workspace-tab-empty" aria-busy="true">
+      <span className="boot-spinner" />
+      <span>正在加载工作区...</span>
+    </section>
   );
 }

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DonutChart, MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import '../assets/styles/dashboard.css';
+import '../assets/styles/dashboard-widgets.css';
 
 const platformColors = ['#2f80ff', '#7259e8', '#2dbf73', '#f4b43c', '#708097'];
 

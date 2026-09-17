@@ -19,6 +19,7 @@ import {
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
 

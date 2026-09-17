@@ -1,14 +1,3 @@
 @import './base.css';
 @import './brand.css';
-@import './login.css';
-@import './layout.css';
-@import './dashboard.css';
-@import './device-details.css';
-@import './dashboard-widgets.css';
-@import './devices.css';
-@import './users.css';
-@import './user-details.css';
-@import './realtime-events.css';
-@import './commands.css';
-@import './device-workspace.css';
 @import './responsive.css';

@@ -13,13 +13,27 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
+import {
+  App as AntApp,
+  Avatar,
+  Badge,
+  Button,
+  ConfigProvider,
+  Dropdown,
+  Input,
+  Layout,
+  Menu,
+  Tooltip,
+  theme,
+} from 'antd';
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isFullAdministrator } from '@meshcentral/control-client';
 import { gatewaySelectors, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
-import { BrandLogo } from '../components/ConsoleUi';
+import { BrandLogo } from '../components/BrandLogo';
 import { useGateway } from '../features/gateway/GatewayProvider';
+import 'antd/dist/reset.css';
+import '../assets/styles/layout.css';
 
 const { Header, Sider, Content } = Layout;
 
@@ -80,6 +94,48 @@ function resolvePageMeta(pathname: string) {
 }
 
 export function AppLayout() {
+  return (
+    <ConfigProvider
+      theme={{
+        algorithm: theme.darkAlgorithm,
+        token: {
+          colorPrimary: '#2f80ff',
+          colorInfo: '#2f80ff',
+          colorSuccess: '#2dcc70',
+          colorWarning: '#f4b43c',
+          colorError: '#ff5364',
+          colorBgBase: '#09111d',
+          colorBgContainer: '#111c2a',
+          colorBorder: '#243348',
+          colorText: '#f1f5fb',
+          colorTextSecondary: '#8c9bb0',
+          borderRadius: 6,
+          fontFamily: 'Inter, "Segoe UI", sans-serif',
+        },
+        components: {
+          Button: { controlHeightLG: 46, fontWeight: 600 },
+          Card: { colorBgContainer: '#111c2a' },
+          Drawer: { colorBgElevated: '#111c2a' },
+          Input: { activeBorderColor: '#2f80ff', hoverBorderColor: '#3c8bff' },
+          Layout: { headerBg: '#0b1421', siderBg: '#0d1725' },
+          Menu: { darkItemBg: '#0d1725', darkItemSelectedBg: '#1d3555', itemBorderRadius: 5 },
+          Modal: {
+            contentBg: '#111c2a',
+            footerBg: '#111c2a',
+            headerBg: '#111c2a',
+          },
+          Table: { headerBg: '#101a27', headerColor: '#c9d4e3', borderColor: '#243348' },
+        },
+      }}
+    >
+      <AntApp>
+        <AppLayoutContent />
+      </AntApp>
+    </ConfigProvider>
+  );
+}
+
+function AppLayoutContent() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();

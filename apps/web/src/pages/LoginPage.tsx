@@ -12,8 +12,9 @@ import {
 import { Alert, Button, Form, Input, Typography } from 'antd';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { BrandLogo } from '../components/ConsoleUi';
+import { BrandLogo } from '../components/BrandLogo';
 import { useGateway } from '../features/gateway/GatewayProvider';
+import "../assets/styles/login.css";
 
 interface LoginFormValue {
   username: string;

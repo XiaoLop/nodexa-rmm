@@ -46,6 +46,7 @@ import {
   isCurrentUser,
   isLastActiveAdministrator,
 } from '../features/users/userProtection';
+import '../assets/styles/user-details.css';
 
 type DetailTab = 'overview' | 'device-groups' | 'user-groups' | 'shared-devices' | 'logs';
 

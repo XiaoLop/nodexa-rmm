@@ -130,21 +130,3 @@
   color: #dce5f0;
   font-weight: 500;
 }
-.status-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #93a1b4;
-}
-.status-text i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.status-text.online {
-  color: var(--success);
-}
-.status-text.offline {
-  color: #8998aa;
-}

@@ -35,6 +35,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import '../assets/styles/users.css';
 
 type EditorMode = 'create' | 'edit' | 'clone';
 type GroupFilter = 'all' | 'with-members' | 'no-members' | 'with-permissions' | 'no-permissions';

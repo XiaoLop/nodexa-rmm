@@ -8,6 +8,52 @@
 .devices-toolbar > .ant-select {
   width: 140px;
 }
+.device-workspace-link {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  color: #e0e7f0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.device-workspace-link:hover,
+.device-workspace-link:focus-visible {
+  color: #62a7ff;
+}
+.device-workspace-link:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid rgba(98, 167, 255, 0.55);
+  outline-offset: 2px;
+}
+.devices-page .status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8998aa;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.devices-page .status-text i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+.devices-page .status-text.online {
+  color: var(--success);
+}
+.devices-page .status-text.offline {
+  color: #8998aa;
+}
 .batch-upload-modal {
   display: grid;
   gap: 16px;

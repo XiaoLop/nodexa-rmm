@@ -24,6 +24,7 @@ import {
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import '../assets/styles/devices.css';
 
 const naturalNameCollator = new Intl.Collator('zh-CN', {
   numeric: true,
