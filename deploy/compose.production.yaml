@@ -1,0 +1,118 @@
+name: ${COMPOSE_PROJECT_NAME:-mesh-console}
+
+services:
+  config-init:
+    image: ${CONFIG_IMAGE:?Set CONFIG_IMAGE}:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: 'no'
+    environment:
+      APP_CONFIG_FILE: /input/config.yaml
+      APP_CONFIG_OUTPUT: /output
+    volumes:
+      - ${APP_CONFIG_FILE:?Set APP_CONFIG_FILE}:/input/config.yaml:ro
+      - generated-config:/output
+    secrets:
+      - meshcentral-mongodb-url
+      - meshcentral-session-key
+      - meshcentral-db-encryption-key
+      - meshcentral-backup-password
+      - tls-certificate
+      - tls-private-key
+
+  mongodb:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongodb-root-username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongodb-root-password
+    volumes:
+      - mongodb-data:/data/db
+    secrets:
+      - mongodb-root-username
+      - mongodb-root-password
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mongosh --quiet --username "$$(cat /run/secrets/mongodb-root-username)" --password "$$(cat /run/secrets/mongodb-root-password)" --authenticationDatabase admin --eval "quit(db.adminCommand(''ping'').ok ? 0 : 1)"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  meshcentral:
+    image: ${MESHCENTRAL_IMAGE:?Set MESHCENTRAL_IMAGE}:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_CONFIG_FILE: /run/config/meshcentral.json
+    volumes:
+      - generated-config:/run/config:ro
+      - meshcentral-data:/var/lib/meshcentral/data
+      - meshcentral-files:/var/lib/meshcentral/files
+      - meshcentral-backups:/var/lib/meshcentral/backups
+      - meshcentral-recordings:/var/lib/meshcentral/recordings
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_healthy
+
+  gateway:
+    image: ${GATEWAY_IMAGE:?Set GATEWAY_IMAGE}:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_CONFIG_FILE: /run/config/gateway.json
+    volumes:
+      - generated-config:/run/config:ro
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+      meshcentral:
+        condition: service_started
+
+  nginx:
+    image: ${WEB_IMAGE:?Set WEB_IMAGE}:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - generated-config:/run/config:ro
+    secrets:
+      - tls-certificate
+      - tls-private-key
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+      gateway:
+        condition: service_started
+      meshcentral:
+        condition: service_started
+
+secrets:
+  mongodb-root-username:
+    file: ${MONGODB_ROOT_USERNAME_FILE:?Set MONGODB_ROOT_USERNAME_FILE}
+  mongodb-root-password:
+    file: ${MONGODB_ROOT_PASSWORD_FILE:?Set MONGODB_ROOT_PASSWORD_FILE}
+  meshcentral-mongodb-url:
+    file: ${MESHCENTRAL_MONGODB_URL_FILE:?Set MESHCENTRAL_MONGODB_URL_FILE}
+  meshcentral-session-key:
+    file: ${MESHCENTRAL_SESSION_KEY_FILE:?Set MESHCENTRAL_SESSION_KEY_FILE}
+  meshcentral-db-encryption-key:
+    file: ${MESHCENTRAL_DB_ENCRYPTION_KEY_FILE:?Set MESHCENTRAL_DB_ENCRYPTION_KEY_FILE}
+  meshcentral-backup-password:
+    file: ${MESHCENTRAL_BACKUP_PASSWORD_FILE:?Set MESHCENTRAL_BACKUP_PASSWORD_FILE}
+  tls-certificate:
+    file: ${TLS_CERTIFICATE_FILE:?Set TLS_CERTIFICATE_FILE}
+  tls-private-key:
+    file: ${TLS_PRIVATE_KEY_FILE:?Set TLS_PRIVATE_KEY_FILE}
+
+volumes:
+  generated-config:
+  mongodb-data:
+  meshcentral-data:
+  meshcentral-files:
+  meshcentral-backups:
+  meshcentral-recordings:

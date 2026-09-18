@@ -1,0 +1,151 @@
+# 生产模板与仓库根部 config.example.yaml 使用同一 Schema。
+# 部署前复制为 production.yaml，并替换域名、容量和 Secret 路径。
+version: 1
+
+project:
+  name: mesh-console
+  environment: production
+  timezone: Asia/Shanghai
+  logLevel: info
+
+public:
+  consoleOrigin: https://console.example.com
+  meshcentralOrigin: https://mesh.example.com
+
+web:
+  apiPrefix: /api
+  batchUpload:
+    bandwidthMbps: 200
+    chunkIntervalMs: 150
+    minChunkKiB: 256
+    maxChunkKiB: 5120
+
+app:
+  gatewayUrl: wss://console.example.com/api/control.ashx
+
+gateway:
+  listen:
+    host: 0.0.0.0
+    port: 3000
+  meshcentral:
+    origin: http://meshcentral:8443
+    domainPath: /
+    tlsRejectUnauthorized: true
+  proxy:
+    trustProxy: 1
+    allowMissingOrigin: false
+    upstreamTimeoutMs: 10000
+    loginValidationTimeoutMs: 5000
+    websocketIdleTimeoutMs: 0
+
+meshcentral:
+  listen:
+    host: 0.0.0.0
+    port: 8443
+    redirectionPort: 0
+  public:
+    hostname: mesh.example.com
+    httpsPort: 443
+  runtime:
+    wanOnly: true
+    tlsOffload: true
+    trustedProxy: [nginx]
+    selfUpdate: false
+  storage:
+    data: /var/lib/meshcentral/data
+    files: /var/lib/meshcentral/files
+    backups: /var/lib/meshcentral/backups
+    recordings: /var/lib/meshcentral/recordings
+  session:
+    durationMinutes: 60
+    sameSite: lax
+    cookieIpCheck: lax
+    keyFile: /run/secrets/meshcentral-session-key
+  database:
+    type: mongodb
+    urlFile: /run/secrets/meshcentral-mongodb-url
+    name: meshcentral
+    encryptionKeyFile: /run/secrets/meshcentral-db-encryption-key
+  domain:
+    id: ''
+    title: Mesh Console
+    title2: Secure device operations
+    allowNewAccounts: false
+    passwordRequirements:
+      minimumLength: 12
+      forceTwoFactor: false
+      banCommonPasswords: true
+    limits:
+      maxDevices: 1000
+      maxUserAccounts: 100
+      maxUserSessions: 500
+      maxAgentSessions: 2000
+    sessionRecording:
+      enabled: false
+      maxDays: 30
+      protocols: [1, 2, 5]
+  security:
+    strictTransportSecurity: true
+    allowFraming: false
+    allowLoginToken: false
+    ignoreAgentHashCheck: false
+    invalidLogin:
+      windowMinutes: 10
+      maximumAttempts: 10
+      cooldownMinutes: 10
+    invalidTwoFactor:
+      windowMinutes: 10
+      maximumAttempts: 10
+      cooldownMinutes: 10
+  agent:
+    pingSeconds: 60
+    idleTimeoutSeconds: 150
+    allowUpdates: true
+    lockDownload: false
+  backup:
+    enabled: true
+    intervalHours: 24
+    keepDays: 10
+    zipPasswordFile: /run/secrets/meshcentral-backup-password
+  native:
+    settings:
+      compression: true
+      wsCompression: false
+      agentWsCompression: false
+      allowHighQualityDesktop: true
+      desktopMultiplex: true
+    domains:
+      '':
+        userConsentFlags:
+          desktopnotify: true
+          terminalnotify: true
+          filenotify: true
+
+proxy:
+  listen:
+    httpPort: 80
+    httpsPort: 443
+  tls:
+    certificateFile: /run/secrets/tls-certificate
+    privateKeyFile: /run/secrets/tls-private-key
+  routes:
+    login: gateway
+    control: gateway
+    relay: meshcentral
+    meshagents: meshcentral
+    agent: meshcentral
+  timeouts:
+    httpSeconds: 30
+    websocketSeconds: 3600
+    agentSeconds: 3600
+  accessLog:
+    enabled: true
+    redactQueryFor:
+      - /api/meshrelay.ashx
+      - /agent.ashx
+
+health:
+  intervalSeconds: 10
+  timeoutSeconds: 5
+  retries: 10
+  startPeriodSeconds: 20

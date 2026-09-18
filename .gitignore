@@ -17,3 +17,10 @@ test/captures/
 .env
 .env.*
 !.env.example
+deploy/*.env
+deploy/config/*.yaml
+!deploy/config/*.example.yaml
+deploy/generated/*
+!deploy/generated/.gitkeep
+deploy/secrets/*
+!deploy/secrets/README.md
