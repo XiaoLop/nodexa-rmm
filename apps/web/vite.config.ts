@@ -17,6 +17,7 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
         cookieDomainRewrite: '',
+        cookiePathRewrite: '/api',
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
