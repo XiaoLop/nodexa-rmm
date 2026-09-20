@@ -283,6 +283,8 @@ function desktopPermission(
 export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetails, groupName?: string): DeviceWorkspaceModel {
   const resolvedDevice = details?.device ?? device;
   const hardware = staticDetails(details);
+  const hasSystemDetails = detailRecord(details, 'systemInfo') !== undefined;
+  const hasNetworkDetails = detailRecord(details, 'networkInfo') !== undefined;
   const platformKey = Object.keys(hardwareRecord(details) ?? {})[0];
   const platformHardware = platformKey && hardwareRecord(details)?.[platformKey];
   const platformRecord = platformHardware && typeof platformHardware === 'object' ? platformHardware as Record<string, unknown> : undefined;
@@ -291,6 +293,8 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
   return {
     device: resolvedDevice,
     details,
+    hasSystemDetails,
+    hasNetworkDetails,
     hostname: rawString(resolvedDevice, ['rname', 'host', 'hostname'], resolvedDevice.raw) ?? resolvedDevice.name,
     platform: resolvedDevice.platform ?? rawString(resolvedDevice, ['osdesc', 'platform'], resolvedDevice.raw) ?? stringFrom(osInfo?.Caption) ?? '未知系统',
     ipAddress: rawString(resolvedDevice, ['ip', 'host'], resolvedDevice.raw) ?? '—',

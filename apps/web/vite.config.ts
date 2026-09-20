@@ -13,12 +13,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
+        // target: 'https://47.108.250.245:8888',
         target: 'https://mesh.xiaonext.com',
         changeOrigin: true,
         ws: true,
         cookieDomainRewrite: '',
         cookiePathRewrite: '/api',
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api/, '')
       },
     },
   },

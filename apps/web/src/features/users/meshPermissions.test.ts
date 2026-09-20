@@ -3,6 +3,7 @@ import {
   DEVICE_PERMISSIONS,
   DEVICE_RIGHT_FULL,
   MESH_RIGHT_ADMIN,
+  MESH_PERMISSION_PRESETS,
   canUseTerminal,
   composeMeshRights,
   hasMeshRight,
@@ -23,7 +24,7 @@ describe('mesh permissions', () => {
   it('summarizes common and administrator permissions', () => {
     expect(summarizeMeshRights(MESH_RIGHT_ADMIN)).toBe('全部权限');
     expect(summarizeMeshRights(0)).toBe('仅设备组可见');
-    expect(summarizeMeshRights(0x8 | 0x10)).toBe('远程桌面控制、终端控制台');
+    expect(summarizeMeshRights(0x8 | 0x10)).toBe('远程桌面控制、Mesh Agent 控制台');
     expect(summarizeMeshRights(0x8 | 0x10 | 0x20)).toContain('等 3 项');
   });
 
@@ -35,15 +36,17 @@ describe('mesh permissions', () => {
   });
 
   it('uses the server-supported permission set for direct device grants', () => {
-    expect(DEVICE_RIGHT_FULL).toBe(49400);
-    expect(DEVICE_PERMISSIONS.map(({ flag }) => flag)).toEqual([
-      0x00000008,
-      0x00000010,
-      0x00000020,
-      0x00004000,
-      0x00000040,
-      0x00000080,
-      0x00008000,
-    ]);
+    expect(DEVICE_RIGHT_FULL & 0x00000200).toBe(0);
+    expect(DEVICE_PERMISSIONS.map(({ flag }) => flag)).toContain(0x00010000);
+    expect(DEVICE_PERMISSIONS.map(({ flag }) => flag)).toContain(0x00020000);
+  });
+
+  it('provides presets using standard MeshCentral permission bits', () => {
+    expect(MESH_PERMISSION_PRESETS.find(({ key }) => key === 'files-only')?.rights).toBe(
+      0x00000008 | 0x00000200 | 0x00010000,
+    );
+    expect(MESH_PERMISSION_PRESETS.find(({ key }) => key === 'desktop-only')?.rights).toBe(
+      0x00000008 | 0x00000200 | 0x00000400,
+    );
   });
 });

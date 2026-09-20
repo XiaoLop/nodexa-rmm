@@ -247,6 +247,7 @@ export class GatewayClient {
           return;
         }
         const decoded = decodePush(payload);
+        if (decoded.serverInfo) this.dispatcher.emit('serverInfo', decoded.serverInfo);
         if (decoded.userInfo) this.dispatcher.emit('userInfo', decoded.userInfo);
         if (decoded.event) this.dispatcher.emit('event', decoded.event);
         if (!consumed && decoded.unknown && inspection.status === 'pending' && !inspection.signal)

@@ -1,0 +1,217 @@
+import { isFullRights, normalizeRights } from './bitmask';
+import { canUseDeviceFiles, canUseTerminal, getDesktopAccess } from './capabilities';
+import { hasMeshRight, MeshRight } from './meshRights';
+import { hasSiteRight, isSiteAdministrator, SiteRight } from './siteRights';
+
+export interface UiPermission {
+  visible: boolean;
+  enabled: boolean;
+  reason?:
+    | 'permission-denied'
+    | 'permission-unknown'
+    | 'gateway-disconnected'
+    | 'device-offline'
+    | 'feature-disabled'
+    | 'agent-unsupported';
+  message?: string;
+}
+
+export interface ServerRuntimeCapabilities {
+  guestDeviceSharing?: boolean;
+}
+
+export interface DeviceRuntimeCapabilities {
+  gatewayConnected: boolean;
+  agentOnline: boolean;
+  amtOnline: boolean;
+  amtReady?: boolean;
+  agentCapabilities?: number;
+  isWindows: boolean;
+}
+
+export interface DeviceUiCapabilities {
+  desktop: UiPermission;
+  desktopInput: UiPermission;
+  clipboardWrite: UiPermission;
+  terminal: UiPermission;
+  files: UiPermission;
+  console: UiPermission;
+  registry: UiPermission;
+  software: UiPermission;
+  command: UiPermission;
+  power: UiPermission;
+  wake: UiPermission;
+  guestShare: UiPermission;
+  uninstall: UiPermission;
+  edit: UiPermission;
+}
+
+export interface ApplicationUiCapabilities {
+  manageUsers: boolean;
+  manageUserGroups: boolean;
+  viewAllEvents: boolean;
+  manageSettings: boolean;
+  createDeviceGroups: boolean;
+  addDevices: boolean;
+}
+
+const hidden = (): UiPermission => ({ visible: false, enabled: false });
+
+function available(
+  enabled: boolean,
+  reason?: UiPermission['reason'],
+  message?: string,
+): UiPermission {
+  return {
+    visible: true,
+    enabled,
+    reason: enabled ? undefined : reason,
+    message: enabled ? undefined : message,
+  };
+}
+
+function gatewayPermission(permitted: boolean, gatewayConnected: boolean): UiPermission {
+  if (!permitted) return hidden();
+  return available(gatewayConnected, 'gateway-disconnected', '控制通道未连接');
+}
+
+function runtimePermission(
+  permitted: boolean,
+  runtime: DeviceRuntimeCapabilities,
+  online: boolean,
+  supported = true,
+): UiPermission {
+  if (!permitted) return hidden();
+  if (!runtime.gatewayConnected)
+    return available(false, 'gateway-disconnected', '控制通道未连接');
+  if (!online) return available(false, 'device-offline', '设备当前离线');
+  if (!supported) return available(false, 'agent-unsupported', '设备 Agent 不支持此功能');
+  return available(true);
+}
+
+function hasAgentCapability(runtime: DeviceRuntimeCapabilities, capability: number): boolean {
+  return (
+    runtime.agentCapabilities === undefined ||
+    runtime.agentCapabilities === 0 ||
+    (runtime.agentCapabilities & capability) !== 0
+  );
+}
+
+export function getDeviceUiCapabilities(
+  rights: number | undefined,
+  runtime: DeviceRuntimeCapabilities,
+  server: ServerRuntimeCapabilities = {},
+): DeviceUiCapabilities {
+  if (rights === undefined) {
+    const unknown = available(false, 'permission-unknown', '正在确认设备权限');
+    return {
+      desktop: unknown,
+      desktopInput: unknown,
+      clipboardWrite: unknown,
+      terminal: unknown,
+      files: unknown,
+      console: unknown,
+      registry: unknown,
+      software: unknown,
+      command: unknown,
+      power: unknown,
+      wake: unknown,
+      guestShare: unknown,
+      uninstall: unknown,
+      edit: unknown,
+    };
+  }
+
+  const normalized = normalizeRights(rights);
+  const administrator = isFullRights(normalized);
+  const desktopAccess = getDesktopAccess(normalized);
+  const desktopOnline =
+    (runtime.agentOnline && hasAgentCapability(runtime, 1)) ||
+    (runtime.amtOnline && runtime.amtReady !== false);
+  const terminalOnline =
+    (runtime.agentOnline && hasAgentCapability(runtime, 2)) ||
+    (runtime.amtOnline && runtime.amtReady !== false);
+
+  return {
+    desktop: runtimePermission(desktopAccess !== 'denied', runtime, desktopOnline),
+    desktopInput: runtimePermission(
+      desktopAccess === 'control' || desktopAccess === 'limited-input',
+      runtime,
+      desktopOnline,
+    ),
+    clipboardWrite: runtimePermission(desktopAccess === 'control', runtime, runtime.agentOnline),
+    terminal: runtimePermission(canUseTerminal(normalized), runtime, terminalOnline),
+    files: runtimePermission(
+      canUseDeviceFiles(normalized),
+      runtime,
+      runtime.agentOnline,
+      hasAgentCapability(runtime, 4),
+    ),
+    console: runtimePermission(
+      administrator || hasMeshRight(normalized, MeshRight.AgentConsole),
+      runtime,
+      runtime.agentOnline,
+      hasAgentCapability(runtime, 8),
+    ),
+    registry: runtimePermission(
+      runtime.isWindows &&
+        (administrator ||
+          (hasMeshRight(normalized, MeshRight.RemoteControl) &&
+            !hasMeshRight(normalized, MeshRight.NoRegistry))),
+      runtime,
+      runtime.agentOnline,
+    ),
+    software: runtimePermission(
+      administrator ||
+        (hasMeshRight(normalized, MeshRight.RemoteControl) &&
+          !hasMeshRight(normalized, MeshRight.NoSoftware)),
+      runtime,
+      runtime.agentOnline,
+    ),
+    command: runtimePermission(
+      administrator || hasMeshRight(normalized, MeshRight.RemoteCommand),
+      runtime,
+      runtime.agentOnline,
+    ),
+    power: runtimePermission(
+      administrator || hasMeshRight(normalized, MeshRight.ResetOff),
+      runtime,
+      runtime.agentOnline || runtime.amtOnline,
+    ),
+    wake: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.WakeDevice),
+      runtime.gatewayConnected,
+    ),
+    guestShare:
+      server.guestDeviceSharing === false
+        ? available(false, 'feature-disabled', '服务器未启用访客分享')
+        : gatewayPermission(
+            administrator || hasMeshRight(normalized, MeshRight.GuestSharing),
+            runtime.gatewayConnected,
+          ),
+    uninstall: runtimePermission(
+      administrator || hasMeshRight(normalized, MeshRight.Uninstall),
+      runtime,
+      runtime.agentOnline,
+    ),
+    edit: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.ManageComputers),
+      runtime.gatewayConnected,
+    ),
+  };
+}
+
+export function getApplicationUiCapabilities(
+  siteRights: number | undefined,
+): ApplicationUiCapabilities {
+  const normalized = normalizeRights(siteRights);
+  const administrator = isSiteAdministrator(normalized);
+  return {
+    manageUsers: administrator || hasSiteRight(normalized, SiteRight.ManageUsers),
+    manageUserGroups: administrator || hasSiteRight(normalized, SiteRight.ManageUserGroups),
+    viewAllEvents: administrator || hasSiteRight(normalized, SiteRight.AllEvents),
+    manageSettings: administrator,
+    createDeviceGroups: administrator || !hasSiteRight(normalized, SiteRight.NoNewGroups),
+    addDevices: administrator || !hasSiteRight(normalized, SiteRight.NoNewDevices),
+  };
+}

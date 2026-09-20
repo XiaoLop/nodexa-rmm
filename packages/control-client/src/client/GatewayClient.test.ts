@@ -36,6 +36,22 @@ describe('GatewayClient', () => {
     client.destroy();
   });
 
+  it('emits normalized server information', async () => {
+    const socket = new FakeWebSocket();
+    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const serverInfo = vi.fn();
+    client.on('serverInfo', serverInfo);
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ action: 'serverinfo', features: 3, managealldevicegroups: 1 });
+    socket.message({ action: 'userinfo', userinfo: { _id: 'user//admin' } });
+    await connecting;
+    expect(serverInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ features: 3, manageAllDeviceGroups: true }),
+    );
+    client.destroy();
+  });
+
   it('rejects authentication failures', async () => {
     const socket = new FakeWebSocket();
     const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });

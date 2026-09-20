@@ -219,15 +219,17 @@ import {
    getDesktopAccess,
    hasMeshRight,
    hasSiteRight,
+   resolveEffectiveDeviceRightsResult,
 } from '@meshcentral/control-client';
 
 hasSiteRight(user.siteRights, SiteRight.ManageUsers);
 hasMeshRight(groupRights, MeshRight.ManageComputers);
 
-if (device.effectiveRights !== undefined) {
-   getDesktopAccess(device.effectiveRights);
-   canUseTerminal(device.effectiveRights);
-   canUseDeviceFiles(device.effectiveRights);
+const result = resolveEffectiveDeviceRightsResult(device, group, userInfo);
+if (result.status === 'resolved') {
+   getDesktopAccess(result.rights);
+   canUseTerminal(result.rights);
+   canUseDeviceFiles(result.rights);
 }
 ```
 
@@ -236,7 +238,8 @@ if (device.effectiveRights !== undefined) {
 - `SiteRight`、`MeshRight`：权限常量；
 - `normalizeRights()`、`composeRights()`、`hasAllRights()`：无符号 32 位基础运算；
 - `getDesktopAccess()`、`canUseTerminal()`、`canUseDeviceFiles()`：同时考虑能力位和限制位的业务判断；
-- `Device.effectiveRights`：服务端下发并由客户端标准化后的当前用户设备有效权限；
+- `resolveEffectiveDeviceRightsResult()`：根据当前用户、设备组和设备授权快照派生可诊断的有效权限；
+- `Device.effectiveRights`：保留的客户端派生字段，不再假设由服务端下发；
 - `ManagedUser.links`：权限管理界面的原始授权关系，不等同于最终有效权限。
 
 客户端判断用于界面显示、按钮禁用和授权编辑，不能替代服务端鉴权。完整使用说明见 [`packages/control-client/docs/permissions.md`](../packages/control-client/docs/permissions.md)。

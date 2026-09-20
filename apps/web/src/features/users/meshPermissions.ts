@@ -33,8 +33,8 @@ export const MESH_PERMISSIONS: MeshPermission[] = [
   { flag: 0x00000002, label: '管理组内用户', description: '添加、移除用户并修改其权限', category: 'management', risk: 'high' },
   { flag: 0x00000004, label: '管理设备', description: '编辑、删除或移动设备', category: 'management', risk: 'high' },
   { flag: 0x00000008, label: '远程桌面控制', description: '查看并控制远程桌面', category: 'access' },
-  { flag: 0x00000010, label: '终端控制台', description: '使用终端或命令 Shell', category: 'access' },
-  { flag: 0x00000020, label: '远程文件管理', description: '上传、下载和管理文件', category: 'access' },
+  { flag: 0x00000010, label: 'Mesh Agent 控制台', description: '访问 Mesh Agent 调试控制台', category: 'access' },
+  { flag: 0x00000020, label: '服务器文件空间', description: '访问服务器侧文件空间', category: 'access' },
   { flag: 0x00004000, label: '桌面通知与消息', description: '向设备发送通知和文本消息', category: 'access' },
   { flag: 0x00020000, label: '后台执行命令', description: '在设备上执行单次命令', category: 'access', risk: 'high' },
   { flag: 0x00000040, label: '唤醒设备', description: '执行 Wake-on-LAN', category: 'operations' },
@@ -70,6 +70,20 @@ const DEVICE_PERMISSION_FLAGS = new Set<number>([
   MeshRight.SetNotes,
   MeshRight.ChatNotify,
   MeshRight.Uninstall,
+  MeshRight.RemoteCommand,
+  MeshRight.ResetOff,
+  MeshRight.GuestSharing,
+  MeshRight.DeviceDetails,
+  MeshRight.Relay,
+  MeshRight.RemoteViewOnly,
+  MeshRight.NoTerminal,
+  MeshRight.NoFiles,
+  MeshRight.NoAmt,
+  MeshRight.DesktopLimitedInput,
+  MeshRight.LimitEvents,
+  MeshRight.NoDesktop,
+  MeshRight.NoRegistry,
+  MeshRight.NoSoftware,
 ]);
 
 export const DEVICE_PERMISSIONS = MESH_PERMISSIONS.filter(({ flag }) =>
@@ -80,7 +94,36 @@ export const DEVICE_PERMISSION_CATEGORIES = MESH_PERMISSION_CATEGORIES.filter(({
   DEVICE_PERMISSIONS.some((permission) => permission.category === key),
 );
 
-export const DEVICE_RIGHT_FULL = composeMeshRights(DEVICE_PERMISSIONS.map(({ flag }) => flag));
+export const DEVICE_RIGHT_FULL = composeMeshRights(
+  DEVICE_PERMISSIONS.filter(({ category }) => category !== 'restrictions').map(({ flag }) => flag),
+);
+
+export const MESH_PERMISSION_PRESETS = [
+  {
+    key: 'remote-access',
+    label: '远程桌面、终端和设备文件',
+    rights: MeshRight.RemoteControl,
+  },
+  {
+    key: 'desktop-only',
+    label: '仅远程桌面',
+    rights: MeshRight.RemoteControl | MeshRight.NoTerminal | MeshRight.NoFiles,
+  },
+  {
+    key: 'files-only',
+    label: '仅设备文件管理',
+    rights: MeshRight.RemoteControl | MeshRight.NoTerminal | MeshRight.NoDesktop,
+  },
+  {
+    key: 'desktop-readonly',
+    label: '桌面只读',
+    rights:
+      MeshRight.RemoteControl |
+      MeshRight.RemoteViewOnly |
+      MeshRight.NoTerminal |
+      MeshRight.NoFiles,
+  },
+] as const;
 
 export function summarizeMeshRights(rights: number): string {
   const normalized = normalizeMeshRights(rights);

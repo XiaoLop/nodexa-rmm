@@ -20,8 +20,10 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('MeshCentral Gateway API')
-    .setDescription('HTTP API for authentication, health checks, and MeshAgent downloads.')
+    .setTitle('MeshCentral 网关 API')
+    .setDescription(
+      'MeshCentral Web 控制台网关接口，提供用户认证、服务健康检查、MeshAgent 下载代理等能力。登录接口返回的成功结果仅表示已获得候选会话，最终认证状态需要由控制 WebSocket 验证。',
+    )
     .setVersion('0.1.0')
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

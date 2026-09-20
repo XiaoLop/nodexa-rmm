@@ -14,6 +14,12 @@ export interface Device {
   groupId?: string;
   groupName?: string;
   online: boolean;
+  connectionFlags?: number;
+  agentId?: number;
+  agentCapabilities?: number;
+  amtState?: number;
+  isWindows?: boolean;
+  grants?: Record<string, PrincipalGrant>;
   effectiveRights?: number;
   agentVersion?: string;
   platform?: string;
@@ -21,10 +27,18 @@ export interface Device {
   raw?: unknown;
 }
 
+export interface PrincipalGrant {
+  principalId: string;
+  rights: number;
+  name?: string;
+}
+
 export interface DeviceGroup {
   id: string;
   name: string;
   description?: string;
+  type?: number;
+  grants?: Record<string, PrincipalGrant>;
   raw?: unknown;
 }
 
@@ -91,11 +105,29 @@ export interface UserInfo {
   name?: string;
   email?: string;
   siteadmin?: number;
+  removeRights: number;
+  links: Record<string, UserInfoLink>;
   creationAt?: string;
   lastLoginAt?: string;
   lastAccessAt?: string;
   previousLoginAt?: string;
   language?: string;
+  raw?: unknown;
+}
+
+export interface UserInfoLink {
+  id: string;
+  type: UserLinkType;
+  rights: number;
+  name?: string;
+}
+
+export interface ServerInfo {
+  features?: number;
+  features2?: number;
+  features3?: number;
+  guestDeviceSharing?: boolean;
+  manageAllDeviceGroups?: boolean;
   raw?: unknown;
 }
 
@@ -185,6 +217,7 @@ export interface GatewayClientEvents {
   connection: ConnectionStateChange;
   event: GatewayEvent;
   userInfo: UserInfo;
+  serverInfo: ServerInfo;
   message: unknown;
   error: Error;
   diagnostic: GatewayDiagnostic;

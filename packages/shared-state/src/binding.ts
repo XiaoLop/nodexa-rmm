@@ -93,6 +93,10 @@ export function bindGatewayClient(
   const unsubscribers = [
     client.on('connection', ({ current, error }) => {
       if (!active) return;
+      if (current === 'connecting' || current === 'reconnecting') {
+        syncGeneration += 1;
+        store.getState().clearAuthorizationSnapshot();
+      }
       store.getState().setConnectionStatus(stateStatus(current), error?.message);
       store.getState().setReconnectAttempt(client.currentReconnectAttempt);
       if (current === 'connected') void sync();
@@ -105,6 +109,9 @@ export function bindGatewayClient(
     }),
     client.on('userInfo', (userInfo) => {
       if (active) store.getState().setUserInfo(userInfo);
+    }),
+    client.on('serverInfo', (serverInfo) => {
+      if (active) store.getState().setServerInfo(serverInfo);
     }),
     client.on('error', (error) => {
       if (active) store.getState().setError(error.message);

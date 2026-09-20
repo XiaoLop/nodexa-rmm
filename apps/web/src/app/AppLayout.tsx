@@ -32,12 +32,29 @@ import { isFullAdministrator } from '@meshcentral/control-client';
 import { gatewaySelectors, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/BrandLogo';
 import { useGateway } from '../features/gateway/GatewayProvider';
+import {
+  useApplicationUiCapabilities,
+  type ApplicationCapability,
+} from '../features/permissions/useUiCapabilities';
 import 'antd/dist/reset.css';
 import '../assets/styles/layout.css';
 
 const { Header, Sider, Content } = Layout;
 
-const menuItems = [
+type NavigationItem = {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  required?: ApplicationCapability;
+};
+
+type NavigationGroup = {
+  type: 'group';
+  label: string;
+  children: NavigationItem[];
+};
+
+const menuItems: Array<NavigationItem | NavigationGroup> = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
   {
     type: 'group' as const,
@@ -53,16 +70,36 @@ const menuItems = [
     children: [
       { key: '/monitoring/realtime', icon: <ThunderboltOutlined />, label: '实时事件' },
       { key: '/monitoring/alerts', icon: <BellOutlined />, label: '告警规则' },
-      { key: '/monitoring/audit', icon: <AuditOutlined />, label: '审计日志' },
+      {
+        key: '/monitoring/audit',
+        icon: <AuditOutlined />,
+        label: '审计日志',
+        required: 'viewAllEvents',
+      },
     ],
   },
   {
     type: 'group' as const,
     label: '管理',
     children: [
-      { key: '/admin/users', icon: <TeamOutlined />, label: '用户管理' },
-      { key: '/admin/roles', icon: <UserOutlined />, label: '用户组' },
-      { key: '/settings', icon: <SettingOutlined />, label: '设置' },
+      {
+        key: '/admin/users',
+        icon: <TeamOutlined />,
+        label: '用户管理',
+        required: 'manageUsers',
+      },
+      {
+        key: '/admin/roles',
+        icon: <UserOutlined />,
+        label: '用户组',
+        required: 'manageUserGroups',
+      },
+      {
+        key: '/settings',
+        icon: <SettingOutlined />,
+        label: '设置',
+        required: 'manageSettings',
+      },
     ],
   },
 ];
@@ -144,8 +181,22 @@ function AppLayoutContent() {
   const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
   const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
+  const capabilities = useApplicationUiCapabilities();
   const connected = status === 'connected';
   const pageMeta = useMemo(() => resolvePageMeta(location.pathname), [location.pathname]);
+  const visibleMenuItems = useMemo(
+    () =>
+      menuItems.flatMap<NavigationItem | NavigationGroup>((item) => {
+        if ('type' in item) {
+          const children = item.children.filter(
+            (child) => !child.required || capabilities[child.required],
+          );
+          return children.length > 0 ? [{ ...item, children }] : [];
+        }
+        return !item.required || capabilities[item.required] ? [item] : [];
+      }),
+    [capabilities],
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -169,7 +220,7 @@ function AppLayoutContent() {
           mode="inline"
           selectedKeys={[pageMeta.selectedKey]}
           onClick={({ key }) => navigate(key)}
-          items={menuItems}
+          items={visibleMenuItems}
           className="console-menu"
         />
         <button className="sider-collapse" onClick={() => setCollapsed((value) => !value)}>

@@ -18,9 +18,28 @@ describe('protocol normalizers', () => {
   it('normalizes MeshCentral resources', () => {
     expect(
       normalizeDevices({
-        'mesh//one': [{ _id: 'node//one', name: 'Server', conn: 1, agent: { ver: 123 } }],
+        'mesh//one': [
+          {
+            _id: 'node//one',
+            name: 'Server',
+            conn: 1,
+            osdesc: 'Windows 11',
+            agent: { id: 4, ver: 123, caps: 7 },
+            intelamt: { state: 2 },
+          },
+        ],
       })[0],
-    ).toMatchObject({ id: 'node//one', groupId: 'mesh//one', online: true, agentVersion: '123' });
+    ).toMatchObject({
+      id: 'node//one',
+      groupId: 'mesh//one',
+      online: true,
+      connectionFlags: 1,
+      agentId: 4,
+      agentCapabilities: 7,
+      amtState: 2,
+      isWindows: true,
+      agentVersion: '123',
+    });
     expect(
       normalizeGroups([{ _id: 'mesh//one', name: 'Servers', desc: 'Production' }])[0],
     ).toMatchObject({ id: 'mesh//one', description: 'Production' });
@@ -101,16 +120,47 @@ describe('protocol normalizers', () => {
     );
   });
 
-  it('normalizes effective device rights as unsigned masks', () => {
-    expect(
-      normalizeDevices({
-        'mesh//one': [{ _id: 'node//one', name: 'One', conn: 1, meshrights: -1 }],
-      }),
-    ).toEqual([
+  it('normalizes permission relationships without trusting meshrights', () => {
+    const devices = normalizeDevices({
+        'mesh//one': [{
+          _id: 'node//one',
+          name: 'One',
+          conn: 1,
+          meshrights: -1,
+          links: { 'ugrp//operators': { rights: -1, name: 'Operators' } },
+        }],
+      });
+    expect(devices).toEqual([
       expect.objectContaining({
         id: 'node//one',
-        effectiveRights: 0xffffffff,
+        grants: {
+          'ugrp//operators': {
+            principalId: 'ugrp//operators',
+            rights: 0xffffffff,
+            name: 'Operators',
+          },
+        },
       }),
     ]);
+    expect(devices[0]).not.toHaveProperty('effectiveRights');
+    expect(
+      normalizeUserInfo({
+        userinfo: {
+          _id: 'user//admin',
+          removeRights: -1,
+          links: { 'ugrp//operators': { rights: 1, name: 'Operators' } },
+        },
+      }),
+    ).toMatchObject({
+      removeRights: 0xffffffff,
+      links: {
+        'ugrp//operators': {
+          id: 'ugrp//operators',
+          type: 'user-group',
+          rights: 1,
+          name: 'Operators',
+        },
+      },
+    });
   });
 });

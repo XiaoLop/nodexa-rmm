@@ -26,12 +26,14 @@ function useDeviceSystemList<T>({
   deviceId,
   gatewayClient,
   gatewayConnected,
+  deviceOnline,
   type,
   parse,
 }: {
   deviceId: string;
   gatewayClient?: GatewayClient;
   gatewayConnected: boolean;
+  deviceOnline: boolean;
   type: 'ps' | 'services';
   parse: (message: unknown, deviceId: string) => T[] | undefined;
 }) {
@@ -42,7 +44,7 @@ function useDeviceSystemList<T>({
   const requestNumber = useRef(0);
 
   const load = useCallback(() => {
-    if (!gatewayClient || !gatewayConnected) return;
+    if (!gatewayClient || !gatewayConnected || !deviceOnline) return;
     const request = ++requestNumber.current;
     setLoading(true);
     setError(undefined);
@@ -86,17 +88,17 @@ function useDeviceSystemList<T>({
     } catch (caught) {
       fail(errorMessage(caught, '请求发送失败。'));
     }
-  }, [deviceId, gatewayClient, gatewayConnected, parse, type]);
+  }, [deviceId, deviceOnline, gatewayClient, gatewayConnected, parse, type]);
 
   useEffect(() => {
     setItems([]);
     setUpdatedAt(undefined);
     setError(undefined);
-    if (gatewayConnected) load();
+    if (gatewayConnected && deviceOnline) load();
     return () => {
       requestNumber.current += 1;
     };
-  }, [deviceId, gatewayConnected, load]);
+  }, [deviceId, deviceOnline, gatewayConnected, load]);
 
   return { items, loading, error, updatedAt, load };
 }
@@ -114,19 +116,23 @@ function updatedAtText(value?: Date) {
 
 function PanelAlerts({
   gatewayConnected,
+  deviceOnline,
   error,
   onRetry,
 }: {
   gatewayConnected: boolean;
+  deviceOnline: boolean;
   error?: string;
   onRetry: () => void;
 }) {
   return (
     <>
-      {!gatewayConnected && (
+      {!deviceOnline ? (
+        <Alert banner type="warning" message="设备当前离线，暂时无法读取设备数据。" />
+      ) : !gatewayConnected ? (
         <Alert banner type="warning" message="网关连接已断开，暂时无法读取设备数据。" />
-      )}
-      {error && gatewayConnected && (
+      ) : null}
+      {error && gatewayConnected && deviceOnline && (
         <Alert
           showIcon
           type="error"
@@ -143,16 +149,19 @@ export function DeviceProcessesPanel({
   device,
   gatewayClient,
   gatewayConnected,
+  deviceOnline,
 }: {
   device: Device;
   gatewayClient?: GatewayClient;
   gatewayConnected: boolean;
+  deviceOnline: boolean;
 }) {
   const [searchText, setSearchText] = useState('');
   const { items, loading, error, updatedAt, load } = useDeviceSystemList({
     deviceId: device.id,
     gatewayClient,
     gatewayConnected,
+    deviceOnline,
     type: 'ps',
     parse: parseProcessMessage,
   });
@@ -189,7 +198,7 @@ export function DeviceProcessesPanel({
           <Button
             icon={<ReloadOutlined />}
             loading={loading}
-            disabled={!gatewayClient || !gatewayConnected}
+            disabled={!gatewayClient || !gatewayConnected || !deviceOnline}
             onClick={load}
           >
             刷新
@@ -202,7 +211,12 @@ export function DeviceProcessesPanel({
         <Statistic title="当前结果" value={filteredItems.length} />
         <div><span>最近更新</span><strong>{updatedAtText(updatedAt)}</strong></div>
       </div>
-      <PanelAlerts gatewayConnected={gatewayConnected} error={error} onRetry={load} />
+      <PanelAlerts
+        gatewayConnected={gatewayConnected}
+        deviceOnline={deviceOnline}
+        error={error}
+        onRetry={load}
+      />
       <Table<DeviceProcess>
         rowKey="key"
         className="workspace-system-table"
@@ -211,7 +225,7 @@ export function DeviceProcessesPanel({
         loading={loading && items.length === 0}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, pageSizeOptions: [25, 50, 100] }}
         scroll={{ x: 760 }}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={gatewayConnected ? '暂无匹配的进程' : '正在等待网关连接'} /> }}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!deviceOnline ? '设备当前离线' : gatewayConnected ? '暂无匹配的进程' : '正在等待网关连接'} /> }}
       />
     </section>
   );
@@ -240,10 +254,12 @@ export function DeviceServicesPanel({
   device,
   gatewayClient,
   gatewayConnected,
+  deviceOnline,
 }: {
   device: Device;
   gatewayClient?: GatewayClient;
   gatewayConnected: boolean;
+  deviceOnline: boolean;
 }) {
   const [searchText, setSearchText] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
@@ -251,6 +267,7 @@ export function DeviceServicesPanel({
     deviceId: device.id,
     gatewayClient,
     gatewayConnected,
+    deviceOnline,
     type: 'services',
     parse: parseServicesMessage,
   });
@@ -309,7 +326,7 @@ export function DeviceServicesPanel({
           <Button
             icon={<ReloadOutlined />}
             loading={loading}
-            disabled={!gatewayClient || !gatewayConnected}
+            disabled={!gatewayClient || !gatewayConnected || !deviceOnline}
             onClick={load}
           >
             刷新
@@ -322,7 +339,12 @@ export function DeviceServicesPanel({
         <Statistic title="已停止" value={stoppedCount} />
         <div><span>最近更新</span><strong>{updatedAtText(updatedAt)}</strong></div>
       </div>
-      <PanelAlerts gatewayConnected={gatewayConnected} error={error} onRetry={load} />
+      <PanelAlerts
+        gatewayConnected={gatewayConnected}
+        deviceOnline={deviceOnline}
+        error={error}
+        onRetry={load}
+      />
       <Table<DeviceService>
         rowKey="name"
         className="workspace-system-table"
@@ -331,7 +353,7 @@ export function DeviceServicesPanel({
         loading={loading && items.length === 0}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, pageSizeOptions: [25, 50, 100] }}
         scroll={{ x: 900 }}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={gatewayConnected ? '暂无匹配的服务' : '正在等待网关连接'} /> }}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!deviceOnline ? '设备当前离线' : gatewayConnected ? '暂无匹配的服务' : '正在等待网关连接'} /> }}
       />
     </section>
   );

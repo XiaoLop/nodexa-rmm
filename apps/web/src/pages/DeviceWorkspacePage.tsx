@@ -4,6 +4,11 @@ import {
   DesktopOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+import {
+  MeshRight,
+  hasMeshRight,
+  resolveEffectiveDeviceRights,
+} from '@meshcentral/control-client';
 import { Button, Empty, message } from 'antd';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -14,12 +19,19 @@ import {
   DeviceProcessesPanel,
   DeviceServicesPanel,
 } from '../components/device-workspace/SystemManagementPanels';
-import { WorkspaceSettings, type WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
-import { WorkspaceTabs } from '../components/device-workspace/WorkspaceTabs';
+import {
+  WorkspaceSettings,
+  type WorkspaceSettingsValue,
+} from '../components/device-workspace/WorkspaceSettings';
+import {
+  WorkspaceTabs,
+  workspaceTabPermission,
+} from '../components/device-workspace/WorkspaceTabs';
 import type { RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel.ts';
 import type { WorkspaceTab } from '../features/device-workspace/types';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { getDeviceCapabilities } from '../features/permissions/useUiCapabilities';
 import '../assets/styles/device-workspace.css';
 
 const DeviceFilesPanel = lazy(() =>
@@ -64,7 +76,8 @@ export function DeviceWorkspacePage() {
   const activeTab = workspaceTab(searchParams.get('tab'));
   const [scale, setScale] = useState('fit');
   const [desktopSessionActive, setDesktopSessionActive] = useState(false);
-  const [deviceDetails, setDeviceDetails] = useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
+  const [deviceDetails, setDeviceDetails] =
+    useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
   const [desktopLatency, setDesktopLatency] = useState<number>();
   const [desktopLatencyTrend, setDesktopLatencyTrend] = useState<number[]>([]);
   const [desktopLatencyTimedOut, setDesktopLatencyTimedOut] = useState(false);
@@ -93,13 +106,33 @@ export function DeviceWorkspacePage() {
         if (!cancelled) setDeviceDetails(details);
       })
       .catch(() => undefined);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [data.client, data.status, device?.id, deviceId]);
   const model = useMemo(() => {
     if (!device) return undefined;
     const groupName = data.groups.find((group) => group.id === device.groupId)?.name;
     return createDeviceWorkspaceModel(device, deviceDetails, groupName);
   }, [data.groups, device, deviceDetails]);
+  const deviceGroup = data.groups.find((group) => group.id === device?.groupId);
+  const capabilities = useMemo(
+    () =>
+      device
+        ? getDeviceCapabilities(device, data.status === 'connected', {
+            group: deviceGroup,
+            userInfo: data.userInfo,
+            serverInfo: data.serverInfo,
+          })
+        : undefined,
+    [data.serverInfo, data.status, data.userInfo, device, deviceGroup],
+  );
+  const remoteControlAllowed = device
+    ? hasMeshRight(
+        resolveEffectiveDeviceRights(device, deviceGroup, data.userInfo) ?? 0,
+        MeshRight.RemoteControl,
+      )
+    : false;
   const setActiveTab = (tab: WorkspaceTab) => {
     const next = new URLSearchParams(searchParams);
     if (tab === 'overview') next.delete('tab');
@@ -109,7 +142,8 @@ export function DeviceWorkspacePage() {
   const handleDesktopLatencyChange = (latencyMs: number | undefined) => {
     setDesktopLatency(latencyMs);
     setDesktopLatencyTimedOut(latencyMs === undefined);
-    if (latencyMs !== undefined) setDesktopLatencyTrend((current) => [...current.slice(-19), latencyMs]);
+    if (latencyMs !== undefined)
+      setDesktopLatencyTrend((current) => [...current.slice(-19), latencyMs]);
   };
   const handleDesktopSessionActiveChange = (active: boolean) => {
     setDesktopSessionActive(active);
@@ -120,6 +154,16 @@ export function DeviceWorkspacePage() {
     }
   };
 
+  useEffect(() => {
+    if (!capabilities) return;
+    const permission = workspaceTabPermission(
+      activeTab,
+      capabilities,
+      remoteControlAllowed,
+    );
+    if (permission && !permission.visible) setActiveTab('overview');
+  }, [activeTab, capabilities, remoteControlAllowed]);
+
   if (workspaceLoading) {
     return (
       <main
@@ -128,7 +172,10 @@ export function DeviceWorkspacePage() {
         aria-label="正在加载设备工作区"
       >
         {messageContextHolder}
-        <header className="workspace-device-header console-card workspace-loading-header" aria-hidden="true">
+        <header
+          className="workspace-device-header console-card workspace-loading-header"
+          aria-hidden="true"
+        >
           <div className="workspace-device-identity">
             <span className="workspace-device-icon workspace-loading-device-icon">
               <DesktopOutlined />
@@ -147,7 +194,9 @@ export function DeviceWorkspacePage() {
             {[ThunderboltOutlined, AppstoreOutlined, DatabaseOutlined, DesktopOutlined].map(
               (MetricIcon, index) => (
                 <div className="workspace-header-metric workspace-loading-metric" key={index}>
-                  <span><MetricIcon /> <i className="workspace-loading-line is-metric-label" /></span>
+                  <span>
+                    <MetricIcon /> <i className="workspace-loading-line is-metric-label" />
+                  </span>
                   <i className="workspace-loading-line is-metric-value" />
                   <i className="workspace-loading-line is-metric-note" />
                 </div>
@@ -164,7 +213,9 @@ export function DeviceWorkspacePage() {
         </header>
 
         <div className="workspace-tabs workspace-loading-tabs" aria-hidden="true">
-          {Array.from({ length: 9 }, (_, index) => <span className={index === 0 ? 'is-active' : ''} key={index} />)}
+          {Array.from({ length: 9 }, (_, index) => (
+            <span className={index === 0 ? 'is-active' : ''} key={index} />
+          ))}
         </div>
 
         <section className="workspace-overview workspace-loading-overview" aria-hidden="true">
@@ -218,7 +269,7 @@ export function DeviceWorkspacePage() {
     );
   }
 
-  if (!model) {
+  if (!model || !capabilities) {
     return (
       <section className="console-card workspace-missing">
         {messageContextHolder}
@@ -235,7 +286,12 @@ export function DeviceWorkspacePage() {
     <main className="device-workspace-page page-stack">
       {messageContextHolder}
       <DeviceWorkspaceHeader model={model} />
-      <WorkspaceTabs active={activeTab} onChange={setActiveTab} />
+      <WorkspaceTabs
+        active={activeTab}
+        onChange={setActiveTab}
+        capabilities={capabilities}
+        remoteControlAllowed={remoteControlAllowed}
+      />
       <Suspense fallback={<WorkspacePanelLoading />}>
         {activeTab === 'overview' ? (
           <DeviceOverviewPanel
@@ -265,7 +321,9 @@ export function DeviceWorkspacePage() {
             <WorkspaceSettings
               value={settings}
               onChange={setSettings}
-              controlAvailable={model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'}
+              controlAvailable={
+                model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'
+              }
               sessionActive={desktopSessionActive}
               latency={desktopLatency}
               latencyTrend={desktopLatencyTrend}
@@ -292,12 +350,14 @@ export function DeviceWorkspacePage() {
             device={model.device}
             gatewayClient={data.client}
             gatewayConnected={data.status === 'connected'}
+            deviceOnline={model.device.online}
           />
         ) : activeTab === 'services' ? (
           <DeviceServicesPanel
             device={model.device}
             gatewayClient={data.client}
             gatewayConnected={data.status === 'connected'}
+            deviceOnline={model.device.online}
           />
         ) : activeTab === 'logs' ? (
           <DeviceLogsPanel
@@ -309,7 +369,9 @@ export function DeviceWorkspacePage() {
         ) : (
           <section className="console-card workspace-tab-empty">
             <Empty description="该工作区将在后续版本接入">
-              <Button type="primary" onClick={() => setActiveTab('overview')}>回到概览</Button>
+              <Button type="primary" onClick={() => setActiveTab('overview')}>
+                回到概览
+              </Button>
             </Empty>
           </section>
         )}

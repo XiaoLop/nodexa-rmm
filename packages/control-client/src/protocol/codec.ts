@@ -1,5 +1,11 @@
-import type { GatewayEvent, UserInfo } from '../types';
-import { isRecord, normalizeEvent, normalizeUserInfo, stringValue } from './normalizers';
+import type { GatewayEvent, ServerInfo, UserInfo } from '../types';
+import {
+  isRecord,
+  normalizeEvent,
+  normalizeServerInfo,
+  normalizeUserInfo,
+  stringValue,
+} from './normalizers';
 
 export type ConnectionInspection =
   | { status: 'pending'; signal?: string }
@@ -9,6 +15,7 @@ export type ConnectionInspection =
 export interface DecodedPush {
   event?: GatewayEvent;
   userInfo?: UserInfo;
+  serverInfo?: ServerInfo;
   unknown?: boolean;
 }
 
@@ -35,6 +42,8 @@ export function inspectConnectionMessage(payload: unknown): ConnectionInspection
 
 export function decodePush(payload: unknown): DecodedPush {
   if (!isRecord(payload)) return { unknown: true };
+  if (payload.action === 'serverinfo' || isRecord(payload.serverinfo))
+    return { serverInfo: normalizeServerInfo(payload) };
   if (payload.action === 'userinfo' || isRecord(payload.userinfo))
     return { userInfo: normalizeUserInfo(payload) };
   const raw = isRecord(payload.event) ? payload.event : payload;

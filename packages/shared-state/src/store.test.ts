@@ -111,6 +111,8 @@ describe('gateway store', () => {
       name: '系统管理员',
       email: 'admin@example.com',
       siteadmin: 1,
+      removeRights: 0,
+      links: {},
       creationAt: '2023-11-14T22:13:20.000Z',
       lastLoginAt: '2024-03-09T16:00:00.000Z',
       lastAccessAt: '2024-03-09T16:01:40.000Z',
@@ -128,6 +130,21 @@ describe('gateway store', () => {
       lastAccessAt: '2024-03-09T16:01:40.000Z',
       previousLoginAt: '2024-02-27T02:13:20.000Z',
       language: 'zh-cn',
+    });
+  });
+
+  it('clears authorization snapshots between sessions', () => {
+    const store = createGatewayStore();
+    store.getState().replaceDevices([{ id: 'node-1', name: 'One', online: true }]);
+    store.getState().replaceGroups([{ id: 'mesh-1', name: 'One' }]);
+    store.getState().setUserInfo({ id: 'user-1', removeRights: 0, links: {} });
+    store.getState().setServerInfo({ features: 1 });
+    store.getState().clearAuthorizationSnapshot();
+    expect(store.getState()).toMatchObject({
+      devices: {},
+      groups: {},
+      userInfo: undefined,
+      serverInfo: undefined,
     });
   });
 

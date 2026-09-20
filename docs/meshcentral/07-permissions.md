@@ -313,7 +313,8 @@ hasSiteRight(currentUser.siteadmin ?? 0, SiteRight.ManageUsers);
 normalizeRights(-1); // 4294967295
 
 const devices = await client.devices.list();
-const rights = devices[0]?.effectiveRights;
+const result = resolveEffectiveDeviceRightsResult(devices[0], group, currentUser);
+const rights = result.rights;
 
 if (rights !== undefined) {
   getDesktopAccess(rights); // denied | view-only | limited-input | control
@@ -330,9 +331,9 @@ if (rights !== undefined) {
 - `MESHRIGHT_SERVERFILES` 只控制 MeshCentral 服务器端设备组文件空间。
 - 桌面访问还需要处理 `NODESKTOP`、`REMOTEVIEWONLY` 和 `DESKLIMITEDINPUT` 的优先级。
 
-### 不在客户端重算完整有效权限
+### 根据可见快照派生有效权限
 
-客户端不应通过 `user.links` 自行实现完整的 `GetMeshRights()` 或 `GetNodeRights()`。服务端计算还涉及用户组授权、单设备授权、域范围、`managealldevicegroups`、可见性以及 `user.removeRights`。
+当前服务端不会在 `nodes` 中提供可直接使用的 `meshrights`。客户端只对服务端已返回的设备，根据 `userinfo.links`、`mesh.links`、`node.links` 和用户组授权派生权限，不自行扩大设备可见范围。
 
 尤其不能使用以下简化逻辑：
 
@@ -340,6 +341,6 @@ if (rights !== undefined) {
 effectiveRights &= ~user.removeRights;
 ```
 
-MeshCentral 的 `removeRights` 会清除部分正向能力位，同时注入 `NoDesktop`、`NoTerminal`、`NoFiles` 等限制位；对管理员权限还会先展开明确能力。因此界面应优先使用设备列表标准化后的 `Device.effectiveRights`，所有实际操作仍由服务端执行最终鉴权。
+MeshCentral 的 `removeRights` 会清除部分正向能力位，同时注入 `NoDesktop`、`NoTerminal`、`NoFiles` 等限制位。客户端使用 `resolveEffectiveDeviceRightsResult()` 生成可诊断结果；数据不完整时保持未知并禁用敏感操作。所有实际操作仍由服务端执行最终鉴权。
 
 完整 API 说明见 [`packages/control-client/docs/permissions.md`](../packages/control-client/docs/permissions.md)。

@@ -26,6 +26,7 @@ export function useGatewayData() {
   const status = useGatewayStore(gateway.store, gatewaySelectors.status);
   const error = useGatewayStore(gateway.store, gatewaySelectors.error);
   const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
+  const serverInfo = useGatewayStore(gateway.store, gatewaySelectors.serverInfo);
   const reconnectAttempt = useGatewayStore(gateway.store, gatewaySelectors.reconnectAttempt);
   const lastConnectedAt = useGatewayStore(gateway.store, (state) => state.lastConnectedAt);
   const lastMessageAt = useGatewayStore(gateway.store, (state) => state.lastMessageAt);
@@ -35,6 +36,7 @@ export function useGatewayData() {
     groups,
     events,
     userInfo,
+    serverInfo,
     status,
     error,
     reconnectAttempt,

@@ -1,4 +1,10 @@
-import type { Device, DeviceGroup, GatewayEvent, UserInfo } from '@meshcentral/control-client';
+import type {
+  Device,
+  DeviceGroup,
+  GatewayEvent,
+  ServerInfo,
+  UserInfo,
+} from '@meshcentral/control-client';
 
 export type {
   Device,
@@ -6,6 +12,7 @@ export type {
   GatewayEvent,
   GatewayEventType,
   GatewaySnapshot,
+  ServerInfo,
   UserInfo,
 } from '@meshcentral/control-client';
 
@@ -18,6 +25,7 @@ export interface GatewayState {
   groups: Record<string, DeviceGroup>;
   events: GatewayEvent[];
   userInfo?: UserInfo;
+  serverInfo?: ServerInfo;
   reconnectAttempt: number;
   lastConnectedAt?: string;
   lastMessageAt?: string;
@@ -31,6 +39,8 @@ export interface GatewayState {
   removeDevice: (deviceId: string) => void;
   appendEvent: (event: GatewayEvent) => void;
   setUserInfo: (userInfo?: UserInfo) => void;
+  setServerInfo: (serverInfo?: ServerInfo) => void;
+  clearAuthorizationSnapshot: () => void;
   touchMessage: () => void;
   reset: () => void;
 }

@@ -6,6 +6,7 @@ import {
   DEVICE_PERMISSION_CATEGORIES,
   DEVICE_PERMISSIONS,
   DEVICE_RIGHT_FULL,
+  MESH_PERMISSION_PRESETS,
   composeMeshRights,
   normalizeMeshRights,
 } from '../../features/users/meshPermissions';
@@ -164,7 +165,30 @@ export function DevicePermissionModal({
           ) : null}
         </div>
 
-        {fullAccess ? <Alert showIcon type="warning" message="将授予服务端支持的全部单设备权限（49400）。" /> : null}
+        {!fullAccess ? (
+          <div className="mesh-permission-field">
+            <span className="mesh-permission-field-label">常用预设</span>
+            <Select
+              style={{ flex: 1 }}
+              placeholder="选择权限组合"
+              options={MESH_PERMISSION_PRESETS.map((preset) => ({
+                value: preset.key,
+                label: preset.label,
+              }))}
+              onChange={(key) => {
+                const preset = MESH_PERMISSION_PRESETS.find((item) => item.key === key);
+                if (!preset) return;
+                setSelectedFlags(
+                  DEVICE_PERMISSIONS.filter(({ flag }) => (preset.rights & flag) === flag).map(
+                    ({ flag }) => flag,
+                  ),
+                );
+              }}
+            />
+          </div>
+        ) : null}
+
+        {fullAccess ? <Alert showIcon type="warning" message="将授予全部正向单设备权限，不包含限制项。" /> : null}
 
         <div className="mesh-permission-body">
           <Checkbox.Group

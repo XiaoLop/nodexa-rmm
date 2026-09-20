@@ -1,0 +1,97 @@
+import { describe, expect, it } from 'vitest';
+import { MeshRight } from './meshRights';
+import { SiteRight } from './siteRights';
+import { getApplicationUiCapabilities, getDeviceUiCapabilities } from './uiCapabilities';
+
+const onlineRuntime = {
+  gatewayConnected: true,
+  agentOnline: true,
+  amtOnline: false,
+  agentCapabilities: 1 | 2 | 4 | 8,
+  isWindows: true,
+};
+
+describe('getDeviceUiCapabilities', () => {
+  it('hides operations without the required device rights', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.RemoteControl, onlineRuntime);
+
+    expect(capabilities.desktop).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.terminal).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.command).toEqual({ visible: false, enabled: false });
+    expect(capabilities.edit).toEqual({ visible: false, enabled: false });
+  });
+
+  it('keeps permitted operations visible but disabled while offline', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.RemoteCommand | MeshRight.ResetOff, {
+      ...onlineRuntime,
+      agentOnline: false,
+    });
+
+    expect(capabilities.command).toEqual({
+      visible: true,
+      enabled: false,
+      reason: 'device-offline',
+      message: '设备当前离线',
+    });
+    expect(capabilities.power.enabled).toBe(false);
+  });
+
+  it('applies desktop and file restriction bits', () => {
+    const capabilities = getDeviceUiCapabilities(
+      MeshRight.RemoteControl | MeshRight.RemoteViewOnly | MeshRight.NoFiles | MeshRight.NoTerminal,
+      onlineRuntime,
+    );
+
+    expect(capabilities.desktop.visible).toBe(true);
+    expect(capabilities.desktopInput.visible).toBe(false);
+    expect(capabilities.clipboardWrite.visible).toBe(false);
+    expect(capabilities.terminal.visible).toBe(false);
+    expect(capabilities.files.visible).toBe(false);
+  });
+
+  it('disables an allowed feature when the agent capability is absent', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.RemoteControl, {
+      ...onlineRuntime,
+      agentCapabilities: 1 | 2,
+    });
+
+    expect(capabilities.files).toEqual({
+      visible: true,
+      enabled: false,
+      reason: 'agent-unsupported',
+      message: '设备 Agent 不支持此功能',
+    });
+  });
+
+  it('disables guest sharing when the server explicitly disables it', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.GuestSharing, onlineRuntime, {
+      guestDeviceSharing: false,
+    });
+    expect(capabilities.guestShare).toEqual({
+      visible: true,
+      enabled: false,
+      reason: 'feature-disabled',
+      message: '服务器未启用访客分享',
+    });
+  });
+});
+
+describe('getApplicationUiCapabilities', () => {
+  it('derives management routes from site rights', () => {
+    const capabilities = getApplicationUiCapabilities(
+      SiteRight.ManageUsers | SiteRight.ManageUserGroups | SiteRight.NoNewDevices,
+    );
+
+    expect(capabilities.manageUsers).toBe(true);
+    expect(capabilities.manageUserGroups).toBe(true);
+    expect(capabilities.manageSettings).toBe(false);
+    expect(capabilities.addDevices).toBe(false);
+    expect(capabilities.createDeviceGroups).toBe(true);
+  });
+
+  it('grants all application capabilities to a site administrator', () => {
+    expect(Object.values(getApplicationUiCapabilities(SiteRight.Administrator))).not.toContain(
+      false,
+    );
+  });
+});

@@ -1,6 +1,11 @@
+import { Result } from 'antd';
 import { lazy, Suspense, type PropsWithChildren } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
+import {
+  useApplicationUiCapabilities,
+  type ApplicationCapability,
+} from '../features/permissions/useUiCapabilities';
 import { AppBootScreen, LoginPage } from '../pages/LoginPage';
 
 const AppLayout = lazy(() =>
@@ -17,7 +22,9 @@ const DeviceGroupsPage = lazy(() =>
   import('../pages/DeviceGroupsPage').then((module) => ({ default: module.DeviceGroupsPage })),
 );
 const DeviceWorkspacePage = lazy(() =>
-  import('../pages/DeviceWorkspacePage').then((module) => ({ default: module.DeviceWorkspacePage })),
+  import('../pages/DeviceWorkspacePage').then((module) => ({
+    default: module.DeviceWorkspacePage,
+  })),
 );
 const DevicesPage = lazy(() =>
   import('../pages/DevicesPage').then((module) => ({ default: module.DevicesPage })),
@@ -53,6 +60,17 @@ function ProtectedRoute({ children }: PropsWithChildren) {
   return children;
 }
 
+function RequireCapability({
+  capability,
+  children,
+}: PropsWithChildren<{ capability: ApplicationCapability }>) {
+  const capabilities = useApplicationUiCapabilities();
+  if (!capabilities[capability]) {
+    return <Result status="403" title="无权访问" subTitle="当前账户没有访问此页面的权限。" />;
+  }
+  return children;
+}
+
 export function AppRouter() {
   return (
     <Suspense fallback={<AppBootScreen />}>
@@ -72,14 +90,57 @@ export function AppRouter() {
           <Route path="/devices/:deviceId/workspace" element={<DeviceWorkspacePage />} />
           <Route path="/devices/*" element={<ComingSoonPage />} />
           <Route path="/monitoring/realtime" element={<RealtimeEventsPage />} />
+          <Route
+            path="/monitoring/audit"
+            element={
+              <RequireCapability capability="viewAllEvents">
+                <ComingSoonPage />
+              </RequireCapability>
+            }
+          />
           <Route path="/monitoring/*" element={<ComingSoonPage />} />
           <Route path="/remote/*" element={<ComingSoonPage />} />
-          <Route path="/admin/users" element={<UsersPage />} />
-          <Route path="/admin/users/:userId" element={<UserDetailsPage />} />
-          <Route path="/admin/roles" element={<UserGroupsPage />} />
-          <Route path="/admin/roles/:userGroupId" element={<UserGroupDetailsPage />} />
+          <Route
+            path="/admin/users"
+            element={
+              <RequireCapability capability="manageUsers">
+                <UsersPage />
+              </RequireCapability>
+            }
+          />
+          <Route
+            path="/admin/users/:userId"
+            element={
+              <RequireCapability capability="manageUsers">
+                <UserDetailsPage />
+              </RequireCapability>
+            }
+          />
+          <Route
+            path="/admin/roles"
+            element={
+              <RequireCapability capability="manageUserGroups">
+                <UserGroupsPage />
+              </RequireCapability>
+            }
+          />
+          <Route
+            path="/admin/roles/:userGroupId"
+            element={
+              <RequireCapability capability="manageUserGroups">
+                <UserGroupDetailsPage />
+              </RequireCapability>
+            }
+          />
           <Route path="/admin/*" element={<ComingSoonPage />} />
-          <Route path="/settings/*" element={<ComingSoonPage />} />
+          <Route
+            path="/settings/*"
+            element={
+              <RequireCapability capability="manageSettings">
+                <ComingSoonPage />
+              </RequireCapability>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

@@ -77,6 +77,8 @@ export interface DeviceHardwareInfo {
 export interface DeviceWorkspaceModel {
   device: Device;
   details?: DeviceDetails;
+  hasSystemDetails: boolean;
+  hasNetworkDetails: boolean;
   hostname: string;
   platform: string;
   ipAddress: string;

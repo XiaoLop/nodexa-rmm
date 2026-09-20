@@ -10,10 +10,11 @@
 | --- | --- | --- |
 | 当前用户站点权限 | `UserInfo.siteadmin` | 来自 `userinfo` 消息，目前保留服务端字段名 |
 | 可管理用户站点权限 | `ManagedUser.siteRights` | 来自用户对象的 `siteadmin` |
-| 用户关联权限 | `ManagedUser.links[].rights` | 设备组、用户组或单设备关联的原始授权掩码 |
-| 当前用户设备有效权限 | `Device.effectiveRights` | 优先读取节点的 `effectiveRights`，兼容 `meshrights` |
+| 当前用户关联权限 | `UserInfo.links` | 当前用户的设备组、设备和用户组关联 |
+| 设备组/设备授权 | `DeviceGroup.grants` / `Device.grants` | 用户和用户组对当前可见资产的授权关系 |
+| 当前用户设备有效权限 | `resolveEffectiveDeviceRightsResult()` | 根据当前用户、设备组和设备快照在客户端派生 |
 
-`Device.effectiveRights` 应作为界面判断当前用户设备能力的首选输入。它表示服务端已经计算或下发的权限，不要求调用方遍历用户组和节点链接。
+服务端 `nodes` 响应不被假设包含 `meshrights` 或其他已计算权限。客户端只为服务端已经返回的设备计算有效权限，不使用缓存扩展资产可见范围。
 
 ## 32 位位掩码
 
@@ -63,7 +64,7 @@ const nextRights = setSiteAccountLocked(user.siteRights, true);
 
 ## 设备组与设备权限
 
-`MeshRight` 包含 `MESHRIGHT_*` 常量，可用于解析设备组和单设备权限。但两类授权的可写范围不同：设备组可使用完整权限集合，`adddeviceuser` 单设备授权只接受远程控制、Agent 控制台、服务器文件、唤醒、设置备注、聊天通知和卸载 Agent。单设备全部权限组合值是 `49400`，不能发送 `0xffffffff`。
+`MeshRight` 包含 `MESHRIGHT_*` 常量，可用于解析设备组和单设备权限。授权编辑器发送标准权限位组合；普通终端和设备文件不是独立正向位，而是 `RemoteControl` 分别未被 `NoTerminal`、`NoFiles` 限制时可用。
 
 ```ts
 import {
@@ -89,6 +90,7 @@ normalizeMeshRights(-1); // MeshRight.Administrator
 
 ```ts
 import {
+  resolveEffectiveDeviceRightsResult,
   canUseAgentConsole,
   canUseDeviceFiles,
   canUseServerFiles,
@@ -96,7 +98,8 @@ import {
   getDesktopAccess,
 } from '@meshcentral/control-client';
 
-const rights = device.effectiveRights;
+const result = resolveEffectiveDeviceRightsResult(device, group, userInfo);
+const rights = result.rights;
 
 if (rights !== undefined) {
   const desktop = getDesktopAccess(rights);
@@ -125,22 +128,23 @@ if (rights !== undefined) {
 
 ## 有效权限边界
 
-客户端不会完整复刻服务端的 `GetMeshRights()` 和 `GetNodeRights()`。真实有效权限还可能涉及：
+客户端根据当前会话中服务端返回的可见快照计算设备有效权限，计算输入包括：
 
 - 用户对设备组的直接授权；
 - 用户组对设备组的授权；
 - 用户对单设备的直接授权；
 - 用户组对单设备的授权；
-- 站点管理员和 `managealldevicegroups` 配置；
 - `user.removeRights` 全局限制；
-- 域、设备可见性和服务端版本行为。
+- 当前用户所属用户组。
+
+`userinfo.links[ugrpId].rights` 只是成员关系标记，不会直接并入设备权限。用户组设备权限从 `DeviceGroup.grants[ugrpId]` 和 `Device.grants[ugrpId]` 读取。`siteadmin` 也不会自动转换为设备完全权限。
 
 `removeRights` 也不能简单实现为 `rights &= ~removeRights`。MeshCentral 会清除部分正向能力位，并注入 `NoDesktop`、`NoTerminal`、`NoFiles` 等限制位；设备组管理员权限还会先展开为一组明确能力。
 
 因此客户端遵循以下原则：
 
 1. 服务端授权是唯一安全边界，所有操作仍由服务端最终拒绝或允许。
-2. 当前用户的设备界面优先使用 `Device.effectiveRights`。
+2. 当前用户的设备界面使用 `resolveEffectiveDeviceRightsResult()` 的派生结果；缺少用户、设备组或授权快照时保持未知并禁用操作。
 3. `ManagedUser.links` 适合权限管理界面展示原始授权，不应单独当作最终有效权限。
 4. 客户端能力判断用于隐藏、禁用或标记界面状态，不用于建立安全保证。
 

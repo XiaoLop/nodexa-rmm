@@ -48,6 +48,10 @@ import {
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
+import {
+  getDeviceCapabilities,
+  useApplicationUiCapabilities,
+} from '../features/permissions/useUiCapabilities';
 import { DeviceEditModal } from '../components/DeviceEditModal';
 import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent 安装引导弹窗
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
@@ -61,6 +65,8 @@ import '../assets/styles/device-details.css';
 import '../assets/styles/devices.css';
 
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
+
+const UNGROUPED_GROUP_ID = '__ungrouped__';
 
 const powerActionLabels: Record<PowerAction, string> = {
   wake: '唤醒',
@@ -167,9 +173,12 @@ export function DevicesPage() {
   const gateway = useGateway();
   const devices = useGatewayStore(gateway.store, gatewaySelectors.devices);
   const groups = useGatewayStore(gateway.store, gatewaySelectors.groups);
+  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
+  const serverInfo = useGatewayStore(gateway.store, gatewaySelectors.serverInfo);
   const status = useGatewayStore(gateway.store, gatewaySelectors.status);
   const deferredDevices = useDeferredValue(devices, []);
   const { client, refreshSnapshot } = gateway;
+  const applicationCapabilities = useApplicationUiCapabilities();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const navigate = useNavigate();
@@ -210,6 +219,16 @@ export function DevicesPage() {
     () => new Map(groups.map((group) => [group.id, group.name])),
     [groups],
   );
+  const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
+  const deviceCapabilities = useCallback(
+    (device: Device) =>
+      getDeviceCapabilities(device, status === 'connected', {
+        group: groupById.get(device.groupId ?? ''),
+        userInfo,
+        serverInfo,
+      }),
+    [groupById, serverInfo, status, userInfo],
+  );
 
   useEffect(() => {
     const next = new URLSearchParams();
@@ -229,8 +248,10 @@ export function DevicesPage() {
 
   const runPowerAction = useCallback(
     (device: Device, action: PowerAction) => {
-      if (!client || status !== 'connected') {
-        void messageApi.error('网关未连接，无法发送设备指令');
+      const capabilities = deviceCapabilities(device);
+      const permission = action === 'wake' ? capabilities.wake : capabilities.power;
+      if (!client || !permission.enabled) {
+        void messageApi.error(permission.message ?? '当前账户无权执行此电源操作');
         return;
       }
 
@@ -252,7 +273,7 @@ export function DevicesPage() {
         },
       });
     },
-    [client, messageApi, modal, status],
+    [client, deviceCapabilities, messageApi, modal],
   );
 
   const platforms = useMemo(
@@ -285,20 +306,36 @@ export function DevicesPage() {
           rawString(device, 'ip'),
           rawString(device, 'host'),
         ].some((value) => value?.toLowerCase().includes(normalized));
-      const matchesGroup = !groupId || device.groupId === groupId;
+      const matchesGroup =
+        !groupId ||
+        (groupId === UNGROUPED_GROUP_ID
+          ? !device.groupId || !groupById.has(device.groupId)
+          : device.groupId === groupId);
       const matchesOnline = online === 'all' || device.online === (online === 'online');
       const matchesPlatform = platform === 'all' || device.platform === platform;
       return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
     });
-  }, [deferredDevices, groupId, online, platform, query]);
+  }, [deferredDevices, groupById, groupId, online, platform, query]);
 
-  const openDeviceEditor = useCallback((device: Device) => {
-    setEditingDevice(device);
-  }, []);
+  const openDeviceEditor = useCallback(
+    (device: Device) => {
+      const permission = deviceCapabilities(device).edit;
+      if (!permission.enabled) {
+        void messageApi.warning(permission.message ?? '当前账户无权编辑此设备');
+        return;
+      }
+      setEditingDevice(device);
+    },
+    [deviceCapabilities, messageApi],
+  );
 
   const confirmDeviceDeletion = useCallback(
     (device: Device) => {
-      if (!client) return;
+      const permission = deviceCapabilities(device).uninstall;
+      if (!client || !permission.enabled) {
+        void messageApi.warning(permission.message ?? '当前账户无权删除此设备');
+        return;
+      }
       modal.confirm({
         title: '删除设备',
         content: (
@@ -328,7 +365,7 @@ export function DevicesPage() {
         },
       });
     },
-    [client, groupNameById, messageApi, modal, refreshSnapshot],
+    [client, deviceCapabilities, groupNameById, messageApi, modal, refreshSnapshot],
   );
 
   const openInviteModal = () => {
@@ -343,7 +380,13 @@ export function DevicesPage() {
       return;
     }
     const selected = new Set(selectedDeviceIds.map(String));
-    const snapshots = devices.filter((device) => selected.has(device.id)).map(snapshotDevice);
+    const snapshots = devices
+      .filter(
+        (device) =>
+          selected.has(device.id) &&
+          deviceCapabilities(device).files.enabled,
+      )
+      .map(snapshotDevice);
     if (!snapshots.length) return;
     batchUploadManager.reset();
     batchUploadManager.configure(snapshots);
@@ -355,6 +398,28 @@ export function DevicesPage() {
     const selected = new Set(selectedDeviceIds.map(String));
     return devices.filter((device) => selected.has(device.id));
   }, [devices, selectedDeviceIds]);
+  const selectedCapabilities = useMemo(
+    () =>
+      selectedDevices.map((device) => ({
+        device,
+        capabilities: deviceCapabilities(device),
+      })),
+    [deviceCapabilities, selectedDevices],
+  );
+  const commandTargets = useMemo(
+    () =>
+      selectedCapabilities
+        .filter(({ capabilities }) => capabilities.command.enabled)
+        .map(({ device }) => device),
+    [selectedCapabilities],
+  );
+  const fileTargets = useMemo(
+    () =>
+      selectedCapabilities
+        .filter(({ capabilities }) => capabilities.files.enabled)
+        .map(({ device }) => device),
+    [selectedCapabilities],
+  );
 
   const handleBatchOperationCompleted = (successfulDeviceIds: string[]) => {
     const successful = new Set(successfulDeviceIds);
@@ -367,9 +432,12 @@ export function DevicesPage() {
 
   const confirmBatchPowerAction = (action: PowerAction) => {
     if (!client || status !== 'connected' || !selectedDevices.length) return;
-    const targets =
-      action === 'wake' ? selectedDevices : selectedDevices.filter((device) => device.online);
-    const offlineCount = selectedDevices.length - targets.length;
+    const targets = selectedCapabilities
+      .filter(({ capabilities }) =>
+        action === 'wake' ? capabilities.wake.enabled : capabilities.power.enabled,
+      )
+      .map(({ device }) => device);
+    const skippedCount = selectedDevices.length - targets.length;
     const label = powerActionLabels[action];
     modal.confirm({
       title: `批量${label}`,
@@ -378,7 +446,7 @@ export function DevicesPage() {
           <p>
             确定要对 {targets.length} 台设备执行{label}操作吗？
           </p>
-          {offlineCount > 0 && <p>{offlineCount} 台离线设备将跳过。</p>}
+          {skippedCount > 0 && <p>{skippedCount} 台无权限或当前不可用的设备将跳过。</p>}
           <p>请求提交后不代表设备端已经完成操作。</p>
         </div>
       ),
@@ -533,105 +601,125 @@ export function DevicesPage() {
         fixed: 'right',
         width: 160,
         render: (_, device) => {
-          const unavailable = !client || status !== 'connected';
-          const isOffline = !device.online;
+          const capabilities = deviceCapabilities(device);
+          const actionItems = [
+            ...(capabilities.command.visible
+              ? [
+                  {
+                    key: 'command',
+                    icon: <ToolOutlined />,
+                    label: '执行指令',
+                    disabled: !capabilities.command.enabled,
+                  },
+                ]
+              : []),
+            ...(capabilities.edit.visible
+              ? [
+                  {
+                    key: 'edit',
+                    icon: <EditOutlined />,
+                    label: '编辑',
+                    disabled: !capabilities.edit.enabled,
+                  },
+                ]
+              : []),
+            ...(capabilities.uninstall.visible
+              ? [
+                  {
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    label: '删除',
+                    danger: true,
+                    disabled: !capabilities.uninstall.enabled,
+                  },
+                ]
+              : []),
+            ...(capabilities.wake.visible || capabilities.power.visible
+              ? [{ type: 'divider' as const }]
+              : []),
+            ...(capabilities.wake.visible
+              ? [
+                  {
+                    key: 'wake',
+                    icon: <ThunderboltOutlined />,
+                    label: '唤醒',
+                    disabled: !capabilities.wake.enabled,
+                  },
+                ]
+              : []),
+            ...(['reset', 'sleep', 'poweroff'] as const).flatMap((key) =>
+              capabilities.power.visible
+                ? [
+                    {
+                      key,
+                      icon:
+                        key === 'reset' ? (
+                          <RedoOutlined />
+                        ) : key === 'sleep' ? (
+                          <MoonOutlined />
+                        ) : (
+                          <PoweroffOutlined />
+                        ),
+                      label: powerActionLabels[key],
+                      danger: key === 'poweroff',
+                      disabled: !capabilities.power.enabled,
+                    },
+                  ]
+                : [],
+            ),
+          ];
           return (
             <Space size="small">
-              <Tooltip title="文件管理">
-                <Button
-                  type="text"
-                  icon={<FolderOpenOutlined />}
-                  disabled={unavailable || isOffline}
-                  aria-label={`管理 ${device.name} 的文件`}
-                  onClick={() =>
-                    navigate(
-                      `/devices/${encodeURIComponent(device.id)}/workspace?tab=files`,
-                    )
-                  }
-                />
-              </Tooltip>
+              {capabilities.files.visible ? (
+                <Tooltip title={capabilities.files.message ?? '文件管理'}>
+                  <span>
+                    <Button
+                      type="text"
+                      icon={<FolderOpenOutlined />}
+                      disabled={!capabilities.files.enabled}
+                      aria-label={`管理 ${device.name} 的文件`}
+                      onClick={() =>
+                        navigate(`/devices/${encodeURIComponent(device.id)}/workspace?tab=files`)
+                      }
+                    />
+                  </span>
+                </Tooltip>
+              ) : null}
               <Tooltip title="工作台">
                 <Button
                   type="text"
                   icon={<DesktopOutlined />}
                   aria-label={`打开 ${device.name} 的工作台`}
-                  onClick={() =>
-                    navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)
-                  }
+                  onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)}
                 />
               </Tooltip>
-              <Dropdown
-                trigger={['click']}
-                menu={{
-                  items: [
-                    {
-                      key: 'command',
-                      icon: <ToolOutlined />,
-                      label: '执行指令',
-                      disabled: unavailable || isOffline,
+              {actionItems.length > 0 ? (
+                <Dropdown
+                  trigger={['click']}
+                  menu={{
+                    items: actionItems,
+                    onClick: ({ key }) => {
+                      if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
+                        runPowerAction(device, key as PowerAction);
+                      } else if (key === 'edit') {
+                        openDeviceEditor(device);
+                      } else if (key === 'delete') {
+                        confirmDeviceDeletion(device);
+                      } else if (key === 'command') {
+                        setCommandDevices([device]);
+                      } else {
+                        messageApi.info(`执行指令功能开发中`);
+                      }
                     },
-                    {
-                      key: 'edit',
-                      icon: <EditOutlined />,
-                      label: '编辑',
-                      disabled: unavailable,
-                    },
-                    {
-                      key: 'delete',
-                      icon: <DeleteOutlined />,
-                      label: '删除',
-                      danger: true,
-                      disabled: unavailable,
-                    },
-                    { type: 'divider' },
-                    {
-                      key: 'wake',
-                      icon: <ThunderboltOutlined />,
-                      label: '唤醒',
-                      disabled: unavailable,
-                    },
-                    {
-                      key: 'reset',
-                      icon: <RedoOutlined />,
-                      label: '重启',
-                      disabled: unavailable || isOffline,
-                    },
-                    {
-                      key: 'sleep',
-                      icon: <MoonOutlined />,
-                      label: '休眠',
-                      disabled: unavailable || isOffline,
-                    },
-                    { type: 'divider' },
-                    {
-                      key: 'poweroff',
-                      icon: <PoweroffOutlined />,
-                      label: '关机',
-                      danger: true,
-                      disabled: unavailable || isOffline,
-                    },
-                  ],
-                  onClick: ({ key }) => {
-                    if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
-                      runPowerAction(device, key as PowerAction);
-                    } else if (key === 'edit') {
-                      openDeviceEditor(device);
-                    } else if (key === 'delete') {
-                      confirmDeviceDeletion(device);
-                    } else if (key === 'command') {
-                      setCommandDevices([device]);
-                    } else {
-                      messageApi.info(`执行指令功能开发中`);
-                    }
-                  },
-                }}
-              >
-                <Button
-                  type="text"
-                  icon={<EllipsisOutlined />}
-                  aria-label={`操作 ${device.name}`}
-                />
-              </Dropdown>
+                  }}
+                >
+                  <Button
+                    type="text"
+                    icon={<EllipsisOutlined />}
+                    aria-label={`操作 ${device.name}`}
+                  />
+                </Dropdown>
+              ) : null}
             </Space>
           );
         },
@@ -693,16 +781,46 @@ export function DevicesPage() {
               menu={{
                 items: [
                   { key: 'move', label: '移动分组' },
-                  { key: 'command', icon: <ToolOutlined />, label: '执行命令' },
+                  {
+                    key: 'command',
+                    icon: <ToolOutlined />,
+                    label: '执行命令',
+                    disabled: commandTargets.length === 0,
+                  },
                   { type: 'divider' },
-                  { key: 'wake', label: '唤醒' },
-                  { key: 'reset', label: '重启' },
-                  { key: 'sleep', label: '休眠' },
-                  { key: 'poweroff', label: '关机', danger: true },
+                  {
+                    key: 'wake',
+                    label: '唤醒',
+                    disabled: !selectedCapabilities.some(
+                      ({ capabilities }) => capabilities.wake.enabled,
+                    ),
+                  },
+                  {
+                    key: 'reset',
+                    label: '重启',
+                    disabled: !selectedCapabilities.some(
+                      ({ capabilities }) => capabilities.power.enabled,
+                    ),
+                  },
+                  {
+                    key: 'sleep',
+                    label: '休眠',
+                    disabled: !selectedCapabilities.some(
+                      ({ capabilities }) => capabilities.power.enabled,
+                    ),
+                  },
+                  {
+                    key: 'poweroff',
+                    label: '关机',
+                    danger: true,
+                    disabled: !selectedCapabilities.some(
+                      ({ capabilities }) => capabilities.power.enabled,
+                    ),
+                  },
                 ],
                 onClick: ({ key }) => {
                   if (key === 'move') setBatchMoveOpen(true);
-                  else if (key === 'command') setCommandDevices(selectedDevices);
+                  else if (key === 'command') setCommandDevices(commandTargets);
                   else confirmBatchPowerAction(key as PowerAction);
                 },
               }}
@@ -714,8 +832,7 @@ export function DevicesPage() {
             <Button
               icon={<CloudUploadOutlined />}
               disabled={
-                batchUploadManager.getSnapshot().tasks.length === 0 &&
-                (!selectedDeviceIds.length || status !== 'connected')
+                batchUploadManager.getSnapshot().tasks.length === 0 && fileTargets.length === 0
               }
               onClick={openBatchUpload}
             >
@@ -724,7 +841,12 @@ export function DevicesPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              disabled={!client || status !== 'connected' || !sortedGroups.length}
+              disabled={
+                !applicationCapabilities.addDevices ||
+                !client ||
+                status !== 'connected' ||
+                !sortedGroups.length
+              }
               onClick={openInviteModal}
             >
               添加设备
@@ -745,6 +867,7 @@ export function DevicesPage() {
               onChange={(value) => updateFilters(setGroupId, value)}
               options={[
                 { value: '', label: '全部分组' },
+                { value: UNGROUPED_GROUP_ID, label: '未分组' },
                 ...sortedGroups.map((group) => ({ value: group.id, label: group.name })),
               ]}
             />

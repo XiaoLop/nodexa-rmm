@@ -1,4 +1,13 @@
-import type { Device, DeviceGroup, GatewayEvent, UserInfo } from '../types';
+import type {
+  Device,
+  DeviceGroup,
+  GatewayEvent,
+  PrincipalGrant,
+  ServerInfo,
+  UserInfo,
+  UserInfoLink,
+  UserLinkType,
+} from '../types';
 import { normalizeRights } from '../permissions/bitmask';
 
 type UnknownRecord = Record<string, unknown>;
@@ -6,6 +15,46 @@ export const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 export const stringValue = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
+
+function linkType(id: string): UserLinkType {
+  if (id.startsWith('mesh/')) return 'device-group';
+  if (id.startsWith('node/')) return 'device';
+  if (id.startsWith('ugrp/')) return 'user-group';
+  return 'unknown';
+}
+
+function normalizeGrants(value: unknown): Record<string, PrincipalGrant> | undefined {
+  if (!isRecord(value)) return undefined;
+  const grants: Record<string, PrincipalGrant> = {};
+  for (const [principalId, grant] of Object.entries(value)) {
+    if (!isRecord(grant) || typeof grant.rights !== 'number' || !Number.isFinite(grant.rights)) {
+      continue;
+    }
+    grants[principalId] = {
+      principalId,
+      rights: normalizeRights(grant.rights),
+      name: stringValue(grant.name),
+    };
+  }
+  return grants;
+}
+
+function normalizeUserInfoLinks(value: unknown): Record<string, UserInfoLink> {
+  if (!isRecord(value)) return {};
+  const links: Record<string, UserInfoLink> = {};
+  for (const [id, link] of Object.entries(value)) {
+    if (!isRecord(link) || typeof link.rights !== 'number' || !Number.isFinite(link.rights)) {
+      continue;
+    }
+    links[id] = {
+      id,
+      type: linkType(id),
+      rights: normalizeRights(link.rights),
+      name: stringValue(link.name),
+    };
+  }
+  return links;
+}
 
 export function timestampValue(value: unknown): string | undefined {
   if (typeof value === 'string' && value.length > 0) {
@@ -39,24 +88,32 @@ export function normalizeDevice(
   ) {
     agentVersion = String(value.agent.ver);
   }
-  const rawRights =
-    typeof value.effectiveRights === 'number'
-      ? value.effectiveRights
-      : typeof value.meshrights === 'number'
-        ? value.meshrights
-        : undefined;
+  const connectionFlags =
+    typeof value.conn === 'number' && Number.isFinite(value.conn) ? value.conn : undefined;
+  const agent = isRecord(value.agent) ? value.agent : undefined;
+  const agentId = typeof agent?.id === 'number' && Number.isFinite(agent.id) ? agent.id : undefined;
+  const agentCapabilities =
+    typeof agent?.caps === 'number' && Number.isFinite(agent.caps) ? agent.caps : undefined;
+  const intelAmt = isRecord(value.intelamt) ? value.intelamt : undefined;
+  const amtState =
+    typeof intelAmt?.state === 'number' && Number.isFinite(intelAmt.state)
+      ? intelAmt.state
+      : undefined;
+  const platform = stringValue(value.platform) ?? stringValue(value.osdesc);
   return {
     id,
     name: stringValue(value.name) ?? stringValue(value.rname) ?? stringValue(value.host) ?? id,
     groupId: stringValue(value.groupId) ?? stringValue(value.meshid) ?? fallbackGroupId,
     groupName: stringValue(value.groupName) ?? stringValue(value.meshname),
     online: online as boolean,
-    effectiveRights:
-      typeof rawRights === 'number' && Number.isFinite(rawRights)
-        ? normalizeRights(rawRights)
-        : undefined,
+    connectionFlags,
+    agentId,
+    agentCapabilities,
+    amtState,
+    isWindows: agentId === 4 || (platform !== undefined && /win/i.test(platform)),
+    grants: normalizeGrants(value.links),
     agentVersion,
-    platform: stringValue(value.platform) ?? stringValue(value.osdesc),
+    platform,
     lastSeenAt: timestampValue(value.lastSeenAt) ?? timestampValue(value.lastconnect),
     raw: value,
   };
@@ -92,6 +149,8 @@ export function normalizeGroup(value: unknown, fallbackId?: string): DeviceGroup
     id,
     name: stringValue(value.name) ?? stringValue(value.meshname) ?? id,
     description: stringValue(value.description) ?? stringValue(value.desc),
+    type: typeof value.mtype === 'number' && Number.isFinite(value.mtype) ? value.mtype : undefined,
+    grants: normalizeGrants(value.links),
     raw: value,
   };
 }
@@ -193,11 +252,33 @@ export function normalizeUserInfo(value: unknown): UserInfo | undefined {
       id.replace(/^user\/\/[^/]*\//, '').replace(/^user\/\//, ''),
     email: stringValue(raw.email),
     siteadmin: typeof raw.siteadmin === 'number' ? raw.siteadmin : undefined,
+    removeRights:
+      typeof raw.removeRights === 'number' && Number.isFinite(raw.removeRights)
+        ? normalizeRights(raw.removeRights)
+        : 0,
+    links: normalizeUserInfoLinks(raw.links),
     creationAt: timestampValue(raw.creation),
     lastLoginAt: timestampValue(raw.login),
     lastAccessAt: timestampValue(raw.access),
     previousLoginAt: timestampValue(raw.pastlogin),
     language: stringValue(raw.llang),
+    raw,
+  };
+}
+
+export function normalizeServerInfo(value: unknown): ServerInfo | undefined {
+  if (!isRecord(value)) return undefined;
+  const raw = isRecord(value.serverinfo) ? value.serverinfo : value;
+  const numeric = (field: unknown): number | undefined =>
+    typeof field === 'number' && Number.isFinite(field) ? normalizeRights(field) : undefined;
+  const boolean = (field: unknown): boolean | undefined =>
+    typeof field === 'boolean' ? field : typeof field === 'number' ? field !== 0 : undefined;
+  return {
+    features: numeric(raw.features),
+    features2: numeric(raw.features2),
+    features3: numeric(raw.features3),
+    guestDeviceSharing: boolean(raw.guestdevicesharing ?? raw.guestDeviceSharing),
+    manageAllDeviceGroups: boolean(raw.managealldevicegroups ?? raw.manageAllDeviceGroups),
     raw,
   };
 }

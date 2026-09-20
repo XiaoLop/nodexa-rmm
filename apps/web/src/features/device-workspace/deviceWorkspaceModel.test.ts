@@ -38,6 +38,8 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.memorySummary).toBe('未提供');
     expect(model.networkSummary).toBe('未提供');
     expect(model.hardware.volumes).toEqual([]);
+    expect(model.hasSystemDetails).toBe(false);
+    expect(model.hasNetworkDetails).toBe(false);
   });
 
   it('uses readable fallbacks when optional fields are absent', () => {
@@ -161,6 +163,8 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.security.pendingReboot).toBe('File Rename');
     expect(model.hardware.lastConnectAddr).toBe('172.18.0.1:39564');
     expect(model.hardware.primaryNic).toContain('以太网');
+    expect(model.hasSystemDetails).toBe(true);
+    expect(model.hasNetworkDetails).toBe(true);
   });
 
   it('uses the resolved group name when the device only contains a group id', () => {

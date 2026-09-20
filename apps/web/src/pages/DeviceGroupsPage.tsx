@@ -24,6 +24,7 @@ import {
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import '../assets/styles/devices.css';
 
 const naturalNameCollator = new Intl.Collator('zh-CN', {
@@ -62,6 +63,7 @@ function formatDateTime(value?: number) {
 export function DeviceGroupsPage() {
   const { token } = theme.useToken();
   const { groups, devices, client, status, refreshSnapshot } = useGatewayData();
+  const applicationCapabilities = useApplicationUiCapabilities();
   const navigate = useNavigate();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
@@ -246,7 +248,11 @@ export function DeviceGroupsPage() {
       width: 230,
       render: (_, group) => (
         <Space size="small">
-          <Button type="link" size="small" onClick={() => navigate(`/devices?groupId=${encodeURIComponent(group.id)}`)}>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => navigate(`/devices?groupId=${encodeURIComponent(group.id)}`)}
+          >
             查看设备
           </Button>
           <Button
@@ -285,7 +291,9 @@ export function DeviceGroupsPage() {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          disabled={!client || status !== 'connected'}
+          disabled={
+            !applicationCapabilities.createDeviceGroups || !client || status !== 'connected'
+          }
           onClick={() => openGroupEditor()}
         >
           新建分组
@@ -341,7 +349,11 @@ export function DeviceGroupsPage() {
         destroyOnHidden
       >
         <Form form={form} layout="vertical" preserve={false}>
-          <Form.Item name="name" label="分组名称" rules={[{ required: true, whitespace: true, message: '请输入分组名称' }]}>
+          <Form.Item
+            name="name"
+            label="分组名称"
+            rules={[{ required: true, whitespace: true, message: '请输入分组名称' }]}
+          >
             <Input maxLength={128} />
           </Form.Item>
           <Form.Item name="description" label="描述">

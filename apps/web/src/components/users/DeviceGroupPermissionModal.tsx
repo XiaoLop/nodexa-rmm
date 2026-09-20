@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   MESH_PERMISSION_CATEGORIES,
   MESH_PERMISSIONS,
+  MESH_PERMISSION_PRESETS,
   MESH_RIGHT_ADMIN,
   composeMeshRights,
   normalizeMeshRights,
@@ -175,6 +176,29 @@ export function DeviceGroupPermissionModal({
             </Space>
           )}
         </div>
+
+        {!fullAccess ? (
+          <div className="mesh-permission-field">
+            <span className="mesh-permission-field-label">常用预设</span>
+            <Select
+              style={{ flex: 1 }}
+              placeholder="选择权限组合"
+              options={MESH_PERMISSION_PRESETS.map((preset) => ({
+                value: preset.key,
+                label: preset.label,
+              }))}
+              onChange={(key) => {
+                const preset = MESH_PERMISSION_PRESETS.find((item) => item.key === key);
+                if (!preset) return;
+                setSelectedFlags(
+                  MESH_PERMISSIONS.filter(({ flag }) => (preset.rights & flag) === flag).map(
+                    ({ flag }) => flag,
+                  ),
+                );
+              }}
+            />
+          </div>
+        ) : null}
 
         {fullAccess ? (
           <Alert

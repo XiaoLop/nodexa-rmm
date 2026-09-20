@@ -3,8 +3,10 @@ export * from './errors';
 export * from './types';
 export * from './permissions/bitmask';
 export * from './permissions/capabilities';
+export * from './permissions/deviceRights';
 export * from './permissions/meshRights';
 export * from './permissions/siteRights';
+export * from './permissions/uiCapabilities';
 export * from './permissions/userGroupRights';
 export {
   normalizeDevice,
@@ -13,6 +15,7 @@ export {
   normalizeGroup,
   normalizeGroups,
   normalizeLastConnects,
+  normalizeServerInfo,
   normalizeUserInfo,
   timestampValue,
 } from './protocol/normalizers';

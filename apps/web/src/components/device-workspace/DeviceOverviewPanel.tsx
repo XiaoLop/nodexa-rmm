@@ -63,6 +63,18 @@ export function DeviceOverviewPanel({
 }) {
   const hw = model.hardware;
   const sec = hw?.security;
+  const hasSystemSummary = model.hasSystemDetails && (
+    hw.cpuName !== '未提供' ||
+    hw.memoryTotal !== '未提供' ||
+    hw.storageTotal !== '未提供'
+  );
+  const hasNetworkSummary = model.hasNetworkDetails && hw.interfaces.length > 0;
+  const hasSecurityDetails = Boolean(
+    sec?.antiVirus ||
+    sec?.firewall ||
+    sec?.autoUpdate ||
+    sec?.realTimeProtection !== undefined,
+  );
   const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
 
   useEffect(() => {
@@ -99,43 +111,55 @@ export function DeviceOverviewPanel({
 
   return (
     <div className="workspace-overview">
-      <div className="workspace-overview-metrics workspace-static-facts">
-        <section className="workspace-overview-metric tone-primary">
-          <div>
-            <span>处理器 (CPU)</span>
-            <strong title={hw?.cpuName || model.cpuName}>{hw?.cpuShortName || model.cpuName}</strong>
-            <em>{hw?.cpuSpeed ? `频率 ${hw.cpuSpeed}` : '硬件规格正常'} · 64 位架构</em>
-          </div>
-          <ThunderboltOutlined className="workspace-metric-icon" />
-        </section>
+      {(hasSystemSummary || hasNetworkSummary) && (
+        <div className="workspace-overview-metrics workspace-static-facts">
+          {model.hasSystemDetails && hw.cpuName !== '未提供' && (
+            <section className="workspace-overview-metric tone-primary">
+              <div>
+                <span>处理器 (CPU)</span>
+                <strong title={hw.cpuName}>{hw.cpuShortName}</strong>
+                {hw.cpuSpeed && <em>频率 {hw.cpuSpeed}</em>}
+              </div>
+              <ThunderboltOutlined className="workspace-metric-icon" />
+            </section>
+          )}
 
-        <section className="workspace-overview-metric tone-success">
-          <div>
-            <span>系统物理内存</span>
-            <strong>{hw?.memoryTotal || model.memorySummary}</strong>
-            <em>{hw?.memorySlots ? `${hw.memorySlots} 个插槽` : '物理内存'} {hw?.memorySpeed ? `· ${hw.memorySpeed}` : ''}</em>
-          </div>
-          <AppstoreOutlined className="workspace-metric-icon" />
-        </section>
+          {model.hasSystemDetails && hw.memoryTotal !== '未提供' && (
+            <section className="workspace-overview-metric tone-success">
+              <div>
+                <span>系统物理内存</span>
+                <strong>{hw.memoryTotal}</strong>
+                {(hw.memorySlots > 0 || hw.memorySpeed) && (
+                  <em>{hw.memorySlots > 0 ? `${hw.memorySlots} 个插槽` : ''} {hw.memorySpeed ? `· ${hw.memorySpeed}` : ''}</em>
+                )}
+              </div>
+              <AppstoreOutlined className="workspace-metric-icon" />
+            </section>
+          )}
 
-        <section className="workspace-overview-metric tone-warning">
-          <div>
-            <span>本地存储空间</span>
-            <strong>{hw?.storageTotal || model.storageSummary}</strong>
-            <em>{hw?.storageRemaining !== '未提供' ? `可用 ${hw?.storageRemaining}` : '卷空间正常'} · {hw?.volumes?.length || 1} 个逻辑卷</em>
-          </div>
-          <DatabaseOutlined className="workspace-metric-icon" />
-        </section>
+          {model.hasSystemDetails && hw.storageTotal !== '未提供' && (
+            <section className="workspace-overview-metric tone-warning">
+              <div>
+                <span>本地存储空间</span>
+                <strong>{hw.storageTotal}</strong>
+                <em>{hw.storageRemaining !== '未提供' ? `可用 ${hw.storageRemaining}` : ''}{hw.volumes.length > 0 ? ` · ${hw.volumes.length} 个逻辑卷` : ''}</em>
+              </div>
+              <DatabaseOutlined className="workspace-metric-icon" />
+            </section>
+          )}
 
-        <section className="workspace-overview-metric tone-cyan">
-          <div>
-            <span>主网络适配器</span>
-            <strong>{hw?.primarySpeed || '以太网适配器'}</strong>
-            <em>{model.ipAddress} · {hw?.interfaces?.length || 1} 个活动网卡</em>
-          </div>
-          <GlobalOutlined className="workspace-metric-icon" />
-        </section>
-      </div>
+          {hasNetworkSummary && (
+            <section className="workspace-overview-metric tone-cyan">
+              <div>
+                <span>主网络适配器</span>
+                <strong>{hw.primarySpeed || hw.interfaces[0]?.name}</strong>
+                <em>{model.ipAddress !== '—' ? `${model.ipAddress} · ` : ''}{hw.interfaces.length} 个活动网卡</em>
+              </div>
+              <GlobalOutlined className="workspace-metric-icon" />
+            </section>
+          )}
+        </div>
+      )}
 
       <div className="workspace-overview-main">
         <div className="workspace-left-column">
@@ -143,7 +167,7 @@ export function DeviceOverviewPanel({
             <div className="card-header">
               <div>
                 <h2>设备健康与安全中心</h2>
-                <span>系统运行基线与 Windows 安全中心检测</span>
+                <span>{hasSecurityDetails ? '系统运行基线与 Windows 安全中心检测' : '设备与业务网关连接状态'}</span>
               </div>
               <Tag color={model.device.online ? 'success' : 'default'}>
                 {model.device.online ? '设备在线' : '设备离线'}
@@ -168,26 +192,34 @@ export function DeviceOverviewPanel({
                 <span>业务网关<strong>{gatewayConnected ? '正常连接' : '网关离线'}</strong></span>
                 {gatewayConnected ? <CheckCircleFilled /> : <CloseCircleFilled />}
               </div>
-              <div className={avStatus.className}>
-                <SafetyCertificateOutlined />
-                <span>病毒防护<strong>{avStatus.text}</strong></span>
-                {avStatus.icon}
-              </div>
-              <div className={fwStatus.className}>
-                <SafetyCertificateOutlined />
-                <span>系统防火墙<strong>{fwStatus.text}</strong></span>
-                {fwStatus.icon}
-              </div>
-              <div className={updateStatus.className}>
-                <ClockCircleOutlined />
-                <span>自动更新<strong>{updateStatus.text}</strong></span>
-                {updateStatus.icon}
-              </div>
-              <div className={rtpStatus.className}>
-                <SafetyCertificateOutlined />
-                <span>实时保护<strong>{rtpStatus.text}</strong></span>
-                {rtpStatus.icon}
-              </div>
+              {sec?.antiVirus && (
+                <div className={avStatus.className}>
+                  <SafetyCertificateOutlined />
+                  <span>病毒防护<strong>{avStatus.text}</strong></span>
+                  {avStatus.icon}
+                </div>
+              )}
+              {sec?.firewall && (
+                <div className={fwStatus.className}>
+                  <SafetyCertificateOutlined />
+                  <span>系统防火墙<strong>{fwStatus.text}</strong></span>
+                  {fwStatus.icon}
+                </div>
+              )}
+              {sec?.autoUpdate && (
+                <div className={updateStatus.className}>
+                  <ClockCircleOutlined />
+                  <span>自动更新<strong>{updateStatus.text}</strong></span>
+                  {updateStatus.icon}
+                </div>
+              )}
+              {sec?.realTimeProtection !== undefined && (
+                <div className={rtpStatus.className}>
+                  <SafetyCertificateOutlined />
+                  <span>实时保护<strong>{rtpStatus.text}</strong></span>
+                  {rtpStatus.icon}
+                </div>
+              )}
             </div>
           </section>
 
@@ -237,12 +269,12 @@ export function DeviceOverviewPanel({
           <dl className="workspace-profile-list">
             <div><dt><DesktopOutlined /> 主机名</dt><dd title={model.hostname}>{model.hostname}</dd></div>
             <div><dt><CloudServerOutlined /> 操作系统</dt><dd title={model.platform}>{model.platform}</dd></div>
-            <div><dt><ThunderboltOutlined /> 处理器型号</dt><dd title={hw?.cpuName || model.cpuName}>{hw?.cpuName || model.cpuName}</dd></div>
-            <div><dt><DesktopOutlined /> 显卡设备</dt><dd title={hw?.gpuName || '—'}>{hw?.gpuName || '—'}</dd></div>
-            <div><dt><AppstoreOutlined /> 主板 / BIOS</dt><dd title={`${hw?.boardName} (${hw?.biosVersion})`}>{hw?.boardName || '—'}</dd></div>
-            <div><dt><UserOutlined /> 当前用户</dt><dd>{model.currentUser}</dd></div>
-            <div><dt><ClockCircleOutlined /> 在线运行时长</dt><dd>{model.uptime}</dd></div>
-            <div><dt><ApiOutlined /> Agent 核心</dt><dd>{hw?.agentVersion || '—'} {hw?.agentIsRoot ? '(管理员模式)' : ''}</dd></div>
+            {model.hasSystemDetails && hw.cpuName !== '未提供' && <div><dt><ThunderboltOutlined /> 处理器型号</dt><dd title={hw.cpuName}>{hw.cpuName}</dd></div>}
+            {model.hasSystemDetails && hw.gpuName !== '—' && <div><dt><DesktopOutlined /> 显卡设备</dt><dd title={hw.gpuName}>{hw.gpuName}</dd></div>}
+            {model.hasSystemDetails && hw.boardName !== '—' && <div><dt><AppstoreOutlined /> 主板 / BIOS</dt><dd title={`${hw.boardName} (${hw.biosVersion})`}>{hw.boardName}</dd></div>}
+            {model.currentUser !== '—' && <div><dt><UserOutlined /> 当前用户</dt><dd>{model.currentUser}</dd></div>}
+            {model.uptime !== '—' && <div><dt><ClockCircleOutlined /> 在线运行时长</dt><dd>{model.uptime}</dd></div>}
+            {hw.agentVersion && <div><dt><ApiOutlined /> Agent 核心</dt><dd>{hw.agentVersion} {hw.agentIsRoot ? '(管理员模式)' : ''}</dd></div>}
           </dl>
         </section>
       </div>
@@ -273,12 +305,12 @@ export function DeviceOverviewPanel({
             <div><h2>网络配置与连接审计</h2><span>接口详情与最后接入来源</span></div>
           </div>
           <dl className="workspace-profile-list">
-            <div><dt><GlobalOutlined /> IPv4 地址</dt><dd>{model.ipAddress}</dd></div>
-            <div><dt><GlobalOutlined /> 物理 MAC</dt><dd>{model.macAddress}</dd></div>
-            <div><dt><ApiOutlined /> 主网卡接口</dt><dd>{hw?.primaryNic || '—'}</dd></div>
-            <div><dt><GlobalOutlined /> DNS 服务器</dt><dd title={hw?.dns?.join(', ') || '—'}>{hw?.dns?.[0] || '—'}</dd></div>
-            <div><dt><DesktopOutlined /> 远端接入源</dt><dd title={hw?.lastConnectAddr || '—'}>{hw?.lastConnectAddr || '本地网关'}</dd></div>
-            <div><dt><ClockCircleOutlined /> 最后连接时间</dt><dd>{hw?.lastConnectTime || (model.lastHeartbeat === '刚刚' ? '刚刚' : new Date(model.lastHeartbeat).toLocaleString('zh-CN'))}</dd></div>
+            {model.ipAddress !== '—' && <div><dt><GlobalOutlined /> IPv4 地址</dt><dd>{model.ipAddress}</dd></div>}
+            {model.macAddress !== '—' && <div><dt><GlobalOutlined /> 物理 MAC</dt><dd>{model.macAddress}</dd></div>}
+            {model.hasNetworkDetails && hw.primaryNic !== '未提供' && <div><dt><ApiOutlined /> 主网卡接口</dt><dd>{hw.primaryNic}</dd></div>}
+            {model.hasNetworkDetails && hw.dns.length > 0 && <div><dt><GlobalOutlined /> DNS 服务器</dt><dd title={hw.dns.join(', ')}>{hw.dns[0]}</dd></div>}
+            {hw.lastConnectAddr && <div><dt><DesktopOutlined /> 远端接入源</dt><dd title={hw.lastConnectAddr}>{hw.lastConnectAddr}</dd></div>}
+            {(hw.lastConnectTime || model.lastHeartbeat) && <div><dt><ClockCircleOutlined /> 最后连接时间</dt><dd>{hw.lastConnectTime || (model.lastHeartbeat === '刚刚' ? '刚刚' : new Date(model.lastHeartbeat).toLocaleString('zh-CN'))}</dd></div>}
           </dl>
         </section>
       </div>
