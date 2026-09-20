@@ -4,6 +4,7 @@ import {
   BellOutlined,
   DashboardOutlined,
   DesktopOutlined,
+  GlobalOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   QuestionCircleOutlined,
@@ -14,19 +15,18 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import {
-  App as AntApp,
   Avatar,
   Badge,
   Button,
-  ConfigProvider,
   Dropdown,
   Input,
   Layout,
   Menu,
   Tooltip,
-  theme,
 } from 'antd';
+import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isFullAdministrator } from '@meshcentral/control-client';
 import { gatewaySelectors, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
@@ -36,6 +36,7 @@ import {
   useApplicationUiCapabilities,
   type ApplicationCapability,
 } from '../features/permissions/useUiCapabilities';
+import { resolveLanguage, type AppLanguage } from '../i18n';
 import 'antd/dist/reset.css';
 import '../assets/styles/layout.css';
 
@@ -44,135 +45,123 @@ const { Header, Sider, Content } = Layout;
 type NavigationItem = {
   key: string;
   icon: React.ReactNode;
-  label: string;
+  labelKey: string;
   required?: ApplicationCapability;
 };
 
 type NavigationGroup = {
   type: 'group';
-  label: string;
+  labelKey: string;
   children: NavigationItem[];
 };
 
 const menuItems: Array<NavigationItem | NavigationGroup> = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
+  { key: '/dashboard', icon: <DashboardOutlined />, labelKey: 'navigation.dashboard' },
   {
     type: 'group' as const,
-    label: '设备管理',
+    labelKey: 'navigation.deviceManagement',
     children: [
-      { key: '/devices', icon: <DesktopOutlined />, label: '所有设备' },
-      { key: '/devices/groups', icon: <ApartmentOutlined />, label: '设备分组' },
+      { key: '/devices', icon: <DesktopOutlined />, labelKey: 'navigation.allDevices' },
+      {
+        key: '/devices/groups',
+        icon: <ApartmentOutlined />,
+        labelKey: 'navigation.deviceGroups',
+      },
     ],
   },
   {
     type: 'group' as const,
-    label: '监控与事件',
+    labelKey: 'navigation.monitoringAndEvents',
     children: [
-      { key: '/monitoring/realtime', icon: <ThunderboltOutlined />, label: '实时事件' },
-      { key: '/monitoring/alerts', icon: <BellOutlined />, label: '告警规则' },
+      {
+        key: '/monitoring/realtime',
+        icon: <ThunderboltOutlined />,
+        labelKey: 'navigation.realtimeEvents',
+      },
+      {
+        key: '/monitoring/alerts',
+        icon: <BellOutlined />,
+        labelKey: 'navigation.alertRules',
+      },
       {
         key: '/monitoring/audit',
         icon: <AuditOutlined />,
-        label: '审计日志',
+        labelKey: 'navigation.auditLogs',
         required: 'viewAllEvents',
       },
     ],
   },
   {
     type: 'group' as const,
-    label: '管理',
+    labelKey: 'navigation.administration',
     children: [
       {
         key: '/admin/users',
         icon: <TeamOutlined />,
-        label: '用户管理',
+        labelKey: 'navigation.userManagement',
         required: 'manageUsers',
       },
       {
         key: '/admin/roles',
         icon: <UserOutlined />,
-        label: '用户组',
+        labelKey: 'navigation.userGroups',
         required: 'manageUserGroups',
       },
       {
         key: '/settings',
         icon: <SettingOutlined />,
-        label: '设置',
+        labelKey: 'navigation.settings',
         required: 'manageSettings',
       },
     ],
   },
 ];
 
-const pageTitles: Record<string, string> = {
-  '/dashboard': '仪表盘 / 概览',
-  '/devices': '设备管理 / 所有设备',
-  '/devices/groups': '设备管理 / 设备分组',
-  '/monitoring/realtime': '监控与事件 / 实时事件',
-  '/monitoring/alerts': '监控与事件 / 告警规则',
-  '/monitoring/audit': '监控与事件 / 审计日志',
-  '/admin/users': '管理 / 用户管理',
-  '/admin/roles': '管理 / 用户组',
-  '/settings': '管理 / 设置',
+const pageTitleKeys: Record<string, [string, string]> = {
+  '/dashboard': ['navigation.dashboard', 'navigation.overview'],
+  '/devices': ['navigation.deviceManagement', 'navigation.allDevices'],
+  '/devices/groups': ['navigation.deviceManagement', 'navigation.deviceGroups'],
+  '/monitoring/realtime': ['navigation.monitoringAndEvents', 'navigation.realtimeEvents'],
+  '/monitoring/alerts': ['navigation.monitoringAndEvents', 'navigation.alertRules'],
+  '/monitoring/audit': ['navigation.monitoringAndEvents', 'navigation.auditLogs'],
+  '/admin/users': ['navigation.administration', 'navigation.userManagement'],
+  '/admin/roles': ['navigation.administration', 'navigation.userGroups'],
+  '/settings': ['navigation.administration', 'navigation.settings'],
 };
 
-function resolvePageMeta(pathname: string) {
+function resolvePageMeta(pathname: string, t: TFunction) {
   if (/^\/devices\/[^/]+\/workspace$/.test(pathname)) {
-    return { selectedKey: '/devices', title: '设备管理 / 设备工作台' };
+    return {
+      selectedKey: '/devices',
+      title: `${t('navigation.deviceManagement')} / ${t('navigation.deviceWorkspace')}`,
+    };
   }
   if (/^\/admin\/users\/[^/]+$/.test(pathname)) {
-    return { selectedKey: '/admin/users', title: '管理 / 用户详情' };
+    return {
+      selectedKey: '/admin/users',
+      title: `${t('navigation.administration')} / ${t('navigation.userDetails')}`,
+    };
   }
   if (/^\/admin\/roles\/[^/]+$/.test(pathname)) {
-    return { selectedKey: '/admin/roles', title: '管理 / 用户组详情' };
+    return {
+      selectedKey: '/admin/roles',
+      title: `${t('navigation.administration')} / ${t('navigation.userGroupDetails')}`,
+    };
   }
-  const selectedKey = Object.keys(pageTitles).find((key) => pathname === key) ?? pathname;
-  return { selectedKey, title: pageTitles[selectedKey] ?? 'MeshCentral 控制台' };
+  const selectedKey = Object.keys(pageTitleKeys).find((key) => pathname === key) ?? pathname;
+  const titleKeys = pageTitleKeys[selectedKey];
+  return {
+    selectedKey,
+    title: titleKeys ? `${t(titleKeys[0])} / ${t(titleKeys[1])}` : t('navigation.console'),
+  };
 }
 
 export function AppLayout() {
-  return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorPrimary: '#2f80ff',
-          colorInfo: '#2f80ff',
-          colorSuccess: '#2dcc70',
-          colorWarning: '#f4b43c',
-          colorError: '#ff5364',
-          colorBgBase: '#09111d',
-          colorBgContainer: '#111c2a',
-          colorBorder: '#243348',
-          colorText: '#f1f5fb',
-          colorTextSecondary: '#8c9bb0',
-          borderRadius: 6,
-          fontFamily: 'Inter, "Segoe UI", sans-serif',
-        },
-        components: {
-          Button: { controlHeightLG: 46, fontWeight: 600 },
-          Card: { colorBgContainer: '#111c2a' },
-          Drawer: { colorBgElevated: '#111c2a' },
-          Input: { activeBorderColor: '#2f80ff', hoverBorderColor: '#3c8bff' },
-          Layout: { headerBg: '#0b1421', siderBg: '#0d1725' },
-          Menu: { darkItemBg: '#0d1725', darkItemSelectedBg: '#1d3555', itemBorderRadius: 5 },
-          Modal: {
-            contentBg: '#111c2a',
-            footerBg: '#111c2a',
-            headerBg: '#111c2a',
-          },
-          Table: { headerBg: '#101a27', headerColor: '#c9d4e3', borderColor: '#243348' },
-        },
-      }}
-    >
-      <AntApp>
-        <AppLayoutContent />
-      </AntApp>
-    </ConfigProvider>
-  );
+  return <AppLayoutContent />;
 }
 
 function AppLayoutContent() {
+  const { t, i18n } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -183,7 +172,11 @@ function AppLayoutContent() {
   const displayName = getUserDisplayName(userInfo, username);
   const capabilities = useApplicationUiCapabilities();
   const connected = status === 'connected';
-  const pageMeta = useMemo(() => resolvePageMeta(location.pathname), [location.pathname]);
+  const language = resolveLanguage(i18n.resolvedLanguage);
+  const pageMeta = useMemo(
+    () => resolvePageMeta(location.pathname, t),
+    [i18n.resolvedLanguage, location.pathname, t],
+  );
   const visibleMenuItems = useMemo(
     () =>
       menuItems.flatMap<NavigationItem | NavigationGroup>((item) => {
@@ -191,12 +184,29 @@ function AppLayoutContent() {
           const children = item.children.filter(
             (child) => !child.required || capabilities[child.required],
           );
-          return children.length > 0 ? [{ ...item, children }] : [];
+          return children.length > 0
+            ? [
+                {
+                  ...item,
+                  label: t(item.labelKey),
+                  children: children.map((child) => ({
+                    ...child,
+                    label: t(child.labelKey),
+                  })),
+                },
+              ]
+            : [];
         }
-        return !item.required || capabilities[item.required] ? [item] : [];
+        return !item.required || capabilities[item.required]
+          ? [{ ...item, label: t(item.labelKey) }]
+          : [];
       }),
-    [capabilities],
+    [capabilities, i18n.resolvedLanguage, t],
   );
+
+  const changeLanguage = (nextLanguage: AppLanguage) => {
+    void i18n.changeLanguage(nextLanguage);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -225,7 +235,7 @@ function AppLayoutContent() {
         />
         <button className="sider-collapse" onClick={() => setCollapsed((value) => !value)}>
           {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          {!collapsed && <span>收起菜单</span>}
+          {!collapsed && <span>{t('navigation.collapseMenu')}</span>}
         </button>
       </Sider>
       <Layout className="console-main">
@@ -242,24 +252,51 @@ function AppLayoutContent() {
           <div className="header-actions">
             <Input
               prefix={<SearchOutlined />}
-              placeholder="搜索设备、用户、ID..."
+              placeholder={t('header.searchPlaceholder')}
               className="global-search"
             />
-            <Tooltip title={connected ? '业务网关已连接' : '业务网关未连接'}>
+            <Tooltip
+              title={connected ? t('header.gatewayConnected') : t('header.gatewayDisconnected')}
+            >
               <span className={`header-connection ${connected ? 'is-connected' : ''}`}>
                 <i />
               </span>
             </Tooltip>
+            <Dropdown
+              menu={{
+                selectedKeys: [language],
+                selectable: true,
+                items: [
+                  {
+                    key: 'zh-CN',
+                    label: t('common.simplifiedChinese'),
+                    onClick: () => changeLanguage('zh-CN'),
+                  },
+                  {
+                    key: 'en-US',
+                    label: t('common.english'),
+                    onClick: () => changeLanguage('en-US'),
+                  },
+                ],
+              }}
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                icon={<GlobalOutlined />}
+                aria-label={t('common.language')}
+              />
+            </Dropdown>
             <Badge count={0} size="small">
-              <Button type="text" icon={<BellOutlined />} aria-label="通知" />
+              <Button type="text" icon={<BellOutlined />} aria-label={t('header.notifications')} />
             </Badge>
-            <Button type="text" icon={<QuestionCircleOutlined />} aria-label="帮助" />
+            <Button type="text" icon={<QuestionCircleOutlined />} aria-label={t('header.help')} />
             <Dropdown
               menu={{
                 items: [
-                  { key: 'profile', label: '个人资料', disabled: true },
+                  { key: 'profile', label: t('header.profile'), disabled: true },
                   { type: 'divider' },
-                  { key: 'logout', label: '退出登录', danger: true, onClick: handleLogout },
+                  { key: 'logout', label: t('header.logout'), danger: true, onClick: handleLogout },
                 ],
               }}
               trigger={['click']}
@@ -270,8 +307,8 @@ function AppLayoutContent() {
                   <strong>{displayName}</strong>
                   <small>
                     {userInfo?.siteadmin !== undefined && isFullAdministrator(userInfo.siteadmin)
-                      ? '站点管理员'
-                      : '控制台用户'}
+                      ? t('header.siteAdministrator')
+                      : t('header.consoleUser')}
                   </small>
                 </span>
               </button>

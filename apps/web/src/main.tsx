@@ -1,15 +1,24 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App as AntApp, ConfigProvider, theme } from 'antd';
+import enUS from 'antd/locale/en_US';
+import zhCN from 'antd/locale/zh_CN';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './app/AppRouter';
 import { GatewayProvider } from './features/gateway/GatewayProvider';
+import { resolveLanguage } from './i18n';
 import 'antd/dist/reset.css';
 import './assets/styles/index.css';
+import './i18n';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+function ApplicationProviders() {
+  const { i18n } = useTranslation();
+  const locale = resolveLanguage(i18n.resolvedLanguage) === 'en-US' ? enUS : zhCN;
+
+  return (
     <ConfigProvider
+      locale={locale}
       theme={{
         algorithm: theme.darkAlgorithm,
         token: {
@@ -50,5 +59,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </GatewayProvider>
       </AntApp>
     </ConfigProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ApplicationProviders />
   </React.StrictMode>,
 );

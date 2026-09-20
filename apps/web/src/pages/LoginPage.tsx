@@ -9,12 +9,14 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Form, Input, Typography } from 'antd';
+import { Alert, Button, Dropdown, Form, Input, Typography } from 'antd';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { BrandLogo } from '../components/BrandLogo';
 import { useGateway } from '../features/gateway/GatewayProvider';
-import "../assets/styles/login.css";
+import { resolveLanguage, type AppLanguage } from '../i18n';
+import '../assets/styles/login.css';
 
 interface LoginFormValue {
   username: string;
@@ -22,12 +24,14 @@ interface LoginFormValue {
 }
 
 export function LoginPage() {
+  const { t, i18n } = useTranslation();
   const gateway = useGateway();
   const navigate = useNavigate();
   const location = useLocation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const language = resolveLanguage(i18n.resolvedLanguage);
 
   if (gateway.initializing) return <AppBootScreen />;
   if (gateway.authenticated) return <Navigate to="/dashboard" replace />;
@@ -40,36 +44,69 @@ export function LoginPage() {
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/dashboard', { replace: true });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '登录失败，请稍后重试。');
+      setError(nextError instanceof Error ? nextError.message : t('login.failed'));
     } finally {
       setLoading(false);
     }
   };
 
+  const changeLanguage = (nextLanguage: AppLanguage) => {
+    void i18n.changeLanguage(nextLanguage);
+  };
+
   return (
     <main className="login-page">
       <div className="login-hexagons" aria-hidden="true" />
+      <Dropdown
+        menu={{
+          selectedKeys: [language],
+          selectable: true,
+          items: [
+            {
+              key: 'zh-CN',
+              label: t('common.simplifiedChinese'),
+              onClick: () => changeLanguage('zh-CN'),
+            },
+            {
+              key: 'en-US',
+              label: t('common.english'),
+              onClick: () => changeLanguage('en-US'),
+            },
+          ],
+        }}
+        trigger={['click']}
+      >
+        <Button
+          className="login-language"
+          type="text"
+          icon={<GlobalOutlined />}
+          aria-label={t('common.language')}
+        >
+          {language === 'zh-CN' ? t('common.simplifiedChinese') : t('common.english')}
+        </Button>
+      </Dropdown>
       <section className="login-intro">
         <div>
           <BrandLogo />
-          <div className="login-product-line">设备管理系统</div>
+          <div className="login-product-line">{t('login.productLine')}</div>
         </div>
-        <Typography.Title level={3}>安全 · 高效 · 可控</Typography.Title>
-        <Typography.Paragraph>
-          MeshCentral
-          设备管理系统为您提供企业级的远程监控与管理能力，帮助您安全地管理和维护所有终端设备。
-        </Typography.Paragraph>
+        <Typography.Title level={3}>{t('login.slogan')}</Typography.Title>
+        <Typography.Paragraph>{t('login.introduction')}</Typography.Paragraph>
         <div className="login-features">
-          <Feature icon={<DesktopOutlined />} title="实时监控" text="全面掌握设备状态与运行情况" />
+          <Feature
+            icon={<DesktopOutlined />}
+            title={t('login.realtimeMonitoring')}
+            text={t('login.realtimeMonitoringDescription')}
+          />
           <Feature
             icon={<SafetyCertificateOutlined />}
-            title="安全可靠"
-            text="多重安全机制保障系统与数据安全"
+            title={t('login.secureAndReliable')}
+            text={t('login.secureAndReliableDescription')}
           />
           <Feature
             icon={<SettingOutlined />}
-            title="高效管理"
-            text="集中化的设备管理，提升运维效率"
+            title={t('login.efficientManagement')}
+            text={t('login.efficientManagementDescription')}
           />
         </div>
         <footer>© 2026 MeshCentral. All rights reserved.</footer>
@@ -80,8 +117,8 @@ export function LoginPage() {
           <div className="login-panel-brand">
             <BrandLogo compact />
           </div>
-          <Typography.Title level={2}>系统登录</Typography.Title>
-          <Typography.Text type="secondary">请使用您的业务网关账号和密码登录</Typography.Text>
+          <Typography.Title level={2}>{t('login.title')}</Typography.Title>
+          <Typography.Text type="secondary">{t('login.subtitle')}</Typography.Text>
           {error && <Alert type="error" showIcon title={error} className="login-alert" />}
           <Form<LoginFormValue>
             layout="vertical"
@@ -89,33 +126,35 @@ export function LoginPage() {
             className="login-form"
           >
             <Form.Item
-              label="用户名或邮箱"
+              label={t('login.username')}
               name="username"
-              rules={[{ required: true, message: '请输入用户名或邮箱' }]}
+              rules={[{ required: true, message: t('login.usernameRequired') }]}
             >
               <Input
                 size="large"
                 prefix={<UserOutlined />}
-                placeholder="请输入用户名或邮箱"
+                placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
               />
             </Form.Item>
             <Form.Item
-              label="密码"
+              label={t('login.password')}
               name="password"
-              rules={[{ required: true, message: '请输入密码' }]}
+              rules={[{ required: true, message: t('login.passwordRequired') }]}
             >
               <Input
                 size="large"
                 prefix={<LockOutlined />}
                 type={passwordVisible ? 'text' : 'password'}
-                placeholder="请输入密码"
+                placeholder={t('login.passwordPlaceholder')}
                 autoComplete="current-password"
                 suffix={
                   <Button
                     type="text"
                     className="password-toggle"
-                    aria-label={passwordVisible ? '隐藏密码' : '显示密码'}
+                    aria-label={
+                      passwordVisible ? t('login.hidePassword') : t('login.showPassword')
+                    }
                     icon={passwordVisible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
                     onClick={() => setPasswordVisible((value) => !value)}
                   />
@@ -125,7 +164,7 @@ export function LoginPage() {
             <div className="login-meta">
               <span />
               <Button type="link" disabled>
-                忘记密码？
+                {t('login.forgotPassword')}
               </Button>
             </div>
             <Button
@@ -136,14 +175,14 @@ export function LoginPage() {
               icon={<LoginOutlined />}
               loading={loading}
             >
-              登录
+              {t('login.submit')}
             </Button>
           </Form>
           <div className="login-divider">
-            <span>或</span>
+            <span>{t('login.divider')}</span>
           </div>
           <Button size="large" block icon={<GlobalOutlined />} disabled>
-            使用 SSO 登录
+            {t('login.sso')}
           </Button>
         </div>
       </section>
@@ -164,11 +203,13 @@ function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; 
 }
 
 export function AppBootScreen() {
+  const { t } = useTranslation();
+
   return (
     <main className="boot-screen">
       <BrandLogo />
       <span className="boot-spinner" />
-      <p>正在恢复安全会话…</p>
+      <p>{t('common.loadingSession')}</p>
     </main>
   );
 }

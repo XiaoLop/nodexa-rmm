@@ -1,5 +1,6 @@
 import { Result } from 'antd';
 import { lazy, Suspense, type PropsWithChildren } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
 import {
@@ -64,9 +65,16 @@ function RequireCapability({
   capability,
   children,
 }: PropsWithChildren<{ capability: ApplicationCapability }>) {
+  const { t } = useTranslation();
   const capabilities = useApplicationUiCapabilities();
   if (!capabilities[capability]) {
-    return <Result status="403" title="无权访问" subTitle="当前账户没有访问此页面的权限。" />;
+    return (
+      <Result
+        status="403"
+        title={t('common.noAccess')}
+        subTitle={t('common.noAccessDescription')}
+      />
+    );
   }
   return children;
 }

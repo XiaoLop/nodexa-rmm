@@ -9,6 +9,13 @@
     radial-gradient(circle at 18% 48%, rgba(22, 68, 115, 0.24), transparent 38%),
     linear-gradient(135deg, #091522, #07101a);
 }
+.login-language {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  z-index: 3;
+  color: #9db6d7 !important;
+}
 .login-page::after {
   content: '';
   position: absolute;
