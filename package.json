@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "turbo dev",
     "dev:web": "pnpm --filter @meshcentral/web dev",
+    "dev:site": "pnpm --filter @meshcentral/site dev",
     "dev:app": "pnpm --filter @meshcentral/app start",
     "dev:gateway": "pnpm --filter @meshcentral/gateway dev",
     "control": "tsx --env-file-if-exists=.env test/control.test.ts",

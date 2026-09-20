@@ -7,7 +7,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".expo/**", "web-build/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".expo/**", "web-build/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
