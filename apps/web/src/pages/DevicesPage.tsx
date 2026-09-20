@@ -603,88 +603,83 @@ export function DevicesPage() {
         render: (_, device) => {
           const capabilities = deviceCapabilities(device);
           const actionItems = [
-            ...(capabilities.command.visible
-              ? [
-                  {
-                    key: 'command',
-                    icon: <ToolOutlined />,
-                    label: '执行指令',
-                    disabled: !capabilities.command.enabled,
-                  },
-                ]
-              : []),
-            ...(capabilities.edit.visible
-              ? [
-                  {
-                    key: 'edit',
-                    icon: <EditOutlined />,
-                    label: '编辑',
-                    disabled: !capabilities.edit.enabled,
-                  },
-                ]
-              : []),
-            ...(capabilities.uninstall.visible
-              ? [
-                  {
-                    key: 'delete',
-                    icon: <DeleteOutlined />,
-                    label: '删除',
-                    danger: true,
-                    disabled: !capabilities.uninstall.enabled,
-                  },
-                ]
-              : []),
-            ...(capabilities.wake.visible || capabilities.power.visible
-              ? [{ type: 'divider' as const }]
-              : []),
-            ...(capabilities.wake.visible
-              ? [
-                  {
-                    key: 'wake',
-                    icon: <ThunderboltOutlined />,
-                    label: '唤醒',
-                    disabled: !capabilities.wake.enabled,
-                  },
-                ]
-              : []),
-            ...(['reset', 'sleep', 'poweroff'] as const).flatMap((key) =>
-              capabilities.power.visible
-                ? [
-                    {
-                      key,
-                      icon:
-                        key === 'reset' ? (
-                          <RedoOutlined />
-                        ) : key === 'sleep' ? (
-                          <MoonOutlined />
-                        ) : (
-                          <PoweroffOutlined />
-                        ),
-                      label: powerActionLabels[key],
-                      danger: key === 'poweroff',
-                      disabled: !capabilities.power.enabled,
-                    },
-                  ]
-                : [],
-            ),
+            {
+              key: 'command',
+              icon: <ToolOutlined />,
+              label: '执行指令',
+              disabled: !capabilities.command.enabled,
+              title: capabilities.command.enabled
+                ? undefined
+                : (capabilities.command.message ?? '当前账户无权执行指令'),
+            },
+            {
+              key: 'edit',
+              icon: <EditOutlined />,
+              label: '编辑',
+              disabled: !capabilities.edit.enabled,
+              title: capabilities.edit.enabled
+                ? undefined
+                : (capabilities.edit.message ?? '当前账户无权编辑此设备'),
+            },
+            {
+              key: 'delete',
+              icon: <DeleteOutlined />,
+              label: '删除',
+              danger: true,
+              disabled: !capabilities.uninstall.enabled,
+              title: capabilities.uninstall.enabled
+                ? undefined
+                : (capabilities.uninstall.message ?? '当前账户无权删除此设备'),
+            },
+            { type: 'divider' as const },
+            {
+              key: 'wake',
+              icon: <ThunderboltOutlined />,
+              label: '唤醒',
+              disabled: !capabilities.wake.enabled,
+              title: capabilities.wake.enabled
+                ? undefined
+                : (capabilities.wake.message ?? '当前账户无权唤醒此设备'),
+            },
+            ...(['reset', 'sleep', 'poweroff'] as const).map((key) => ({
+              key,
+              icon:
+                key === 'reset' ? (
+                  <RedoOutlined />
+                ) : key === 'sleep' ? (
+                  <MoonOutlined />
+                ) : (
+                  <PoweroffOutlined />
+                ),
+              label: powerActionLabels[key],
+              danger: key === 'poweroff',
+              disabled: !capabilities.power.enabled,
+              title: capabilities.power.enabled
+                ? undefined
+                : (capabilities.power.message ?? '当前账户无权执行电源操作'),
+            })),
           ];
           return (
             <Space size="small">
-              {capabilities.files.visible ? (
-                <Tooltip title={capabilities.files.message ?? '文件管理'}>
-                  <span>
-                    <Button
-                      type="text"
-                      icon={<FolderOpenOutlined />}
-                      disabled={!capabilities.files.enabled}
-                      aria-label={`管理 ${device.name} 的文件`}
-                      onClick={() =>
-                        navigate(`/devices/${encodeURIComponent(device.id)}/workspace?tab=files`)
-                      }
-                    />
-                  </span>
-                </Tooltip>
-              ) : null}
+              <Tooltip
+                title={
+                  capabilities.files.enabled
+                    ? '文件管理'
+                    : (capabilities.files.message ?? '当前账户无权管理此设备文件')
+                }
+              >
+                <span>
+                  <Button
+                    type="text"
+                    icon={<FolderOpenOutlined />}
+                    disabled={!capabilities.files.enabled}
+                    aria-label={`管理 ${device.name} 的文件`}
+                    onClick={() =>
+                      navigate(`/devices/${encodeURIComponent(device.id)}/workspace?tab=files`)
+                    }
+                  />
+                </span>
+              </Tooltip>
               <Tooltip title="工作台">
                 <Button
                   type="text"
@@ -693,33 +688,37 @@ export function DevicesPage() {
                   onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)}
                 />
               </Tooltip>
-              {actionItems.length > 0 ? (
-                <Dropdown
-                  trigger={['click']}
-                  menu={{
-                    items: actionItems,
-                    onClick: ({ key }) => {
-                      if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
-                        runPowerAction(device, key as PowerAction);
-                      } else if (key === 'edit') {
-                        openDeviceEditor(device);
-                      } else if (key === 'delete') {
-                        confirmDeviceDeletion(device);
-                      } else if (key === 'command') {
-                        setCommandDevices([device]);
-                      } else {
-                        messageApi.info(`执行指令功能开发中`);
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: actionItems,
+                  onClick: ({ key }) => {
+                    if (['wake', 'reset', 'sleep', 'poweroff'].includes(key)) {
+                      runPowerAction(device, key as PowerAction);
+                    } else if (key === 'edit') {
+                      openDeviceEditor(device);
+                    } else if (key === 'delete') {
+                      confirmDeviceDeletion(device);
+                    } else if (key === 'command') {
+                      if (!capabilities.command.enabled) {
+                        void messageApi.warning(
+                          capabilities.command.message ?? '当前账户无权执行指令',
+                        );
+                        return;
                       }
-                    },
-                  }}
-                >
-                  <Button
-                    type="text"
-                    icon={<EllipsisOutlined />}
-                    aria-label={`操作 ${device.name}`}
-                  />
-                </Dropdown>
-              ) : null}
+                      setCommandDevices([device]);
+                    } else {
+                      messageApi.info(`执行指令功能开发中`);
+                    }
+                  },
+                }}
+              >
+                <Button
+                  type="text"
+                  icon={<EllipsisOutlined />}
+                  aria-label={`操作 ${device.name}`}
+                />
+              </Dropdown>
             </Space>
           );
         },
@@ -728,6 +727,7 @@ export function DevicesPage() {
     [
       client,
       confirmDeviceDeletion,
+      deviceCapabilities,
       groupNameById,
       messageApi,
       navigate,
