@@ -52,6 +52,35 @@ describe('GatewayClient', () => {
     client.destroy();
   });
 
+  it('subscribes to normalized server statistics', async () => {
+    const { client, socket } = await connectedClient();
+    const serverStats = vi.fn();
+    const unsubscribe = client.server.subscribeStats(serverStats);
+    expect(JSON.parse(socket.sent.at(-1) ?? '{}')).toEqual({
+      action: 'serverstats',
+      interval: 10_000,
+    });
+
+    socket.message({
+      action: 'serverstats',
+      totalmem: 100,
+      freemem: 40,
+      cpuavg: [0.1, 0.2, 0.3],
+      availablemem: 50,
+      values: { ServerState: { AgentSessions: 7, ConnectedUsers: 2 } },
+    });
+    expect(serverStats).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalMemory: 100,
+        availableMemory: 50,
+        cpuAverage: [0.1, 0.2, 0.3],
+        serverState: expect.objectContaining({ agentSessions: 7, connectedUsers: 2 }),
+      }),
+    );
+    unsubscribe();
+    client.destroy();
+  });
+
   it('rejects authentication failures', async () => {
     const socket = new FakeWebSocket();
     const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });

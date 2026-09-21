@@ -4,6 +4,8 @@ import type {
   GatewayEvent,
   PrincipalGrant,
   ServerInfo,
+  ServerStateStats,
+  ServerStats,
   UserInfo,
   UserInfoLink,
   UserLinkType,
@@ -280,6 +282,41 @@ export function normalizeServerInfo(value: unknown): ServerInfo | undefined {
     guestDeviceSharing: boolean(raw.guestdevicesharing ?? raw.guestDeviceSharing),
     manageAllDeviceGroups: boolean(raw.managealldevicegroups ?? raw.manageAllDeviceGroups),
     raw,
+  };
+}
+
+export function normalizeServerStats(value: unknown): ServerStats | undefined {
+  if (!isRecord(value) || value.action !== 'serverstats') return undefined;
+  const finiteNumber = (field: unknown): number | undefined =>
+    typeof field === 'number' && Number.isFinite(field) ? field : undefined;
+  const values = isRecord(value.values) ? value.values : undefined;
+  const rawServerState = isRecord(values?.ServerState) ? values.ServerState : undefined;
+  let serverState: ServerStateStats | undefined;
+  if (rawServerState) {
+    serverState = {
+      userAccounts: finiteNumber(rawServerState.UserAccounts),
+      deviceGroups: finiteNumber(rawServerState.DeviceGroups),
+      agentSessions: finiteNumber(rawServerState.AgentSessions),
+      connectedUsers: finiteNumber(rawServerState.ConnectedUsers),
+      userSessions: finiteNumber(rawServerState.UsersSessions),
+      relaySessions: finiteNumber(rawServerState.RelaySessions),
+      relayCount: finiteNumber(rawServerState.RelayCount),
+      connectedIntelAmt: finiteNumber(rawServerState.ConnectedIntelAMT),
+      connectedIntelAmtCira: finiteNumber(rawServerState.ConnectedIntelAMTCira),
+      raw: rawServerState,
+    };
+  }
+  return {
+    totalMemory: finiteNumber(value.totalmem),
+    freeMemory: finiteNumber(value.freemem),
+    availableMemory: finiteNumber(value.availablemem),
+    cpuAverage: Array.isArray(value.cpuavg)
+      ? value.cpuavg.filter(
+          (item): item is number => typeof item === 'number' && Number.isFinite(item),
+        )
+      : [],
+    serverState,
+    raw: value,
   };
 }
 

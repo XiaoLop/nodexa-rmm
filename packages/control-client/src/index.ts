@@ -16,6 +16,7 @@ export {
   normalizeGroups,
   normalizeLastConnects,
   normalizeServerInfo,
+  normalizeServerStats,
   normalizeUserInfo,
   timestampValue,
 } from './protocol/normalizers';
@@ -34,6 +35,7 @@ export { DevicesResource } from './resources/devices';
 export { CommandsResource } from './resources/commands';
 export { CommandExecution } from './resources/CommandExecution';
 export { GroupsResource } from './resources/groups';
+export { ServerResource } from './resources/server';
 export { EventsResource } from './resources/events';
 export { UserGroupsResource } from './resources/userGroups';
 export { UsersResource } from './resources/users';

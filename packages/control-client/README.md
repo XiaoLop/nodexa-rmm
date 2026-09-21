@@ -14,6 +14,7 @@
 - 标准化站点和设备权限，判断桌面、终端、设备文件等常用能力。
 - 查询历史事件，订阅设备上下线、命令执行等实时事件。
 - 查询用户组、用户和在线会话数，创建、编辑、锁定和删除用户。
+- 订阅服务器内存、CPU、Agent 会话、用户和中继统计信息。
 - 通过 `request()` 和 `send()` 调用尚未封装的 MeshCentral action。
 
 ## 安装
@@ -97,6 +98,7 @@ client.destroy();
 | `client.commands`   | 命令提交和带输出跟踪的命令执行                         | 脚本执行、批量诊断   |
 | `client.groups`     | 设备组增删改查、用户权限                               | 分组管理、授权       |
 | `client.events`     | 全局、设备或用户历史事件                               | 审计记录、活动时间线 |
+| `client.server`     | 服务器统计信息订阅                                     | 运行状态监控         |
 | `client.userGroups` | 用户组列表                                             | 权限配置界面         |
 | `client.users`      | 用户、锁定状态、会话数和账号维护                       | 管理员用户管理       |
 
@@ -125,6 +127,13 @@ const events = await client.events.listByDevice('node//device-id', {
 
 const users = await client.users.list();
 const sessionCounts = await client.users.listSessionCounts();
+
+const unsubscribeStats = client.server.subscribeStats((stats) => {
+  console.log(stats.totalMemory, stats.availableMemory, stats.cpuAverage);
+  console.log(stats.serverState?.agentSessions, stats.serverState?.connectedUsers);
+});
+// 不再消费统计信息时移除本地监听器。
+unsubscribeStats();
 ```
 
 ## 权限判断
@@ -181,14 +190,16 @@ const unsubscribeDiagnostic = client.on('diagnostic', (diagnostic) => {
 
 订阅通道：
 
-| 通道         | 内容                             | 适合做什么                       |
-| ------------ | -------------------------------- | -------------------------------- |
-| `connection` | 连接状态转换、重连次数和相关错误 | 更新在线状态、禁用依赖连接的操作 |
-| `event`      | 标准化后的领域事件               | 增量更新设备、审计和任务状态     |
-| `userInfo`   | 当前登录用户信息                 | 初始化身份、权限和个人资料       |
-| `message`    | 每一条已解析的原始控制通道消息   | 调试协议、实现尚未标准化的功能   |
-| `error`      | 连接、请求、协议和服务端错误     | 统一错误提示和日志上报           |
-| `diagnostic` | 无效、未知、歧义响应和监听器异常 | 开发期排错和兼容性监控           |
+| 通道          | 内容                             | 适合做什么                       |
+| ------------- | -------------------------------- | -------------------------------- |
+| `connection`  | 连接状态转换、重连次数和相关错误 | 更新在线状态、禁用依赖连接的操作 |
+| `event`       | 标准化后的领域事件               | 增量更新设备、审计和任务状态     |
+| `userInfo`    | 当前登录用户信息                 | 初始化身份、权限和个人资料       |
+| `serverInfo`  | 服务器能力和功能开关             | 初始化功能可用性                 |
+| `serverStats` | 标准化后的服务器运行统计         | 更新服务器监控界面               |
+| `message`     | 每一条已解析的原始控制通道消息   | 调试协议、实现尚未标准化的功能   |
+| `error`       | 连接、请求、协议和服务端错误     | 统一错误提示和日志上报           |
+| `diagnostic`  | 无效、未知、歧义响应和监听器异常 | 开发期排错和兼容性监控           |
 
 `event` 通道当前会产生 `deviceOnline`、`deviceOffline`、`deviceChanged`、`deviceRemoved`、`relayLog`、`agentLog`、`manualOperation`、`commandExecution`、`batchUpload` 和 `userSessionCount`。每种事件的来源、字段和建议处理方式见 [docs/events.md](docs/events.md)。
 

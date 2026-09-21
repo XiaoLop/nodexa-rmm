@@ -12,26 +12,26 @@
 
 ## 设备 `client.devices`
 
-| 方法 | 发送的 action/关键字段 | 返回 | 可以用来做什么 |
-| --- | --- | --- | --- |
-| `list()` | `nodes` | `Device[]` | 加载全部可见设备 |
-| `listByGroup(groupId)` | `nodes`, `meshid` | `Device[]` | 加载指定设备组成员 |
-| `systemInfo(id)` | `getsysinfo`, `nodeid`, `nodeinfo: true` | 泛型原始响应 | 查看操作系统、硬件和 Agent 系统信息 |
-| `networkInfo(id)` | `getnetworkinfo`, `nodeid` | 泛型原始响应 | 查看网卡、地址等网络信息 |
-| `lastConnect(id)` | `lastconnect`, `nodeid` | 泛型原始响应 | 查看单个设备最后连接信息 |
-| `lastConnects()` | `lastconnects` | `Record<string, string>` | 批量补充设备最后在线时间 |
-| `details(id)` | 并行发送 `nodes`、`getnetworkinfo`、`lastconnect`、`getsysinfo` | `DeviceDetails` | 一次组装设备详情页所需数据 |
-| `update(id, patch)` | `changedevice` | 原始确认响应 | 修改名称、描述、设备组或标签 |
-| `remove(id)` | `removedevices`, `nodeids` | 原始确认响应 | 删除设备 |
-| `setUserRights(id, username, rights)` | `adddeviceuser`, `nodeid`, `usernames`, `rights` | 原始确认响应 | 设置用户对单台设备的直接权限 |
-| `removeUser(id, username)` | `adddeviceuser`, `rights: 0`, `remove: true` | 原始确认响应 | 移除用户对单台设备的直接权限 |
-| `powerAction(id, action)` | `wakenode` 或单元素 `poweraction.nodeids` | 原始确认响应 | 唤醒、重启、关机或休眠 |
-| `updateManyGroup(ids, groupId)` | 每台设备发送 `changedevice`，并发上限 4 | `BatchOperationResult` | 批量迁移设备并得到逐设备提交结果 |
-| `powerMany(ids, 'wake')` | 单次 `wakedevices`, `nodeids` | `BatchOperationResult` | 批量唤醒设备 |
-| `powerMany(ids, other)` | 单次 `poweraction`，包含 `nodeids` 和 `actiontype` | `BatchOperationResult` | 批量重启、关机或休眠 |
-| `inviteByEmail(options)` | `inviteAgent` | `{ raw }` | 通过邮件邀请安装 Agent |
-| `createInviteLink(options)` | `createInviteLink` | `{ url?, raw }` | 生成 Agent 安装邀请链接 |
-| `normalize(value)` | 不发送消息 | `Device \| undefined` | 复用包内设备标准化逻辑 |
+| 方法                                  | 发送的 action/关键字段                                          | 返回                     | 可以用来做什么                      |
+| ------------------------------------- | --------------------------------------------------------------- | ------------------------ | ----------------------------------- |
+| `list()`                              | `nodes`                                                         | `Device[]`               | 加载全部可见设备                    |
+| `listByGroup(groupId)`                | `nodes`, `meshid`                                               | `Device[]`               | 加载指定设备组成员                  |
+| `systemInfo(id)`                      | `getsysinfo`, `nodeid`, `nodeinfo: true`                        | 泛型原始响应             | 查看操作系统、硬件和 Agent 系统信息 |
+| `networkInfo(id)`                     | `getnetworkinfo`, `nodeid`                                      | 泛型原始响应             | 查看网卡、地址等网络信息            |
+| `lastConnect(id)`                     | `lastconnect`, `nodeid`                                         | 泛型原始响应             | 查看单个设备最后连接信息            |
+| `lastConnects()`                      | `lastconnects`                                                  | `Record<string, string>` | 批量补充设备最后在线时间            |
+| `details(id)`                         | 并行发送 `nodes`、`getnetworkinfo`、`lastconnect`、`getsysinfo` | `DeviceDetails`          | 一次组装设备详情页所需数据          |
+| `update(id, patch)`                   | `changedevice`                                                  | 原始确认响应             | 修改名称、描述、设备组或标签        |
+| `remove(id)`                          | `removedevices`, `nodeids`                                      | 原始确认响应             | 删除设备                            |
+| `setUserRights(id, username, rights)` | `adddeviceuser`, `nodeid`, `usernames`, `rights`                | 原始确认响应             | 设置用户对单台设备的直接权限        |
+| `removeUser(id, username)`            | `adddeviceuser`, `rights: 0`, `remove: true`                    | 原始确认响应             | 移除用户对单台设备的直接权限        |
+| `powerAction(id, action)`             | `wakenode` 或单元素 `poweraction.nodeids`                       | 原始确认响应             | 唤醒、重启、关机或休眠              |
+| `updateManyGroup(ids, groupId)`       | 每台设备发送 `changedevice`，并发上限 4                         | `BatchOperationResult`   | 批量迁移设备并得到逐设备提交结果    |
+| `powerMany(ids, 'wake')`              | 单次 `wakedevices`, `nodeids`                                   | `BatchOperationResult`   | 批量唤醒设备                        |
+| `powerMany(ids, other)`               | 单次 `poweraction`，包含 `nodeids` 和 `actiontype`              | `BatchOperationResult`   | 批量重启、关机或休眠                |
+| `inviteByEmail(options)`              | `inviteAgent`                                                   | `{ raw }`                | 通过邮件邀请安装 Agent              |
+| `createInviteLink(options)`           | `createInviteLink`                                              | `{ url?, raw }`          | 生成 Agent 安装邀请链接             |
+| `normalize(value)`                    | 不发送消息                                                      | `Device \| undefined`    | 复用包内设备标准化逻辑              |
 
 `details()` 使用并行 fail-fast 策略，任一请求失败时整个调用失败。`raw` 保留四项原始响应。
 
@@ -100,24 +100,24 @@ unsubscribe();
 
 ## 设备组 `client.groups`
 
-| 方法 | 发送的 action | 返回/确认方式 | 用途 |
-| --- | --- | --- | --- |
-| `list()` | `meshes` | `DeviceGroup[]` | 加载设备组 |
-| `create(name, options)` | `createmesh` | 原始响应 | 创建设备组，默认 `meshtype: 2` |
-| `update(groupId, patch)` | `editmesh` | 原始响应 | 修改组名或描述 |
-| `remove(groupId)` | `deletemesh` | 原始响应 | 删除设备组 |
-| `setUserRights(groupId, groupName, userId, rights)` | 单向发送 `addmeshuser` | 等待对应 `accountchange` 事件 | 设置用户对设备组的 32 位权限掩码 |
-| `removeUser(groupId, userId)` | 单向发送 `removemeshuser` | 等待对应 `accountchange` 事件 | 移除用户与设备组的关联 |
+| 方法                                                | 发送的 action             | 返回/确认方式                 | 用途                             |
+| --------------------------------------------------- | ------------------------- | ----------------------------- | -------------------------------- |
+| `list()`                                            | `meshes`                  | `DeviceGroup[]`               | 加载设备组                       |
+| `create(name, options)`                             | `createmesh`              | 原始响应                      | 创建设备组，默认 `meshtype: 2`   |
+| `update(groupId, patch)`                            | `editmesh`                | 原始响应                      | 修改组名或描述                   |
+| `remove(groupId)`                                   | `deletemesh`              | 原始响应                      | 删除设备组                       |
+| `setUserRights(groupId, groupName, userId, rights)` | 单向发送 `addmeshuser`    | 等待对应 `accountchange` 事件 | 设置用户对设备组的 32 位权限掩码 |
+| `removeUser(groupId, userId)`                       | 单向发送 `removemeshuser` | 等待对应 `accountchange` 事件 | 移除用户与设备组的关联           |
 
 成员关系变更最多等待 5 秒确认。期间断线会失败；收到服务端错误时抛出 `GatewayServerError`。
 
 ## 历史事件 `client.events`
 
-| 方法 | 发送消息 | 返回 | 用途 |
-| --- | --- | --- | --- |
-| `list(options)` | `events`, `limit`, 可选 `filter` | `GatewayEvent[]` | 全局活动或审计列表 |
-| `listByDevice(id, options)` | 增加 `nodeid` | `GatewayEvent[]` | 设备时间线 |
-| `listByUser(id, options)` | 增加 `userid` | `GatewayEvent[]` | 用户操作记录 |
+| 方法                        | 发送消息                         | 返回             | 用途               |
+| --------------------------- | -------------------------------- | ---------------- | ------------------ |
+| `list(options)`             | `events`, `limit`, 可选 `filter` | `GatewayEvent[]` | 全局活动或审计列表 |
+| `listByDevice(id, options)` | 增加 `nodeid`                    | `GatewayEvent[]` | 设备时间线         |
+| `listByUser(id, options)`   | 增加 `userid`                    | `GatewayEvent[]` | 用户操作记录       |
 
 `limit` 默认 100，范围 1 到 200。历史请求超时为 30 秒。过滤器见 [events.md](events.md)。
 
@@ -127,15 +127,15 @@ unsubscribe();
 
 ## 用户 `client.users`
 
-| 方法 | 发送的 action | 返回/确认方式 | 用途 |
-| --- | --- | --- | --- |
-| `list()` | `users` | `ManagedUser[]` | 加载可管理用户及权限、锁定状态和关联 |
-| `listSessionCounts()` | `wssessioncount` | `Record<string, number>` | 显示每个用户的在线 WebSocket 会话数 |
-| `create(options)` | 先 `users` 去重，再单向发送 `adduser` | 等待 `accountcreate`，超时后用 `users` 验证 | 创建账号，可使用随机密码 |
-| `update(userId, patch)` | 单向发送 `edituser` | 等待 `accountchange`，超时后查询验证 | 修改邮箱、真实姓名或电话 |
-| `setLocked(userId, locked, rights)` | 单向发送 `edituser` | 等待事件，超时后查询验证 | 修改 `siteadmin` 中的锁定位 |
-| `setSiteRights(userId, siteRights)` | 单向发送 `edituser` | 等待 `accountchange`，超时后查询验证 | 替换用户的完整站点权限掩码 |
-| `remove(userId, username?)` | 单向发送 `deleteuser` | 等待 `accountremove`，超时后查询验证 | 删除账号 |
+| 方法                                | 发送的 action                         | 返回/确认方式                               | 用途                                 |
+| ----------------------------------- | ------------------------------------- | ------------------------------------------- | ------------------------------------ |
+| `list()`                            | `users`                               | `ManagedUser[]`                             | 加载可管理用户及权限、锁定状态和关联 |
+| `listSessionCounts()`               | `wssessioncount`                      | `Record<string, number>`                    | 显示每个用户的在线 WebSocket 会话数  |
+| `create(options)`                   | 先 `users` 去重，再单向发送 `adduser` | 等待 `accountcreate`，超时后用 `users` 验证 | 创建账号，可使用随机密码             |
+| `update(userId, patch)`             | 单向发送 `edituser`                   | 等待 `accountchange`，超时后查询验证        | 修改邮箱、真实姓名或电话             |
+| `setLocked(userId, locked, rights)` | 单向发送 `edituser`                   | 等待事件，超时后查询验证                    | 修改 `siteadmin` 中的锁定位          |
+| `setSiteRights(userId, siteRights)` | 单向发送 `edituser`                   | 等待 `accountchange`，超时后查询验证        | 替换用户的完整站点权限掩码           |
+| `remove(userId, username?)`         | 单向发送 `deleteuser`                 | 等待 `accountremove`，超时后查询验证        | 删除账号                             |
 
 `setSiteRights()` 要求 `siteRights` 是无符号 32 位整数，发送的字段为 `siteadmin`。例如：
 
@@ -150,14 +150,35 @@ await client.users.setSiteRights('user//test', 4);
 
 创建用户时，`randomPassword: false` 必须提供密码。不要记录或展示服务端返回的随机密码，除非产品流程明确要求并采用安全的一次性展示。
 
+## 服务器 `client.server`
+
+`subscribeStats(listener, intervalMs = 10000)` 发送以下单向消息，并返回本地监听器的取消函数：
+
+```json
+{ "action": "serverstats", "interval": 10000 }
+```
+
+服务端按指定间隔推送 `serverstats`。客户端通过 `serverStats` 通道提供标准化的 `ServerStats`，包含 `totalMemory`、`freeMemory`、`availableMemory`、`cpuAverage`，以及可选的 `serverState`。`serverState` 包含账号、设备组、Agent 会话、在线用户、用户会话、中继和 Intel AMT 连接统计。
+
+```ts
+const unsubscribe = client.server.subscribeStats((stats) => {
+  console.log(stats.cpuAverage);
+  console.log(stats.serverState?.agentSessions);
+});
+
+unsubscribe();
+```
+
+`intervalMs` 必须是正整数。取消函数只移除当前客户端的本地监听器；原始推送仍可通过 `message` 通道观察。
+
 ## 客户端内部消息
 
 除了资源 action，客户端还会发送：
 
-| 消息 | 何时发送 | 作用 |
-| --- | --- | --- |
+| 消息                              | 何时发送                                         | 作用             |
+| --------------------------------- | ------------------------------------------------ | ---------------- |
 | `{ type: 'authenticate', token }` | WebSocket 打开后，且 `getAccessToken()` 返回令牌 | 完成访问令牌鉴权 |
-| `{ type: 'ping' }` | 已连接时按心跳间隔发送 | 保持控制通道活跃 |
+| `{ type: 'ping' }`                | 已连接时按心跳间隔发送                           | 保持控制通道活跃 |
 
 `connect()` 在收到 `authenticated`，或同时收到 `serverinfo` 与 `userinfo` 后才进入 `connected`。
 

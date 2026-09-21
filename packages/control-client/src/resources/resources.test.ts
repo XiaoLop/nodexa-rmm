@@ -8,6 +8,7 @@ import { DevicesResource } from './devices';
 import { CommandsResource } from './commands';
 import { EventsResource } from './events';
 import { GroupsResource } from './groups';
+import { ServerResource } from './server';
 import { UserGroupsResource } from './userGroups';
 import { UsersResource } from './users';
 
@@ -57,6 +58,29 @@ class ControllableClient extends FakeClient {
 }
 
 describe('resources', () => {
+  it('subscribes to server statistics pushes', () => {
+    const client = new FakeClient();
+    const server = new ServerResource(client);
+    const listener = vi.fn();
+    const unsubscribe = server.subscribeStats(listener);
+    expect(client.sent).toEqual([{ action: 'serverstats', interval: 10_000 }]);
+
+    const stats: GatewayClientEvents['serverStats'] = {
+      totalMemory: 100,
+      freeMemory: 40,
+      availableMemory: 50,
+      cpuAverage: [0.1, 0.2, 0.3],
+      raw: {},
+    };
+    client.emit('serverStats', stats);
+    expect(listener).toHaveBeenCalledWith(stats);
+
+    unsubscribe();
+    client.emit('serverStats', stats);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(() => server.subscribeStats(listener, 0)).toThrow(GatewayValidationError);
+  });
+
   it('builds and normalizes device requests', async () => {
     const client = new FakeClient();
     const devices = new DevicesResource(client);
@@ -153,7 +177,12 @@ describe('resources', () => {
     const devices = new DevicesResource(client);
     const userGroupId = 'ugrp//operators';
 
-    const groupGrant = groups.setUserGroupRights('mesh//servers', 'Servers', userGroupId, 0xffffffff);
+    const groupGrant = groups.setUserGroupRights(
+      'mesh//servers',
+      'Servers',
+      userGroupId,
+      0xffffffff,
+    );
     expect(client.sent.at(-1)).toEqual({
       action: 'addmeshuser',
       meshid: 'mesh//servers',
@@ -513,13 +542,15 @@ describe('resources', () => {
 
   it('rejects invalid group membership mutations', () => {
     const groups = new GroupsResource(new FakeClient());
-    expect(() => groups.setUserRights(' ', 'Servers', 'user//test', 3)).toThrow(GatewayValidationError);
+    expect(() => groups.setUserRights(' ', 'Servers', 'user//test', 3)).toThrow(
+      GatewayValidationError,
+    );
     expect(() => groups.setUserRights('mesh//servers', 'Servers', 'user//test', -1)).toThrow(
       GatewayValidationError,
     );
-    expect(() => groups.setUserRights('mesh//servers', 'Servers', 'user//test', 0x100000000)).toThrow(
-      GatewayValidationError,
-    );
+    expect(() =>
+      groups.setUserRights('mesh//servers', 'Servers', 'user//test', 0x100000000),
+    ).toThrow(GatewayValidationError);
     expect(() => groups.removeUser('mesh//servers', ' ')).toThrow(GatewayValidationError);
   });
 

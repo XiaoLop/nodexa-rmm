@@ -16,6 +16,7 @@ import { DevicesResource } from '../resources/devices';
 import { CommandsResource } from '../resources/commands';
 import { EventsResource } from '../resources/events';
 import { GroupsResource } from '../resources/groups';
+import { ServerResource } from '../resources/server';
 import { UserGroupsResource } from '../resources/userGroups';
 import { UsersResource } from '../resources/users';
 import type {
@@ -37,6 +38,7 @@ export class GatewayClient {
   readonly commands: CommandsResource;
   readonly groups: GroupsResource;
   readonly events: EventsResource;
+  readonly server: ServerResource;
   readonly userGroups: UserGroupsResource;
   readonly users: UsersResource;
   private socket?: WebSocketLike;
@@ -69,6 +71,7 @@ export class GatewayClient {
     this.commands = new CommandsResource(this);
     this.groups = new GroupsResource(this);
     this.events = new EventsResource(this);
+    this.server = new ServerResource(this);
     this.userGroups = new UserGroupsResource(this);
     this.users = new UsersResource(this);
     if (options.onConnectionChange) this.on('connection', options.onConnectionChange);
@@ -248,6 +251,7 @@ export class GatewayClient {
         }
         const decoded = decodePush(payload);
         if (decoded.serverInfo) this.dispatcher.emit('serverInfo', decoded.serverInfo);
+        if (decoded.serverStats) this.dispatcher.emit('serverStats', decoded.serverStats);
         if (decoded.userInfo) this.dispatcher.emit('userInfo', decoded.userInfo);
         if (decoded.event) this.dispatcher.emit('event', decoded.event);
         if (!consumed && decoded.unknown && inspection.status === 'pending' && !inspection.signal)

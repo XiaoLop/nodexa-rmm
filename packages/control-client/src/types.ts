@@ -131,6 +131,28 @@ export interface ServerInfo {
   raw?: unknown;
 }
 
+export interface ServerStateStats {
+  userAccounts?: number;
+  deviceGroups?: number;
+  agentSessions?: number;
+  connectedUsers?: number;
+  userSessions?: number;
+  relaySessions?: number;
+  relayCount?: number;
+  connectedIntelAmt?: number;
+  connectedIntelAmtCira?: number;
+  raw?: unknown;
+}
+
+export interface ServerStats {
+  totalMemory?: number;
+  freeMemory?: number;
+  availableMemory?: number;
+  cpuAverage: number[];
+  serverState?: ServerStateStats;
+  raw: unknown;
+}
+
 export type UserLinkType = 'device-group' | 'user-group' | 'device' | 'unknown';
 
 export interface UserLink {
@@ -218,6 +240,7 @@ export interface GatewayClientEvents {
   event: GatewayEvent;
   userInfo: UserInfo;
   serverInfo: ServerInfo;
+  serverStats: ServerStats;
   message: unknown;
   error: Error;
   diagnostic: GatewayDiagnostic;
