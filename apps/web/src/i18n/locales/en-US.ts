@@ -115,9 +115,18 @@ export const enUS = {
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "forgotPassword": "Forgot password?",
+    "forgotPasswordTooltip": "Please contact your system administrator to reset credentials",
+    "rememberMe": "Remember me",
     "submit": "Sign in",
     "divider": "or",
     "sso": "Sign in with SSO",
+    "ssoTooltip": "Single Sign-On (SAML 2.0 / OIDC) is not enabled",
+    "badge": "Enterprise Remote Endpoint & Ops Platform",
+    "systemOperational": "Gateway & nodes operational",
+    "secureChannel": "TLS 1.3 · AES-256 Encrypted Channel",
+    "featureTag1": "Low Latency",
+    "featureTag2": "Zero Trust",
+    "featureTag3": "Cross-Platform",
     "failed": "Sign-in failed. Please try again later."
   },
   "notFound": {

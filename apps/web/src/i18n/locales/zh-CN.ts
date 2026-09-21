@@ -115,9 +115,18 @@ export const zhCN = {
     "showPassword": "显示密码",
     "hidePassword": "隐藏密码",
     "forgotPassword": "忘记密码？",
+    "forgotPasswordTooltip": "请联系系统管理员重置您的凭证",
+    "rememberMe": "记住账号",
     "submit": "登录",
     "divider": "或",
     "sso": "使用 SSO 登录",
+    "ssoTooltip": "单点登录服务（SAML 2.0 / OIDC）暂未开启",
+    "badge": "企业级远程终端与设备运维平台",
+    "systemOperational": "业务网关与节点连接正常",
+    "secureChannel": "TLS 1.3 · AES-256 端到端加密信道",
+    "featureTag1": "低延迟遥测",
+    "featureTag2": "零信任防护",
+    "featureTag3": "跨平台协同",
     "failed": "登录失败，请稍后重试。"
   },
   "notFound": {
