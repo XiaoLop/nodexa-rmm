@@ -109,7 +109,7 @@ export function LoginPage() {
             text={t('login.efficientManagementDescription')}
           />
         </div>
-        <footer>© 2026 MeshCentral. All rights reserved.</footer>
+        <footer>© 2026 Nodexa RMM. All rights reserved.</footer>
       </section>
 
       <section className="login-panel-wrap">

@@ -5,20 +5,12 @@
   gap: 12px;
   white-space: nowrap;
 }
-.brand-shield {
+.brand-mark {
   width: 42px;
   height: 48px;
-  display: grid;
-  place-items: center;
-  color: white;
-  background: linear-gradient(145deg, #2879ee, #0a397e);
-  clip-path: polygon(50% 0, 91% 22%, 91% 72%, 50% 100%, 9% 72%, 9% 22%);
+  display: block;
+  object-fit: contain;
   filter: drop-shadow(0 6px 12px rgba(24, 100, 224, 0.35));
-}
-.brand-shield span {
-  font-size: 26px;
-  font-weight: 900;
-  text-shadow: 0 2px 3px #113264;
 }
 .brand-wordmark {
   color: #f4f7fb;
@@ -26,7 +18,7 @@
   font-weight: 750;
   letter-spacing: -0.5px;
 }
-.brand-logo.is-compact .brand-shield {
+.brand-logo.is-compact .brand-mark {
   width: 36px;
   height: 40px;
 }
