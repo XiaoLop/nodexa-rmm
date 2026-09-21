@@ -23,9 +23,9 @@ function task(overrides: Partial<BatchUploadTask>): BatchUploadTask {
 
 describe('batch upload validation', () => {
   it('rejects unsafe target paths and file names', () => {
-    expect(validateTargetDirectory('../tmp')).toContain('父目录');
+    expect(validateTargetDirectory('../tmp')).toBe('directoryTraversal');
     expect(validateTargetDirectory('/tmp')).toBeUndefined();
-    expect(validateTargetFileName('../file.txt')).toContain('单个安全文件名');
+    expect(validateTargetFileName('../file.txt')).toBe('fileNameInvalid');
     expect(validateTargetFileName('file.txt')).toBeUndefined();
   });
 });

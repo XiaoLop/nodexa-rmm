@@ -2,6 +2,7 @@ import { SafetyCertificateOutlined } from '@ant-design/icons';
 import type { DeviceGroup } from '@meshcentral/control-client';
 import { Alert, Button, Checkbox, Modal, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   MESH_PERMISSION_CATEGORIES,
   MESH_PERMISSIONS,
@@ -41,6 +42,7 @@ export function DeviceGroupPermissionModal({
   onCancel,
   onSubmit,
 }: DeviceGroupPermissionModalProps) {
+  const { t } = useTranslation();
   const [groupId, setGroupId] = useState<string>();
   const [fullAccess, setFullAccess] = useState(false);
   const [selectedFlags, setSelectedFlags] = useState<number[]>([]);
@@ -84,7 +86,7 @@ export function DeviceGroupPermissionModal({
   };
 
   const rights = fullAccess ? MESH_RIGHT_ADMIN : composeMeshRights(selectedFlags);
-  const title = editing ? '编辑设备组权限' : '添加设备组权限';
+  const title = editing ? t('permissions.meshModal.editGroupTitle') : t('permissions.meshModal.addGroupTitle');
 
   return (
     <Modal
@@ -97,8 +99,8 @@ export function DeviceGroupPermissionModal({
       open={open}
       width={660}
       centered
-      okText={editing ? '保存权限' : '添加设备组'}
-      cancelText="取消"
+      okText={editing ? t('common.actions.save') : t('permissions.meshModal.addGroupOk')}
+      cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
       okButtonProps={{ disabled: !groupId }}
       onCancel={onCancel}
@@ -107,17 +109,17 @@ export function DeviceGroupPermissionModal({
     >
       <div className="mesh-permission-modal">
         <div className="mesh-permission-field">
-          <span className="mesh-permission-field-label">设备组</span>
+          <span className="mesh-permission-field-label">{t('permissions.meshModal.deviceGroup')}</span>
           <Select
             style={{ flex: 1 }}
             showSearch
             value={groupId}
             disabled={Boolean(editing)}
-            placeholder="选择要授权的设备组"
+            placeholder={t('permissions.meshModal.selectGroupPlaceholder')}
             optionFilterProp="label"
             options={selectableGroups.map((group) => ({ value: group.id, label: group.name }))}
             onChange={setGroupId}
-            notFoundContent="没有可添加的设备组"
+            notFoundContent={t('permissions.meshModal.noAvailableGroups')}
           />
         </div>
 
@@ -134,10 +136,10 @@ export function DeviceGroupPermissionModal({
               }}
             />
             <Typography.Text strong style={{ fontSize: 13 }}>
-              完全管理员权限
+              {t('permissions.meshModal.fullAdminRights')}
             </Typography.Text>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              (拥有全部权限 0xFFFFFFFF)
+              {t('permissions.meshModal.fullAdminRightsDesc')}
             </Typography.Text>
           </Space>
 
@@ -149,7 +151,7 @@ export function DeviceGroupPermissionModal({
                 style={{ padding: '0 4px', fontSize: 12 }}
                 onClick={() => setSelectedFlags(DEFAULT_FLAGS)}
               >
-                常用默认
+                {t('permissions.actions.defaultPreset')}
               </Button>
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                 |
@@ -160,7 +162,7 @@ export function DeviceGroupPermissionModal({
                 style={{ padding: '0 4px', fontSize: 12 }}
                 onClick={() => setSelectedFlags(ALL_FLAGS)}
               >
-                全选
+                {t('permissions.actions.selectAll')}
               </Button>
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                 |
@@ -171,7 +173,7 @@ export function DeviceGroupPermissionModal({
                 style={{ padding: '0 4px', fontSize: 12 }}
                 onClick={() => setSelectedFlags([])}
               >
-                清空
+                {t('permissions.actions.clear')}
               </Button>
             </Space>
           )}
@@ -179,13 +181,13 @@ export function DeviceGroupPermissionModal({
 
         {!fullAccess ? (
           <div className="mesh-permission-field">
-            <span className="mesh-permission-field-label">常用预设</span>
+            <span className="mesh-permission-field-label">{t('permissions.actions.presets')}</span>
             <Select
               style={{ flex: 1 }}
-              placeholder="选择权限组合"
+              placeholder={t('permissions.actions.selectPresetPlaceholder')}
               options={MESH_PERMISSION_PRESETS.map((preset) => ({
                 value: preset.key,
-                label: preset.label,
+                label: t(preset.labelKey),
               }))}
               onChange={(key) => {
                 const preset = MESH_PERMISSION_PRESETS.find((item) => item.key === key);
@@ -204,7 +206,7 @@ export function DeviceGroupPermissionModal({
           <Alert
             showIcon
             type="warning"
-            message="已开启完全管理员权限，包含当前及未来所有权限项。"
+            message={t('permissions.deviceModal.fullRightsNotice')}
             style={{ padding: '6px 12px', fontSize: 12 }}
           />
         ) : null}
@@ -226,7 +228,7 @@ export function DeviceGroupPermissionModal({
                 <div key={category.key} className="mesh-permission-section">
                   <div className="mesh-permission-section-header">
                     <Space size={6}>
-                      <span className="mesh-permission-section-title">{category.label}</span>
+                      <span className="mesh-permission-section-title">{t(category.labelKey)}</span>
                       <span className="mesh-permission-section-count">
                         ({selectedCount}/{categoryPermissions.length})
                       </span>
@@ -238,7 +240,7 @@ export function DeviceGroupPermissionModal({
                         style={{ padding: 0, height: 'auto', fontSize: 12 }}
                         onClick={() => toggleCategory(category.key)}
                       >
-                        {allSelected ? '取消全选' : '本组全选'}
+                        {allSelected ? t('permissions.actions.deselectGroup') : t('permissions.actions.selectGroup')}
                       </Button>
                     )}
                   </div>
@@ -247,16 +249,16 @@ export function DeviceGroupPermissionModal({
                     {categoryPermissions.map((permission) => (
                       <Tooltip
                         key={permission.flag}
-                        title={permission.description}
+                        title={t(permission.descriptionKey)}
                         placement="top"
                         mouseEnterDelay={0.3}
                       >
                         <div className="mesh-permission-item">
                           <Checkbox value={permission.flag}>
-                            <span className="mesh-permission-label">{permission.label}</span>
+                            <span className="mesh-permission-label">{t(permission.labelKey)}</span>
                             {permission.risk ? (
                               <Tag color="warning" bordered={false} className="mesh-permission-risk-tag">
-                                敏感
+                                {t('permissions.riskTag')}
                               </Tag>
                             ) : null}
                           </Checkbox>

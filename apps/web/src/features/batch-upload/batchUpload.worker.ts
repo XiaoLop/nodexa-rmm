@@ -14,6 +14,7 @@ import type {
   BatchUploadOverwritePolicy,
   BatchUploadTaskStatus,
 } from './types';
+import type { BatchUploadDetail } from './types';
 
 interface RunMessage {
   type: 'run';
@@ -60,7 +61,7 @@ type WorkerOutboundMessage =
       timeoutMs?: number;
     }
   | { type: 'control-send'; requestId: string; payload: unknown }
-  | { type: 'status'; taskId: string; status: BatchUploadTaskStatus; detail?: string }
+  | { type: 'status'; taskId: string; status: BatchUploadTaskStatus; detail?: BatchUploadDetail }
   | {
       type: 'progress';
       taskId: string;
@@ -69,8 +70,8 @@ type WorkerOutboundMessage =
       totalBytes: number;
       percentage: number;
     }
-  | { type: 'completed'; taskId: string; result: 'success' | 'skipped'; detail?: string }
-  | { type: 'failed'; taskId: string; errorCode: string; error: string }
+  | { type: 'completed'; taskId: string; result: 'success' | 'skipped'; detail?: BatchUploadDetail }
+  | { type: 'failed'; taskId: string; errorCode: string; error?: BatchUploadDetail }
   | { type: 'cancelled'; taskId: string };
 
 interface PendingRpc {
@@ -108,7 +109,7 @@ const control: RelayControlChannel = {
   },
 };
 
-function updateStatus(taskId: string, status: BatchUploadTaskStatus, detail?: string): void {
+function updateStatus(taskId: string, status: BatchUploadTaskStatus, detail?: BatchUploadDetail): void {
   post({ type: 'status', taskId, status, detail });
 }
 
@@ -137,7 +138,7 @@ async function runTask(message: RunMessage): Promise<void> {
       type: 'failed',
       taskId: message.taskId,
       errorCode: 'worker-busy',
-      error: '上传 Worker 正忙。',
+      error: { code: 'workerBusy' },
     });
     return;
   }
@@ -172,7 +173,7 @@ async function runTask(message: RunMessage): Promise<void> {
         type: 'completed',
         taskId: message.taskId,
         result: 'skipped',
-        detail: '远端已存在同名文件。',
+        detail: { code: 'remoteFileExists' },
       });
       return;
     }
@@ -212,7 +213,7 @@ async function runTask(message: RunMessage): Promise<void> {
         type: 'failed',
         taskId: message.taskId,
         errorCode: errorCode(error),
-        error: error instanceof Error ? error.message : '未知上传错误。',
+        error: { code: errorCode(error), raw: error instanceof Error ? error.message : undefined },
       });
     }
   } finally {
@@ -230,9 +231,9 @@ function cancelCurrent(taskId: string): void {
   if (currentTaskId !== taskId) return;
   updateStatus(taskId, 'cancelling');
   currentAbort?.abort();
-  currentFiles?.cancelActive('用户取消上传。');
+  currentFiles?.cancelActive('Batch upload cancelled.');
   currentRelay?.cancel('Batch upload task cancelled.');
-  rejectAllRpc('批量上传任务已取消。');
+  rejectAllRpc('batch-upload-cancelled');
 }
 
 function rejectAllRpc(reason: string): void {
@@ -265,9 +266,9 @@ workerScope.onmessage = (event: MessageEvent<MainMessage>) => {
     }
     case 'shutdown':
       currentAbort?.abort();
-      currentFiles?.cancelActive('上传 Worker 已关闭。');
+      currentFiles?.cancelActive('Batch upload worker closed.');
       currentRelay?.cancel('Batch upload worker shutdown.');
-      rejectAllRpc('上传 Worker 已关闭。');
+      rejectAllRpc('batch-upload-worker-closed');
       workerScope.close();
       break;
   }

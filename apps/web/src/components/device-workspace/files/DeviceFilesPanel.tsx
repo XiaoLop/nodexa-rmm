@@ -31,6 +31,8 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../../../i18n/formatters';
 import { fileCommandAvailability, formatFileSize, sortFileEntries } from './fileViewModel';
 import { useDeviceFilesSession } from './useDeviceFilesSession';
 
@@ -50,6 +52,8 @@ function entryIcon(entry: FileEntry) {
 }
 
 export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
+  const { t } = useTranslation();
+  const { dateTime } = useFormatters();
   const controller = useDeviceFilesSession(props);
   const [modal, modalContextHolder] = Modal.useModal();
   const [dialog, setDialog] = useState<InputDialog>();
@@ -91,7 +95,7 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
     if (dialog === 'copy') await controller.copySelected(value);
     if (dialog === 'move') await controller.moveSelected(value);
     if (dialog === 'zip')
-      controller.createZip(value.toLocaleLowerCase().endsWith('.zip') ? value : `${value}.zip`);
+      controller.createZip(value.toLowerCase().endsWith('.zip') ? value : `${value}.zip`);
     if (dialog === 'unzip') controller.extractZip(value);
     setDialog(undefined);
   };
@@ -99,20 +103,20 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
   const confirmRemove = () => {
     const includesDirectory = controller.selectedEntries.some((entry) => entry.kind !== 'file');
     modal.confirm({
-      title: includesDirectory ? '递归删除所选目录和文件？' : '删除所选文件？',
+      title: includesDirectory ? t('deviceWorkspace.files.deleteSelectionTitle') : t('deviceWorkspace.files.deleteFilesTitle'),
       content: includesDirectory
-        ? '目录将使用递归语义删除。此操作由远端执行且没有可靠完成回执。'
-        : `将删除 ${controller.selectedEntries.length} 个文件。`,
-      okText: '删除',
+        ? t('deviceWorkspace.files.deleteDirectoryContent')
+        : t('deviceWorkspace.files.deleteFilesContent', { count: controller.selectedEntries.length }),
+      okText: t('common.actions.delete'),
       okButtonProps: { danger: true },
-      cancelText: '取消',
+      cancelText: t('common.actions.cancel'),
       onOk: controller.removeSelected,
     });
   };
 
   const columns: TableColumnsType<FileEntry> = [
     {
-      title: '名称',
+      title: t('deviceWorkspace.files.columns.name'),
       dataIndex: 'name',
       ellipsis: true,
       render: (name: string, entry) => (
@@ -135,15 +139,15 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
       ),
     },
     {
-      title: '类型',
+      title: t('deviceWorkspace.files.columns.type'),
       dataIndex: 'kind',
       width: 100,
       className: 'device-files-secondary-column',
       render: (kind: FileEntry['kind']) =>
-        ({ drive: '磁盘', directory: '文件夹', file: '文件', unknown: '未知' })[kind],
+        ({ drive: t('deviceWorkspace.files.types.drive'), directory: t('deviceWorkspace.files.types.directory'), file: t('deviceWorkspace.files.types.file'), unknown: t('deviceWorkspace.files.types.unknown') })[kind],
     },
     {
-      title: '大小',
+      title: t('deviceWorkspace.files.columns.size'),
       dataIndex: 'size',
       width: 120,
       align: 'right',
@@ -152,24 +156,24 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
         entry.kind === 'file' ? formatFileSize(size) : '—',
     },
     {
-      title: '修改时间',
+      title: t('deviceWorkspace.files.columns.modified'),
       dataIndex: 'modifiedAt',
       width: 180,
       className: 'device-files-time-column',
-      render: (value?: Date) => value?.toLocaleString('zh-CN') ?? '—',
+      render: (value?: Date) => value ? dateTime(value) : '—',
     },
     {
-      title: '操作',
+      title: t('deviceWorkspace.files.columns.actions'),
       key: 'actions',
       width: 64,
       align: 'center',
       render: (_, entry) =>
         entry.kind === 'file' ? (
-          <Tooltip title={`下载 ${entry.name}`}>
+          <Tooltip title={t('deviceWorkspace.files.downloadEntry', { name: entry.name })}>
             <Button
               type="text"
               icon={<DownloadOutlined />}
-              aria-label={`下载 ${entry.name}`}
+              aria-label={t('deviceWorkspace.files.downloadEntry', { name: entry.name })}
               disabled={disabled}
               onClick={() => void controller.download(entry)}
             />
@@ -185,10 +189,10 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
   ) {
     const description =
       controller.status === 'forbidden'
-        ? '当前权限明确禁止远程文件访问'
+        ? t('deviceWorkspace.files.forbidden')
         : controller.status === 'offline'
-          ? '设备当前离线，无法建立文件中继'
-          : '网关尚未连接';
+          ? t('deviceWorkspace.files.offline')
+          : t('deviceWorkspace.files.disconnected');
     return (
       <section className="console-card workspace-tab-empty">
         <Empty description={description} />
@@ -204,50 +208,50 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
       {modalContextHolder}
       <div className="device-files-toolbar">
         <Space size={4} wrap>
-          <Tooltip title="返回上一级">
+          <Tooltip title={t('deviceWorkspace.files.up') }>
             <Button
               icon={<ArrowUpOutlined />}
-              aria-label="返回上一级"
+              aria-label={t('deviceWorkspace.files.up')}
               disabled={disabled || parent === undefined}
               onClick={() => parent !== undefined && void controller.openDirectory(parent)}
             />
           </Tooltip>
-          <Tooltip title="根目录">
+          <Tooltip title={t('deviceWorkspace.files.root')}>
             <Button
               icon={<HomeOutlined />}
-              aria-label="根目录"
+              aria-label={t('deviceWorkspace.files.root')}
               disabled={disabled || !controller.listing?.path}
               onClick={() => void controller.openDirectory('')}
             />
           </Tooltip>
-          <Tooltip title="刷新">
+          <Tooltip title={t('common.actions.refresh')}>
             <Button
               icon={<ReloadOutlined />}
-              aria-label="刷新"
+              aria-label={t('common.actions.refresh')}
               disabled={disabled || !controller.listing}
               onClick={() => void controller.refresh()}
             />
           </Tooltip>
-          <Tooltip title="新建目录">
+          <Tooltip title={t('deviceWorkspace.files.newDirectory')}>
             <Button
               icon={<FolderAddOutlined />}
-              aria-label="新建目录"
+              aria-label={t('deviceWorkspace.files.newDirectory')}
               disabled={disabled || !controller.listing}
               onClick={() => openDialog('mkdir')}
             />
           </Tooltip>
-          <Tooltip title="上传文件">
+          <Tooltip title={t('deviceWorkspace.files.upload')}>
             <Button
               icon={<UploadOutlined />}
-              aria-label="上传文件"
+              aria-label={t('deviceWorkspace.files.upload')}
               disabled={disabled || !controller.listing}
               onClick={() => fileInputRef.current?.click()}
             />
           </Tooltip>
-          <Tooltip title="下载选中文件">
+          <Tooltip title={t('deviceWorkspace.files.downloadSelected')}>
             <Button
               icon={<DownloadOutlined />}
-              aria-label="下载选中文件"
+              aria-label={t('deviceWorkspace.files.downloadSelected')}
               disabled={disabled || !availability.download}
               onClick={() =>
                 controller.selectedEntries[0] &&
@@ -255,51 +259,51 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
               }
             />
           </Tooltip>
-          <Tooltip title="重命名">
+          <Tooltip title={t('common.actions.rename')}>
             <Button
               icon={<EditOutlined />}
-              aria-label="重命名"
+              aria-label={t('common.actions.rename')}
               disabled={disabled || !availability.rename}
               onClick={() => openDialog('rename')}
             />
           </Tooltip>
-          <Tooltip title="复制文件">
+          <Tooltip title={t('deviceWorkspace.files.copy')}>
             <Button
               icon={<CopyOutlined />}
-              aria-label="复制文件"
+              aria-label={t('deviceWorkspace.files.copy')}
               disabled={disabled || !availability.copy}
               onClick={() => openDialog('copy')}
             />
           </Tooltip>
-          <Tooltip title="移动文件">
+          <Tooltip title={t('deviceWorkspace.files.move')}>
             <Button
               icon={<SendOutlined />}
-              aria-label="移动文件"
+              aria-label={t('deviceWorkspace.files.move')}
               disabled={disabled || !availability.move}
               onClick={() => openDialog('move')}
             />
           </Tooltip>
-          <Tooltip title="删除">
+          <Tooltip title={t('common.actions.delete')}>
             <Button
               danger
               icon={<DeleteOutlined />}
-              aria-label="删除"
+              aria-label={t('common.actions.delete')}
               disabled={disabled || !availability.remove}
               onClick={confirmRemove}
             />
           </Tooltip>
-          <Tooltip title="压缩为 ZIP">
+          <Tooltip title={t('deviceWorkspace.files.zip')}>
             <Button
               icon={<CompressOutlined />}
-              aria-label="压缩为 ZIP"
+              aria-label={t('deviceWorkspace.files.zip')}
               disabled={disabled || !availability.zip}
               onClick={() => openDialog('zip')}
             />
           </Tooltip>
-          <Tooltip title="解压 ZIP">
+          <Tooltip title={t('deviceWorkspace.files.unzip')}>
             <Button
               icon={<FolderOutlined />}
-              aria-label="解压 ZIP"
+              aria-label={t('deviceWorkspace.files.unzip')}
               disabled={disabled || !availability.unzip}
               onClick={() => openDialog('unzip')}
             />
@@ -318,9 +322,9 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
       </div>
 
       <div className="device-files-pathbar">
-        <Typography.Text type="secondary">当前位置</Typography.Text>
-        <Typography.Text ellipsis={{ tooltip: controller.listing?.path || '根目录' }}>
-          {controller.listing?.path || '根目录'}
+        <Typography.Text type="secondary">{t('deviceWorkspace.files.currentPath')}</Typography.Text>
+        <Typography.Text ellipsis={{ tooltip: controller.listing?.path || t('deviceWorkspace.files.root') }}>
+          {controller.listing?.path || t('deviceWorkspace.files.root')}
         </Typography.Text>
       </div>
 
@@ -328,11 +332,11 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
         <Alert
           type="error"
           showIcon
-          message={controller.error}
+          message={controller.error.raw ?? t(`deviceWorkspace.files.errors.${controller.error.code}`, { defaultValue: controller.error.code })}
           action={
             !controller.listing ? (
               <Button size="small" onClick={controller.reconnect}>
-                重新连接
+                {t('common.actions.reconnect')}
               </Button>
             ) : undefined
           }
@@ -359,7 +363,7 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
             emptyText: (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={controller.listing ? '当前目录为空' : '正在读取目录'}
+                description={controller.listing ? t('deviceWorkspace.files.emptyDirectory') : t('deviceWorkspace.files.readingDirectory')}
               />
             ),
           }}
@@ -376,7 +380,7 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
         {controller.activeTransfer ? (
           <>
             <span>
-              {controller.activeTransfer.kind === 'upload' ? '正在上传' : '正在下载'}：
+              {controller.activeTransfer.kind === 'upload' ? t('deviceWorkspace.files.uploading') : t('deviceWorkspace.files.downloading')}：
               {controller.activeTransfer.name}
             </span>
             <Progress
@@ -384,17 +388,17 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
               size="small"
             />
             <Button size="small" danger onClick={controller.cancelTransfer}>
-              取消
+              {t('common.actions.cancel')}
             </Button>
           </>
         ) : controller.archiveProgress ? (
           <>
             <span title={controller.archiveProgress.file}>
               {controller.archiveProgress.type === 'unzipping'
-                ? '正在解压'
+                ? t('deviceWorkspace.files.unzipping')
                 : controller.archiveProgress.type === 'zipping-file'
-                  ? `正在压缩：${controller.archiveProgress.file ?? ''}`
-                  : '正在准备压缩'}
+                  ? t('deviceWorkspace.files.zippingFile', { file: controller.archiveProgress.file ?? '' })
+                  : t('deviceWorkspace.files.preparingZip')}
             </span>
             {controller.archiveProgress.progress !== undefined && (
               <Progress
@@ -406,8 +410,8 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
         ) : (
           <span>
             {controller.selectedEntries.length > 0
-              ? `已选择 ${controller.selectedEntries.length} 项`
-              : `${entries.length} 项`}
+              ? t('deviceWorkspace.files.selectedCount', { count: controller.selectedEntries.length })
+              : t('deviceWorkspace.files.entryCount', { count: entries.length })}
           </span>
         )}
       </div>
@@ -417,17 +421,17 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
         title={
           (
             {
-              mkdir: '新建目录',
-              rename: '重命名',
-              copy: '复制到目录',
-              move: '移动到目录',
-              zip: '压缩为 ZIP',
-              unzip: '解压到目录',
+              mkdir: t('deviceWorkspace.files.dialogs.mkdir'),
+              rename: t('deviceWorkspace.files.dialogs.rename'),
+              copy: t('deviceWorkspace.files.dialogs.copy'),
+              move: t('deviceWorkspace.files.dialogs.move'),
+              zip: t('deviceWorkspace.files.dialogs.zip'),
+              unzip: t('deviceWorkspace.files.dialogs.unzip'),
             } as Record<InputDialog, string>
           )[dialog ?? 'mkdir']
         }
-        okText="确定"
-        cancelText="取消"
+        okText={t('common.actions.confirm')}
+        cancelText={t('common.actions.cancel')}
         onOk={() => void submitDialog()}
         onCancel={() => setDialog(undefined)}
         okButtonProps={{ disabled: !dialogValue.trim() }}

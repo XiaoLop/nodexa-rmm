@@ -24,51 +24,38 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../../i18n/formatters';
 
 const allEventFilter = 'all' as const;
 
 const eventFilters: Array<{
-  label: string;
+  labelKey: string;
   value: HistoricalEventFilter | typeof allEventFilter;
 }> = [
-  { label: '全部类型', value: allEventFilter },
-  { label: 'Agent 日志', value: 'agentlog' },
-  { label: '中继日志', value: 'relaylog' },
-  { label: '手动操作', value: 'manual' },
-  { label: '命令执行', value: 'runcommands' },
-  { label: '批量上传', value: 'batchupload' },
-  { label: '设备变更', value: 'changenode' },
-  { label: '设备删除', value: 'removenode' },
+  { labelKey: 'deviceWorkspace.logs.filters.all', value: allEventFilter },
+  { labelKey: 'deviceWorkspace.logs.filters.agentlog', value: 'agentlog' },
+  { labelKey: 'deviceWorkspace.logs.filters.relaylog', value: 'relaylog' },
+  { labelKey: 'deviceWorkspace.logs.filters.manual', value: 'manual' },
+  { labelKey: 'deviceWorkspace.logs.filters.runcommands', value: 'runcommands' },
+  { labelKey: 'deviceWorkspace.logs.filters.batchupload', value: 'batchupload' },
+  { labelKey: 'deviceWorkspace.logs.filters.changenode', value: 'changenode' },
+  { labelKey: 'deviceWorkspace.logs.filters.removenode', value: 'removenode' },
 ];
 
-const typeLabels: Record<GatewayEventType, string> = {
-  deviceOnline: '设备上线',
-  deviceOffline: '设备离线',
-  deviceChanged: '设备变更',
-  deviceRemoved: '设备删除',
-  relayLog: '中继日志',
-  agentLog: 'Agent 日志',
-  manualOperation: '手动操作',
-  commandExecution: '命令执行',
-  batchUpload: '批量上传',
-  userSessionCount: '会话统计',
-  unknown: '其他事件',
+const typeLabelKeys: Record<GatewayEventType, string> = {
+  deviceOnline: 'deviceWorkspace.logs.types.deviceOnline',
+  deviceOffline: 'deviceWorkspace.logs.types.deviceOffline',
+  deviceChanged: 'deviceWorkspace.logs.types.deviceChanged',
+  deviceRemoved: 'deviceWorkspace.logs.types.deviceRemoved',
+  relayLog: 'deviceWorkspace.logs.types.relayLog',
+  agentLog: 'deviceWorkspace.logs.types.agentLog',
+  manualOperation: 'deviceWorkspace.logs.types.manualOperation',
+  commandExecution: 'deviceWorkspace.logs.types.commandExecution',
+  batchUpload: 'deviceWorkspace.logs.types.batchUpload',
+  userSessionCount: 'deviceWorkspace.logs.types.userSessionCount',
+  unknown: 'deviceWorkspace.logs.types.unknown',
 };
-
-function formatDateTime(value?: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(date);
-}
 
 function filterMatches(event: GatewayEvent, filter?: HistoricalEventFilter) {
   if (!filter) return true;
@@ -100,6 +87,8 @@ export function DeviceLogsPanel({
   gatewayClient?: GatewayClient;
   gatewayConnected: boolean;
 }) {
+  const { t } = useTranslation();
+  const { dateTime, compare } = useFormatters();
   const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
   const [eventFilter, setEventFilter] = useState<HistoricalEventFilter>();
   const [historyLimit, setHistoryLimit] = useState(100);
@@ -122,7 +111,7 @@ export function DeviceLogsPanel({
       if (request === requestNumber.current) setHistoryEvents(result);
     } catch (error) {
       if (request === requestNumber.current) {
-        setQueryError(error instanceof Error ? error.message : '设备日志查询失败。');
+        setQueryError(error instanceof Error ? error.message : t('deviceWorkspace.logs.queryFailed'));
       }
     } finally {
       if (request === requestNumber.current) setLoading(false);
@@ -142,43 +131,43 @@ export function DeviceLogsPanel({
     for (const event of events) {
       if (event.deviceId === device.id) byId.set(event.id, event);
     }
-    const query = searchText.trim().toLocaleLowerCase('zh-CN');
+    const query = searchText.trim().toLocaleLowerCase();
     return [...byId.values()]
       .filter((event) => filterMatches(event, eventFilter))
       .filter((event) => {
         if (!query) return true;
         const searchable = [
-          typeLabels[event.type],
+          t(typeLabelKeys[event.type]),
           event.action,
           event.user,
           event.ip,
           formatEventMessage(event, deviceList, []),
         ];
-        return searchable.some((value) => value?.toLocaleLowerCase('zh-CN').includes(query));
+        return searchable.some((value) => value?.toLocaleLowerCase().includes(query));
       })
-      .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
-  }, [device.id, deviceList, eventFilter, events, historyEvents, searchText]);
+        .sort((left, right) => compare(right.occurredAt, left.occurredAt));
+      }, [compare, device.id, deviceList, eventFilter, events, historyEvents, searchText, t]);
 
   const columns = [
-    { title: '时间', dataIndex: 'occurredAt', width: 175, render: formatDateTime },
+    { title: t('deviceWorkspace.logs.columns.time'), dataIndex: 'occurredAt', width: 175, render: (value?: string) => value ? dateTime(value) : '—' },
     {
-      title: '类型',
+      title: t('deviceWorkspace.logs.columns.type'),
       dataIndex: 'type',
       width: 116,
-      render: (type: GatewayEventType) => <Tag>{typeLabels[type]}</Tag>,
+      render: (type: GatewayEventType) => <Tag>{t(typeLabelKeys[type])}</Tag>,
     },
-    { title: '用户', dataIndex: 'user', width: 120, render: (value?: string) => value || '系统' },
-    { title: '来源 IP', dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
+    { title: t('deviceWorkspace.logs.columns.user'), dataIndex: 'user', width: 120, render: (value?: string) => value || t('common.status.systemEvent') },
+    { title: t('deviceWorkspace.logs.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
-      title: '日志内容',
+      title: t('deviceWorkspace.logs.columns.content'),
       render: (_: unknown, event: GatewayEvent) => formatEventMessage(event, deviceList, []),
     },
     {
-      title: '操作',
+      title: t('deviceWorkspace.logs.columns.actions'),
       width: 76,
       fixed: 'right' as const,
       render: (_: unknown, event: GatewayEvent) => (
-        <Button type="link" onClick={() => setSelectedEvent(event)}>详情</Button>
+        <Button type="link" onClick={() => setSelectedEvent(event)}>{t('common.actions.details')}</Button>
       ),
     },
   ];
@@ -189,30 +178,30 @@ export function DeviceLogsPanel({
     <section className="console-card workspace-logs-panel">
       <div className="card-header workspace-logs-toolbar">
         <div>
-          <h2><FileSearchOutlined /> 设备日志监控</h2>
-          <span>历史记录与当前连接推送的设备事件会自动合并。</span>
+          <h2><FileSearchOutlined /> {t('deviceWorkspace.logs.title')}</h2>
+          <span>{t('deviceWorkspace.logs.description')}</span>
         </div>
         <Space wrap>
           <Tag color={gatewayConnected ? 'success' : 'warning'}>
-            {gatewayConnected ? '实时监控中' : '连接已断开'}
+            {gatewayConnected ? t('deviceWorkspace.logs.live') : t('common.status.disconnected')}
           </Tag>
           <Input.Search
             allowClear
-            aria-label="搜索设备日志"
-            placeholder="搜索内容、用户或 IP"
+            aria-label={t('deviceWorkspace.logs.searchAria')}
+            placeholder={t('deviceWorkspace.logs.searchPlaceholder')}
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
           />
           <Select
-            aria-label="日志类型"
+            aria-label={t('deviceWorkspace.logs.filterAria')}
             value={eventFilter ?? allEventFilter}
-            options={eventFilters}
+            options={eventFilters.map((filter) => ({ ...filter, label: t(filter.labelKey) }))}
             onChange={(value) => setEventFilter(value === allEventFilter ? undefined : value)}
           />
           <Select
-            aria-label="日志条数"
+            aria-label={t('deviceWorkspace.logs.limitAria')}
             value={historyLimit}
-            options={[30, 60, 100, 200].map((value) => ({ label: `${value} 条`, value }))}
+            options={[30, 60, 100, 200].map((value) => ({ label: t('deviceWorkspace.logs.countOption', { count: value }), value }))}
             onChange={setHistoryLimit}
           />
           <Button
@@ -221,21 +210,21 @@ export function DeviceLogsPanel({
             disabled={waitingForConnection}
             onClick={() => void loadHistory()}
           >
-            刷新
+            {t('common.actions.refresh')}
           </Button>
         </Space>
       </div>
 
       {!gatewayConnected && (
-        <Alert banner type="warning" message="网关连接已断开，当前日志可能不是最新数据。" />
+        <Alert banner type="warning" message={t('deviceWorkspace.logs.disconnectedNotice')} />
       )}
       {queryError && (
         <Alert
           showIcon
           type="error"
-          message="设备日志加载失败"
+          message={t('deviceWorkspace.logs.loadFailed')}
           description={queryError}
-          action={<Button size="small" onClick={() => void loadHistory()}>重试</Button>}
+          action={<Button size="small" onClick={() => void loadHistory()}>{t('common.actions.retry')}</Button>}
         />
       )}
 
@@ -251,7 +240,7 @@ export function DeviceLogsPanel({
           emptyText: (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={waitingForConnection ? '正在等待网关连接' : '暂无匹配的设备日志'}
+              description={waitingForConnection ? t('deviceWorkspace.logs.waitingConnection') : t('deviceWorkspace.logs.empty')}
             />
           ),
         }}
@@ -259,7 +248,7 @@ export function DeviceLogsPanel({
       />
 
       <Drawer
-        title="设备日志详情"
+        title={t('deviceWorkspace.logs.drawer.title')}
         placement="right"
         width="min(680px, 100vw)"
         open={Boolean(selectedEvent)}
@@ -269,17 +258,17 @@ export function DeviceLogsPanel({
         {selectedEvent ? (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="时间">{formatDateTime(selectedEvent.occurredAt)}</Descriptions.Item>
-              <Descriptions.Item label="类型">{typeLabels[selectedEvent.type]}</Descriptions.Item>
-              <Descriptions.Item label="操作">{selectedEvent.action || '—'}</Descriptions.Item>
-              <Descriptions.Item label="用户">{selectedEvent.user || '系统'}</Descriptions.Item>
-              <Descriptions.Item label="来源 IP">{selectedEvent.ip || '—'}</Descriptions.Item>
-              <Descriptions.Item label="日志内容">
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.time')}>{dateTime(selectedEvent.occurredAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.type')}>{t(typeLabelKeys[selectedEvent.type])}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.drawer.action')}>{selectedEvent.action || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.user')}>{selectedEvent.user || t('common.status.systemEvent')}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.ip')}>{selectedEvent.ip || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.content')}>
                 {formatEventMessage(selectedEvent, deviceList, [])}
               </Descriptions.Item>
             </Descriptions>
             <section>
-              <Typography.Title level={5}>脱敏后的原始数据</Typography.Title>
+              <Typography.Title level={5}>{t('deviceWorkspace.logs.drawer.rawTitle')}</Typography.Title>
               <pre className="workspace-log-raw">
                 {JSON.stringify(sanitizeRaw(selectedEvent.raw), null, 2)}
               </pre>

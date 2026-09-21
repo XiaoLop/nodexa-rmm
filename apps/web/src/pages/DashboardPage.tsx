@@ -3,9 +3,11 @@ import type { GatewayEvent } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Spin, Tag } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DonutChart, MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useFormatters } from '../i18n';
 import '../assets/styles/dashboard.css';
 import '../assets/styles/dashboard-widgets.css';
 
@@ -13,7 +15,7 @@ const platformColors = ['#2f80ff', '#7259e8', '#2dbf73', '#f4b43c', '#708097'];
 
 function getOperatingSystem(platform?: string) {
   const value = platform?.trim().toLowerCase() ?? '';
-  if (!value) return '其他';
+  if (!value) return 'other';
   if (value.includes('windows')) return 'Windows';
   if (value.includes('android')) return 'Android';
   if (value.includes('ios') || value.includes('ipados')) return 'iOS';
@@ -40,21 +42,7 @@ function getOperatingSystem(platform?: string) {
   if (value.includes('freebsd')) return 'FreeBSD';
   if (value.includes('openbsd')) return 'OpenBSD';
   if (value.includes('netbsd')) return 'NetBSD';
-  return '其他';
-}
-
-function formatDateTime(value?: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(date);
+  return 'other';
 }
 
 function makeEventTrend(events: ReturnType<typeof useGatewayData>['events']) {
@@ -72,6 +60,8 @@ function makeEventTrend(events: ReturnType<typeof useGatewayData>['events']) {
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation();
+  const formatters = useFormatters();
   const navigate = useNavigate();
   const data = useGatewayData();
   const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
@@ -101,8 +91,9 @@ export function DashboardPage() {
   const platformData = useMemo(() => {
     const counts = new Map<string, number>();
     for (const device of data.devices) {
-      const platform = getOperatingSystem(device.platform);
-      counts.set(platform, (counts.get(platform) ?? 0) + 1);
+      const osKey = getOperatingSystem(device.platform);
+      const label = osKey === 'other' ? t('dashboard.platforms.other') : osKey;
+      counts.set(label, (counts.get(label) ?? 0) + 1);
     }
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
@@ -112,7 +103,7 @@ export function DashboardPage() {
         value,
         color: platformColors[index] ?? '#708097',
       }));
-  }, [data.devices]);
+  }, [data.devices, t]);
 
   const groups = useMemo(
     () =>
@@ -132,9 +123,9 @@ export function DashboardPage() {
 
   const host = (() => {
     try {
-      return data.gatewayUrl ? new URL(data.gatewayUrl).host : '未配置';
+      return data.gatewayUrl ? new URL(data.gatewayUrl).host : t('common.status.notConfigured');
     } catch {
-      return '已配置业务网关';
+      return t('dashboard.gateway.gatewayConfigured');
     }
   })();
 
@@ -150,7 +141,9 @@ export function DashboardPage() {
       })
       .catch((error) => {
         if (active) {
-          setEventsError(error instanceof Error ? error.message : '仪表盘事件加载失败。');
+          setEventsError(
+            error instanceof Error ? error.message : t('dashboard.events.loadFailedDefault'),
+          );
         }
       })
       .finally(() => {
@@ -159,46 +152,50 @@ export function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [data.client, data.status]);
+  }, [data.client, data.status, t]);
 
   return (
     <div className="dashboard-page page-stack">
       {data.error && <Alert type="error" showIcon title={data.error} closable />}
       <div className="metrics-grid">
         <MetricCard
-          label="总设备数"
+          label={t('dashboard.metrics.totalDevices')}
           value={data.devices.length}
-          hint="网关实时快照"
+          hint={t('dashboard.metrics.totalDevicesHint')}
           tone="blue"
           icon={iconForMetric('total')}
         />
         <MetricCard
-          label="在线设备"
+          label={t('dashboard.metrics.onlineDevices')}
           value={online}
-          hint={`${data.devices.length ? Math.round((online / data.devices.length) * 100) : 0}% 在线率`}
+          hint={t('dashboard.metrics.onlineRate', {
+            rate: data.devices.length ? Math.round((online / data.devices.length) * 100) : 0,
+          })}
           tone="green"
           icon={iconForMetric('online')}
           chart={onlineTrend.slice(-8)}
         />
         <MetricCard
-          label="设备分组"
+          label={t('dashboard.metrics.deviceGroups')}
           value={data.groups.length}
-          hint="集中分类管理"
+          hint={t('dashboard.metrics.deviceGroupsHint')}
           tone="purple"
           icon={iconForMetric('groups')}
         />
         <MetricCard
-          label="异常设备"
+          label={t('dashboard.metrics.abnormalDevices')}
           value={offline}
-          hint={`${data.devices.length ? Math.round((offline / data.devices.length) * 100) : 0}% 离线`}
+          hint={t('dashboard.metrics.offlineRate', {
+            rate: data.devices.length ? Math.round((offline / data.devices.length) * 100) : 0,
+          })}
           tone="amber"
           icon={iconForMetric('offline')}
           chart={offlineTrend.slice(-8)}
         />
         <MetricCard
-          label="事件（24h）"
+          label={t('dashboard.metrics.events24h')}
           value={recentEvents.length}
-          hint="网关实时事件"
+          hint={t('dashboard.metrics.events24hHint')}
           tone="red"
           icon={iconForMetric('events')}
         />
@@ -208,10 +205,10 @@ export function DashboardPage() {
         <section className="console-card chart-card dashboard-trend-card">
           <div className="card-header">
             <div>
-              <h2>设备状态趋势</h2>
-              <span>过去 24 小时在线与离线设备变化</span>
+              <h2>{t('dashboard.trend.title')}</h2>
+              <span>{t('dashboard.trend.description')}</span>
             </div>
-            <Tag>24 小时</Tag>
+            <Tag>{t('dashboard.trend.tag24h')}</Tag>
           </div>
           <TrendChart online={onlineTrend} offline={offlineTrend} />
         </section>
@@ -219,29 +216,31 @@ export function DashboardPage() {
         <section className="console-card connection-card">
           <div className="card-header">
             <div>
-              <h2>网关连接</h2>
-              <span>业务网关实时通信状态</span>
+              <h2>{t('dashboard.gateway.title')}</h2>
+              <span>{t('dashboard.gateway.description')}</span>
             </div>
             <Tag color={data.status === 'connected' ? 'success' : 'warning'}>
-              {data.status === 'connected' ? '已连接' : '不可用'}
+              {data.status === 'connected'
+                ? t('common.status.connected')
+                : t('common.status.unavailable')}
             </Tag>
           </div>
           <dl>
             <div>
-              <dt>网关地址</dt>
+              <dt>{t('dashboard.gateway.address')}</dt>
               <dd>{host}</dd>
             </div>
             <div>
-              <dt>连接时间</dt>
-              <dd>{formatDateTime(data.lastConnectedAt)}</dd>
+              <dt>{t('dashboard.gateway.connectedAt')}</dt>
+              <dd>{data.lastConnectedAt ? formatters.dateTime(data.lastConnectedAt) : '—'}</dd>
             </div>
             <div>
-              <dt>重连次数</dt>
-              <dd>{data.reconnectAttempt}</dd>
+              <dt>{t('dashboard.gateway.reconnectCount')}</dt>
+              <dd>{formatters.number(data.reconnectAttempt)}</dd>
             </div>
             <div>
-              <dt>最后消息</dt>
-              <dd>{formatDateTime(data.lastMessageAt)}</dd>
+              <dt>{t('dashboard.gateway.lastMessage')}</dt>
+              <dd>{data.lastMessageAt ? formatters.dateTime(data.lastMessageAt) : '—'}</dd>
             </div>
           </dl>
           <Button
@@ -250,7 +249,7 @@ export function DashboardPage() {
             loading={data.status === 'connecting' || data.status === 'reconnecting'}
             onClick={() => void data.reconnect().catch(() => undefined)}
           >
-            重新连接
+            {t('common.actions.reconnect')}
           </Button>
         </section>
       </div>
@@ -259,11 +258,11 @@ export function DashboardPage() {
         <section className="console-card events-card">
           <div className="card-header">
             <div>
-              <h2>实时事件</h2>
-              <span>最近的设备和系统活动</span>
+              <h2>{t('dashboard.events.title')}</h2>
+              <span>{t('dashboard.events.description')}</span>
             </div>
             <Button type="link" onClick={() => navigate('/monitoring/realtime')}>
-              查看全部
+              {t('common.actions.viewAll')}
             </Button>
           </div>
           <div className="event-list">
@@ -271,7 +270,7 @@ export function DashboardPage() {
               <Alert
                 showIcon
                 type="warning"
-                message="仪表盘事件加载失败"
+                message={t('dashboard.events.loadFailed')}
                 description={eventsError}
               />
             )}
@@ -288,10 +287,10 @@ export function DashboardPage() {
                 <div className="event-row" key={event.id}>
                   <i className={tone} />
                   <div>
-                    <strong>{name || event.user || '系统事件'}</strong>
+                    <strong>{name || event.user || t('common.status.systemEvent')}</strong>
                     <span>{message}</span>
                   </div>
-                  <time>{formatDateTime(event.occurredAt).slice(-8)}</time>
+                  <time>{formatters.time(event.occurredAt)}</time>
                 </div>
               );
             })}
@@ -299,10 +298,13 @@ export function DashboardPage() {
               (waitingForRealtimeEvents ? (
                 <div className="event-list-loading">
                   <Spin size="small" />
-                  <span>正在连接实时事件流…</span>
+                  <span>{t('dashboard.events.connecting')}</span>
                 </div>
               ) : (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="等待实时事件" />
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={t('dashboard.events.waiting')}
+                />
               ))}
           </div>
         </section>
@@ -310,8 +312,8 @@ export function DashboardPage() {
         <section className="console-card chart-card platform-card">
           <div className="card-header">
             <div>
-              <h2>平台分布</h2>
-              <span>设备操作系统构成</span>
+              <h2>{t('dashboard.platforms.title')}</h2>
+              <span>{t('dashboard.platforms.description')}</span>
             </div>
           </div>
           <DonutChart data={platformData} total={data.devices.length} />
@@ -320,11 +322,11 @@ export function DashboardPage() {
         <section className="console-card groups-card">
           <div className="card-header">
             <div>
-              <h2>设备分组</h2>
-              <span>各分组在线设备概览</span>
+              <h2>{t('dashboard.groups.title')}</h2>
+              <span>{t('dashboard.groups.description')}</span>
             </div>
             <Button type="link" onClick={() => navigate('/devices/groups')}>
-              查看全部
+              {t('common.actions.viewAll')}
             </Button>
           </div>
           <div className="group-list">
@@ -332,18 +334,21 @@ export function DashboardPage() {
               <div key={group.id}>
                 <span>
                   <b>{group.name}</b>
-                  <small>{group.count} 台</small>
+                  <small>{t('dashboard.groups.deviceCount', { count: group.count })}</small>
                 </span>
                 <em>
                   <i
                     style={{ width: `${group.count ? (group.online / group.count) * 100 : 0}%` }}
                   />
                 </em>
-                <strong>{group.online} 在线</strong>
+                <strong>{t('dashboard.groups.onlineCount', { count: group.online })}</strong>
               </div>
             ))}
             {groups.length === 0 && (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无设备分组" />
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={t('dashboard.groups.empty')}
+              />
             )}
           </div>
         </section>

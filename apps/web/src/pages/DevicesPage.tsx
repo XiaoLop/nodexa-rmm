@@ -46,12 +46,14 @@ import {
   useState,
   type Key,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGateway } from '../features/gateway/GatewayProvider';
 import {
   getDeviceCapabilities,
   useApplicationUiCapabilities,
 } from '../features/permissions/useUiCapabilities';
+import { createCollator, useFormatters } from '../i18n';
 import { DeviceEditModal } from '../components/DeviceEditModal';
 import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent 安装引导弹窗
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
@@ -67,13 +69,6 @@ import '../assets/styles/devices.css';
 type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
 const UNGROUPED_GROUP_ID = '__ungrouped__';
-
-const powerActionLabels: Record<PowerAction, string> = {
-  wake: '唤醒',
-  reset: '重启',
-  sleep: '休眠',
-  poweroff: '关机',
-};
 
 function rawString(device: Device, key: string) {
   const raw = device.raw as Record<string, unknown> | undefined;
@@ -91,38 +86,12 @@ function deviceCreationTime(device: Device) {
   return rawNumber(device, 'creation') ?? rawNumber(device, 'firstconnect') ?? 0;
 }
 
-const naturalNameCollator = new Intl.Collator('zh-CN', {
-  numeric: true,
-  sensitivity: 'base',
-});
-
 function nameCategory(name: string) {
   const firstChar = name.trim().charAt(0);
   if (/^\d$/.test(firstChar)) return 0;
   if (/^[a-z]$/.test(firstChar)) return 1;
   if (/^[A-Z]$/.test(firstChar)) return 3;
   return 2;
-}
-
-function compareDeviceName(a: Device, b: Device) {
-  const categoryDifference = nameCategory(a.name) - nameCategory(b.name);
-  return categoryDifference || naturalNameCollator.compare(a.name, b.name);
-}
-
-function compareNames(a: string, b: string) {
-  const categoryDifference = nameCategory(a) - nameCategory(b);
-  return categoryDifference || naturalNameCollator.compare(a, b);
-}
-
-const sortedDevicesCache = new WeakMap<Device[], Device[]>();
-
-function sortDevicesByName(devices: Device[]) {
-  const cached = sortedDevicesCache.get(devices);
-  if (cached) return cached;
-
-  const sorted = [...devices].sort(compareDeviceName);
-  sortedDevicesCache.set(devices, sorted);
-  return sorted;
 }
 
 function osIcon(platform?: string) {
@@ -144,22 +113,6 @@ function deviceTypeIcon(platform?: string) {
   return <DesktopOutlined />;
 }
 
-const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
-function formatDateTime(value?: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return dateTimeFormatter.format(date);
-}
-
 const meshAgentsUrl = new URL(MESH_AGENTS_URL);
 const deviceInviteServerInfo = {
   name: meshAgentsUrl.hostname,
@@ -169,6 +122,8 @@ const deviceInviteServerInfo = {
 };
 
 export function DevicesPage() {
+  const { t } = useTranslation();
+  const formatters = useFormatters();
   const { token } = theme.useToken();
   const gateway = useGateway();
   const devices = useGatewayStore(gateway.store, gatewaySelectors.devices);
@@ -200,6 +155,27 @@ export function DevicesPage() {
   if (!batchUploadManagerRef.current) batchUploadManagerRef.current = new BatchUploadManager();
   const batchUploadManager = batchUploadManagerRef.current;
 
+  const collator = useMemo(
+    () => createCollator(formatters.language, { numeric: true, sensitivity: 'base' }),
+    [formatters.language],
+  );
+
+  const compareDeviceName = useCallback(
+    (a: Device, b: Device) => {
+      const categoryDifference = nameCategory(a.name) - nameCategory(b.name);
+      return categoryDifference || collator.compare(a.name, b.name);
+    },
+    [collator],
+  );
+
+  const compareNames = useCallback(
+    (a: string, b: string) => {
+      const categoryDifference = nameCategory(a) - nameCategory(b);
+      return categoryDifference || collator.compare(a, b);
+    },
+    [collator],
+  );
+
   useEffect(() => {
     // React StrictMode 在开发环境会执行一次 setup → cleanup → setup。
     // 重新激活管理器，避免第一次 cleanup 后调度器永久处于 disposed 状态。
@@ -213,7 +189,7 @@ export function DevicesPage() {
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => compareNames(a.name, b.name)),
-    [groups],
+    [compareNames, groups],
   );
   const groupNameById = useMemo(
     () => new Map(groups.map((group) => [group.id, group.name])),
@@ -251,29 +227,36 @@ export function DevicesPage() {
       const capabilities = deviceCapabilities(device);
       const permission = action === 'wake' ? capabilities.wake : capabilities.power;
       if (!client || !permission.enabled) {
-        void messageApi.error(permission.message ?? '当前账户无权执行此电源操作');
+        void messageApi.error(
+          permission.message ??
+            (action === 'wake'
+              ? t('devices.messages.permissionWakeDenied')
+              : t('devices.messages.permissionPowerDenied')),
+        );
         return;
       }
 
-      const label = powerActionLabels[action];
+      const label = t(`devices.powerActions.${action}`);
       modal.confirm({
-        title: `${label}设备`,
-        content: `确定要对「${device.name}」执行${label}操作吗？`,
-        okText: `确认${label}`,
-        cancelText: '取消',
+        title: t('devices.confirm.powerTitle', { action: label }),
+        content: t('devices.confirm.powerContent', { name: device.name, action: label }),
+        okText: t('devices.confirm.powerOk', { action: label }),
+        cancelText: t('common.actions.cancel'),
         okButtonProps: action === 'poweroff' ? { danger: true } : undefined,
         onOk: () => {
           try {
             client.sendPowerAction(device.id, action);
-            void messageApi.success(`已向「${device.name}」发送${label}指令`);
+            void messageApi.success(
+              t('devices.messages.powerSuccess', { name: device.name, action: label }),
+            );
           } catch (error) {
-            const detail = error instanceof Error ? error.message : '未知错误';
-            void messageApi.error(`${label}指令发送失败：${detail}`);
+            const detail = error instanceof Error ? error.message : t('common.status.unknown');
+            void messageApi.error(t('devices.messages.powerFailed', { action: label, detail }));
           }
         },
       });
     },
-    [client, deviceCapabilities, messageApi, modal],
+    [client, deviceCapabilities, messageApi, modal, t],
   );
 
   const platforms = useMemo(
@@ -289,7 +272,7 @@ export function DevicesPage() {
   );
 
   const filteredDevices = useMemo(() => {
-    const sortedDevices = sortDevicesByName(deferredDevices);
+    const sortedDevices = [...deferredDevices].sort(compareDeviceName);
     const normalized = query.trim().toLowerCase();
     if (!normalized && !groupId && online === 'all' && platform === 'all') {
       return sortedDevices;
@@ -315,57 +298,58 @@ export function DevicesPage() {
       const matchesPlatform = platform === 'all' || device.platform === platform;
       return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
     });
-  }, [deferredDevices, groupById, groupId, online, platform, query]);
+  }, [compareDeviceName, deferredDevices, groupById, groupId, online, platform, query]);
 
   const openDeviceEditor = useCallback(
     (device: Device) => {
       const permission = deviceCapabilities(device).edit;
       if (!permission.enabled) {
-        void messageApi.warning(permission.message ?? '当前账户无权编辑此设备');
+        void messageApi.warning(permission.message ?? t('devices.messages.permissionEditDenied'));
         return;
       }
       setEditingDevice(device);
     },
-    [deviceCapabilities, messageApi],
+    [deviceCapabilities, messageApi, t],
   );
 
   const confirmDeviceDeletion = useCallback(
     (device: Device) => {
       const permission = deviceCapabilities(device).uninstall;
       if (!client || !permission.enabled) {
-        void messageApi.warning(permission.message ?? '当前账户无权删除此设备');
+        void messageApi.warning(
+          permission.message ?? t('devices.messages.permissionDeleteDenied'),
+        );
         return;
       }
+      const groupText = groupNameById.get(device.groupId ?? '') ?? t('common.status.ungrouped');
+      const statusText = device.online ? t('common.status.online') : t('common.status.offline');
       modal.confirm({
-        title: '删除设备',
+        title: t('devices.confirm.deleteTitle'),
         content: (
           <div>
-            <p>确定要删除设备「{device.name}」吗？此操作不可撤销。</p>
-            <p>设备 ID：{device.id}</p>
-            <p>
-              分组：{groupNameById.get(device.groupId ?? '') ?? '未分组'}；状态：
-              {device.online ? '在线' : '离线'}
-            </p>
+            <p>{t('devices.confirm.deleteContent', { name: device.name })}</p>
+            <p>{t('devices.confirm.deviceId', { id: device.id })}</p>
+            <p>{t('devices.confirm.groupAndStatus', { group: groupText, status: statusText })}</p>
           </div>
         ),
-        okText: '删除设备',
-        cancelText: '取消',
+        okText: t('devices.confirm.deleteOk'),
+        cancelText: t('common.actions.cancel'),
         okButtonProps: { danger: true },
         onOk: async () => {
           try {
             await client.devices.remove(device.id);
             setSelectedDeviceIds((ids) => ids.filter((id) => String(id) !== device.id));
             await refreshSnapshot();
-            void messageApi.success(`已删除「${device.name}」`);
+            void messageApi.success(t('devices.messages.deleteSuccess', { name: device.name }));
           } catch (error) {
-            const detail = error instanceof Error ? error.message : '未知错误';
-            void messageApi.error(`删除设备失败：${detail}`);
+            const detail = error instanceof Error ? error.message : t('common.status.unknown');
+            void messageApi.error(t('devices.messages.deleteFailed', { detail }));
             throw error;
           }
         },
       });
     },
-    [client, deviceCapabilities, groupNameById, messageApi, modal, refreshSnapshot],
+    [client, deviceCapabilities, groupNameById, messageApi, modal, refreshSnapshot, t],
   );
 
   const openInviteModal = () => {
@@ -425,8 +409,8 @@ export function DevicesPage() {
     const successful = new Set(successfulDeviceIds);
     setSelectedDeviceIds((ids) => ids.filter((id) => !successful.has(String(id))));
     void refreshSnapshot().catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : '未知错误';
-      void messageApi.warning(`操作已提交，但刷新设备快照失败：${detail}。当前数据可能已过期。`);
+      const detail = error instanceof Error ? error.message : t('common.status.unknown');
+      void messageApi.warning(t('devices.messages.batchSnapshotWarning', { detail }));
     });
   };
 
@@ -438,24 +422,24 @@ export function DevicesPage() {
       )
       .map(({ device }) => device);
     const skippedCount = selectedDevices.length - targets.length;
-    const label = powerActionLabels[action];
+    const label = t(`devices.powerActions.${action}`);
     modal.confirm({
-      title: `批量${label}`,
+      title: t('devices.confirm.batchPowerTitle', { action: label }),
       content: (
         <div>
-          <p>
-            确定要对 {targets.length} 台设备执行{label}操作吗？
-          </p>
-          {skippedCount > 0 && <p>{skippedCount} 台无权限或当前不可用的设备将跳过。</p>}
-          <p>请求提交后不代表设备端已经完成操作。</p>
+          <p>{t('devices.confirm.batchPowerContent', { count: targets.length, action: label })}</p>
+          {skippedCount > 0 && (
+            <p>{t('devices.confirm.batchPowerSkipped', { count: skippedCount })}</p>
+          )}
+          <p>{t('devices.confirm.batchPowerNotice')}</p>
         </div>
       ),
-      okText: `确认${label}`,
-      cancelText: '取消',
+      okText: t('devices.confirm.powerOk', { action: label }),
+      cancelText: t('common.actions.cancel'),
       okButtonProps: action === 'poweroff' ? { danger: true } : undefined,
       onOk: async () => {
         if (!targets.length) {
-          void messageApi.warning('没有符合条件的设备可执行此操作。');
+          void messageApi.warning(t('devices.messages.batchPowerNoTargets'));
           return;
         }
         try {
@@ -470,14 +454,23 @@ export function DevicesPage() {
           handleBatchOperationCompleted(successful.map((item) => item.deviceId));
           if (failed.length) {
             void messageApi.warning(
-              `${label}请求已提交 ${successful.length} 台，失败 ${failed.length} 台。`,
+              t('devices.messages.batchPowerPartial', {
+                action: label,
+                success: successful.length,
+                failed: failed.length,
+              }),
             );
           } else {
-            void messageApi.success(`已向 ${successful.length} 台设备提交${label}请求。`);
+            void messageApi.success(
+              t('devices.messages.batchPowerSuccess', {
+                count: successful.length,
+                action: label,
+              }),
+            );
           }
         } catch (error) {
-          const detail = error instanceof Error ? error.message : '未知错误';
-          void messageApi.error(`${label}请求提交失败：${detail}`);
+          const detail = error instanceof Error ? error.message : t('common.status.unknown');
+          void messageApi.error(t('devices.messages.batchPowerFailed', { action: label, detail }));
           throw error;
         }
       },
@@ -487,7 +480,7 @@ export function DevicesPage() {
   const columns = useMemo<TableColumnsType<Device>>(
     () => [
       {
-        title: '设备类型',
+        title: t('devices.columns.type'),
         key: 'type',
         width: 100,
         render: (_, device) => (
@@ -505,7 +498,7 @@ export function DevicesPage() {
         ),
       },
       {
-        title: '设备名称',
+        title: t('devices.columns.name'),
         dataIndex: 'name',
         fixed: 'left',
         width: 170,
@@ -526,68 +519,68 @@ export function DevicesPage() {
         ),
       },
       {
-        title: '分组名称',
+        title: t('devices.columns.groupName'),
         key: 'groupName',
         width: 130,
         render: (_, device) =>
-          groupNameById.get(device.groupId ?? '') || device.groupName || '未分组',
+          groupNameById.get(device.groupId ?? '') || device.groupName || t('common.status.ungrouped'),
       },
       {
-        title: 'IP',
+        title: t('devices.columns.ip'),
         key: 'ip',
         width: 150,
         render: (_, device) => rawString(device, 'ip') || '-',
       },
       {
-        title: '描述',
+        title: t('devices.columns.desc'),
         key: 'desc',
         width: 150,
         render: (_, device) => rawString(device, 'desc') || '-',
       },
       {
-        title: '状态',
+        title: t('devices.columns.status'),
         dataIndex: 'online',
         width: 100,
         filters: [
-          { text: '在线', value: true },
-          { text: '离线', value: false },
+          { text: t('common.status.online'), value: true },
+          { text: t('common.status.offline'), value: false },
         ],
         onFilter: (value, record) => record.online === value,
         render: (value) => (
           <span className={`status-text ${value ? 'online' : 'offline'}`}>
             <i />
-            {value ? '在线' : '离线'}
+            {value ? t('common.status.online') : t('common.status.offline')}
           </span>
         ),
       },
       {
-        title: '最后在线时间',
+        title: t('devices.columns.lastSeenAt'),
         dataIndex: 'lastSeenAt',
         width: 170,
-        render: formatDateTime,
+        render: (value) => (value ? formatters.dateTime(value) : '—'),
         sorter: (a, b) => (a.lastSeenAt || '').localeCompare(b.lastSeenAt || ''),
       },
       {
-        title: '创建时间',
+        title: t('devices.columns.creation'),
         key: 'creation',
         width: 170,
         render: (_, device) => {
           const creation = deviceCreationTime(device);
           if (!creation) return '—';
-          return formatDateTime(
+          return formatters.dateTime(
             new Date(creation < 10000000000 ? creation * 1000 : creation).toISOString(),
           );
         },
         sorter: (a, b) => deviceCreationTime(a) - deviceCreationTime(b),
       },
       {
-        title: '上次启动时间',
+        title: t('devices.columns.lastbootuptime'),
         key: 'lastbootuptime',
         width: 170,
         render: (_, device) => {
           const bootTime = rawNumber(device, 'lastbootuptime');
           if (!bootTime) return '—';
-          return formatDateTime(new Date(bootTime).toISOString());
+          return formatters.dateTime(new Date(bootTime).toISOString());
         },
         sorter: (a, b) => {
           const aBoot = rawNumber(a, 'lastbootuptime') || 0;
@@ -596,7 +589,7 @@ export function DevicesPage() {
         },
       },
       {
-        title: '操作',
+        title: t('devices.columns.actions'),
         key: 'actions',
         fixed: 'right',
         width: 160,
@@ -606,40 +599,40 @@ export function DevicesPage() {
             {
               key: 'command',
               icon: <ToolOutlined />,
-              label: '执行指令',
+              label: t('devices.actions.executeCommand'),
               disabled: !capabilities.command.enabled,
               title: capabilities.command.enabled
                 ? undefined
-                : (capabilities.command.message ?? '当前账户无权执行指令'),
+                : (capabilities.command.message ?? t('devices.messages.permissionCommandDenied')),
             },
             {
               key: 'edit',
               icon: <EditOutlined />,
-              label: '编辑',
+              label: t('common.actions.edit'),
               disabled: !capabilities.edit.enabled,
               title: capabilities.edit.enabled
                 ? undefined
-                : (capabilities.edit.message ?? '当前账户无权编辑此设备'),
+                : (capabilities.edit.message ?? t('devices.messages.permissionEditDenied')),
             },
             {
               key: 'delete',
               icon: <DeleteOutlined />,
-              label: '删除',
+              label: t('common.actions.delete'),
               danger: true,
               disabled: !capabilities.uninstall.enabled,
               title: capabilities.uninstall.enabled
                 ? undefined
-                : (capabilities.uninstall.message ?? '当前账户无权删除此设备'),
+                : (capabilities.uninstall.message ?? t('devices.messages.permissionDeleteDenied')),
             },
             { type: 'divider' as const },
             {
               key: 'wake',
               icon: <ThunderboltOutlined />,
-              label: '唤醒',
+              label: t('devices.powerActions.wake'),
               disabled: !capabilities.wake.enabled,
               title: capabilities.wake.enabled
                 ? undefined
-                : (capabilities.wake.message ?? '当前账户无权唤醒此设备'),
+                : (capabilities.wake.message ?? t('devices.messages.permissionWakeDenied')),
             },
             ...(['reset', 'sleep', 'poweroff'] as const).map((key) => ({
               key,
@@ -651,12 +644,12 @@ export function DevicesPage() {
                 ) : (
                   <PoweroffOutlined />
                 ),
-              label: powerActionLabels[key],
+              label: t(`devices.powerActions.${key}`),
               danger: key === 'poweroff',
               disabled: !capabilities.power.enabled,
               title: capabilities.power.enabled
                 ? undefined
-                : (capabilities.power.message ?? '当前账户无权执行电源操作'),
+                : (capabilities.power.message ?? t('devices.messages.permissionPowerDenied')),
             })),
           ];
           return (
@@ -664,8 +657,8 @@ export function DevicesPage() {
               <Tooltip
                 title={
                   capabilities.files.enabled
-                    ? '文件管理'
-                    : (capabilities.files.message ?? '当前账户无权管理此设备文件')
+                    ? t('devices.actions.fileManagement')
+                    : (capabilities.files.message ?? t('devices.messages.permissionFilesDenied'))
                 }
               >
                 <span>
@@ -673,18 +666,18 @@ export function DevicesPage() {
                     type="text"
                     icon={<FolderOpenOutlined />}
                     disabled={!capabilities.files.enabled}
-                    aria-label={`管理 ${device.name} 的文件`}
+                    aria-label={t('devices.actions.manageFilesAria', { name: device.name })}
                     onClick={() =>
                       navigate(`/devices/${encodeURIComponent(device.id)}/workspace?tab=files`)
                     }
                   />
                 </span>
               </Tooltip>
-              <Tooltip title="工作台">
+              <Tooltip title={t('devices.actions.workspace')}>
                 <Button
                   type="text"
                   icon={<DesktopOutlined />}
-                  aria-label={`打开 ${device.name} 的工作台`}
+                  aria-label={t('devices.actions.openWorkspaceAria', { name: device.name })}
                   onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)}
                 />
               </Tooltip>
@@ -702,13 +695,12 @@ export function DevicesPage() {
                     } else if (key === 'command') {
                       if (!capabilities.command.enabled) {
                         void messageApi.warning(
-                          capabilities.command.message ?? '当前账户无权执行指令',
+                          capabilities.command.message ??
+                            t('devices.messages.permissionCommandDenied'),
                         );
                         return;
                       }
                       setCommandDevices([device]);
-                    } else {
-                      messageApi.info(`执行指令功能开发中`);
                     }
                   },
                 }}
@@ -716,7 +708,7 @@ export function DevicesPage() {
                 <Button
                   type="text"
                   icon={<EllipsisOutlined />}
-                  aria-label={`操作 ${device.name}`}
+                  aria-label={t('devices.actions.deviceActionAria', { name: device.name })}
                 />
               </Dropdown>
             </Space>
@@ -726,14 +718,16 @@ export function DevicesPage() {
     ],
     [
       client,
+      compareDeviceName,
       confirmDeviceDeletion,
       deviceCapabilities,
+      formatters,
       groupNameById,
       messageApi,
       navigate,
       openDeviceEditor,
       runPowerAction,
-      status,
+      t,
       token.colorPrimary,
       token.colorTextSecondary,
     ],
@@ -756,13 +750,13 @@ export function DevicesPage() {
       total: filteredDevices.length,
       showSizeChanger: true,
       pageSizeOptions: [20, 50, 100],
-      showTotal: (total: number) => `共 ${total} 台设备`,
+      showTotal: (total: number) => t('devices.totalCount', { count: total }),
       onChange: (page: number, nextPageSize: number) => {
         setCurrentPage(page);
         if (nextPageSize !== pageSize) setPageSize(nextPageSize);
       },
     }),
-    [currentPage, filteredDevices.length, pageSize],
+    [currentPage, filteredDevices.length, pageSize, t],
   );
 
   return (
@@ -772,46 +766,46 @@ export function DevicesPage() {
       <div className="page-stack devices-page">
         <div className="page-heading">
           <div>
-            <h1>所有设备</h1>
-            <p>查看业务网关同步的设备、分组与实时在线状态</p>
+            <h1>{t('devices.title')}</h1>
+            <p>{t('devices.subtitle')}</p>
           </div>
           <Space>
             <Dropdown
               trigger={['click']}
               menu={{
                 items: [
-                  { key: 'move', label: '移动分组' },
+                  { key: 'move', label: t('devices.actions.moveGroup') },
                   {
                     key: 'command',
                     icon: <ToolOutlined />,
-                    label: '执行命令',
+                    label: t('devices.actions.executeCommand'),
                     disabled: commandTargets.length === 0,
                   },
                   { type: 'divider' },
                   {
                     key: 'wake',
-                    label: '唤醒',
+                    label: t('devices.powerActions.wake'),
                     disabled: !selectedCapabilities.some(
                       ({ capabilities }) => capabilities.wake.enabled,
                     ),
                   },
                   {
                     key: 'reset',
-                    label: '重启',
+                    label: t('devices.powerActions.reset'),
                     disabled: !selectedCapabilities.some(
                       ({ capabilities }) => capabilities.power.enabled,
                     ),
                   },
                   {
                     key: 'sleep',
-                    label: '休眠',
+                    label: t('devices.powerActions.sleep'),
                     disabled: !selectedCapabilities.some(
                       ({ capabilities }) => capabilities.power.enabled,
                     ),
                   },
                   {
                     key: 'poweroff',
-                    label: '关机',
+                    label: t('devices.powerActions.poweroff'),
                     danger: true,
                     disabled: !selectedCapabilities.some(
                       ({ capabilities }) => capabilities.power.enabled,
@@ -826,7 +820,9 @@ export function DevicesPage() {
               }}
             >
               <Button disabled={!client || status !== 'connected' || !selectedDevices.length}>
-                批量操作{selectedDeviceIds.length ? `（${selectedDevices.length}）` : ''}
+                {selectedDevices.length
+                  ? t('devices.actions.batchOperationsCount', { count: selectedDevices.length })
+                  : t('devices.actions.batchOperations')}
               </Button>
             </Dropdown>
             <Button
@@ -836,7 +832,9 @@ export function DevicesPage() {
               }
               onClick={openBatchUpload}
             >
-              批量上传文件{selectedDeviceIds.length ? `（${selectedDeviceIds.length}）` : ''}
+              {selectedDeviceIds.length
+                ? t('devices.actions.batchUploadCount', { count: selectedDeviceIds.length })
+                : t('devices.actions.batchUpload')}
             </Button>
             <Button
               type="primary"
@@ -849,7 +847,7 @@ export function DevicesPage() {
               }
               onClick={openInviteModal}
             >
-              添加设备
+              {t('devices.actions.addDevice')}
             </Button>
           </Space>
         </div>
@@ -859,15 +857,15 @@ export function DevicesPage() {
               value={query}
               onChange={(event) => updateFilters(setQuery, event.target.value)}
               prefix={<SearchOutlined />}
-              placeholder="搜索设备名称、ID、IP、平台..."
+              placeholder={t('devices.filters.searchPlaceholder')}
               allowClear
             />
             <Select
               value={groupId}
               onChange={(value) => updateFilters(setGroupId, value)}
               options={[
-                { value: '', label: '全部分组' },
-                { value: UNGROUPED_GROUP_ID, label: '未分组' },
+                { value: '', label: t('devices.filters.allGroups') },
+                { value: UNGROUPED_GROUP_ID, label: t('devices.filters.ungrouped') },
                 ...sortedGroups.map((group) => ({ value: group.id, label: group.name })),
               ]}
             />
@@ -875,29 +873,32 @@ export function DevicesPage() {
               value={online}
               onChange={(value) => updateFilters(setOnline, value)}
               options={[
-                { value: 'all', label: '全部状态' },
-                { value: 'online', label: '在线' },
-                { value: 'offline', label: '离线' },
+                { value: 'all', label: t('devices.filters.allStatus') },
+                { value: 'online', label: t('common.status.online') },
+                { value: 'offline', label: t('common.status.offline') },
               ]}
             />
             <Select
               value={platform}
               onChange={(value) => updateFilters(setPlatform, value)}
               options={[
-                { value: 'all', label: '全部平台' },
+                { value: 'all', label: t('devices.filters.allPlatforms') },
                 ...platforms.map((value) => ({ value, label: value })),
               ]}
             />
             <div className="toolbar-spacer" />
             <Tag>
-              {filteredDevices.length} / {devices.length} 台
+              {t('devices.countTag', {
+                filtered: filteredDevices.length,
+                total: devices.length,
+              })}
             </Tag>
             <Button
               icon={<ReloadOutlined />}
               disabled={status !== 'connected'}
               onClick={() => void refreshSnapshot()}
             >
-              刷新
+              {t('common.actions.refresh')}
             </Button>
           </div>
           <Table
@@ -910,7 +911,9 @@ export function DevicesPage() {
             locale={{
               emptyText: (
                 <Empty
-                  description={devices.length ? '没有符合筛选条件的设备' : '等待网关同步设备'}
+                  description={
+                    devices.length ? t('devices.empty.filtered') : t('devices.empty.waiting')
+                  }
                 />
               ),
             }}
@@ -930,7 +933,7 @@ export function DevicesPage() {
         <DeviceInviteModal
           isOpen
           meshId={sortedGroups[0]?.id ?? ''}
-          meshName={sortedGroups[0]?.name ?? '默认分组'}
+          meshName={sortedGroups[0]?.name ?? t('common.status.defaultGroup')}
           groups={sortedGroups}
           serverInfo={deviceInviteServerInfo}
           onClose={() => setInviteOpen(false)}

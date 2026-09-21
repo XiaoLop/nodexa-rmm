@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Card, Flex, Modal, Select, Space, Typography, message, Menu, Form } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import type { DeviceGroup } from '@meshcentral/shared-state';
 
@@ -65,12 +66,6 @@ const systemTypes = [
   [29, 'Apple macOS ARM-64'],
 ] as const;
 
-const installationTypes = [
-  [0, '后台服务与交互模式'],
-  [2, '仅后台服务'],
-  [1, '仅交互模式'],
-] as const;
-
 const assistantTypes = [
   [2, 'Application, Connect on user request'],
   [3, 'Application, Always connected'],
@@ -100,8 +95,10 @@ function cleanMeshId(meshId: string): string {
   return meshId.replace(/^mesh\/\//, '');
 }
 
-function CopyButton({ value, label = '复制' }: { value: string; label?: string }) {
+function CopyButton({ value, label }: { value: string; label?: string }) {
+  const { t } = useTranslation();
   const [messageApi, contextHolder] = message.useMessage();
+  const buttonLabel = label ?? t('common.actions.copy');
   return (
     <>
       {contextHolder}
@@ -109,23 +106,24 @@ function CopyButton({ value, label = '复制' }: { value: string; label?: string
         icon={<CopyOutlined />}
         disabled={!value}
         onClick={() => {
-          void navigator.clipboard.writeText(value).then(() => messageApi.success('已复制'));
+          void navigator.clipboard.writeText(value).then(() => messageApi.success(t('common.actions.copied')));
         }}
       >
-        {label}
+        {buttonLabel}
       </Button>
     </>
   );
 }
 
 function DownloadRow({ label, url }: { label: string; url: string }) {
+  const { t } = useTranslation();
   return (
     <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
       <Flex justify="space-between" align="center" gap={12} wrap>
         <Typography.Text strong>{label}</Typography.Text>
         <Space>
           <Button type="primary" icon={<DownloadOutlined />} href={url} target="_blank" rel="noreferrer">
-            下载
+            {t('common.actions.download')}
           </Button>
         </Space>
       </Flex>
@@ -134,6 +132,7 @@ function DownloadRow({ label, url }: { label: string; url: string }) {
 }
 
 function CommandView({ command, note }: { command: string; note?: string }) {
+  const { t } = useTranslation();
   return (
     <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
       <Flex justify="space-between" align="flex-start" gap={16}>
@@ -142,7 +141,7 @@ function CommandView({ command, note }: { command: string; note?: string }) {
             {command}
           </Typography.Text>
         </div>
-        <CopyButton value={command} label="复制命令" />
+        <CopyButton value={command} label={t('devices.inviteModal.copyCommand')} />
       </Flex>
       {note && (
         <div style={{ marginTop: 12 }}>
@@ -163,6 +162,7 @@ interface ViewProps {
 }
 
 function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: ViewProps & { debugMode: boolean }) {
+  const { t } = useTranslation();
   const items: ReadonlyArray<readonly [string, number]> = [
     ['Windows x86-32 (.exe)', 3],
     ['Windows x86-64 (.exe)', 4],
@@ -184,7 +184,7 @@ function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: View
       ))}
       {debugMode && (
         <DownloadRow
-          label="Mesh Agent 设置文件 (.msh)"
+          label={t('devices.inviteModal.mshFile')}
           url={buildAgentDownloadUrl(agentUrl, { meshid: meshId, key: urlKey })}
         />
       )}
@@ -201,6 +201,7 @@ function ScriptView({ agentUrl, origin, meshId, urlKey, uninstall = false }: Vie
 }
 
 function BinaryView({ agentUrl, meshId, installFlags, urlKey, systemType }: ViewProps & { systemType: number }) {
+  const { t } = useTranslation();
   const url = buildAgentDownloadUrl(agentUrl, {
     id: systemType,
     meshid: meshId,
@@ -209,16 +210,17 @@ function BinaryView({ agentUrl, meshId, installFlags, urlKey, systemType }: View
   });
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <DownloadRow label="下载预配置二进制安装包" url={url} />
+      <DownloadRow label={t('devices.inviteModal.downloadBinary')} url={url} />
       <CommandView
         command={`wget "${url}" -O ./meshagent && chmod 755 ./meshagent`}
-        note="下载后请按目标系统要求将 Agent 注册为服务或前台运行。"
+        note={t('devices.inviteModal.binaryNote')}
       />
     </Space>
   );
 }
 
 function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
+  const { t } = useTranslation();
   const items: ReadonlyArray<readonly [string, number]> = [
     ['macOS x86-64bit', 16],
     ['macOS ARM (64bit)', 29],
@@ -239,18 +241,19 @@ function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
         />
       ))}
       <Typography.Text type="secondary">
-        安装后请按需授予辅助功能、屏幕录制等 macOS 隐私权限。
+        {t('devices.inviteModal.macosPrivacyNote')}
       </Typography.Text>
     </Space>
   );
 }
 
 function MobileView({ agentUrl, meshId, serverInfo, urlKey }: ViewProps) {
+  const { t } = useTranslation();
   const pairing = `${serverInfo.magenturl ?? getOrigin(serverInfo)},${serverInfo.agentCertHash ?? serverInfo.tlshash ?? ''},${meshId}`;
   const apk = buildAgentDownloadUrl(agentUrl, { id: 14, meshid: meshId, key: urlKey });
   return (
     <Flex vertical align="center" gap={16}>
-      <Typography.Paragraph>使用 MeshCentral Android 客户端扫描二维码配对。</Typography.Paragraph>
+      <Typography.Paragraph>{t('devices.inviteModal.mobileScanTip')}</Typography.Paragraph>
       <QRCodeSVG value={pairing} size={176} includeMargin />
       <Space wrap>
         <Button href="https://play.google.com/store/apps/details?id=com.meshcentral.agent2" target="_blank">
@@ -260,7 +263,7 @@ function MobileView({ agentUrl, meshId, serverInfo, urlKey }: ViewProps) {
           Amazon Appstore
         </Button>
         <Button type="primary" href={apk} target="_blank">
-          下载 Android APK
+          {t('devices.inviteModal.downloadAndroidApk')}
         </Button>
       </Space>
     </Flex>
@@ -268,6 +271,7 @@ function MobileView({ agentUrl, meshId, serverInfo, urlKey }: ViewProps) {
 }
 
 function AssistantView({ agentUrl, meshId, urlKey, assistantType }: ViewProps & { assistantType: number }) {
+  const { t } = useTranslation();
   const url = buildAgentDownloadUrl(agentUrl, {
     id: 10003,
     meshid: meshId,
@@ -276,16 +280,17 @@ function AssistantView({ agentUrl, meshId, urlKey, assistantType }: ViewProps & 
   });
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Typography.Paragraph>MeshCentral Assistant 是按需连接的用户会话应用。</Typography.Paragraph>
+      <Typography.Paragraph>{t('devices.inviteModal.assistantTip')}</Typography.Paragraph>
       <DownloadRow label="Assistant for Windows (.exe)" url={url} />
     </Space>
   );
 }
 
 function WindowsUninstallView({ agentUrl, meshId, urlKey }: ViewProps) {
+  const { t } = useTranslation();
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Typography.Paragraph>下载并以管理员身份运行卸载程序。</Typography.Paragraph>
+      <Typography.Paragraph>{t('devices.inviteModal.uninstallTip')}</Typography.Paragraph>
       <DownloadRow
         label="Windows Agent Uninstaller (.exe)"
         url={buildAgentDownloadUrl(agentUrl, { id: 4, meshid: meshId, uninstall: 1, key: urlKey })}
@@ -304,6 +309,7 @@ export function DeviceInviteModal({
   urlKey,
   debugMode = false,
 }: AddAgentModalProps) {
+  const { t } = useTranslation();
   const [os, setOs] = useState(OperatingSystem.Windows);
   const [systemType, setSystemType] = useState(6);
   const [installFlags, setInstallFlags] = useState(0);
@@ -320,6 +326,16 @@ export function DeviceInviteModal({
     urlKey,
   };
 
+  const installationTypes = useMemo(
+    () =>
+      [
+        [0, t('devices.inviteModal.installModes.both')],
+        [2, t('devices.inviteModal.installModes.serviceOnly')],
+        [1, t('devices.inviteModal.installModes.interactiveOnly')],
+      ] as const,
+    [t],
+  );
+
   useEffect(() => {
     if (!isOpen) return;
     setSelectedMeshId(meshId);
@@ -332,19 +348,19 @@ export function DeviceInviteModal({
   const menuItems = [
     {
       type: 'group' as const,
-      label: '安装 Agent',
+      label: t('devices.inviteModal.groupInstall'),
       children: [
         { key: OperatingSystem.Windows.toString(), icon: <WindowsOutlined />, label: 'Windows' },
         { key: OperatingSystem.LinuxBsd.toString(), icon: <CodeOutlined />, label: 'Linux / BSD' },
-        { key: OperatingSystem.BinaryInstaller.toString(), icon: <DesktopOutlined />, label: '二进制安装包' },
+        { key: OperatingSystem.BinaryInstaller.toString(), icon: <DesktopOutlined />, label: t('devices.inviteModal.binaryInstaller') },
         { key: OperatingSystem.Macos.toString(), icon: <AppleOutlined />, label: 'macOS' },
-        ...(isLanMode ? [] : [{ key: OperatingSystem.Mobile.toString(), icon: <MobileOutlined />, label: '移动设备' }]),
+        ...(isLanMode ? [] : [{ key: OperatingSystem.Mobile.toString(), icon: <MobileOutlined />, label: t('devices.inviteModal.mobileDevices') }]),
         { key: OperatingSystem.Assistant.toString(), icon: <AppstoreOutlined />, label: 'Mesh Assistant' },
       ],
     },
     {
       type: 'group' as const,
-      label: '卸载 Agent',
+      label: t('devices.inviteModal.groupUninstall'),
       children: [
         { key: OperatingSystem.WindowsUninstall.toString(), icon: <DeleteOutlined />, label: 'Windows' },
         { key: OperatingSystem.LinuxBsdUninstall.toString(), icon: <DeleteOutlined />, label: 'Linux / BSD' },
@@ -367,7 +383,7 @@ export function DeviceInviteModal({
 
   return (
     <Modal
-      title="添加设备 (Mesh Agent)"
+      title={t('devices.inviteModal.title')}
       open={isOpen}
       onCancel={onClose}
       footer={null}
@@ -388,17 +404,17 @@ export function DeviceInviteModal({
         <div style={{ flex: 1, padding: '24px 32px', overflowY: 'auto', maxHeight: '70vh' }}>
           <Form layout="vertical">
             {groups.length > 0 && (
-              <Form.Item label="设备分组">
+              <Form.Item label={t('devices.inviteModal.deviceGroup')}>
                 <Select
                   value={selectedMeshId}
                   onChange={setSelectedMeshId}
                   options={groups.map((group) => ({ value: group.id, label: group.name }))}
-                  placeholder="选择设备分组"
+                  placeholder={t('devices.inviteModal.groupPlaceholder')}
                 />
               </Form.Item>
             )}
             {os === OperatingSystem.BinaryInstaller && (
-              <Form.Item label="系统架构">
+              <Form.Item label={t('devices.inviteModal.systemArch')}>
                 <Select
                   value={systemType}
                   onChange={setSystemType}
@@ -407,7 +423,7 @@ export function DeviceInviteModal({
               </Form.Item>
             )}
             {(os === OperatingSystem.Windows || os === OperatingSystem.BinaryInstaller) && (
-              <Form.Item label="安装模式">
+              <Form.Item label={t('devices.inviteModal.installMode')}>
                 <Select
                   value={installFlags}
                   onChange={setInstallFlags}
@@ -416,7 +432,7 @@ export function DeviceInviteModal({
               </Form.Item>
             )}
             {os === OperatingSystem.Assistant && (
-              <Form.Item label="连接模式">
+              <Form.Item label={t('devices.inviteModal.connectMode')}>
                 <Select
                   value={assistantType}
                   onChange={setAssistantType}

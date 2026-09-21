@@ -18,53 +18,12 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useFormatters } from '../i18n';
 import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
-
-const eventFilters: Array<{
-  label: string;
-  value: HistoricalEventFilter | typeof allEventFilter;
-}> = [
-  { label: '全部', value: allEventFilter },
-  { label: 'Agent 日志', value: 'agentlog' },
-  { label: '中继日志', value: 'relaylog' },
-  { label: '手动操作', value: 'manual' },
-  { label: '命令执行', value: 'runcommands' },
-  { label: '批量上传', value: 'batchupload' },
-  { label: '设备变更', value: 'changenode' },
-  { label: '设备删除', value: 'removenode' },
-];
-
-const typeLabels: Record<GatewayEventType, string> = {
-  deviceOnline: '设备上线',
-  deviceOffline: '设备离线',
-  deviceChanged: '设备变更',
-  deviceRemoved: '设备删除',
-  relayLog: '中继日志',
-  agentLog: 'Agent 日志',
-  manualOperation: '手动操作',
-  commandExecution: '命令执行',
-  batchUpload: '批量上传',
-  userSessionCount: '会话统计',
-  unknown: '其他事件',
-};
-
-function formatDateTime(value?: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(date);
-}
 
 function filterMatches(event: GatewayEvent, filter?: HistoricalEventFilter) {
   if (!filter) return true;
@@ -93,14 +52,6 @@ function rawValue(event: GatewayEvent, field: string) {
   return value === undefined || value === null ? undefined : String(value);
 }
 
-function terminalRelayEventLabel(event: GatewayEvent): string | undefined {
-  if (event.type !== 'relayLog' || rawValue(event, 'protocol') !== '1') return undefined;
-  const messageId = rawValue(event, 'msgid');
-  if (messageId === '14') return '终端会话开始';
-  if (messageId === '10') return '终端会话结束';
-  return undefined;
-}
-
 function EventDetailsDrawer({
   event,
   onClose,
@@ -110,13 +61,23 @@ function EventDetailsDrawer({
   onClose: () => void;
   devices: ReturnType<typeof useGatewayData>['devices'];
 }) {
+  const { t } = useTranslation();
+  const formatters = useFormatters();
   const target = event ? getEventTargetName(event, devices) : undefined;
   const relayDetails = event?.type === 'relayLog';
   const agentDetails = event?.type === 'agentLog';
-  const terminalRelayLabel = event ? terminalRelayEventLabel(event) : undefined;
+
+  const terminalRelayLabel = useMemo(() => {
+    if (!event || event.type !== 'relayLog' || rawValue(event, 'protocol') !== '1') return undefined;
+    const messageId = rawValue(event, 'msgid');
+    if (messageId === '14') return t('events.terminalRelay.sessionStart');
+    if (messageId === '10') return t('events.terminalRelay.sessionEnd');
+    return undefined;
+  }, [event, t]);
+
   return (
     <Drawer
-      title="事件详情"
+      title={t('events.drawer.title')}
       placement="right"
       width="min(720px, 100vw)"
       open={Boolean(event)}
@@ -126,63 +87,69 @@ function EventDetailsDrawer({
       {event ? (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="时间">{formatDateTime(event.occurredAt)}</Descriptions.Item>
-            <Descriptions.Item label="类型">{typeLabels[event.type]}</Descriptions.Item>
-            <Descriptions.Item label="设备">
-              {target || event.deviceId || '系统事件'}
+            <Descriptions.Item label={t('events.drawer.time')}>
+              {formatters.dateTime(event.occurredAt)}
             </Descriptions.Item>
-            <Descriptions.Item label="用户">{event.user || '—'}</Descriptions.Item>
-            <Descriptions.Item label="来源 IP">{event.ip || '—'}</Descriptions.Item>
-            <Descriptions.Item label="事件内容">
+            <Descriptions.Item label={t('events.drawer.type')}>
+              {t(`events.types.${event.type}`)}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('events.drawer.device')}>
+              {target || event.deviceId || t('common.status.systemEvent')}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('events.drawer.user')}>{event.user || '—'}</Descriptions.Item>
+            <Descriptions.Item label={t('events.drawer.ip')}>{event.ip || '—'}</Descriptions.Item>
+            <Descriptions.Item label={t('events.drawer.content')}>
               {formatEventMessage(event, devices)}
             </Descriptions.Item>
           </Descriptions>
           {(relayDetails || agentDetails) && (
             <section>
               <Typography.Title level={5}>
-                {relayDetails ? '中继扩展字段' : 'Agent 扩展字段'}
+                {relayDetails ? t('events.drawer.relayFields') : t('events.drawer.agentFields')}
               </Typography.Title>
               <Descriptions column={1} size="small" bordered>
                 {terminalRelayLabel && (
-                  <Descriptions.Item label="终端审计事件">
+                  <Descriptions.Item label={t('events.drawer.terminalAudit')}>
                     {terminalRelayLabel}
                   </Descriptions.Item>
                 )}
                 {relayDetails && (
-                  <Descriptions.Item label="协议">
+                  <Descriptions.Item label={t('events.drawer.protocol')}>
                     {rawValue(event, 'protocol') || '—'}
                   </Descriptions.Item>
                 )}
                 {relayDetails && (
-                  <Descriptions.Item label="服务端接收字节">
+                  <Descriptions.Item label={t('events.drawer.bytesIn')}>
                     {rawValue(event, 'bytesin') || '—'}
                   </Descriptions.Item>
                 )}
                 {relayDetails && (
-                  <Descriptions.Item label="服务端发送字节">
+                  <Descriptions.Item label={t('events.drawer.bytesOut')}>
                     {rawValue(event, 'bytesout') || '—'}
                   </Descriptions.Item>
                 )}
-                {terminalRelayLabel === '终端会话结束' && (
-                  <Descriptions.Item label="结束原因">未知</Descriptions.Item>
+                {terminalRelayLabel === t('events.terminalRelay.sessionEnd') && (
+                  <Descriptions.Item label={t('events.drawer.endReason')}>
+                    {t('common.status.unknown')}
+                  </Descriptions.Item>
                 )}
                 {agentDetails && (
-                  <Descriptions.Item label="消息 ID">
+                  <Descriptions.Item label={t('events.drawer.msgId')}>
                     {rawValue(event, 'msgid') || '—'}
                   </Descriptions.Item>
                 )}
                 {agentDetails && (
-                  <Descriptions.Item label="消息参数">
+                  <Descriptions.Item label={t('events.drawer.msgArgs')}>
                     {rawValue(event, 'msgArgs') || '—'}
                   </Descriptions.Item>
                 )}
                 {agentDetails && (
-                  <Descriptions.Item label="会话 ID">
+                  <Descriptions.Item label={t('events.drawer.sessionId')}>
                     {rawValue(event, 'sessionid') || '—'}
                   </Descriptions.Item>
                 )}
                 {agentDetails && (
-                  <Descriptions.Item label="来源地址">
+                  <Descriptions.Item label={t('events.drawer.remoteAddr')}>
                     {rawValue(event, 'remoteaddr') || event.ip || '—'}
                   </Descriptions.Item>
                 )}
@@ -190,7 +157,7 @@ function EventDetailsDrawer({
             </section>
           )}
           <section>
-            <Typography.Title level={5}>脱敏后的原始数据</Typography.Title>
+            <Typography.Title level={5}>{t('events.drawer.rawTitle')}</Typography.Title>
             <pre className="realtime-event-raw">
               {JSON.stringify(sanitizeRaw(event.raw), null, 2)}
             </pre>
@@ -202,6 +169,8 @@ function EventDetailsDrawer({
 }
 
 export function RealtimeEventsPage() {
+  const { t } = useTranslation();
+  const formatters = useFormatters();
   const data = useGatewayData();
   const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
   const [eventFilter, setEventFilter] = useState<HistoricalEventFilter | undefined>();
@@ -210,6 +179,20 @@ export function RealtimeEventsPage() {
   const [queryError, setQueryError] = useState<string>();
   const [selectedEvent, setSelectedEvent] = useState<GatewayEvent>();
   const requestNumber = useRef(0);
+
+  const eventFilters = useMemo(
+    () => [
+      { label: t('events.filters.all'), value: allEventFilter },
+      { label: t('events.filters.agentlog'), value: 'agentlog' as const },
+      { label: t('events.filters.relaylog'), value: 'relaylog' as const },
+      { label: t('events.filters.manual'), value: 'manual' as const },
+      { label: t('events.filters.runcommands'), value: 'runcommands' as const },
+      { label: t('events.filters.batchupload'), value: 'batchupload' as const },
+      { label: t('events.filters.changenode'), value: 'changenode' as const },
+      { label: t('events.filters.removenode'), value: 'removenode' as const },
+    ],
+    [t],
+  );
 
   const loadHistory = useCallback(async () => {
     if (!data.client || data.status !== 'connected') return;
@@ -221,12 +204,14 @@ export function RealtimeEventsPage() {
       if (request === requestNumber.current) setHistoryEvents(result);
     } catch (error) {
       if (request === requestNumber.current) {
-        setQueryError(error instanceof Error ? error.message : '历史事件查询失败。');
+        setQueryError(
+          error instanceof Error ? error.message : t('events.loadFailedDefault'),
+        );
       }
     } finally {
       if (request === requestNumber.current) setLoading(false);
     }
-  }, [data.client, data.status, eventFilter, historyLimit]);
+  }, [data.client, data.status, eventFilter, historyLimit, t]);
 
   useEffect(() => {
     void loadHistory();
@@ -246,33 +231,38 @@ export function RealtimeEventsPage() {
   const tableLoading = loading || (waitingForConnection && events.length === 0);
 
   const columns = [
-    { title: '时间', dataIndex: 'occurredAt', width: 175, render: formatDateTime },
     {
-      title: '类型',
+      title: t('events.columns.time'),
+      dataIndex: 'occurredAt',
+      width: 175,
+      render: (value: string) => formatters.dateTime(value),
+    },
+    {
+      title: t('events.columns.type'),
       dataIndex: 'type',
       width: 112,
-      render: (type: GatewayEventType) => <Tag>{typeLabels[type]}</Tag>,
+      render: (type: GatewayEventType) => <Tag>{t(`events.types.${type}`)}</Tag>,
     },
     {
-      title: '设备',
+      title: t('events.columns.device'),
       width: 150,
       render: (_: unknown, event: GatewayEvent) =>
-        getEventTargetName(event, data.devices) || event.deviceId || '系统事件',
+        getEventTargetName(event, data.devices) || event.deviceId || t('common.status.systemEvent'),
     },
-    { title: '用户', dataIndex: 'user', width: 125, render: (value?: string) => value || '—' },
-    { title: '来源 IP', dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
+    { title: t('events.columns.user'), dataIndex: 'user', width: 125, render: (value?: string) => value || '—' },
+    { title: t('events.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
-      title: '事件内容',
+      title: t('events.columns.content'),
       render: (_: unknown, event: GatewayEvent) =>
         formatEventMessage(event, data.devices, data.groups),
     },
     {
-      title: '操作',
+      title: t('events.columns.actions'),
       width: 88,
       fixed: 'right' as const,
       render: (_: unknown, event: GatewayEvent) => (
         <Button type="link" onClick={() => setSelectedEvent(event)}>
-          详情
+          {t('common.actions.details')}
         </Button>
       ),
     },
@@ -283,8 +273,8 @@ export function RealtimeEventsPage() {
       <section className="console-card">
         <div className="card-header realtime-events-toolbar">
           <div>
-            <h2>实时事件</h2>
-            <span>历史记录与当前连接推送的事件会自动合并。</span>
+            <h2>{t('events.title')}</h2>
+            <span>{t('events.subtitle')}</span>
           </div>
           <Space wrap>
             <Tag
@@ -297,15 +287,15 @@ export function RealtimeEventsPage() {
               }
             >
               {data.status === 'connected'
-                ? '已连接'
+                ? t('common.status.connected')
                 : data.status === 'connecting'
-                  ? '连接中'
+                  ? t('common.status.connecting')
                   : data.status === 'reconnecting'
-                    ? '重连中'
-                    : '已断开'}
+                    ? t('common.status.reconnecting')
+                    : t('common.status.disconnected')}
             </Tag>
             <Select
-              aria-label="事件类型"
+              aria-label={t('events.columns.type')}
               value={eventFilter ?? allEventFilter}
               options={eventFilters}
               style={{ width: 132 }}
@@ -314,22 +304,25 @@ export function RealtimeEventsPage() {
               }
             />
             <Select
-              aria-label="获取条数"
+              aria-label={t('events.countOption', { count: historyLimit })}
               value={historyLimit}
-              options={[30, 60, 100, 200].map((value) => ({ label: `${value} 条`, value }))}
+              options={[30, 60, 100, 200].map((value) => ({
+                label: t('events.countOption', { count: value }),
+                value,
+              }))}
               style={{ width: 100 }}
               onChange={(value) => setHistoryLimit(value)}
             />
           </Space>
         </div>
         {data.status !== 'connected' && (
-          <Alert banner type="warning" message="实时连接已断开，当前内容可能不是最新数据。" />
+          <Alert banner type="warning" message={t('events.disconnectedWarning')} />
         )}
         {queryError && (
           <Alert
             showIcon
             type="error"
-            message="历史事件加载失败"
+            message={t('events.loadFailed')}
             description={queryError}
             action={
               <Button
@@ -338,7 +331,7 @@ export function RealtimeEventsPage() {
                 disabled={waitingForConnection}
                 loading={loading}
               >
-                重试
+                {t('common.actions.retry')}
               </Button>
             }
           />
@@ -355,10 +348,10 @@ export function RealtimeEventsPage() {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   loading
-                    ? '正在加载历史事件'
+                    ? t('events.empty.loading')
                     : waitingForConnection
-                      ? '正在等待网关连接'
-                      : '暂无事件'
+                      ? t('events.empty.waitingConnection')
+                      : t('events.empty.empty')
                 }
               />
             ),

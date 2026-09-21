@@ -13,6 +13,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface DesktopCanvasHandle {
   setScreen(screen: DesktopScreenSize): void;
@@ -175,6 +176,7 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
     { scale, session, keyboardEnabled, mouseEnabled, onReady, onDecodeError },
     ref,
   ) {
+    const { t } = useTranslation();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const screenRef = useRef<DesktopScreenSize | undefined>(undefined);
     const drawQueue = useRef(Promise.resolve());
@@ -404,7 +406,7 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
       <canvas
         ref={canvasRef}
         className="desktop-canvas"
-        aria-label="远程桌面画面"
+        aria-label={t('deviceWorkspace.remoteDesktop.canvasLabel')}
         tabIndex={0}
         onPointerMove={handlePointerMove}
         onPointerDown={(event) => handlePointerButton(event, 'down')}

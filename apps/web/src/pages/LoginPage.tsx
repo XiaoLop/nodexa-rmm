@@ -44,7 +44,7 @@ export function LoginPage() {
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/dashboard', { replace: true });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : t('login.failed'));
+      setError(nextError instanceof Error && nextError.message !== 'authentication-failed' ? nextError.message : t('login.failed'));
     } finally {
       setLoading(false);
     }

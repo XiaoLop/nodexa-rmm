@@ -31,6 +31,7 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   addCommandHistory,
   getCommandHistory,
@@ -51,16 +52,6 @@ interface CommandExecutionModalProps {
   onClose: () => void;
 }
 
-const statusLabels: Record<CommandExecutionStatus, string> = {
-  submitting: '提交中',
-  running: '执行中',
-  succeeded: '成功',
-  failed: '失败',
-  cancelled: '已取消',
-  timedOut: '超时',
-  unknown: '状态未知',
-};
-
 const statusColors: Record<CommandExecutionStatus, string> = {
   submitting: 'processing',
   running: 'processing',
@@ -72,15 +63,15 @@ const statusColors: Record<CommandExecutionStatus, string> = {
 };
 
 const templates = [
-  { name: '主机名', shell: 'auto' as const, command: 'hostname' },
-  { name: '当前用户', shell: 'auto' as const, command: 'whoami' },
-  { name: 'Windows 网络信息', shell: 'powershell' as const, command: 'Get-NetIPConfiguration' },
+  { id: 'hostname', shell: 'auto' as const, command: 'hostname' },
+  { id: 'currentUser', shell: 'auto' as const, command: 'whoami' },
+  { id: 'windowsNetwork', shell: 'powershell' as const, command: 'Get-NetIPConfiguration' },
   {
-    name: 'Windows 磁盘空间',
+    id: 'windowsDisk',
     shell: 'powershell' as const,
     command: 'Get-PSDrive -PSProvider FileSystem',
   },
-  { name: 'Unix 磁盘空间', shell: 'shell' as const, command: 'df -h' },
+  { id: 'unixDisk', shell: 'shell' as const, command: 'df -h' },
 ];
 
 function isActive(status?: CommandExecutionStatus) {
@@ -92,12 +83,14 @@ function outputText(result?: CommandDeviceResult) {
 }
 
 export function CommandExecutionModal({
+
   open,
   devices,
   client,
   connected,
   onClose,
 }: CommandExecutionModalProps) {
+  const { t } = useTranslation();
   const [messageApi, contextHolder] = message.useMessage();
   const [command, setCommand] = useState('');
   const [shell, setShell] = useState<CommandShell>('auto');
@@ -204,19 +197,19 @@ export function CommandExecutionModal({
       setSelectedResultId(eligibleDevices[0]?.id);
       mergeSnapshots();
     } catch (error) {
-      void messageApi.error(error instanceof Error ? error.message : '命令提交失败');
+      void messageApi.error(error instanceof Error ? error.message : t('commands.errors.submitFailed'));
     }
   };
 
   const submit = () => {
-    if (risk === 'dangerous' && dangerConfirmation !== '确认执行') return;
+    if (risk === 'dangerous' && dangerConfirmation !== t('commands.confirmKeyword')) return;
     if (risk === 'sensitive') {
       Modal.confirm({
-        title: '确认执行敏感命令',
+        title: t('commands.modals.sensitiveTitle'),
         icon: <ExclamationCircleOutlined />,
-        content: `即将对 ${eligibleDevices.length} 台设备执行命令。服务端仍会进行最终权限校验。`,
-        okText: '继续执行',
-        cancelText: '取消',
+        content: t('commands.modals.sensitiveContent', { count: eligibleDevices.length }),
+        okText: t('commands.modals.continueRun'),
+        cancelText: t('common.actions.cancel'),
         onOk: execute,
       });
       return;
@@ -230,12 +223,12 @@ export function CommandExecutionModal({
       return;
     }
     Modal.confirm({
-      title: '停止等待命令结果？',
+      title: t('commands.modals.stopWaitTitle'),
       icon: <StopOutlined />,
-      content: '关闭后将停止本地跟踪，远端命令可能仍在运行。',
-      okText: '停止等待并关闭',
+      content: t('commands.modals.stopWaitContent'),
+      okText: t('commands.modals.stopWaitOk'),
       okButtonProps: { danger: true },
-      cancelText: '继续等待',
+      cancelText: t('commands.modals.continueWait'),
       onOk: () => {
         handlesRef.current.forEach((handle) => handle.stopTracking());
         onClose();
@@ -245,37 +238,37 @@ export function CommandExecutionModal({
 
   const columns: TableColumnsType<CommandDeviceResult> = [
     {
-      title: '设备',
+      title: t('commands.columns.device'),
       dataIndex: 'deviceId',
       render: (deviceId: string) =>
         devices.find((device) => device.id === deviceId)?.name ?? deviceId,
     },
     {
-      title: '状态',
+      title: t('commands.columns.status'),
       dataIndex: 'status',
       width: 110,
       render: (status: CommandExecutionStatus) => (
-        <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
+        <Tag color={statusColors[status]}>{t(`commands.status.${status}`)}</Tag>
       ),
     },
-    { title: '退出码', dataIndex: 'exitCode', width: 90, render: (value?: number) => value ?? '—' },
+    { title: t('commands.columns.exitCode'), dataIndex: 'exitCode', width: 90, render: (value?: number) => value ?? '—' },
     {
-      title: '耗时',
+      title: t('commands.columns.duration'),
       dataIndex: 'durationMs',
       width: 100,
-      render: (value?: number) => (value === undefined ? '—' : `${(value / 1000).toFixed(1)} 秒`),
+      render: (value?: number) => (value === undefined ? '—' : t('commands.columns.durationSeconds', { seconds: (value / 1000).toFixed(1) })),
     },
     {
-      title: '输出摘要',
+      title: t('commands.columns.outputSummary'),
       render: (_, result) => result.error || outputText(result).trim().split(/\r?\n/)[0] || '—',
       ellipsis: true,
     },
     {
-      title: '操作',
+      title: t('commands.columns.actions'),
       width: 80,
       render: (_, result) => (
         <Button type="link" onClick={() => setSelectedResultId(result.deviceId)}>
-          查看
+          {t('commands.actions.view')}
         </Button>
       ),
     },
@@ -287,9 +280,7 @@ export function CommandExecutionModal({
       title={
         <Space>
           <ToolOutlined />
-          {devices.length === 1
-            ? `执行指令 · ${devices.at(0)?.name ?? '设备'}`
-            : `批量执行指令 · ${devices.length} 台`}
+          {devices.length === 1 ? t('commands.titleSingle', { name: devices.at(0)?.name ?? t('commands.deviceDefault') }) : t('commands.titleBatch', { count: devices.length })}
         </Space>
       }
       width={1040}
@@ -297,7 +288,7 @@ export function CommandExecutionModal({
       destroyOnHidden
       footer={[
         <Button key="close" onClick={requestClose}>
-          {active ? '停止/关闭' : '关闭'}
+          {active ? t('commands.actions.stopClose') : t('commands.actions.close')}
         </Button>,
         <Button
           key="run"
@@ -310,11 +301,11 @@ export function CommandExecutionModal({
             !command.trim() ||
             !eligibleDevices.length ||
             active ||
-            (risk === 'dangerous' && dangerConfirmation !== '确认执行')
+            (risk === 'dangerous' && dangerConfirmation !== t('commands.confirmKeyword'))
           }
           onClick={submit}
         >
-          执行 {eligibleDevices.length} 台设备
+          {t('commands.actions.runCount', { count: eligibleDevices.length })}
         </Button>,
       ]}
     >
@@ -322,18 +313,18 @@ export function CommandExecutionModal({
       <div className="command-execution-layout">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Descriptions size="small" column={3}>
-            <Descriptions.Item label="目标">
-              {devices.length === 1 ? devices[0]?.name : `${devices.length} 台设备`}
+            <Descriptions.Item label={t('commands.descriptions.target')}>
+              {devices.length === 1 ? devices[0]?.name : t('commands.descriptions.targetCount', { count: devices.length })}
             </Descriptions.Item>
-            <Descriptions.Item label="可执行">{eligibleDevices.length}</Descriptions.Item>
-            <Descriptions.Item label="跳过">{skippedCount}</Descriptions.Item>
+            <Descriptions.Item label={t('commands.descriptions.eligible')}>{eligibleDevices.length}</Descriptions.Item>
+            <Descriptions.Item label={t('commands.descriptions.skipped')}>{skippedCount}</Descriptions.Item>
           </Descriptions>
-          {!connected && <Alert showIcon type="error" message="网关未连接，无法提交命令" />}
+          {!connected && <Alert showIcon type="error" message={t('commands.alerts.gatewayDisconnected')} />}
           {skippedCount > 0 && (
             <Alert
               showIcon
               type="warning"
-              message={`${skippedCount} 台离线或平台不支持的设备将跳过`}
+              message={t('commands.alerts.skippedNotice', { count: skippedCount })}
             />
           )}
           <Space wrap>
@@ -341,18 +332,18 @@ export function CommandExecutionModal({
               value={shell}
               onChange={(value) => setShell(value as CommandShell)}
               options={[
-                { label: '自动', value: 'auto' },
-                { label: 'Shell', value: 'shell' },
-                { label: 'PowerShell', value: 'powershell' },
+                { label: t('commands.shells.auto'), value: 'auto' },
+                { label: t('commands.shells.shell'), value: 'shell' },
+                { label: t('commands.shells.powershell'), value: 'powershell' },
               ]}
             />
             <Select
               value={runAsUser}
               onChange={setRunAsUser}
               options={[
-                { label: '默认身份', value: 0 },
-                { label: '用户身份', value: 1 },
-                { label: '系统身份', value: 2 },
+                { label: t('commands.runAs.default'), value: 0 },
+                { label: t('commands.runAs.user'), value: 1 },
+                { label: t('commands.runAs.system'), value: 2 },
               ]}
               style={{ width: 140 }}
             />
@@ -361,16 +352,16 @@ export function CommandExecutionModal({
               onChange={setTimeoutMs}
               options={[30_000, 60_000, 120_000, 300_000].map((value) => ({
                 value,
-                label: `${value / 1000} 秒超时`,
+                label: t('commands.timeoutSeconds', { seconds: value / 1000 }),
               }))}
               style={{ width: 140 }}
             />
           </Space>
           <Select
-            placeholder="填入低风险命令模板"
-            options={templates.map((template) => ({ value: template.name, label: template.name }))}
-            onChange={(name) => {
-              const template = templates.find((item) => item.name === name);
+            placeholder={t('commands.templatePlaceholder')}
+            options={templates.map((template) => ({ value: template.id, label: t(`commands.templates.${template.id}`) }))}
+            onChange={(id) => {
+              const template = templates.find((item) => item.id === id);
               if (template) {
                 setCommand(template.command);
                 setShell(template.shell);
@@ -390,24 +381,24 @@ export function CommandExecutionModal({
               }
             }}
             autoSize={{ minRows: 5, maxRows: 12 }}
-            placeholder="输入要执行的命令，Ctrl/Cmd + Enter 提交"
+            placeholder={t('commands.commandPlaceholder')}
             className="command-editor"
           />
           {mayContainSecret(command) && (
-            <Alert showIcon type="warning" message="命令可能包含敏感信息，本次不会加入会话历史" />
+            <Alert showIcon type="warning" message={t('commands.sensitiveNotice')} />
           )}
           {risk === 'dangerous' && (
             <Alert
               showIcon
               type="error"
-              message="检测到高风险命令"
+              message={t('commands.dangerousTitle')}
               description={
                 <Space direction="vertical">
-                  <Typography.Text>此操作不可自动撤销。请输入“确认执行”后再提交。</Typography.Text>
+                  <Typography.Text>{t('commands.dangerousDescription')}</Typography.Text>
                   <Input
                     value={dangerConfirmation}
                     onChange={(event) => setDangerConfirmation(event.target.value)}
-                    placeholder="确认执行"
+                    placeholder={t('commands.dangerInputPlaceholder')}
                   />
                 </Space>
               }
@@ -415,7 +406,7 @@ export function CommandExecutionModal({
           )}
           {history.length > 0 && (
             <Space wrap>
-              <Typography.Text type="secondary">最近命令</Typography.Text>
+              <Typography.Text type="secondary">{t('commands.recentCommands')}</Typography.Text>
               {history.slice(0, 5).map((entry) => (
                 <Button
                   key={entry.id}
@@ -441,11 +432,11 @@ export function CommandExecutionModal({
                     : 'warning'
               }
               icon={snapshot.status === 'succeeded' ? <CheckCircleOutlined /> : undefined}
-              message={`执行状态：${statusLabels[snapshot.status]}`}
+              message={t('commands.statusMessage', { status: t(`commands.status.${snapshot.status}`) })}
               description={
                 snapshot.trackingStopped
-                  ? '已停止本地等待；远端命令可能仍在运行。'
-                  : `请求 ID：${snapshot.requestId}`
+                  ? t('commands.trackingStopped')
+                  : t('commands.requestId', { id: snapshot.requestId })
               }
             />
           )}
@@ -465,18 +456,18 @@ export function CommandExecutionModal({
                 <Typography.Text strong>
                   {devices.find((device) => device.id === selectedResult.deviceId)?.name ??
                     selectedResult.deviceId}{' '}
-                  输出
+                  {t('commands.actions.output')}
                 </Typography.Text>
                 <Button
                   size="small"
                   icon={<CopyOutlined />}
                   onClick={() => void navigator.clipboard.writeText(outputText(selectedResult))}
                 >
-                  复制
+                  {t('commands.actions.copy')}
                 </Button>
               </div>
               <pre>
-                {outputText(selectedResult) || selectedResult.error || '网关尚未提供输出。'}
+                {outputText(selectedResult) || selectedResult.error || t('commands.gatewayOutputUnavailable')}
               </pre>
             </div>
           )}

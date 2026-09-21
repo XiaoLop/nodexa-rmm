@@ -2,6 +2,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { Terminal } from '@xterm/xterm';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TerminalSession, TerminalSize } from '@meshcentral/relay';
 import '@xterm/xterm/css/xterm.css';
 
@@ -22,6 +23,7 @@ interface XtermTerminalProps {
 
 export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>(
   function XtermTerminal({ session, onPasteShortcut, onSizeChange }, ref) {
+    const { t } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<Terminal | undefined>(undefined);
     const fitRef = useRef<FitAddon | undefined>(undefined);
@@ -113,6 +115,6 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
       };
     }, [session]);
 
-    return <div ref={containerRef} className="terminal-xterm" aria-label="远程终端" />;
+    return <div ref={containerRef} className="terminal-xterm" aria-label={t('deviceWorkspace.terminal.ariaLabel')} />;
   },
 );

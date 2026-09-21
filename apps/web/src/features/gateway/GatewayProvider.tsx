@@ -99,7 +99,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
         body: new URLSearchParams({ action: 'login', username, password }),
       });
 
-      if (!response.ok) throw new GatewayAuthenticationError('登录失败，请检查用户名和密码。');
+      if (!response.ok) throw new GatewayAuthenticationError('authentication-failed');
 
       try {
         await connectClient({ username });
@@ -124,12 +124,12 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   }, [destroyClient, store]);
 
   const reconnect = useCallback(async () => {
-    if (!sessionRef.current) throw new Error('当前没有可用的登录会话。');
+    if (!sessionRef.current) throw new Error('no-active-session');
     await connectClient(sessionRef.current);
   }, [connectClient]);
 
   const refreshSnapshot = useCallback(async () => {
-    if (!bindingRef.current) throw new Error('网关未连接，无法刷新数据。');
+    if (!bindingRef.current) throw new Error('gateway-not-connected');
     await bindingRef.current.sync();
   }, []);
 

@@ -2,20 +2,20 @@ import { gatewaySelectors, useGatewayStore } from '@meshcentral/shared-state';
 import { useGateway } from './GatewayProvider';
 
 const statusMap = {
-  idle: { label: '待连接', color: 'default' },
-  connecting: { label: '连接中', color: 'processing' },
-  connected: { label: '已连接', color: 'success' },
-  reconnecting: { label: '重连中', color: 'warning' },
-  disconnected: { label: '已断开', color: 'default' },
-  error: { label: '连接异常', color: 'error' },
+  idle: { color: 'default' },
+  connecting: { color: 'processing' },
+  connected: { color: 'success' },
+  reconnecting: { color: 'warning' },
+  disconnected: { color: 'default' },
+  error: { color: 'error' },
 } as const;
 
 export function useConnectionSummary() {
   const { store, configured } = useGateway();
   const status = useGatewayStore(store, gatewaySelectors.status);
   return configured
-    ? { status: statusMap[status].label, color: statusMap[status].color }
-    : { status: '未配置', color: 'warning' as const };
+    ? { status, color: statusMap[status].color }
+    : { status: 'notConfigured' as const, color: 'warning' as const };
 }
 
 export function useGatewayData() {

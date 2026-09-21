@@ -71,20 +71,15 @@ function bootTimestamp(value: unknown) {
   return Date.parse(value);
 }
 
-function formatUptime(value: unknown, endTime: unknown) {
+function uptimeSeconds(value: unknown, endTime: unknown): number | undefined {
   const timestamp = bootTimestamp(value);
   const endTimestamp = bootTimestamp(endTime);
-  if (!Number.isFinite(timestamp) || timestamp <= 0 || !Number.isFinite(endTimestamp) || endTimestamp < timestamp) return '—';
-  const minutes = Math.floor((endTimestamp - timestamp) / 60_000);
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  if (days > 0) return `${days} 天 ${hours} 小时`;
-  if (hours > 0) return `${hours} 小时 ${minutes % 60} 分钟`;
-  return `${minutes} 分钟`;
+  if (!Number.isFinite(timestamp) || timestamp <= 0 || !Number.isFinite(endTimestamp) || endTimestamp < timestamp) return undefined;
+  return Math.floor((endTimestamp - timestamp) / 1000);
 }
 
 function simplifyCpuName(name: string | undefined): string {
-  if (!name) return '未知处理器';
+  if (!name) return '';
   return name
     .replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '')
     .replace(/\s+/g, ' ')
@@ -212,26 +207,26 @@ function staticDetails(details: DeviceDetails | undefined) {
   };
 
   const securityParts: string[] = [];
-  if (security.antiVirus) securityParts.push(`杀毒: ${security.antiVirus === 'OK' ? '正常' : security.antiVirus}`);
-  if (security.firewall) securityParts.push(`防火墙: ${security.firewall === 'OK' ? '启用' : security.firewall}`);
-  if (security.pendingReboot) securityParts.push(`待重启: ${security.pendingReboot}`);
+  if (security.antiVirus) securityParts.push(`antivirus:${security.antiVirus}`);
+  if (security.firewall) securityParts.push(`firewall:${security.firewall}`);
+  if (security.pendingReboot) securityParts.push(`pending-reboot:${security.pendingReboot}`);
 
   const hardwareInfo: DeviceHardwareInfo = {
-    cpuName: rawCpuName ?? '未提供',
+    cpuName: rawCpuName,
     cpuShortName: simplifyCpuName(rawCpuName),
     cpuSpeed: cpuMaxClock,
-    memoryTotal: formatBytes(totalMemory) ?? '未提供',
+    memoryTotal: formatBytes(totalMemory),
     memorySlots,
     memorySpeed,
-    storageTotal: formatBytes(totalStorage) ?? '未提供',
-    storageRemaining: formatBytes(totalRemaining) ?? '未提供',
+    storageTotal: formatBytes(totalStorage),
+    storageRemaining: formatBytes(totalRemaining),
     storageDrives: driveNames,
     volumes,
     gpuName,
     gpuResolution,
     boardName,
     biosVersion,
-    primaryNic: primaryInterface ? `${primaryInterface.name}${primaryInterface.speed ? ` (${primaryInterface.speed})` : ''}` : '未提供',
+    primaryNic: primaryInterface ? `${primaryInterface.name}${primaryInterface.speed ? ` (${primaryInterface.speed})` : ''}` : undefined,
     primarySpeed: primaryInterface?.speed,
     dns,
     interfaces,
@@ -240,17 +235,17 @@ function staticDetails(details: DeviceDetails | undefined) {
     agentCore: stringFrom(agent?.core),
     agentIsRoot: typeof agent?.root === 'boolean' ? agent.root : undefined,
     lastConnectAddr: stringFrom(lastConnectRecord?.addr),
-    lastConnectTime: typeof lastConnectRecord?.time === 'number' ? new Date(lastConnectRecord.time).toLocaleString('zh-CN') : undefined,
+    lastConnectTime: typeof lastConnectRecord?.time === 'number' ? new Date(lastConnectRecord.time).toISOString() : undefined,
   };
 
   return {
     cpuName: hardwareInfo.cpuName,
     memorySummary: hardwareInfo.memoryTotal,
-    storageSummary: hardwareInfo.storageTotal !== '未提供'
-      ? `${hardwareInfo.storageTotal} (余 ${hardwareInfo.storageRemaining})`
-      : '未提供',
-    networkSummary: interfaces.length > 0 ? `${interfaces.length} 个网络接口` : '未提供',
-    securitySummary: securityParts.length > 0 ? securityParts.join(' · ') : '未提供',
+    storageSummary: hardwareInfo.storageTotal
+      ? `${hardwareInfo.storageTotal} (${hardwareInfo.storageRemaining ?? ''})`
+      : undefined,
+    networkSummary: interfaces.length > 0 ? `${interfaces.length} interfaces` : undefined,
+    securitySummary: securityParts.length > 0 ? securityParts.join(' · ') : undefined,
     hardware: hardwareInfo,
   };
 }
@@ -296,13 +291,13 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     hasSystemDetails,
     hasNetworkDetails,
     hostname: rawString(resolvedDevice, ['rname', 'host', 'hostname'], resolvedDevice.raw) ?? resolvedDevice.name,
-    platform: resolvedDevice.platform ?? rawString(resolvedDevice, ['osdesc', 'platform'], resolvedDevice.raw) ?? stringFrom(osInfo?.Caption) ?? '未知系统',
-    ipAddress: rawString(resolvedDevice, ['ip', 'host'], resolvedDevice.raw) ?? '—',
-    macAddress: rawString(resolvedDevice, ['mac', 'macaddr'], resolvedDevice.raw) ?? '—',
-    currentUser: rawString(resolvedDevice, ['user', 'currentUser'], resolvedDevice.raw) ?? '—',
-    uptime: formatUptime(osInfo?.LastBootUpTime ?? rawRecord(resolvedDevice)?.lastbootuptime, uptimeEndTime),
-    lastHeartbeat: resolvedDevice.lastSeenAt ?? '刚刚',
-    groupName: groupName ?? resolvedDevice.groupName ?? '未分组',
+    platform: resolvedDevice.platform ?? rawString(resolvedDevice, ['osdesc', 'platform'], resolvedDevice.raw) ?? stringFrom(osInfo?.Caption),
+    ipAddress: rawString(resolvedDevice, ['ip', 'host'], resolvedDevice.raw),
+    macAddress: rawString(resolvedDevice, ['mac', 'macaddr'], resolvedDevice.raw),
+    currentUser: rawString(resolvedDevice, ['user', 'currentUser'], resolvedDevice.raw),
+    uptimeSeconds: uptimeSeconds(osInfo?.LastBootUpTime ?? rawRecord(resolvedDevice)?.lastbootuptime, uptimeEndTime),
+    lastHeartbeatAt: resolvedDevice.lastSeenAt,
+    groupName: groupName ?? resolvedDevice.groupName,
     tags: [],
     ...hardware,
     events: workspaceEvents,

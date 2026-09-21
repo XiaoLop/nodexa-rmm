@@ -1,5 +1,7 @@
 import { isFullAdministrator, type ManagedUser } from '@meshcentral/control-client';
 import { Descriptions, Drawer, Tag } from 'antd';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../../i18n/formatters';
 
 interface UserDetailsDrawerProps {
   user?: ManagedUser;
@@ -8,29 +10,21 @@ interface UserDetailsDrawerProps {
   onClose: () => void;
 }
 
-function formatDateTime(value?: string, missing = '未提供') {
-  if (!value) return missing;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return missing;
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
-}
-
 export function UserDetailsDrawer({
   user,
   sessionCount,
   sessionsKnown,
   onClose,
 }: UserDetailsDrawerProps) {
+  const { t } = useTranslation();
+  const { dateTime } = useFormatters();
+  const formatDateTime = (value?: string, missing = t('userDetails.missing')) => {
+    if (!value || Number.isNaN(new Date(value).getTime())) return missing;
+    return dateTime(value);
+  };
   return (
     <Drawer
-      title={user ? `用户详情：${user.name}` : '用户详情'}
+      title={user ? t('userDetails.drawerTitle', { name: user.name }) : t('userDetails.title')}
       open={Boolean(user)}
       width="min(620px, 100vw)"
       onClose={onClose}
@@ -38,37 +32,37 @@ export function UserDetailsDrawer({
     >
       {user ? (
         <Descriptions column={1} size="small" bordered>
-          <Descriptions.Item label="用户 ID">{user.id}</Descriptions.Item>
-          <Descriptions.Item label="用户名">{user.name}</Descriptions.Item>
-          <Descriptions.Item label="真实姓名">{user.realName || '未提供'}</Descriptions.Item>
-          <Descriptions.Item label="邮箱">{user.email || '未提供'}</Descriptions.Item>
-          <Descriptions.Item label="电话">{user.phone || '未提供'}</Descriptions.Item>
-          <Descriptions.Item label="账户状态">
-            <Tag color={user.locked ? 'error' : 'success'}>{user.locked ? '已锁定' : '正常'}</Tag>
+          <Descriptions.Item label={t('userDetails.fields.id')}>{user.id}</Descriptions.Item>
+          <Descriptions.Item label={t('userDetails.fields.username')}>{user.name}</Descriptions.Item>
+          <Descriptions.Item label={t('userDetails.fields.realName')}>{user.realName || t('userDetails.missing')}</Descriptions.Item>
+          <Descriptions.Item label={t('userDetails.fields.email')}>{user.email || t('userDetails.missing')}</Descriptions.Item>
+          <Descriptions.Item label={t('userDetails.fields.phone')}>{user.phone || t('userDetails.missing')}</Descriptions.Item>
+          <Descriptions.Item label={t('userDetails.fields.accountStatus')}>
+            <Tag color={user.locked ? 'error' : 'success'}>{user.locked ? t('userDetails.locked') : t('userDetails.normal')}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="账户类型">
-            {isFullAdministrator(user.siteRights) ? '全站管理员' : '普通用户'}
+          <Descriptions.Item label={t('userDetails.fields.accountType')}>
+            {isFullAdministrator(user.siteRights) ? t('userDetails.administrator') : t('userDetails.standardUser')}
           </Descriptions.Item>
-          <Descriptions.Item label="当前在线">
+          <Descriptions.Item label={t('userDetails.fields.online')}>
             {sessionsKnown ? (
               <Tag color={sessionCount ? 'success' : 'default'}>
-                {sessionCount ? `在线（${sessionCount} 个会话）` : '离线'}
+                {sessionCount ? t('userDetails.onlineSessions', { count: sessionCount }) : t('common.status.offline')}
               </Tag>
             ) : (
-              <Tag>未知</Tag>
+              <Tag>{t('common.status.unknown')}</Tag>
             )}
           </Descriptions.Item>
-          <Descriptions.Item label="创建时间">{formatDateTime(user.createdAt)}</Descriptions.Item>
-          <Descriptions.Item label="最近登录">
-            {formatDateTime(user.lastLoginAt, '从未登录')}
+          <Descriptions.Item label={t('userDetails.fields.createdAt')}>{formatDateTime(user.createdAt)}</Descriptions.Item>
+          <Descriptions.Item label={t('userDetails.fields.lastLogin')}>
+            {formatDateTime(user.lastLoginAt, t('userDetails.neverLoggedIn'))}
           </Descriptions.Item>
-          <Descriptions.Item label="上次登录">
-            {formatDateTime(user.previousLoginAt, '从未登录')}
+          <Descriptions.Item label={t('userDetails.fields.previousLogin')}>
+            {formatDateTime(user.previousLoginAt, t('userDetails.neverLoggedIn'))}
           </Descriptions.Item>
-          <Descriptions.Item label="最近访问">
+          <Descriptions.Item label={t('userDetails.fields.lastAccess')}>
             {formatDateTime(user.lastAccessAt)}
           </Descriptions.Item>
-          <Descriptions.Item label="密码最近修改">
+          <Descriptions.Item label={t('userDetails.fields.passwordChanged')}>
             {formatDateTime(user.passwordChangedAt)}
           </Descriptions.Item>
         </Descriptions>

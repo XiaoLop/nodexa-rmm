@@ -45,6 +45,7 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
@@ -60,11 +61,12 @@ interface EditValues {
   description?: string;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '未知错误';
+function errorMessage(error: unknown, unknownText: string): string {
+  return error instanceof Error ? error.message : unknownText;
 }
 
 export function UserGroupDetailsPage() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { userGroupId } = useParams();
   const decodedId = userGroupId ? decodeURIComponent(userGroupId) : '';
@@ -116,11 +118,11 @@ export function UserGroupDetailsPage() {
       setGroup(targetGroup);
       setUsers(availableUsers);
     } catch (error) {
-      if (sequence === requestSequence.current) setLoadError(errorMessage(error));
+      if (sequence === requestSequence.current) setLoadError(errorMessage(error, t('common.status.unknown')));
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [client, decodedId, status]);
+  }, [client, decodedId, status, t]);
 
   useEffect(() => {
     if (status === 'connected') void loadDetails();
@@ -147,8 +149,8 @@ export function UserGroupDetailsPage() {
     () =>
       users
         .filter((user) => !memberIds.has(user.id))
-        .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')),
-    [memberIds, users],
+        .sort((a, b) => a.name.localeCompare(b.name, i18n.resolvedLanguage ?? i18n.language)),
+      [i18n.language, i18n.resolvedLanguage, memberIds, users],
   );
 
   // 搜索过滤后的成员列表
@@ -201,7 +203,7 @@ export function UserGroupDetailsPage() {
       void messageApi.success(success);
       return true;
     } catch (error) {
-      void messageApi.error(`${success}失败：${errorMessage(error)}`);
+      void messageApi.error(`${success}: ${errorMessage(error, t('common.status.unknown'))}`);
       return false;
     } finally {
       setSubmitting(false);
@@ -212,15 +214,15 @@ export function UserGroupDetailsPage() {
     if (!group) return;
     navigator.clipboard
       .writeText(group.id)
-      .then(() => void messageApi.success('已复制用户组 ID 到剪贴板'))
-      .catch(() => void messageApi.info(`用户组 ID：${group.id}`));
+      .then(() => void messageApi.success(t('common.actions.copied')))
+      .catch(() => void messageApi.info(group.id));
   };
 
   const addMembers = async () => {
     if (!client || !group || selectedUsernames.length === 0) return;
     const succeeded = await mutate(
       () => client.userGroups.addUsers(group.id, selectedUsernames),
-      '添加成员',
+      t('userGroups.details.actions.addMember'),
     );
     if (succeeded) {
       setMemberModalOpen(false);
@@ -233,33 +235,32 @@ export function UserGroupDetailsPage() {
     const user = users.find((item) => item.id === link.id);
     const targetName = user?.name ?? link.name ?? link.id;
     Modal.confirm({
-      title: '移除用户组成员',
+      title: t('userGroups.details.confirm.removeMemberTitle'),
       icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
       content: (
         <div>
           <p>
-            确定从用户组「<strong>{group.name}</strong>」中移除成员「<strong>{targetName}</strong>
-            」吗？
+            {t('userGroups.details.confirm.removeMemberContent', { group: group.name, name: targetName })}
           </p>
           <p style={{ color: '#8c9ba5', fontSize: 12 }}>
-            移除后，该用户将不再继承此用户组的设备组及单设备访问权限。用户的账户及其直接授权不受影响。
+            {t('userGroups.details.confirm.removeMemberDescription')}
           </p>
         </div>
       ),
-      okText: '确认移除',
-      cancelText: '取消',
+      okText: t('userGroups.details.actions.confirmRemove'),
+      cancelText: t('common.actions.cancel'),
       okButtonProps: { danger: true },
-      onOk: () => mutate(() => client.userGroups.removeUser(group.id, link.id), '移除成员'),
+      onOk: () => mutate(() => client.userGroups.removeUser(group.id, link.id), t('userGroups.details.actions.removeMember')),
     });
   };
 
   const saveGroupPermission = async (value: { groupId: string; rights: number }) => {
     if (!client || !group) return;
     const target = groups.find((item) => item.id === value.groupId);
-    if (!target) throw new Error('目标设备组已不存在。');
+    if (!target) throw new Error(t('userGroups.details.errors.groupDeleted'));
     const succeeded = await mutate(
       () => client.groups.setUserGroupRights(target.id, target.name, group.id, value.rights),
-      '保存设备组权限',
+      t('userGroups.details.actions.saveGroupPermissions'),
     );
     if (succeeded) setGroupPermissionEditor(undefined);
   };
@@ -267,10 +268,10 @@ export function UserGroupDetailsPage() {
   const saveDevicePermission = async (value: { deviceId: string; rights: number }) => {
     if (!client || !group) return;
     const target = devices.find((item) => item.id === value.deviceId);
-    if (!target) throw new Error('目标设备已不存在。');
+    if (!target) throw new Error(t('userGroups.details.errors.deviceDeleted'));
     const succeeded = await mutate(
       () => client.devices.setUserGroupRights(target.id, target.name, group.id, value.rights),
-      '保存设备权限',
+      t('userGroups.details.actions.saveDevicePermissions'),
     );
     if (succeeded) setDevicePermissionEditor(undefined);
   };
@@ -278,7 +279,7 @@ export function UserGroupDetailsPage() {
   // 成员表格列定义
   const memberColumns: TableColumnsType<UserGroupLink> = [
     {
-      title: '用户',
+      title: t('userGroups.details.memberColumns.user'),
       key: 'user',
       render: (_, link) => {
         const user = users.find((item) => item.id === link.id);
@@ -294,7 +295,7 @@ export function UserGroupDetailsPage() {
             <span
               className="user-group-member-link"
               onClick={() => navigate(`/admin/users/${encodeURIComponent(link.id)}`)}
-              title="点击查看用户详情"
+              title={t('userGroups.details.memberColumns.viewUser')}
             >
               {displayName}
             </span>
@@ -303,7 +304,7 @@ export function UserGroupDetailsPage() {
       },
     },
     {
-      title: '真实姓名',
+      title: t('userGroups.details.memberColumns.realName'),
       width: 150,
       render: (_, link) => {
         const user = users.find((item) => item.id === link.id);
@@ -311,7 +312,7 @@ export function UserGroupDetailsPage() {
       },
     },
     {
-      title: '邮箱',
+      title: t('userGroups.details.memberColumns.email'),
       width: 220,
       render: (_, link) => {
         const user = users.find((item) => item.id === link.id);
@@ -321,30 +322,30 @@ export function UserGroupDetailsPage() {
             <span>{user.email}</span>
           </Space>
         ) : (
-          <span style={{ color: '#64748b' }}>未提供</span>
+          <span style={{ color: '#64748b' }}>{t('userGroups.details.missing')}</span>
         );
       },
     },
     {
-      title: '账户状态',
+      title: t('userGroups.details.memberColumns.status'),
       width: 180,
       render: (_, link) => {
         const user = users.find((item) => item.id === link.id);
-        if (!user) return <Tag>状态未知</Tag>;
+        if (!user) return <Tag>{t('common.status.unknown')}</Tag>;
         return (
           <Space size={4} wrap>
-            <Tag color={user.locked ? 'error' : 'success'}>{user.locked ? '已锁定' : '正常'}</Tag>
-            {isFullAdministrator(user.siteRights) ? <Tag color="blue">全站管理员</Tag> : null}
+            <Tag color={user.locked ? 'error' : 'success'}>{user.locked ? t('users.status.locked') : t('users.status.active')}</Tag>
+            {isFullAdministrator(user.siteRights) ? <Tag color="blue">{t('users.status.siteAdmin')}</Tag> : null}
           </Space>
         );
       },
     },
     {
-      title: '操作',
+      title: t('userGroups.details.memberColumns.actions'),
       width: 100,
       fixed: 'right',
       render: (_, link) => (
-        <Tooltip title={!canWrite ? '无管理权限' : undefined}>
+        <Tooltip title={!canWrite ? t('userGroups.details.noManagePermission') : undefined}>
           <Button
             type="link"
             danger
@@ -353,7 +354,7 @@ export function UserGroupDetailsPage() {
             disabled={!canWrite}
             onClick={() => removeMember(link)}
           >
-            移除
+            {t('userGroups.details.actions.remove')}
           </Button>
         </Tooltip>
       ),
@@ -363,7 +364,7 @@ export function UserGroupDetailsPage() {
   // 权限列通用工厂
   const permissionColumns = (type: 'device-group' | 'device'): TableColumnsType<UserGroupLink> => [
     {
-      title: type === 'device-group' ? '设备组' : '设备',
+      title: type === 'device-group' ? t('userGroups.details.deviceGroup') : t('userGroups.details.device'),
       key: 'target',
       render: (_, link) => {
         const target =
@@ -393,7 +394,7 @@ export function UserGroupDetailsPage() {
               <strong>{name}</strong>
               {type === 'device' && (target as any)?.groupName ? (
                 <div style={{ fontSize: 11, color: '#64748b' }}>
-                  所属组：{(target as any).groupName}
+                  {t('userGroups.details.groupLabel', { name: (target as any).groupName })}
                 </div>
               ) : null}
             </div>
@@ -402,24 +403,24 @@ export function UserGroupDetailsPage() {
       },
     },
     {
-      title: '继承权限摘要',
+      title: t('userGroups.details.inheritedPermissions'),
       key: 'rights',
       width: 320,
       render: (_, link) => (
         <Tag color="blue" style={{ fontSize: 12, padding: '2px 8px' }}>
           <SafetyCertificateOutlined style={{ marginRight: 4 }} />
-          {summarizeMeshRights(link.rights)}
+          {summarizeMeshRights(link.rights, t)}
         </Tag>
       ),
     },
     {
-      title: '操作',
+      title: t('userGroups.details.memberColumns.actions'),
       key: 'actions',
       width: 160,
       fixed: 'right',
       render: (_, link) => (
         <Space size="small">
-          <Tooltip title={!canWrite ? '无管理权限' : undefined}>
+          <Tooltip title={!canWrite ? t('userGroups.details.noManagePermission') : undefined}>
             <Button
               type="link"
               size="small"
@@ -431,10 +432,10 @@ export function UserGroupDetailsPage() {
                   : setDevicePermissionEditor({ deviceId: link.id, rights: link.rights })
               }
             >
-              编辑权限
+              {t('userGroups.details.actions.editPermissions')}
             </Button>
           </Tooltip>
-          <Tooltip title={!canWrite ? '无管理权限' : undefined}>
+          <Tooltip title={!canWrite ? t('userGroups.details.noManagePermission') : undefined}>
             <Button
               type="link"
               danger
@@ -443,26 +444,26 @@ export function UserGroupDetailsPage() {
               onClick={() => {
                 if (!client || !group) return;
                 Modal.confirm({
-                  title: type === 'device-group' ? '移除设备组授权' : '移除设备授权',
+                  title: type === 'device-group' ? t('userGroups.details.confirm.removeGroupTitle') : t('userGroups.details.confirm.removeDeviceTitle'),
                   icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
-                  content: '移除后，组内所有成员将不再通过此用户组继承该资源的访问权限。',
-                  okText: '确认移除',
-                  cancelText: '取消',
+                  content: t('userGroups.details.confirm.removeContent'),
+                  okText: t('userGroups.details.actions.confirmRemove'),
+                  cancelText: t('common.actions.cancel'),
                   okButtonProps: { danger: true },
                   onOk: () =>
                     type === 'device-group'
                       ? mutate(
                           () => client.groups.removeUserGroup(link.id, group.id),
-                          '移除设备组授权',
+                          t('userGroups.details.confirm.removeGroupTitle'),
                         )
                       : mutate(
                           () => client.devices.removeUserGroup(link.id, group.id),
-                          '移除设备授权',
+                          t('userGroups.details.confirm.removeDeviceTitle'),
                         ),
                 });
               }}
             >
-              移除
+              {t('userGroups.details.actions.remove')}
             </Button>
           </Tooltip>
         </Space>
@@ -475,7 +476,7 @@ export function UserGroupDetailsPage() {
       <main
         className="page-stack user-details-page user-group-loading"
         aria-busy="true"
-        aria-label="正在加载用户组详情"
+        aria-label={t('userGroups.details.loading')}
       >
         <nav className="user-detail-breadcrumb user-group-loading-breadcrumb" aria-hidden="true">
           <span className="user-group-loading-line is-breadcrumb" />
@@ -548,7 +549,7 @@ export function UserGroupDetailsPage() {
           </div>
         </section>
 
-        <span className="user-group-loading-announcement">正在加载用户组详情...</span>
+        <span className="user-group-loading-announcement">{t('userGroups.details.loading')}...</span>
       </main>
     );
   }
@@ -556,17 +557,17 @@ export function UserGroupDetailsPage() {
   if (loadError) {
     return (
       <main className="page-stack user-details-page">
-        <nav className="user-detail-breadcrumb" aria-label="面包屑">
-          <button onClick={() => navigate('/admin/roles')}>用户组</button>
+        <nav className="user-detail-breadcrumb" aria-label={t('userGroups.details.breadcrumb')}>
+          <button onClick={() => navigate('/admin/roles')}>{t('navigation.userGroups')}</button>
           <span>›</span>
-          <strong>加载失败</strong>
+          <strong>{t('userGroups.details.loadFailed')}</strong>
         </nav>
         <Alert
           type="error"
           showIcon
-          message="用户组加载失败"
+          message={t('userGroups.details.loadFailed')}
           description={loadError}
-          action={<Button onClick={() => void loadDetails()}>重新加载</Button>}
+          action={<Button onClick={() => void loadDetails()}>{t('common.actions.retry')}</Button>}
         />
       </main>
     );
@@ -574,9 +575,9 @@ export function UserGroupDetailsPage() {
 
   if (!group) {
     return (
-      <Empty description="用户组不存在或已被删除" style={{ marginTop: 60 }}>
+      <Empty description={t('userGroups.details.notFound')} style={{ marginTop: 60 }}>
         <Button type="primary" onClick={() => navigate('/admin/roles')}>
-          返回用户组列表
+          {t('userGroups.details.backToList')}
         </Button>
       </Empty>
     );
@@ -587,8 +588,8 @@ export function UserGroupDetailsPage() {
       {messageContextHolder}
 
       {/* 面包屑导航 */}
-      <nav className="user-detail-breadcrumb" aria-label="面包屑">
-        <button onClick={() => navigate('/admin/roles')}>用户组</button>
+      <nav className="user-detail-breadcrumb" aria-label={t('userGroups.details.breadcrumb')}>
+        <button onClick={() => navigate('/admin/roles')}>{t('navigation.userGroups')}</button>
         <span>›</span>
         <strong>{group.name}</strong>
       </nav>
@@ -597,16 +598,16 @@ export function UserGroupDetailsPage() {
         <Alert
           type="warning"
           showIcon
-          message="业务网关未连接"
-          description="当前展示最近一次缓存的数据，所有修改及权限配置操作已暂时禁用。"
+          message={t('userGroups.details.gatewayDisconnected')}
+          description={t('userGroups.details.gatewayDisconnectedDescription')}
         />
       ) : null}
       {connected && !canManage ? (
         <Alert
           type="info"
           showIcon
-          message="当前为只读模式"
-          description="当前登录账户没有管理用户组权限，可查看成员和继承授权，但无法执行修改。"
+          message={t('userGroups.details.readOnly')}
+          description={t('userGroups.details.readOnlyDescription')}
         />
       ) : null}
 
@@ -622,17 +623,17 @@ export function UserGroupDetailsPage() {
           <div className="user-detail-name">
             <div className="user-detail-title-row">
               <h1>{group.name}</h1>
-              <Tag color="purple">用户组角色</Tag>
-              {group.domain ? <Tag color="geekblue">{group.domain}</Tag> : <Tag>默认域</Tag>}
+              <Tag color="purple">{t('userGroups.details.role')}</Tag>
+              {group.domain ? <Tag color="geekblue">{group.domain}</Tag> : <Tag>{t('userGroups.details.defaultDomain')}</Tag>}
             </div>
             <div className="user-detail-subinfo">
-              <span>{group.description || '暂无描述信息'}</span>
+              <span>{group.description || t('userGroups.details.noDescription')}</span>
             </div>
             <div>
-              <span className="user-group-id-badge" title="用户组系统标识">
+              <span className="user-group-id-badge" title={t('userGroups.details.systemId')}>
                 <IdcardOutlined />
                 <span className="user-group-id-value">{group.id}</span>
-                <Tooltip title="复制 ID">
+                <Tooltip title={t('common.actions.copy')}>
                   <CopyOutlined className="user-group-id-copy" onClick={handleCopyId} />
                 </Tooltip>
               </span>
@@ -647,7 +648,7 @@ export function UserGroupDetailsPage() {
                   setEditOpen(true);
                 }}
               >
-                编辑资料
+                {t('userGroups.details.actions.editProfile')}
               </Button>
               <Button
                 size="small"
@@ -655,7 +656,7 @@ export function UserGroupDetailsPage() {
                 disabled={!canWrite}
                 onClick={() => setMemberModalOpen(true)}
               >
-                添加成员
+                {t('userGroups.details.actions.addMember')}
               </Button>
               <Button
                 size="small"
@@ -667,7 +668,7 @@ export function UserGroupDetailsPage() {
                   setDeleteOpen(true);
                 }}
               >
-                删除用户组
+                {t('common.actions.delete')}
               </Button>
             </div>
           </div>
@@ -678,58 +679,58 @@ export function UserGroupDetailsPage() {
           <div className="user-detail-meta-grid">
             <div className="user-detail-meta-item">
               <dt>
-                <GlobalOutlined /> 所属域
+                <GlobalOutlined /> {t('userGroups.details.fields.domain')}
               </dt>
               <dd>
-                <span className="user-detail-meta-value">{group.domain || '默认域 (default)'}</span>
+                <span className="user-detail-meta-value">{group.domain || t('userGroups.details.defaultDomainValue')}</span>
               </dd>
             </div>
 
             <div className="user-detail-meta-item">
               <dt>
-                <TeamOutlined /> 组内成员
+                <TeamOutlined /> {t('userGroups.details.fields.members')}
               </dt>
               <dd>
-                <span className="user-detail-meta-value">{memberLinks.length} 名用户</span>
+                <span className="user-detail-meta-value">{t('userGroups.details.counts.members', { count: memberLinks.length })}</span>
               </dd>
             </div>
 
             <div className="user-detail-meta-item">
               <dt>
-                <ApartmentOutlined /> 设备组授权
+                <ApartmentOutlined /> {t('userGroups.details.fields.deviceGroups')}
               </dt>
               <dd>
-                <span className="user-detail-meta-value">{groupLinks.length} 个设备组</span>
+                <span className="user-detail-meta-value">{t('userGroups.details.counts.deviceGroups', { count: groupLinks.length })}</span>
               </dd>
             </div>
 
             <div className="user-detail-meta-item">
               <dt>
-                <DesktopOutlined /> 单设备授权
+                <DesktopOutlined /> {t('userGroups.details.fields.devices')}
               </dt>
               <dd>
-                <span className="user-detail-meta-value">{deviceLinks.length} 台设备</span>
+                <span className="user-detail-meta-value">{t('userGroups.details.counts.devices', { count: deviceLinks.length })}</span>
               </dd>
             </div>
 
             <div className="user-detail-meta-item">
               <dt>
-                <InfoCircleOutlined /> 属性标志
+                <InfoCircleOutlined /> {t('userGroups.details.fields.flags')}
               </dt>
               <dd>
                 <span className="user-detail-meta-value">
-                  {group.flags === 0 ? '默认标志 (0)' : `Flags: ${group.flags}`}
+                  {group.flags === 0 ? t('userGroups.details.defaultFlags') : `Flags: ${group.flags}`}
                 </span>
               </dd>
             </div>
 
             <div className="user-detail-meta-item">
               <dt>
-                <SafetyCertificateOutlined /> 同意配置
+                <SafetyCertificateOutlined /> {t('userGroups.details.fields.consent')}
               </dt>
               <dd>
                 <span className="user-detail-meta-value">
-                  {group.consent === 0 ? '未限制 (0)' : `Consent: ${group.consent}`}
+                  {group.consent === 0 ? t('userGroups.details.unrestrictedConsent') : `Consent: ${group.consent}`}
                 </span>
               </dd>
             </div>
@@ -743,15 +744,15 @@ export function UserGroupDetailsPage() {
               <ApartmentOutlined />
             </div>
             <div className="user-detail-sessions-body">
-              <span style={{ fontSize: 11, color: '#94a3b8' }}>继承策略下发总数</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>{t('userGroups.details.inheritedTotal')}</span>
               <div className="user-detail-sessions-count">
                 <strong>{groupLinks.length + deviceLinks.length}</strong>
-                <span className="user-detail-sessions-unit">项资源授权</span>
+                <span className="user-detail-sessions-unit">{t('userGroups.details.resourceGrants')}</span>
               </div>
               <div className="user-detail-sessions-status">
                 <span className="user-detail-pulse-dot online" />
                 <span style={{ fontSize: 12, color: '#34d399' }}>
-                  为 {memberLinks.length} 名成员提供继承
+                  {t('userGroups.details.inheritedForMembers', { count: memberLinks.length })}
                 </span>
               </div>
             </div>
@@ -768,7 +769,7 @@ export function UserGroupDetailsPage() {
             key: 'overview',
             label: (
               <span>
-                <LaptopOutlined /> 概览与继承机制
+                <LaptopOutlined /> {t('userGroups.details.tabs.overview')}
               </span>
             ),
             children: (
@@ -784,8 +785,8 @@ export function UserGroupDetailsPage() {
                       <TeamOutlined />
                     </span>
                     <span>
-                      <small>组内成员规模</small>
-                      <strong>{memberLinks.length} 人</strong>
+                      <small>{t('userGroups.details.tabs.memberScale')}</small>
+                      <strong>{t('userGroups.details.counts.people', { count: memberLinks.length })}</strong>
                     </span>
                     <RightOutlined className="user-detail-chevron" />
                   </article>
@@ -799,8 +800,8 @@ export function UserGroupDetailsPage() {
                       <ApartmentOutlined />
                     </span>
                     <span>
-                      <small>继承设备组授权</small>
-                      <strong>{groupLinks.length} 个</strong>
+                      <small>{t('userGroups.details.tabs.inheritedGroups')}</small>
+                      <strong>{t('userGroups.details.counts.groups', { count: groupLinks.length })}</strong>
                     </span>
                     <RightOutlined className="user-detail-chevron" />
                   </article>
@@ -814,8 +815,8 @@ export function UserGroupDetailsPage() {
                       <DesktopOutlined />
                     </span>
                     <span>
-                      <small>继承单设备授权</small>
-                      <strong>{deviceLinks.length} 台</strong>
+                      <small>{t('userGroups.details.tabs.inheritedDevices')}</small>
+                      <strong>{t('userGroups.details.counts.devices', { count: deviceLinks.length })}</strong>
                     </span>
                     <RightOutlined className="user-detail-chevron" />
                   </article>
@@ -831,10 +832,10 @@ export function UserGroupDetailsPage() {
                 >
                   <section className="console-card">
                     <div className="table-toolbar">
-                      <strong>组内部分成员预览</strong>
+                      <strong>{t('userGroups.details.preview.members')}</strong>
                       <div className="toolbar-spacer" />
                       <Button type="link" size="small" onClick={() => setActiveTab('members')}>
-                        查看全部 ({memberLinks.length})
+                        {t('userGroups.details.viewAllCount', { count: memberLinks.length })}
                       </Button>
                     </div>
                     {memberLinks.length > 0 ? (
@@ -866,23 +867,23 @@ export function UserGroupDetailsPage() {
                                 </span>
                               </Space>
                               <span style={{ fontSize: 12, color: '#94a3b8' }}>
-                                {user?.email || (user?.locked ? '已锁定' : '正常')}
+                                {user?.email || (user?.locked ? t('users.status.locked') : t('users.status.active'))}
                               </span>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无成员" />
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('userGroups.details.empty.members')} />
                     )}
                   </section>
 
                   <section className="console-card">
                     <div className="table-toolbar">
-                      <strong>继承授权资源预览</strong>
+                      <strong>{t('userGroups.details.preview.resources')}</strong>
                       <div className="toolbar-spacer" />
                       <Button type="link" size="small" onClick={() => setActiveTab('groups')}>
-                        查看全部 ({groupLinks.length + deviceLinks.length})
+                        {t('userGroups.details.viewAllCount', { count: groupLinks.length + deviceLinks.length })}
                       </Button>
                     </div>
                     {groupLinks.length + deviceLinks.length > 0 ? (
@@ -906,7 +907,7 @@ export function UserGroupDetailsPage() {
                                 <ApartmentOutlined style={{ color: '#34d399' }} />
                                 <span>{grp?.name ?? link.name ?? link.id}</span>
                               </Space>
-                              <Tag color="green">设备组</Tag>
+                              <Tag color="green">{t('userGroups.details.deviceGroup')}</Tag>
                             </div>
                           );
                         })}
@@ -929,13 +930,13 @@ export function UserGroupDetailsPage() {
                                 <DesktopOutlined style={{ color: '#38bdf8' }} />
                                 <span>{dev?.name ?? link.name ?? link.id}</span>
                               </Space>
-                              <Tag color="blue">单设备</Tag>
+                              <Tag color="blue">{t('userGroups.details.device')}</Tag>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无授权配置" />
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('userGroups.details.empty.resources')} />
                     )}
                   </section>
                 </div>
@@ -946,7 +947,7 @@ export function UserGroupDetailsPage() {
             key: 'members',
             label: (
               <span>
-                <TeamOutlined /> 成员管理 ({memberLinks.length})
+                <TeamOutlined /> {t('userGroups.details.tabs.members', { count: memberLinks.length })}
               </span>
             ),
             children: (
@@ -954,7 +955,7 @@ export function UserGroupDetailsPage() {
                 <div className="table-toolbar">
                   <Input
                     className="user-group-tab-search"
-                    placeholder="搜索成员姓名、用户名或邮箱"
+                    placeholder={t('userGroups.details.search.members')}
                     prefix={<SearchOutlined />}
                     value={memberSearch}
                     onChange={(e) => setMemberSearch(e.target.value)}
@@ -962,7 +963,7 @@ export function UserGroupDetailsPage() {
                   />
                   <div className="toolbar-spacer" />
                   <Tag color="purple">
-                    {filteredMemberLinks.length} / {memberLinks.length} 名成员
+                    {t('userGroups.details.counts.filteredMembers', { filtered: filteredMemberLinks.length, total: memberLinks.length })}
                   </Tag>
                   <Button
                     type="primary"
@@ -970,7 +971,7 @@ export function UserGroupDetailsPage() {
                     disabled={!canWrite}
                     onClick={() => setMemberModalOpen(true)}
                   >
-                    添加成员
+                    {t('userGroups.details.actions.addMember')}
                   </Button>
                 </div>
                 <Table
@@ -986,7 +987,7 @@ export function UserGroupDetailsPage() {
                     emptyText: (
                       <Empty
                         description={
-                          memberLinks.length === 0 ? '该用户组暂无任何成员' : '没有匹配的成员'
+                          memberLinks.length === 0 ? t('userGroups.details.empty.noMembers') : t('userGroups.details.empty.noMatchingMembers')
                         }
                       >
                         {memberLinks.length === 0 && canWrite ? (
@@ -995,7 +996,7 @@ export function UserGroupDetailsPage() {
                             icon={<PlusOutlined />}
                             onClick={() => setMemberModalOpen(true)}
                           >
-                            立即添加成员
+                            {t('userGroups.details.actions.addMemberNow')}
                           </Button>
                         ) : null}
                       </Empty>
@@ -1009,7 +1010,7 @@ export function UserGroupDetailsPage() {
             key: 'groups',
             label: (
               <span>
-                <ApartmentOutlined /> 设备组继承权限 ({groupLinks.length})
+                <ApartmentOutlined /> {t('userGroups.details.tabs.groups', { count: groupLinks.length })}
               </span>
             ),
             children: (
@@ -1017,7 +1018,7 @@ export function UserGroupDetailsPage() {
                 <div className="table-toolbar">
                   <Input
                     className="user-group-tab-search"
-                    placeholder="搜索设备组名称或 ID"
+                    placeholder={t('userGroups.details.search.groups')}
                     prefix={<SearchOutlined />}
                     value={groupPermSearch}
                     onChange={(e) => setGroupPermSearch(e.target.value)}
@@ -1025,7 +1026,7 @@ export function UserGroupDetailsPage() {
                   />
                   <div className="toolbar-spacer" />
                   <Tag color="green">
-                    {filteredGroupLinks.length} / {groupLinks.length} 个设备组
+                    {t('userGroups.details.counts.filteredGroups', { filtered: filteredGroupLinks.length, total: groupLinks.length })}
                   </Tag>
                   <Button
                     type="primary"
@@ -1033,7 +1034,7 @@ export function UserGroupDetailsPage() {
                     disabled={!canWrite}
                     onClick={() => setGroupPermissionEditor('new')}
                   >
-                    添加设备组授权
+                    {t('userGroups.details.actions.addGroupGrant')}
                   </Button>
                 </div>
                 <Table
@@ -1049,7 +1050,7 @@ export function UserGroupDetailsPage() {
                     emptyText: (
                       <Empty
                         description={
-                          groupLinks.length === 0 ? '暂无设备组继承权限' : '没有匹配的设备组'
+                          groupLinks.length === 0 ? t('userGroups.details.empty.noGroupGrants') : t('userGroups.details.empty.noMatchingGroups')
                         }
                       >
                         {groupLinks.length === 0 && canWrite ? (
@@ -1058,7 +1059,7 @@ export function UserGroupDetailsPage() {
                             icon={<PlusOutlined />}
                             onClick={() => setGroupPermissionEditor('new')}
                           >
-                            配置首个设备组
+                            {t('userGroups.details.actions.addFirstGroup')}
                           </Button>
                         ) : null}
                       </Empty>
@@ -1072,7 +1073,7 @@ export function UserGroupDetailsPage() {
             key: 'devices',
             label: (
               <span>
-                <DesktopOutlined /> 单设备继承权限 ({deviceLinks.length})
+                <DesktopOutlined /> {t('userGroups.details.tabs.devices', { count: deviceLinks.length })}
               </span>
             ),
             children: (
@@ -1080,7 +1081,7 @@ export function UserGroupDetailsPage() {
                 <div className="table-toolbar">
                   <Input
                     className="user-group-tab-search"
-                    placeholder="搜索单设备名称或 ID"
+                    placeholder={t('userGroups.details.search.devices')}
                     prefix={<SearchOutlined />}
                     value={devicePermSearch}
                     onChange={(e) => setDevicePermSearch(e.target.value)}
@@ -1088,7 +1089,7 @@ export function UserGroupDetailsPage() {
                   />
                   <div className="toolbar-spacer" />
                   <Tag color="blue">
-                    {filteredDeviceLinks.length} / {deviceLinks.length} 台设备
+                    {t('userGroups.details.counts.filteredDevices', { filtered: filteredDeviceLinks.length, total: deviceLinks.length })}
                   </Tag>
                   <Button
                     type="primary"
@@ -1096,7 +1097,7 @@ export function UserGroupDetailsPage() {
                     disabled={!canWrite}
                     onClick={() => setDevicePermissionEditor('new')}
                   >
-                    添加设备授权
+                    {t('userGroups.details.actions.addDeviceGrant')}
                   </Button>
                 </div>
                 <Table
@@ -1112,7 +1113,7 @@ export function UserGroupDetailsPage() {
                     emptyText: (
                       <Empty
                         description={
-                          deviceLinks.length === 0 ? '暂无单设备继承权限' : '没有匹配的设备'
+                          deviceLinks.length === 0 ? t('userGroups.details.empty.noDeviceGrants') : t('userGroups.details.empty.noMatchingDevices')
                         }
                       >
                         {deviceLinks.length === 0 && canWrite ? (
@@ -1121,7 +1122,7 @@ export function UserGroupDetailsPage() {
                             icon={<PlusOutlined />}
                             onClick={() => setDevicePermissionEditor('new')}
                           >
-                            配置首台设备
+                            {t('userGroups.details.actions.addFirstDevice')}
                           </Button>
                         ) : null}
                       </Empty>
@@ -1139,20 +1140,20 @@ export function UserGroupDetailsPage() {
         title={
           <Space>
             <UserAddOutlined style={{ color: '#818cf8' }} />
-            <span>添加成员到「{group.name}」</span>
+            <span>{t('userGroups.details.modals.addMemberTitle', { name: group.name })}</span>
           </Space>
         }
         open={memberModalOpen}
         onCancel={() => setMemberModalOpen(false)}
         onOk={() => void addMembers()}
         confirmLoading={submitting}
-        okText={`添加 ${selectedUsernames.length > 0 ? `(${selectedUsernames.length})` : ''} 名成员`}
+        okText={t('userGroups.details.modals.addMemberOk', { count: selectedUsernames.length })}
         okButtonProps={{ disabled: selectedUsernames.length === 0 }}
         destroyOnHidden
         width={560}
       >
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
-          请选择要加入本用户组的账户。加入后，成员将立即继承本用户组配置的全部设备组与单设备权限。
+          {t('userGroups.details.modals.addMemberDescription')}
         </p>
 
         <div
@@ -1164,8 +1165,7 @@ export function UserGroupDetailsPage() {
           }}
         >
           <span style={{ fontSize: 12, color: '#728cad' }}>
-            可选用户：<strong>{availableUsers.length}</strong> 人 · 已选：
-            <strong>{selectedUsernames.length}</strong> 人
+            {t('userGroups.details.modals.availableSelected', { available: availableUsers.length, selected: selectedUsernames.length })}
           </span>
           <Space size="small">
             <Button
@@ -1173,14 +1173,14 @@ export function UserGroupDetailsPage() {
               onClick={() => setSelectedUsernames(availableUsers.map((u) => u.name))}
               disabled={availableUsers.length === 0}
             >
-              全选
+              {t('userGroups.details.actions.selectAll')}
             </Button>
             <Button
               size="small"
               onClick={() => setSelectedUsernames([])}
               disabled={selectedUsernames.length === 0}
             >
-              清空
+              {t('userGroups.details.actions.clear')}
             </Button>
           </Space>
         </div>
@@ -1192,7 +1192,7 @@ export function UserGroupDetailsPage() {
           optionFilterProp="label"
           value={selectedUsernames}
           onChange={setSelectedUsernames}
-          placeholder="搜索用户名、真实姓名或邮箱"
+          placeholder={t('userGroups.details.search.users')}
           options={availableUsers.map((user) => {
             const extra = [user.realName, user.email].filter(Boolean).join(' · ');
             return {
@@ -1205,14 +1205,14 @@ export function UserGroupDetailsPage() {
 
       {/* 编辑用户组资料 Modal */}
       <Modal
-        title="编辑用户组资料"
+        title={t('userGroups.details.modals.editTitle')}
         open={editOpen}
         onCancel={() => setEditOpen(false)}
         onOk={() =>
           void editForm.validateFields().then(async (values) => {
             const succeeded = await mutate(
               () => client!.userGroups.update(group.id, values),
-              '更新用户组',
+              t('userGroups.details.actions.updateGroup'),
             );
             if (succeeded) setEditOpen(false);
           })
@@ -1222,25 +1222,25 @@ export function UserGroupDetailsPage() {
       >
         <Form form={editForm} layout="vertical">
           <Form.Item
-            label="用户组名称"
+            label={t('userGroups.modal.name')}
             name="name"
             rules={[
-              { required: true, whitespace: true, message: '请输入用户组名称' },
-              { max: 128, message: '名称不能超过 128 个字符' },
+              { required: true, whitespace: true, message: t('userGroups.modal.nameRequired') },
+              { max: 128, message: t('userGroups.details.validation.nameMax') },
             ]}
           >
             <Input showCount maxLength={128} />
           </Form.Item>
           <Form.Item
-            label="描述信息"
+            label={t('userGroups.modal.description')}
             name="description"
-            rules={[{ max: 1024, message: '描述不能超过 1024 个字符' }]}
+            rules={[{ max: 1024, message: t('userGroups.details.validation.descriptionMax') }]}
           >
             <Input.TextArea
               rows={4}
               showCount
               maxLength={1024}
-              placeholder="描述用户组适用职责及授权范围"
+              placeholder={t('userGroups.details.modals.descriptionPlaceholder')}
             />
           </Form.Item>
         </Form>
@@ -1251,18 +1251,18 @@ export function UserGroupDetailsPage() {
         title={
           <Space>
             <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
-            <span>删除用户组确认</span>
+            <span>{t('userGroups.details.modals.deleteTitle')}</span>
           </Space>
         }
         open={deleteOpen}
         onCancel={() => setDeleteOpen(false)}
         onOk={() =>
-          void mutate(() => client!.userGroups.remove(group.id), '删除用户组').then((succeeded) => {
+          void mutate(() => client!.userGroups.remove(group.id), t('common.actions.delete')).then((succeeded) => {
             if (succeeded) navigate('/admin/roles');
           })
         }
         confirmLoading={submitting}
-        okText="永久删除"
+        okText={t('userGroups.confirm.deleteOk')}
         okButtonProps={{ danger: true, disabled: deleteConfirmation !== group.name }}
         destroyOnHidden
       >
@@ -1270,24 +1270,23 @@ export function UserGroupDetailsPage() {
           <Alert
             type="warning"
             showIcon
-            message="此操作不可撤销"
+            message={t('userGroups.details.modals.irreversible')}
             description={
               <div>
-                删除该用户组后：
+                {t('userGroups.details.modals.deleteImpactIntro')}
                 <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
                   <li>
-                    <strong>{memberLinks.length}</strong> 名组成员将失去本组赋予的全部继承权限
+                    {t('userGroups.details.modals.deleteMembersImpact', { count: memberLinks.length })}
                   </li>
                   <li>
-                    <strong>{groupLinks.length}</strong> 个设备组授权与{' '}
-                    <strong>{deviceLinks.length}</strong> 台设备授权将被一并清除
+                    {t('userGroups.details.modals.deleteGrantsImpact', { groups: groupLinks.length, devices: deviceLinks.length })}
                   </li>
                 </ul>
               </div>
             }
           />
           <p>
-            请输入用户组名称 <strong>「{group.name}」</strong> 确认删除：
+            {t('userGroups.details.modals.deleteConfirmation', { name: group.name })}
           </p>
           <Input
             value={deleteConfirmation}

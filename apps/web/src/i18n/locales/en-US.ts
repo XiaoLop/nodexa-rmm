@@ -1,68 +1,903 @@
 export const enUS = {
-  common: {
-    language: 'Language',
-    simplifiedChinese: '简体中文',
-    english: 'English',
-    loadingSession: 'Restoring secure session…',
-    noAccess: 'Access denied',
-    noAccessDescription: 'Your account does not have permission to access this page.',
+  "common": {
+    "language": "Language",
+    "simplifiedChinese": "简体中文",
+    "english": "English",
+    "loadingSession": "Restoring secure session…",
+    "noAccess": "Access denied",
+    "noAccessDescription": "Your account does not have permission to access this page.",
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "reconnecting": "Reconnecting",
+      "disconnected": "Disconnected",
+      "unavailable": "Unavailable",
+      "now": "Now",
+      "notConfigured": "Not configured",
+      "configured": "Configured gateway",
+      "systemEvent": "System event",
+      "unknown": "Unknown",
+      "ungrouped": "Ungrouped",
+      "defaultGroup": "Default group"
+    },
+    "actions": {
+      "backToDashboard": "Back to dashboard",
+      "backToOverview": "Back to overview",
+      "viewAll": "View all",
+      "reconnect": "Reconnect",
+      "cancel": "Cancel",
+      "rename": "Rename",
+      "confirm": "Confirm",
+      "delete": "Delete",
+      "edit": "Edit",
+      "save": "Save changes",
+      "create": "Create",
+      "refresh": "Refresh",
+      "copy": "Copy",
+      "copied": "Copied",
+      "download": "Download",
+      "retry": "Retry",
+      "details": "Details",
+      "view": "View",
+      "enable": "Enable",
+      "disable": "Disable"
+    }
   },
-  navigation: {
-    dashboard: 'Dashboard',
-    overview: 'Overview',
-    deviceManagement: 'Device management',
-    allDevices: 'All devices',
-    deviceGroups: 'Device groups',
-    monitoringAndEvents: 'Monitoring and events',
-    realtimeEvents: 'Realtime events',
-    alertRules: 'Alert rules',
-    auditLogs: 'Audit logs',
-    administration: 'Administration',
-    userManagement: 'User management',
-    userGroups: 'User groups',
-    settings: 'Settings',
-    deviceWorkspace: 'Device workspace',
-    userDetails: 'User details',
-    userGroupDetails: 'User group details',
-    console: 'MeshCentral Console',
-    collapseMenu: 'Collapse menu',
+  "deviceWorkspace": {
+    "ariaLabel": "Device workspace functions",
+    "loading": "Loading device workspace",
+    "loadingAnnouncement": "Connecting to the gateway and loading device information...",
+    "tabs": { "overview": "Overview", "desktop": "Remote desktop", "terminal": "Terminal", "files": "Files", "processes": "Processes", "services": "Services", "logs": "Logs" },
+    "header": { "pendingReboot": "Restart required", "cpu": "Processor", "systemHardware": "System hardware", "memory": "Physical memory", "slots": "{{count}} slots", "systemMemory": "System memory", "storage": "Storage", "remaining": "{{value}} remaining", "localDisk": "Local disk", "display": "Graphics/display", "standardDisplay": "Standard display", "uptime": "Uptime", "hours": "{{value}} hours", "source": "Source {{value}}", "heartbeat": "Heartbeat {{value}}", "connectable": "Connectable", "unavailable": "Unavailable" },
+    "overview": { "status": { "unknown": "Not checked", "healthy": "Healthy", "warning": "Warning", "danger": "Abnormal or stopped" }, "cpu": "Processor (CPU)", "frequency": "Frequency {{value}}", "memory": "Physical memory", "slots": "{{count}} slots", "storage": "Local storage", "available": "{{value}} available", "volumes": "{{count}} volumes", "network": "Primary network adapter", "interfaces": "{{count}} active interfaces", "healthTitle": "Device health and security", "securityDescription": "System baseline and Windows Security Center checks", "connectionDescription": "Device and gateway connection status", "pendingReboot": "System notice: restart required for {{value}}. Consider restarting the device.", "deviceSignal": "Device signaling", "connected": "Connected", "gateway": "Gateway", "gatewayOffline": "Gateway offline", "antivirus": "Virus protection", "firewall": "System firewall", "updates": "Automatic updates", "realtimeProtection": "Real-time protection", "volumesTitle": "Disk volume storage", "volumesDescription": "Logical partitions and remaining capacity", "volumeCount": "{{count}} volumes", "usedPercent": "{{value}}% used", "totalCapacity": "Total capacity", "remaining": "Available", "profileTitle": "System and hardware", "profileDescription": "Device identity and low-level components", "fields": { "hostname": "Hostname", "platform": "Operating system", "cpu": "Processor", "gpu": "Graphics device", "board": "Board / BIOS", "currentUser": "Current user", "uptime": "Uptime", "agent": "Agent core", "ipv4": "IPv4 address", "mac": "Physical MAC", "primaryNic": "Primary network interface", "dns": "DNS servers", "remoteSource": "Remote source", "lastConnection": "Last connection" }, "adminMode": "administrator mode", "activityTitle": "Recent device activity", "activityDescription": "Realtime gateway events for this device", "viewLogs": "View logs", "noActivity": "No device activity", "networkTitle": "Network configuration and connection audit", "networkDescription": "Interface details and last connection source" },
+    "settings": { "remoteControl": "Remote control", "keyboard": "Enable keyboard input", "mouse": "Enable mouse control", "screenInput": "Screen user input", "display": "Display settings", "resolution": "Resolution", "colorDepth": "Color depth", "bits": "{{value}} bit", "quality": "Quality", "smooth": "Smooth", "medium": "Medium", "high": "High definition", "latency": "Connection latency", "latencyTrend": "Connection latency trend", "timeout": "Response timed out", "waiting": "Waiting for response", "rtt": "Live RTT", "sessionActions": "Session actions", "endSessionTitle": "End the current session?", "endSessionContent": "The remote desktop connection will close immediately.", "confirmEnd": "End session", "endSession": "End session" },
+    "remoteDesktop": { "status": { "idle": "Not connected", "authorizing": "Requesting relay authorization", "notifying": "Notifying the device agent", "connecting": "Connecting to relay", "handshaking": "Waiting for desktop pairing", "waitingScreen": "Waiting for desktop screen", "connected": "Connected", "closed": "Session ended", "error": "Connection failed" }, "errors": { "agentRoute": "The device agent cannot establish a desktop channel right now. Try again later.", "cancelled": "Desktop connection cancelled.", "relay": "Remote desktop relay connection failed." }, "gatewayDisconnected": "The gateway connection was lost and the desktop session ended.", "qualityUpdateFailed": "Failed to update remote desktop quality.", "permissionDenied": "The current account does not have remote desktop permission.", "deviceOffline": "The device is offline and cannot establish remote desktop.", "gatewayUnavailable": "The gateway control channel is unavailable.", "localClipboardEmpty": "The local clipboard is empty.", "sessionClosed": "The remote desktop session has ended.", "clipboardSubmitted": "Clipboard content submitted and remote Ctrl+V triggered.", "pasteFailed": "Failed to paste to the remote device.", "clipboardCopied": "Copied {{count}} characters from the remote clipboard to the local clipboard.", "clipboardSyncFailed": "Failed to sync the remote clipboard.", "clipboardErrors": { "missingText": "The remote clipboard response did not contain text.", "timeout": "The remote clipboard did not respond. It may be empty, unavailable, or unsupported by the agent.", "sendFailed": "The remote clipboard request could not be sent." }, "fullscreen": "Fullscreen", "exitFullscreen": "Exit fullscreen", "screenshot": "Screenshot", "endSession": "End session", "pasteRemote": "Paste to remote", "copyLocal": "Copy to local", "connecting": "Connecting", "connect": "Connect desktop", "viewOnly": "View only", "limitedInput": "Limited input", "accessPending": "Permission pending server confirmation", "recorded": "Recorded", "fitWindow": "Fit window", "unavailable": "Remote desktop session cannot be established", "establishing": "Establishing a new desktop session", "connectToView": "Connect to view the remote desktop", "pasteTitle": "Paste local clipboard to the remote device?", "manualPaste": "The browser cannot read the clipboard automatically. Paste the content below.", "pastePlaceholder": "Paste local clipboard content here", "pasteSummary": "Submit {{count}} characters to {{hostname}}." },
+    "systemManagement": { "errors": { "parse": "The data returned by the device could not be parsed.", "disconnected": "The gateway connection was lost. Restore the connection and try again.", "timeout": "The device response timed out. Confirm that the device is online and try again.", "send": "The request could not be sent." }, "deviceOffline": "The device is offline and its data cannot be read.", "gatewayDisconnected": "The gateway connection was lost and device data cannot be read.", "loadFailed": "Failed to load data", "processColumns": { "name": "Process name", "user": "User", "path": "Executable path" }, "processTitle": "Process management", "processDescription": "View running processes, their users, and executable locations.", "processSearchAria": "Search processes", "processSearchPlaceholder": "Search by name, PID, user, or path", "processCount": "Total processes", "userCount": "Users", "currentResults": "Current results", "lastUpdated": "Last updated", "notUpdated": "Not updated", "emptyOffline": "Device offline", "emptyProcesses": "No matching processes", "waitingGateway": "Waiting for gateway connection", "serviceStates": { "RUNNING": "Running", "STOPPED": "Stopped", "PAUSED": "Paused", "START_PENDING": "Starting", "STOP_PENDING": "Stopping", "CONTINUE_PENDING": "Continuing", "PAUSE_PENDING": "Pausing", "UNKNOWN": "Unknown" }, "allStates": "All states", "serviceColumns": { "name": "Service name", "displayName": "Display name", "status": "Status", "controls": "Accepted controls" }, "serviceTitle": "System services", "serviceDescription": "View service status, related processes, and controls reported by the agent.", "serviceSearchAria": "Search services", "serviceSearchPlaceholder": "Search by service name, display name, or PID", "serviceFilterAria": "Service status", "serviceCount": "Total services", "runningCount": "Running", "stoppedCount": "Stopped", "emptyServices": "No matching services" },
+    "files": { "errors": { "connection-lost": "The file relay connection was lost.", "not-found": "The requested file or directory was not found.", "permission-denied": "You do not have permission to perform this file operation.", "timed-out": "The file operation timed out.", "protocol": "The file relay returned unrecognized data.", "read-directory": "Failed to read the directory.", "operation": "The file operation could not be sent.", "upload": "File upload failed.", "download": "File download failed.", "archive": "The archive request could not be sent." }, "deleteSelectionTitle": "Recursively delete the selected directories and files?", "deleteFilesTitle": "Delete the selected files?", "deleteDirectoryContent": "Directories will be deleted recursively. This runs remotely and has no reliable completion acknowledgement.", "deleteFilesContent": "{{count}} files will be deleted.", "columns": { "name": "Name", "type": "Type", "size": "Size", "modified": "Modified", "actions": "Actions" }, "types": { "drive": "Drive", "directory": "Folder", "file": "File", "unknown": "Unknown" }, "downloadEntry": "Download {{name}}", "forbidden": "Remote file access is explicitly denied for this account", "offline": "The device is offline and cannot establish a file relay", "disconnected": "The gateway is not connected", "up": "Go up", "root": "Root", "newDirectory": "New folder", "upload": "Upload file", "downloadSelected": "Download selected files", "copy": "Copy files", "move": "Move files", "zip": "Create ZIP", "unzip": "Extract ZIP", "currentPath": "Current location", "emptyDirectory": "This directory is empty", "readingDirectory": "Reading directory", "uploading": "Uploading", "downloading": "Downloading", "unzipping": "Extracting", "zippingFile": "Creating archive: {{file}}", "preparingZip": "Preparing archive", "selectedCount": "{{count}} selected", "entryCount": "{{count}} items", "dialogs": { "mkdir": "New folder", "rename": "Rename", "copy": "Copy to folder", "move": "Move to folder", "zip": "Create ZIP", "unzip": "Extract to folder" } },
+    "terminal": { "status": { "idle": "Not connected", "authorizing": "Requesting relay authorization", "notifying": "Notifying the device agent", "connecting": "Connecting to relay", "handshaking": "Waiting for terminal pairing", "ready": "Connected", "closed": "Session ended", "error": "Connection failed" }, "errors": { "agentRoute": "The device agent cannot establish a terminal channel right now. Try again later.", "cancelled": "Terminal connection cancelled.", "relay": "Terminal relay connection failed." }, "gatewayDisconnected": "The gateway connection was lost and the terminal session ended.", "permissionDenied": "The current account does not have terminal permission for this device.", "deviceOffline": "The device is offline and cannot establish a terminal relay.", "gatewayUnavailable": "The gateway control channel is unavailable.", "sessionEstablished": "A new terminal session has been established.", "clipboardReadFailed": "Could not read the clipboard. Confirm that the page uses HTTPS and has permission.", "selectTextFirst": "Select text in the terminal first.", "selectionCopied": "Terminal selection copied.", "clipboardWriteFailed": "Could not write to the clipboard.", "cancelConnection": "Cancel connection", "connect": "Connect terminal", "disconnect": "Disconnect", "searchBuffer": "Search buffer", "copySelection": "Copy selection", "paste": "Paste", "clear": "Clear local display", "fullscreen": "Fullscreen", "searchPlaceholder": "Search terminal output", "recordedNotice": "This session is being recorded by the server", "unavailable": "Terminal is currently unavailable", "noPermission": "The current account has no terminal permission", "deviceOfflineShort": "Device offline", "gatewayDisconnectedShort": "Gateway disconnected", "cancelHint": "You can cancel this connection", "interactiveHint": "Connect to start an interactive Shell session", "latencyUnknown": "Latency —", "latency": "Latency {{value}} ms", "sessionDuration": "Session {{value}}", "confirmPasteTitle": "Confirm paste to remote terminal", "confirmPaste": "Confirm paste", "confirmPasteDescription": "This content contains multiple lines, control characters, or a long text. It will be sent directly to the remote Shell.", "pasteMeta": "{{characters}} characters, {{lines}} lines", "ariaLabel": "Remote terminal" },
+    "logs": {
+      "filters": { "all": "All types", "agentlog": "Agent log", "relaylog": "Relay log", "manual": "Manual operation", "runcommands": "Command execution", "batchupload": "Batch upload", "changenode": "Device changed", "removenode": "Device removed" },
+      "types": { "deviceOnline": "Device online", "deviceOffline": "Device offline", "deviceChanged": "Device changed", "deviceRemoved": "Device removed", "relayLog": "Relay log", "agentLog": "Agent log", "manualOperation": "Manual operation", "commandExecution": "Command execution", "batchUpload": "Batch upload", "userSessionCount": "Session stats", "unknown": "Other event" },
+      "queryFailed": "Failed to query device logs.", "columns": { "time": "Time", "type": "Type", "user": "User", "ip": "Source IP", "content": "Log content", "actions": "Actions" }, "title": "Device log monitor", "description": "Historical records are merged with events pushed through the current connection.", "live": "Live monitoring", "searchAria": "Search device logs", "searchPlaceholder": "Search content, user or IP", "filterAria": "Log type", "limitAria": "Log count", "countOption": "{{count}} items", "disconnectedNotice": "Gateway disconnected. Logs may not be up to date.", "loadFailed": "Failed to load device logs", "waitingConnection": "Waiting for gateway connection", "empty": "No matching device logs", "drawer": { "title": "Device log details", "action": "Action", "rawTitle": "Sanitized raw data" }
+    }
   },
-  header: {
-    searchPlaceholder: 'Search devices, users, or IDs...',
-    gatewayConnected: 'Gateway connected',
-    gatewayDisconnected: 'Gateway disconnected',
-    notifications: 'Notifications',
-    help: 'Help',
-    profile: 'Profile',
-    logout: 'Sign out',
-    siteAdministrator: 'Site administrator',
-    consoleUser: 'Console user',
+  "navigation": {
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "deviceManagement": "Device management",
+    "allDevices": "All devices",
+    "deviceGroups": "Device groups",
+    "monitoringAndEvents": "Monitoring and events",
+    "realtimeEvents": "Realtime events",
+    "alertRules": "Alert rules",
+    "auditLogs": "Audit logs",
+    "administration": "Administration",
+    "userManagement": "User management",
+    "userGroups": "User groups",
+    "settings": "Settings",
+    "deviceWorkspace": "Device workspace",
+    "userDetails": "User details",
+    "userGroupDetails": "User group details",
+    "console": "MeshCentral Console",
+    "collapseMenu": "Collapse menu"
   },
-  login: {
-    productLine: 'Device Management System',
-    slogan: 'Secure · Efficient · Controlled',
-    introduction:
-      'MeshCentral provides enterprise-grade remote monitoring and management, helping you securely manage and maintain every endpoint.',
-    realtimeMonitoring: 'Realtime monitoring',
-    realtimeMonitoringDescription: 'Track device health and activity at a glance',
-    secureAndReliable: 'Secure and reliable',
-    secureAndReliableDescription: 'Layered safeguards protect your systems and data',
-    efficientManagement: 'Efficient management',
-    efficientManagementDescription: 'Centralized device operations improve support efficiency',
-    title: 'Sign in',
-    subtitle: 'Use your gateway account and password to continue',
-    username: 'Username or email',
-    usernamePlaceholder: 'Enter your username or email',
-    usernameRequired: 'Enter your username or email',
-    password: 'Password',
-    passwordPlaceholder: 'Enter your password',
-    passwordRequired: 'Enter your password',
-    showPassword: 'Show password',
-    hidePassword: 'Hide password',
-    forgotPassword: 'Forgot password?',
-    submit: 'Sign in',
-    divider: 'or',
-    sso: 'Sign in with SSO',
-    failed: 'Sign-in failed. Please try again later.',
+  "header": {
+    "searchPlaceholder": "Search devices, users, or IDs...",
+    "gatewayConnected": "Gateway connected",
+    "gatewayDisconnected": "Gateway disconnected",
+    "notifications": "Notifications",
+    "help": "Help",
+    "profile": "Profile",
+    "logout": "Sign out",
+    "siteAdministrator": "Site administrator",
+    "consoleUser": "Console user"
   },
+  "login": {
+    "productLine": "Device Management System",
+    "slogan": "Secure · Efficient · Controlled",
+    "introduction": "MeshCentral provides enterprise-grade remote monitoring and management, helping you securely manage and maintain every endpoint.",
+    "realtimeMonitoring": "Realtime monitoring",
+    "realtimeMonitoringDescription": "Track device health and activity at a glance",
+    "secureAndReliable": "Secure and reliable",
+    "secureAndReliableDescription": "Layered safeguards protect your systems and data",
+    "efficientManagement": "Efficient management",
+    "efficientManagementDescription": "Centralized device operations improve support efficiency",
+    "title": "Sign in",
+    "subtitle": "Use your gateway account and password to continue",
+    "username": "Username or email",
+    "usernamePlaceholder": "Enter your username or email",
+    "usernameRequired": "Enter your username or email",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "passwordRequired": "Enter your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "forgotPassword": "Forgot password?",
+    "submit": "Sign in",
+    "divider": "or",
+    "sso": "Sign in with SSO",
+    "failed": "Sign-in failed. Please try again later."
+  },
+  "notFound": {
+    "subTitle": "Page not found"
+  },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "subTitle": "The unified console framework is ready. This module will be enabled once the gateway API becomes available."
+  },
+  "dashboard": {
+    "metrics": {
+      "totalDevices": "Total devices",
+      "totalDevicesHint": "Gateway realtime snapshot",
+      "onlineDevices": "Online devices",
+      "onlineRate": "{{rate}}% online",
+      "deviceGroups": "Device groups",
+      "deviceGroupsHint": "Centralized classification",
+      "abnormalDevices": "Abnormal devices",
+      "offlineRate": "{{rate}}% offline",
+      "events24h": "Events (24h)",
+      "events24hHint": "Gateway realtime events"
+    },
+    "trend": {
+      "title": "Device status trend",
+      "description": "Online and offline device fluctuations in the past 24 hours",
+      "tag24h": "24 hours",
+      "ariaTrend": "Trend",
+      "ariaDeviceTrend": "Device status trend"
+    },
+    "gateway": {
+      "title": "Gateway connection",
+      "description": "Realtime gateway communication status",
+      "address": "Gateway address",
+      "connectedAt": "Connected at",
+      "reconnectCount": "Reconnect attempts",
+      "lastMessage": "Last message",
+      "gatewayConfigured": "Configured gateway"
+    },
+    "events": {
+      "title": "Realtime events",
+      "description": "Recent device and system activity",
+      "loadFailed": "Failed to load dashboard events",
+      "loadFailedDefault": "Failed to load dashboard events.",
+      "connecting": "Connecting to realtime event stream…",
+      "waiting": "Waiting for realtime events"
+    },
+    "platforms": {
+      "title": "Platform distribution",
+      "description": "Operating system breakdown",
+      "totalDevices": "Total",
+      "other": "Other"
+    },
+    "groups": {
+      "title": "Device groups",
+      "description": "Online device overview by group",
+      "deviceCount": "{{count}} devices",
+      "onlineCount": "{{count}} online",
+      "empty": "No device groups"
+    }
+  },
+  "devices": {
+    "title": "All devices",
+    "subtitle": "View devices, groups, and realtime online status synced from gateway",
+    "countTag": "{{filtered}} / {{total}} devices",
+    "totalCount": "{{count}} devices in total",
+    "filters": {
+      "searchPlaceholder": "Search name, ID, IP, platform...",
+      "allGroups": "All groups",
+      "ungrouped": "Ungrouped",
+      "allStatus": "All statuses",
+      "allPlatforms": "All platforms"
+    },
+    "powerActions": {
+      "wake": "Wake",
+      "reset": "Restart",
+      "sleep": "Sleep",
+      "poweroff": "Power off"
+    },
+    "actions": {
+      "batchOperations": "Batch operations",
+      "batchOperationsCount": "Batch operations ({{count}})",
+      "batchUpload": "Batch file upload",
+      "batchUploadCount": "Batch file upload ({{count}})",
+      "addDevice": "Add device",
+      "executeCommand": "Run command",
+      "workspace": "Workspace",
+      "fileManagement": "File management",
+      "moveGroup": "Move group",
+      "manageFilesAria": "Manage files for {{name}}",
+      "openWorkspaceAria": "Open workspace for {{name}}",
+      "deviceActionAria": "Actions for {{name}}"
+    },
+    "columns": {
+      "type": "Type",
+      "name": "Device name",
+      "groupName": "Group",
+      "ip": "IP",
+      "desc": "Description",
+      "status": "Status",
+      "lastSeenAt": "Last seen",
+      "creation": "Created at",
+      "lastbootuptime": "Last boot",
+      "actions": "Actions"
+    },
+    "confirm": {
+      "powerTitle": "{{action}} device",
+      "powerContent": "Are you sure you want to {{action}} \"{{name}}\"?",
+      "powerOk": "Confirm {{action}}",
+      "deleteTitle": "Delete device",
+      "deleteContent": "Are you sure you want to delete device \"{{name}}\"? This action cannot be undone.",
+      "deviceId": "Device ID: {{id}}",
+      "groupAndStatus": "Group: {{group}}; Status: {{status}}",
+      "deleteOk": "Delete device",
+      "batchPowerTitle": "Batch {{action}}",
+      "batchPowerContent": "Are you sure you want to {{action}} {{count}} devices?",
+      "batchPowerSkipped": "{{count}} devices without permission or currently unavailable will be skipped.",
+      "batchPowerNotice": "Submitting the request does not mean the operation has finished on the device."
+    },
+    "messages": {
+      "powerSuccess": "Sent {{action}} command to \"{{name}}\"",
+      "powerFailed": "Failed to send {{action}} command: {{detail}}",
+      "deleteSuccess": "Deleted \"{{name}}\"",
+      "deleteFailed": "Failed to delete device: {{detail}}",
+      "batchPowerNoTargets": "No eligible devices found for this action.",
+      "batchPowerSuccess": "Submitted {{action}} request to {{count}} devices.",
+      "batchPowerPartial": "Submitted {{action}} request to {{success}} devices, failed for {{failed}} devices.",
+      "batchPowerFailed": "Failed to submit {{action}} request: {{detail}}",
+      "batchSnapshotWarning": "Operation submitted, but failed to refresh device snapshot: {{detail}}. Data may be outdated.",
+      "permissionWakeDenied": "Current account is not authorized to wake this device",
+      "permissionPowerDenied": "Current account is not authorized to perform power actions on this device",
+      "permissionEditDenied": "Current account is not authorized to edit this device",
+      "permissionDeleteDenied": "Current account is not authorized to delete this device",
+      "permissionCommandDenied": "Current account is not authorized to execute commands",
+      "permissionFilesDenied": "Current account is not authorized to manage files on this device"
+    },
+    "empty": {
+      "filtered": "No devices match the filter criteria",
+      "waiting": "Waiting for gateway to sync devices"
+    },
+    "editModal": {
+      "title": "Edit device",
+      "name": "Device name",
+      "nameRequired": "Please enter device name",
+      "desc": "Description",
+      "tags": "Tags",
+      "tagsPlaceholder": "Type tag and press Enter",
+      "group": "Group",
+      "groupPlaceholder": "Select group",
+      "success": "Updated \"{{name}}\"",
+      "failed": "Failed to update device: {{detail}}"
+    },
+    "inviteModal": {
+      "title": "Add device (Mesh Agent)",
+      "groupInstall": "Install Agent",
+      "groupUninstall": "Uninstall Agent",
+      "deviceGroup": "Device group",
+      "groupPlaceholder": "Select device group",
+      "systemArch": "Architecture",
+      "installMode": "Installation mode",
+      "connectMode": "Connection mode",
+      "installModes": {
+        "both": "Background service and interactive mode",
+        "serviceOnly": "Background service only",
+        "interactiveOnly": "Interactive mode only"
+      },
+      "copyCommand": "Copy command",
+      "downloadBinary": "Download preconfigured binary installer",
+      "binaryNote": "After downloading, register the agent as a service or run in foreground as required by the OS.",
+      "macosPrivacyNote": "Grant accessibility, screen recording, and other macOS privacy permissions as needed after installation.",
+      "mobileScanTip": "Scan the QR code with the MeshCentral Android app to pair.",
+      "downloadAndroidApk": "Download Android APK",
+      "assistantTip": "MeshCentral Assistant is an on-demand user session app.",
+      "uninstallTip": "Download and run the uninstaller as administrator.",
+      "binaryInstaller": "Binary installer",
+      "mobileDevices": "Mobile devices",
+      "mshFile": "Mesh Agent config file (.msh)"
+    }
+  },
+  "deviceGroups": {
+    "title": "Device groups",
+    "subtitle": "Manage device groups and view device counts under each group",
+    "createGroup": "New group",
+    "searchPlaceholder": "Search group name, description...",
+    "countTag": "{{filtered}} / {{total}} groups",
+    "totalCount": "{{count}} groups in total",
+    "columns": {
+      "name": "Group name",
+      "desc": "Description",
+      "deviceCount": "Devices",
+      "deviceStats": "Statistics",
+      "creation": "Created at",
+      "creator": "Creator",
+      "actions": "Actions"
+    },
+    "actions": {
+      "viewDevices": "View devices",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "confirm": {
+      "deleteTitle": "Delete device group",
+      "deleteContent": "Are you sure you want to delete group \"{{name}}\"? It currently contains {{count}} devices. Migration or deletion policy is determined by the server.",
+      "deleteOk": "Delete group"
+    },
+    "messages": {
+      "createSuccess": "Device group created",
+      "updateSuccess": "Device group updated",
+      "saveFailed": "Failed to save group: {{detail}}",
+      "deleteSuccess": "Deleted group \"{{name}}\"",
+      "deleteFailed": "Failed to delete group: {{detail}}"
+    },
+    "empty": {
+      "filtered": "No groups match the filter criteria",
+      "waiting": "Waiting for gateway to sync groups"
+    },
+    "modal": {
+      "createTitle": "New device group",
+      "editTitle": "Edit device group",
+      "name": "Group name",
+      "nameRequired": "Please enter group name",
+      "desc": "Description",
+      "createOk": "Create group",
+      "editOk": "Save changes"
+    }
+  },
+  "events": {
+    "title": "Realtime events",
+    "subtitle": "Historical records and live stream events are automatically merged.",
+    "disconnectedWarning": "Realtime connection lost. Displayed content may not be up to date.",
+    "loadFailed": "Failed to load historical events",
+    "loadFailedDefault": "Historical event query failed.",
+    "countOption": "{{count}} items",
+    "columns": {
+      "time": "Time",
+      "type": "Type",
+      "device": "Device",
+      "user": "User",
+      "ip": "Source IP",
+      "content": "Content",
+      "actions": "Actions"
+    },
+    "filters": {
+      "all": "All",
+      "agentlog": "Agent log",
+      "relaylog": "Relay log",
+      "manual": "Manual operation",
+      "runcommands": "Command execution",
+      "batchupload": "Batch upload",
+      "changenode": "Device changed",
+      "removenode": "Device removed"
+    },
+    "types": {
+      "deviceOnline": "Device online",
+      "deviceOffline": "Device offline",
+      "deviceChanged": "Device changed",
+      "deviceRemoved": "Device removed",
+      "relayLog": "Relay log",
+      "agentLog": "Agent log",
+      "manualOperation": "Manual operation",
+      "commandExecution": "Command execution",
+      "batchUpload": "Batch upload",
+      "userSessionCount": "Session stats",
+      "unknown": "Other event"
+    },
+    "terminalRelay": {
+      "sessionStart": "Terminal session started",
+      "sessionEnd": "Terminal session ended"
+    },
+    "empty": {
+      "loading": "Loading historical events",
+      "waitingConnection": "Waiting for gateway connection",
+      "empty": "No events"
+    },
+    "drawer": {
+      "title": "Event details",
+      "time": "Time",
+      "type": "Type",
+      "device": "Device",
+      "user": "User",
+      "ip": "Source IP",
+      "content": "Content",
+      "relayFields": "Relay extended fields",
+      "agentFields": "Agent extended fields",
+      "terminalAudit": "Terminal audit event",
+      "protocol": "Protocol",
+      "bytesIn": "Bytes received by server",
+      "bytesOut": "Bytes sent by server",
+      "endReason": "End reason",
+      "msgId": "Message ID",
+      "msgArgs": "Message args",
+      "sessionId": "Session ID",
+      "remoteAddr": "Remote address",
+      "rawTitle": "Sanitized raw data"
+    }
+  },
+  "users": {
+    "title": "User management",
+    "subtitle": "Manage MeshCentral local accounts and lock statuses",
+    "createUser": "Create user",
+    "searchPlaceholder": "Search username, real name or email",
+    "countTag": "{{filtered}} / {{total}} users",
+    "totalCount": "{{count}} users in total",
+    "gatewayDisconnectedNotice": "Showing last synced data. Write operations are disabled. Automatically refreshed once reconnected.",
+    "loadFailed": "Failed to load user list",
+    "reload": "Reload",
+    "filters": {
+      "all": "All users",
+      "active": "Active",
+      "locked": "Locked",
+      "administrator": "Site administrator",
+      "resetRequired": "Password reset required"
+    },
+    "status": {
+      "active": "Active",
+      "locked": "Locked",
+      "resetRequired": "Reset password",
+      "siteAdmin": "Site administrator",
+      "standardUser": "Standard user",
+      "neverLoggedIn": "Never logged in",
+      "unknown": "Unknown",
+      "onlineWithCount": "Online · {{count}}"
+    },
+    "columns": {
+      "user": "User",
+      "status": "Status",
+      "type": "Account type",
+      "online": "Online status",
+      "lastLoginAt": "Last login",
+      "lastAccessAt": "Last access",
+      "actions": "Actions"
+    },
+    "confirm": {
+      "lockTitle": "Disable user",
+      "unlockTitle": "Enable user",
+      "lockContent": "Are you sure you want to disable user \"{{name}}\"? It is not yet confirmed whether disabling terminates existing sessions immediately.",
+      "unlockContent": "Are you sure you want to enable user \"{{name}}\"?",
+      "deleteTitle": "Delete user",
+      "deleteNotice": "User \"{{name}}\" will be permanently deleted. This action cannot be undone. Last login: {{lastLogin}}.",
+      "deleteInputTip": "Please type the username to confirm deletion:",
+      "deleteOk": "Permanently delete"
+    },
+    "messages": {
+      "createSuccess": "Created user \"{{username}}\"",
+      "createUncertain": "User may have been created, but failed to refresh list. Please refresh and do not resubmit.",
+      "createFailed": "Failed to create user: {{detail}}",
+      "lockSuccess": "Account \"{{name}}\" disabled",
+      "unlockSuccess": "Account \"{{name}}\" enabled",
+      "lockUncertain": "Account disable request succeeded, but list refresh failed. Active session status unconfirmed.",
+      "lockFailed": "Failed to {{action}} user: {{detail}}",
+      "deleteSuccess": "Deleted user \"{{name}}\"",
+      "deleteFailed": "Failed to delete user: {{detail}}",
+      "cannotModifySelf": "Cannot disable or enable currently logged-in user.",
+      "cannotDeleteSelf": "Cannot delete currently logged-in user.",
+      "cannotLockLastAdmin": "Cannot disable the last active site administrator.",
+      "cannotDeleteLastAdmin": "Cannot delete the last active site administrator.",
+      "targetUserNotFound": "Target user no longer exists. Please refresh the list."
+    },
+    "empty": {
+      "filtered": "No users match filter criteria",
+      "waiting": "No user data"
+    },
+    "modal": {
+      "createTitle": "Create User",
+      "createSubtitle": "Configure new user credentials and security policies",
+      "accountAndCredentials": "Account and credentials",
+      "username": "Username",
+      "usernameRequired": "Please enter username",
+      "usernamePlaceholder": "e.g. ops_admin or alex",
+      "passwordMode": "Password creation mode",
+      "manualPassword": "Set initial password manually",
+      "randomPassword": "Generate random password on server",
+      "password": "Initial password",
+      "passwordRequired": "Please enter initial password",
+      "passwordPlaceholder": "Enter initial password",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordRequired": "Please confirm password",
+      "confirmPasswordPlaceholder": "Re-enter to confirm",
+      "passwordMismatch": "The two passwords that you entered do not match",
+      "randomPasswordNoticeTitle": "System-generated strong random password",
+      "randomPasswordNoticeDesc": "After creation, the server will return the password shown in notification. Please record it promptly.",
+      "personalInfo": "Personal & Contact Information",
+      "optional": "Optional",
+      "realName": "Full name",
+      "realNamePlaceholder": "e.g. John Doe",
+      "phone": "Phone number",
+      "phonePlaceholder": "e.g. +1 555-0100",
+      "email": "Email address",
+      "emailInvalid": "Please enter a valid email address",
+      "emailPlaceholder": "e.g. user@example.com"
+    },
+    "editDrawer": {
+      "title": "Edit {{name}}",
+      "titleDefault": "Edit user",
+      "invalidImageType": "Please select a JPG, PNG, GIF, or WebP image.",
+      "avatarTooLarge": "Avatar image must not exceed 2 MB.",
+      "readAvatarFailed": "Failed to read avatar image.",
+      "avatar": "Avatar",
+      "selectImage": "Select image",
+      "restoreAvatar": "Restore current avatar",
+      "username": "Username",
+      "email": "Email",
+      "realName": "Full name",
+      "phone": "Phone"
+    }
+  },
+  "commands": {
+    "status": { "submitting": "Submitting", "running": "Running", "succeeded": "Succeeded", "failed": "Failed", "cancelled": "Cancelled", "timedOut": "Timed out", "unknown": "Unknown" },
+    "templates": { "hostname": "Hostname", "currentUser": "Current user", "windowsNetwork": "Windows network info", "windowsDisk": "Windows disk space", "unixDisk": "Unix disk space" },
+    "errors": { "submitFailed": "Failed to submit command" }, "confirmKeyword": "CONFIRM", "titleSingle": "Run command on {{name}}", "titleBatch": "Run command on {{count}} devices", "deviceDefault": "device",
+    "columns": { "device": "Device", "status": "Status", "exitCode": "Exit code", "duration": "Duration", "durationSeconds": "{{seconds}} s", "outputSummary": "Output summary", "actions": "Actions" }, "actions": { "stopClose": "Stop waiting and close", "close": "Close", "runCount": "Run ({{count}})", "view": "View", "copy": "Copy", "output": "Output" }, "descriptions": { "target": "Target", "targetCount": "{{count}} devices", "eligible": "Eligible", "skipped": "Skipped" }, "alerts": { "gatewayDisconnected": "Gateway disconnected", "skippedNotice": "{{count}} devices will be skipped" }, "shells": { "auto": "Auto", "shell": "Shell", "powershell": "PowerShell" }, "runAs": { "default": "Default account", "user": "Current user", "system": "System account" }, "timeoutSeconds": "{{seconds}} s timeout", "templatePlaceholder": "Select command template", "commandPlaceholder": "Enter a command, then press Ctrl/Cmd + Enter to submit", "sensitiveNotice": "This command may contain sensitive information and will not be added to command history", "dangerousTitle": "High-risk command detected", "dangerousDescription": "This action cannot be automatically undone. Type \"CONFIRM\" before submitting.", "dangerInputPlaceholder": "Enter confirmation text", "recentCommands": "Recent commands", "statusMessage": "Execution status: {{status}}", "trackingStopped": "Local waiting stopped; the remote command may still be running.", "requestId": "Request ID: {{id}}", "gatewayOutputUnavailable": "The gateway has not provided output.", "modals": { "sensitiveTitle": "Sensitive command", "sensitiveContent": "This command will run on {{count}} devices. Continue?", "continueRun": "Continue", "stopWaitTitle": "Stop waiting for command results?", "stopWaitContent": "Local waiting will stop; the remote command may still be running.", "stopWaitOk": "Stop waiting", "continueWait": "Continue waiting" }
+  },
+  "batchOperations": {
+    "moveTitle": "Move devices in bulk",
+    "columns": { "device": "Device", "deviceId": "Device ID", "status": "Status", "detail": "Detail" },
+    "status": { "queued": "Queued", "running": "Running", "submitted": "Submitted", "succeeded": "Succeeded", "failed": "Failed", "skipped": "Skipped" },
+    "submitButton": "Move {{count}} devices",
+    "completedNotice": "Submitted {{count}} devices",
+    "completedDesc": "Bulk move results are shown below.",
+    "selectGroupPrompt": "Select a target device group",
+    "selectTargetGroupPlaceholder": "Select target group",
+    "moveCountNotice": "{{count}} devices will move to \"{{name}}\"",
+    "allTargetsEligible": "All selected devices can be moved.",
+    "skippedSameGroup": "{{count}} devices are already in the target group.",
+    "close": "Close"
+  },
+  "batchUpload": {
+    "close": "Close", "startUpload": "Start upload", "retryFailed": "Retry all failed tasks", "cancelAll": "Cancel all", "selectFiles": "Select files",
+    "details": { "deviceOffline": "Device is offline; no file relay was established.", "remoteFileExists": "A file with the same name already exists remotely.", "cancelledByUser": "Cancelled by user.", "cancelling": "Cancelling upload…", "gatewayDisconnected": "Gateway disconnected; task did not start.", "workerError": "Upload worker error.", "workerBusy": "Upload worker is busy." },
+    "modalTitle": "Batch upload ({{count}} devices)", "messages": { "selectFilesFirst": "Select files first.", "gatewayUnavailable": "The gateway is unavailable.", "duplicateFileNames": "The selected files contain duplicate names." }, "validation": { "directoryNullByte": "The target directory cannot contain null characters.", "directoryRequired": "Enter a target directory.", "directoryTraversal": "The target directory cannot contain parent traversal.", "fileNameRequired": "The file name cannot be empty.", "fileNameNullByte": "The file name cannot contain null characters.", "fileNameInvalid": "The file name contains invalid path characters." }, "closeRunningConfirmTitle": "Close upload task?", "closeRunningConfirmContent": "Uploads are still running. Closing will cancel the current tasks.", "closeRunningConfirmOk": "Cancel and close", "closeRunningConfirmCancel": "Keep uploading", "columns": { "device": "Device", "platform": "Platform", "file": "File", "status": "Status", "progress": "Progress", "bytes": "Bytes", "duration": "Duration", "detail": "Detail", "action": "Action" }, "status": { "queued": "Queued", "connecting": "Connecting", "checking": "Checking", "uploading": "Uploading", "success": "Success", "skipped": "Skipped", "failed": "Failed", "cancelling": "Cancelling", "cancelled": "Cancelled" }, "mixedPlatformTitle": "Multiple device platforms detected", "mixedPlatformDesc": "Different platforms may use different file path rules.", "fileLabel": "Files", "filesSelectedInfo": "{{count}} files selected · {{size}}", "noFilesSelected": "No files selected", "targetDirectory": "Target directory", "targetDirectoryRequired": "Enter a target directory", "targetDirectoryPlaceholder": "For example: /tmp or C:\\Temp", "concurrency": "Concurrent uploads", "overwritePolicy": "Existing file handling", "policySkip": "Skip existing files", "policyOverwrite": "Overwrite existing files", "startNoticeTitle": "{{fileCount}} files will be uploaded to {{deviceCount}} devices", "startNoticeDesc": "Uploads will run in the background.", "statistics": { "total": "Total tasks", "queued": "Queued", "active": "Active", "success": "Success", "skipped": "Skipped", "failed": "Failed", "cancelled": "Cancelled" }, "gatewayDisconnectedTitle": "Gateway disconnected", "gatewayDisconnectedDesc": "New upload tasks cannot start."
+  },
+  "userDetails": {
+    "drawerTitle": "User details: {{name}}",
+    "administrator": "Site administrator",
+    "standardUser": "Standard user",
+    "normal": "Normal",
+    "locked": "Locked",
+    "onlineSessions": "Online ({{count}} sessions)",
+    "tabs": { "overview": "Overview", "deviceGroups": "Device groups", "userGroups": "User groups", "sharedDevices": "Shared devices", "logs": "Activity log" },
+    "events": {
+      "title": "Recent activity log", "time": "Time", "type": "Activity type", "content": "Activity", "resource": "Device/resource", "ip": "IP address", "empty": "No activity logs",
+      "types": { "deviceOnline": "Device online", "deviceOffline": "Device offline", "deviceChanged": "Device changed", "deviceRemoved": "Device removed", "relayLog": "Remote connection", "agentLog": "Agent log", "manualOperation": "Manual operation", "commandExecution": "Command execution", "batchUpload": "Batch upload", "userSessionCount": "Session change", "unknown": "Other" }
+    },
+    "columns": { "name": "Name", "permission": "Permission", "actions": "Actions" },
+    "actions": { "add": "Add", "remove": "Remove", "confirmRemove": "Confirm removal", "unavailable": "This action is unavailable.", "editProfile": "Edit profile", "setPermissions": "Set permissions" },
+    "itemsCount": "{{count}} items", "empty": { "access": "No {{title}}" }, "loading": "Loading user details", "breadcrumb": "Breadcrumb", "loadFailed": "Failed to load user details", "gatewayDisconnected": "Gateway is not connected.", "partialRefreshFailed": "{{successMessage}}, but the list failed to refresh.", "missing": "Not provided", "missingRealName": "No full name provided", "missingEmail": "No email provided", "neverLoggedIn": "Never logged in", "activeSessions": "Active sessions",
+    "status": { "locked": "Locked", "userOnline": "User is currently online", "userOffline": "User is currently offline" },
+    "fields": { "id": "User ID", "username": "Username", "realName": "Full name", "email": "Email", "phone": "Phone", "accountStatus": "Account status", "accountType": "Account type", "online": "Online now", "userId": "User ID", "createdAt": "Created at", "lastLoginAt": "Last login", "lastAccessAt": "Last access", "passwordChangedAt": "Password changed", "sitePermissions": "Site permissions" },
+    "confirm": { "disableTitle": "Disable user", "enableTitle": "Enable user", "disableContent": "Disable user \"{{name}}\"?", "enableContent": "Enable user \"{{name}}\"?", "deleteTitle": "Delete user", "deleteContent": "Permanently delete user \"{{name}}\"? This action cannot be undone.", "deleteOk": "Permanently delete", "removeGroupTitle": "Remove device group permission", "removeGroupContent": "Remove direct permission for user \"{{user}}\" on device group \"{{name}}\"? The user may still inherit access through a user group.", "removeDeviceTitle": "Remove device permission", "removeDeviceContent": "Remove direct permission for user \"{{user}}\" on device \"{{name}}\"?" },
+    "messages": { "profileUnchanged": "User profile has not changed.", "userUpdated": "Updated user \"{{name}}\"", "userUpdateFailed": "Failed to update user: {{detail}}", "siteRightsUpdated": "Updated site permissions for user \"{{name}}\"", "siteRightsFailed": "Failed to set user permissions: {{detail}}", "userDisabled": "Account \"{{name}}\" disabled", "userEnabled": "Account \"{{name}}\" enabled", "userDeleted": "Deleted user \"{{name}}\"", "groupAdded": "Added device group \"{{name}}\"", "groupUpdated": "Updated permissions for \"{{name}}\"", "groupSaveFailed": "Failed to save device group permissions: {{detail}}", "groupRemoved": "Removed device group \"{{name}}\"", "groupRemoveFailed": "Failed to remove device group permissions: {{detail}}", "deviceAdded": "Added device \"{{name}}\"", "deviceUpdated": "Updated permissions for \"{{name}}\"", "deviceSaveFailed": "Failed to save device permissions: {{detail}}", "deviceRemoved": "Removed device \"{{name}}\"" },
+    "errors": { "unknown": "Unknown error", "invalidRights": "The selected permissions do not apply to an individual device. Please choose again.", "accessDenied": "The current account is not authorized to perform this action.", "invalidUser": "The target user does not exist or is unavailable.", "invalidDevice": "The target device does not exist or is unavailable.", "userDeleted": "The target user does not exist or has been deleted.", "dataNotLoaded": "User data has not loaded.", "userDeletedReturn": "The target user no longer exists. Return to the user list.", "cannotEditCurrentPermissions": "You cannot modify permissions for the current signed-in user.", "cannotRemoveLastAdmin": "You cannot remove site administrator rights from the last sign-in-capable user.", "cannotChangeCurrentStatus": "You cannot disable or enable the current signed-in user.", "cannotDisableLastAdmin": "You cannot disable the last sign-in-capable site administrator.", "cannotDeleteCurrent": "You cannot delete the current signed-in user.", "cannotDeleteLastAdmin": "You cannot delete the last sign-in-capable site administrator.", "cannotEditCurrentDeviceGroups": "You cannot modify device group permissions for the current signed-in user.", "groupDeleted": "The target device group does not exist or has been deleted.", "cannotEditCurrentDevices": "You cannot modify device permissions for the current signed-in user.", "deviceDeleted": "The target device does not exist or has been deleted." }
+  },
+  "userGroups": {
+    "title": "User groups",
+    "subtitle": "Manage user groups and associated permissions for device groups and devices",
+    "createGroup": "New user group",
+    "searchPlaceholder": "Search user group name, description or ID...",
+    "countTag": "{{filtered}} / {{total}} groups",
+    "totalCount": "{{count}} user groups in total",
+    "loadFailed": "Failed to load user group list",
+    "gatewayDisconnectedNotice": "Showing last synced data. Write operations are disabled. Automatically refreshed once reconnected.",
+    "filters": {
+      "all": "All groups",
+      "withMembers": "With members",
+      "noMembers": "No members",
+      "withPermissions": "With permissions",
+      "noPermissions": "No permissions"
+    },
+    "columns": {
+      "name": "Group name",
+      "description": "Description",
+      "members": "Members",
+      "deviceGroups": "Granted device groups",
+      "devices": "Granted devices",
+      "domainAttributes": "Domain & attributes",
+      "actions": "Actions"
+    },
+    "zeroMembers": "0",
+    "zeroDevices": "0",
+    "defaultDomain": "Default domain",
+    "flags": "Flags {{value}}",
+    "readOnly": "Read-only mode",
+    "readOnlyDescription": "The current account cannot manage user groups. Lists and details are viewable, but changes are disabled.",
+    "cloneMode": "Clone mode",
+    "cloneDescription": "Cloning \"{{name}}\". The new group will inherit all device-group and device grants from the original group.",
+    "inheritanceTitle": "Permission inheritance",
+    "inheritanceDescription": "User groups distribute permissions. Device-group and device permissions configured here are automatically granted to all group members.",
+    "actions": {
+      "clone": "Clone"
+    },
+    "confirm": {
+      "deleteTitle": "Delete user group",
+      "deleteNotice": "User group \"{{name}}\" will be permanently deleted. Group members will lose all permissions granted via this group.",
+      "deleteInputTip": "Please type the group name to confirm deletion:",
+      "deleteOk": "Permanently delete",
+      "irreversible": "This action cannot be undone",
+      "deleteImpactTitle": "The following relationships will be permanently removed:",
+      "memberImpact": "{{count}} members will lose permissions inherited through this group",
+      "deviceGroupImpact": "{{count}} device-group grant configurations will be removed",
+      "deviceImpact": "{{count}} device grant configurations will be removed"
+    },
+    "messages": {
+      "createSuccess": "Created user group \"{{name}}\"",
+      "updateSuccess": "Updated user group \"{{name}}\"",
+      "cloneSuccess": "Cloned user group \"{{name}}\"",
+      "mutationUncertain": "Operation submitted, but failed to refresh list. Please refresh before resubmitting.",
+      "mutationFailed": "Failed to save user group: {{detail}}",
+      "deleteSuccess": "Deleted user group \"{{name}}\"",
+      "deleteFailed": "Failed to delete user group: {{detail}}",
+      "targetGroupNotFound": "Target user group no longer exists. Please refresh the list."
+    },
+    "empty": {
+      "filtered": "No user groups match filter criteria",
+      "waiting": "No user group data"
+    },
+    "modal": {
+      "createTitle": "New user group",
+      "editTitle": "Edit user group",
+      "cloneTitle": "Clone user group",
+      "name": "Group name",
+      "nameRequired": "Please enter group name",
+      "nameTooLong": "Group name must be 128 characters or fewer",
+      "namePlaceholder": "e.g. Operations, External support, R&D observers",
+      "description": "Description",
+      "descriptionTooLong": "Description must be 1024 characters or fewer",
+      "descriptionPlaceholder": "Enter the group's responsibilities, use cases, or grant notes (optional)"
+    },
+    "details": {
+      "memberColumns": { "user": "User", "viewUser": "Open user details", "realName": "Full name", "email": "Email", "status": "Account status", "actions": "Actions" },
+      "missing": "Not provided",
+      "noManagePermission": "No management permission",
+      "deviceGroup": "Device group",
+      "device": "Device",
+      "groupLabel": "Group: {{name}}",
+      "inheritedPermissions": "Inherited permissions",
+      "loading": "Loading user group details",
+      "breadcrumb": "Breadcrumb",
+      "loadFailed": "Failed to load user group",
+      "notFound": "User group does not exist or has been deleted",
+      "backToList": "Back to user group list",
+      "gatewayDisconnected": "Gateway disconnected",
+      "gatewayDisconnectedDescription": "Showing the latest cached data. All edits and permission changes are temporarily disabled.",
+      "readOnly": "Read-only mode",
+      "readOnlyDescription": "The current account cannot manage user groups. Members and inherited grants are viewable, but changes are disabled.",
+      "role": "User group role",
+      "defaultDomain": "Default domain",
+      "defaultDomainValue": "Default domain (default)",
+      "noDescription": "No description",
+      "systemId": "User group system identifier",
+      "fields": { "domain": "Domain", "members": "Group members", "deviceGroups": "Device group grants", "devices": "Individual device grants", "flags": "Flags", "consent": "Consent configuration" },
+      "defaultFlags": "Default flags (0)",
+      "unrestrictedConsent": "Unrestricted (0)",
+      "inheritedTotal": "Total inherited grants",
+      "resourceGrants": "resource grants",
+      "inheritedForMembers": "Inherited for {{count}} members",
+      "tabs": { "overview": "Overview and inheritance", "memberScale": "Group members", "inheritedGroups": "Inherited device groups", "inheritedDevices": "Inherited devices", "members": "Members ({{count}})", "groups": "Device group grants ({{count}})", "devices": "Device grants ({{count}})" },
+      "preview": { "members": "Member preview", "resources": "Inherited resource preview" },
+      "viewAllCount": "View all ({{count}})",
+      "counts": { "members": "{{count}} users", "deviceGroups": "{{count}} device groups", "devices": "{{count}} devices", "people": "{{count}}", "groups": "{{count}}", "filteredMembers": "{{filtered}} / {{total}} members", "filteredGroups": "{{filtered}} / {{total}} device groups", "filteredDevices": "{{filtered}} / {{total}} devices" },
+      "search": { "members": "Search member name, username or email", "groups": "Search device group name or ID", "devices": "Search device name or ID", "users": "Search username, full name or email" },
+      "empty": { "members": "No members", "resources": "No grants configured", "noMembers": "This user group has no members", "noMatchingMembers": "No matching members", "noGroupGrants": "No inherited device group grants", "noMatchingGroups": "No matching device groups", "noDeviceGrants": "No inherited device grants", "noMatchingDevices": "No matching devices" },
+      "actions": { "remove": "Remove", "editPermissions": "Edit permissions", "confirmRemove": "Confirm removal", "addMember": "Add member", "addMemberNow": "Add a member now", "addGroupGrant": "Add device group grant", "addFirstGroup": "Configure the first device group", "addDeviceGrant": "Add device grant", "addFirstDevice": "Configure the first device", "selectAll": "Select all", "clear": "Clear", "removeMember": "Remove member", "saveGroupPermissions": "Save device group permissions", "saveDevicePermissions": "Save device permissions", "updateGroup": "Update user group" },
+      "errors": { "groupDeleted": "The target device group no longer exists.", "deviceDeleted": "The target device no longer exists." },
+      "confirm": { "removeGroupTitle": "Remove device group grant", "removeDeviceTitle": "Remove device grant", "removeContent": "After removal, group members will no longer inherit access to this resource through this user group.", "removeMemberTitle": "Remove user group member", "removeMemberContent": "Remove member \"{{name}}\" from user group \"{{group}}\"?", "removeMemberDescription": "The user will no longer inherit this group's device group and individual device access. The account and direct grants are unaffected." },
+      "modals": { "addMemberTitle": "Add member to \"{{name}}\"", "addMemberOk": "Add {{count}} members", "addMemberDescription": "Select accounts to add to this user group. Members will immediately inherit all device group and individual device permissions configured here.", "availableSelected": "Available: {{available}} · Selected: {{selected}}", "editTitle": "Edit user group profile", "descriptionPlaceholder": "Describe the group's responsibilities and grant scope", "deleteTitle": "Confirm user group deletion", "irreversible": "This action cannot be undone", "deleteImpactIntro": "Deleting this user group will:", "deleteMembersImpact": "Remove inherited permissions from {{count}} group members", "deleteGrantsImpact": "Remove {{groups}} device group grants and {{devices}} device grants", "deleteConfirmation": "Type the user group name \"{{name}}\" to confirm deletion:" },
+      "validation": { "nameMax": "Name cannot exceed 128 characters", "descriptionMax": "Description cannot exceed 1024 characters" }
+    }
+  },
+  "permissions": {
+    "categories": {
+      "management": "Account management",
+      "server": "Server management",
+      "visibility": "Data access",
+      "restrictions": "Restrictions",
+      "meshManagement": "Device group management",
+      "meshAccess": "Remote access",
+      "meshOperations": "Device operations"
+    },
+    "summary": {
+      "siteAdmin": "Site administrator",
+      "lockedNoSiteRights": "Locked, no site permissions",
+      "noSiteRights": "No site permissions",
+      "allRights": "Full permissions",
+      "groupOnly": "Group visibility only",
+      "separator": ", ",
+      "itemsAndMore": "{{items}} and {{count}} more"
+    },
+    "presets": {
+      "remoteAccess": "Remote desktop, terminal and files",
+      "desktopOnly": "Remote desktop only",
+      "filesOnly": "Device file management only",
+      "desktopReadonly": "Desktop read-only"
+    },
+    "riskTag": "Sensitive",
+    "actions": {
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "selectGroup": "Select group",
+      "deselectGroup": "Deselect group",
+      "defaultPreset": "Default",
+      "presets": "Common presets",
+      "selectPresetPlaceholder": "Select preset combination"
+    },
+    "siteModal": {
+      "title": "Set user permissions",
+      "notice": "Configuring site permissions for \"{{name}}\". Account lock status is not modified here.",
+      "adminNotice": "Site administrators possess all current and future site permissions."
+    },
+    "meshModal": {
+      "editGroupTitle": "Edit device group permissions",
+      "addGroupTitle": "Add device group permissions",
+      "addGroupOk": "Add device group",
+      "deviceGroup": "Device group",
+      "selectGroupPlaceholder": "Select device group to grant",
+      "noAvailableGroups": "No device groups available to add",
+      "fullAdminRights": "Full administrator rights",
+      "fullAdminRightsDesc": "(Possesses all permissions 0xFFFFFFFF)"
+    },
+    "deviceModal": {
+      "editTitle": "Edit device permissions",
+      "addTitle": "Add device permissions",
+      "addOk": "Add device",
+      "device": "Device",
+      "selectGroupFirst": "Please select a device group first",
+      "selectDevicePlaceholder": "Select device to grant",
+      "noAvailableDevices": "No devices available to add",
+      "allDeviceRights": "All individual device permissions",
+      "fullRightsNotice": "Grants all positive permissions, excluding restriction flags."
+    },
+    "site": {
+      "manageUsers": {
+        "label": "Manage users",
+        "description": "Create, edit, and delete user accounts"
+      },
+      "manageUserGroups": {
+        "label": "Manage user groups",
+        "description": "Create, edit, and delete user groups"
+      },
+      "serverBackup": {
+        "label": "Server backup",
+        "description": "Create and download server backups"
+      },
+      "serverRestore": {
+        "label": "Server restore",
+        "description": "Restore server data from backups"
+      },
+      "serverUpdate": {
+        "label": "Server update",
+        "description": "Execute MeshCentral server updates"
+      },
+      "fileAccess": {
+        "label": "Server file access",
+        "description": "Access server-side file management"
+      },
+      "recordings": {
+        "label": "View recordings",
+        "description": "Access remote session recordings"
+      },
+      "allEvents": {
+        "label": "View all events",
+        "description": "View events for all users and devices"
+      },
+      "lockSettings": {
+        "label": "Lock settings",
+        "description": "Restrict account from changing settings"
+      },
+      "noNewGroups": {
+        "label": "No new groups",
+        "description": "Prohibit user from creating device groups"
+      },
+      "noMeshCommand": {
+        "label": "No group commands",
+        "description": "Prohibit user from executing group commands"
+      },
+      "noNewDevices": {
+        "label": "No new devices",
+        "description": "Prohibit user from adding new devices"
+      }
+    },
+    "mesh": {
+      "editGroup": {
+        "label": "Edit device group",
+        "description": "Modify device group name and description"
+      },
+      "manageUsers": {
+        "label": "Manage group users",
+        "description": "Add, remove and manage group member permissions"
+      },
+      "manageDevices": {
+        "label": "Manage devices",
+        "description": "Edit, remove or move devices"
+      },
+      "remoteDesktop": {
+        "label": "Remote desktop",
+        "description": "View and control remote desktop"
+      },
+      "agentConsole": {
+        "label": "Mesh Agent console",
+        "description": "Access Mesh Agent debug console"
+      },
+      "serverFiles": {
+        "label": "Server file space",
+        "description": "Access server-side file space"
+      },
+      "chatNotify": {
+        "label": "Desktop notifications",
+        "description": "Send notifications and chat messages"
+      },
+      "remoteCommand": {
+        "label": "Run background command",
+        "description": "Execute single command on device"
+      },
+      "wakeDevice": {
+        "label": "Wake device",
+        "description": "Execute Wake-on-LAN"
+      },
+      "setNotes": {
+        "label": "Modify device notes",
+        "description": "Edit device note information"
+      },
+      "uninstall": {
+        "label": "Uninstall Agent",
+        "description": "Uninstall Agent on device"
+      },
+      "resetOff": {
+        "label": "Restart and power off",
+        "description": "Execute power management operations"
+      },
+      "guestSharing": {
+        "label": "Guest sharing",
+        "description": "Create temporary guest sharing link"
+      },
+      "deviceDetails": {
+        "label": "View device details",
+        "description": "View hardware and OS details"
+      },
+      "relay": {
+        "label": "Web Relay",
+        "description": "Create port relay mappings"
+      },
+      "remoteViewOnly": {
+        "label": "Desktop view only",
+        "description": "Desktop session is view-only"
+      },
+      "noTerminal": {
+        "label": "Disable terminal",
+        "description": "Explicitly deny terminal access"
+      },
+      "noFiles": {
+        "label": "Disable files",
+        "description": "Explicitly deny file access"
+      },
+      "noAmt": {
+        "label": "Disable Intel AMT",
+        "description": "Disable Intel AMT functionality"
+      },
+      "desktopLimitedInput": {
+        "label": "Limit desktop input",
+        "description": "Limit mouse and keyboard input"
+      },
+      "limitEvents": {
+        "label": "Limit event logs",
+        "description": "Limit device event log scope"
+      },
+      "noDesktop": {
+        "label": "Disable remote desktop",
+        "description": "Explicitly deny remote desktop"
+      },
+      "noRegistry": {
+        "label": "Disable registry",
+        "description": "Prohibit using registry editor"
+      },
+      "noSoftware": {
+        "label": "Disable software management",
+        "description": "Prohibit managing installed software"
+      }
+    }
+  },
+  "errors": {
+    "unknown": "An unknown error occurred. Please try again later.",
+    "gatewayDisconnected": "Gateway disconnected",
+    "permissionDenied": "Permission denied"
+  }
 } as const;

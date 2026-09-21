@@ -21,16 +21,13 @@ import {
   theme,
   type TableColumnsType,
 } from 'antd';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
+import { createCollator, useFormatters } from '../i18n';
 import '../assets/styles/devices.css';
-
-const naturalNameCollator = new Intl.Collator('zh-CN', {
-  numeric: true,
-  sensitivity: 'base',
-});
 
 function nameCategory(name: string) {
   const firstChar = name.trim().charAt(0);
@@ -40,27 +37,9 @@ function nameCategory(name: string) {
   return 2;
 }
 
-function compareGroupName(a: DeviceGroup, b: DeviceGroup) {
-  const categoryDifference = nameCategory(a.name) - nameCategory(b.name);
-  return categoryDifference || naturalNameCollator.compare(a.name, b.name);
-}
-
-function formatDateTime(value?: number) {
-  if (!value) return '—';
-  // If value is less than 10000000000, it's likely in seconds
-  const date = new Date(value < 10000000000 ? value * 1000 : value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
-}
-
 export function DeviceGroupsPage() {
+  const { t } = useTranslation();
+  const formatters = useFormatters();
   const { token } = theme.useToken();
   const { groups, devices, client, status, refreshSnapshot } = useGatewayData();
   const applicationCapabilities = useApplicationUiCapabilities();
@@ -71,6 +50,19 @@ export function DeviceGroupsPage() {
   const [editingGroup, setEditingGroup] = useState<DeviceGroup | null | 'new'>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<{ name: string; description?: string }>();
+
+  const collator = useMemo(
+    () => createCollator(formatters.language, { numeric: true, sensitivity: 'base' }),
+    [formatters.language],
+  );
+
+  const compareGroupName = useCallback(
+    (a: DeviceGroup, b: DeviceGroup) => {
+      const categoryDifference = nameCategory(a.name) - nameCategory(b.name);
+      return categoryDifference || collator.compare(a.name, b.name);
+    },
+    [collator],
+  );
 
   const deviceStatsByGroup = useMemo(() => {
     const stats = new Map<string, { total: number; online: number; offline: number }>();
@@ -97,7 +89,7 @@ export function DeviceGroupsPage() {
         return matchesQuery;
       })
       .sort(compareGroupName);
-  }, [groups, query]);
+  }, [compareGroupName, groups, query]);
 
   const openGroupEditor = (group?: DeviceGroup) => {
     form.setFieldsValue({ name: group?.name ?? '', description: group?.description ?? '' });
@@ -118,11 +110,15 @@ export function DeviceGroupsPage() {
         });
       }
       await refreshSnapshot();
-      void messageApi.success(editingGroup === 'new' ? '已创建设备分组' : '已更新设备分组');
+      void messageApi.success(
+        editingGroup === 'new'
+          ? t('deviceGroups.messages.createSuccess')
+          : t('deviceGroups.messages.updateSuccess'),
+      );
       setEditingGroup(null);
     } catch (error) {
-      const detail = error instanceof Error ? error.message : '未知错误';
-      void messageApi.error(`保存分组失败：${detail}`);
+      const detail = error instanceof Error ? error.message : t('common.status.unknown');
+      void messageApi.error(t('deviceGroups.messages.saveFailed', { detail }));
     } finally {
       setSubmitting(false);
     }
@@ -132,19 +128,19 @@ export function DeviceGroupsPage() {
     if (!client) return;
     const count = deviceStatsByGroup.get(group.id)?.total ?? 0;
     modal.confirm({
-      title: '删除设备分组',
-      content: `确定要删除分组「${group.name}」吗？该分组当前包含 ${count} 台设备。设备迁移或删除策略将由服务端决定。`,
-      okText: '删除分组',
-      cancelText: '取消',
+      title: t('deviceGroups.confirm.deleteTitle'),
+      content: t('deviceGroups.confirm.deleteContent', { name: group.name, count }),
+      okText: t('deviceGroups.confirm.deleteOk'),
+      cancelText: t('common.actions.cancel'),
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
           await client.groups.remove(group.id);
           await refreshSnapshot();
-          void messageApi.success(`已删除分组「${group.name}」`);
+          void messageApi.success(t('deviceGroups.messages.deleteSuccess', { name: group.name }));
         } catch (error) {
-          const detail = error instanceof Error ? error.message : '未知错误';
-          void messageApi.error(`删除分组失败：${detail}`);
+          const detail = error instanceof Error ? error.message : t('common.status.unknown');
+          void messageApi.error(t('deviceGroups.messages.deleteFailed', { detail }));
           throw error;
         }
       },
@@ -153,7 +149,7 @@ export function DeviceGroupsPage() {
 
   const columns: TableColumnsType<DeviceGroup> = [
     {
-      title: '分组名称',
+      title: t('deviceGroups.columns.name'),
       dataIndex: 'name',
       fixed: 'left',
       width: 200,
@@ -166,18 +162,18 @@ export function DeviceGroupsPage() {
       ),
     },
     {
-      title: '描述',
+      title: t('deviceGroups.columns.desc'),
       dataIndex: 'description',
       width: 250,
       render: (value) => value || '—',
     },
     {
-      title: '设备数量',
+      title: t('deviceGroups.columns.deviceCount'),
       key: 'deviceCount',
       width: 120,
       render: (_, group) => {
         const count = deviceStatsByGroup.get(group.id)?.total ?? 0;
-        return <Tag color="blue">{count} 台设备</Tag>;
+        return <Tag color="blue">{t('devices.totalCount', { count })}</Tag>;
       },
       sorter: (a, b) => {
         const countA = deviceStatsByGroup.get(a.id)?.total ?? 0;
@@ -186,7 +182,7 @@ export function DeviceGroupsPage() {
       },
     },
     {
-      title: '设备统计',
+      title: t('deviceGroups.columns.deviceStats'),
       key: 'deviceStats',
       width: 260,
       render: (_, group) => {
@@ -215,14 +211,15 @@ export function DeviceGroupsPage() {
       },
     },
     {
-      title: '创建时间',
+      title: t('deviceGroups.columns.creation'),
       key: 'creation',
       width: 170,
       render: (_, group) => {
         const raw = group.raw as Record<string, unknown> | undefined;
         const creation = raw?.creation as number | undefined;
-        // MeshCentral usually uses seconds for creation time
-        return creation ? formatDateTime(creation) : '—';
+        return creation
+          ? formatters.dateTime(new Date(creation < 10000000000 ? creation * 1000 : creation))
+          : '—';
       },
       sorter: (a, b) => {
         const rawA = a.raw as Record<string, unknown> | undefined;
@@ -233,7 +230,7 @@ export function DeviceGroupsPage() {
       },
     },
     {
-      title: '创建者',
+      title: t('deviceGroups.columns.creator'),
       key: 'creator',
       width: 150,
       render: (_, group) => {
@@ -242,7 +239,7 @@ export function DeviceGroupsPage() {
       },
     },
     {
-      title: '操作',
+      title: t('deviceGroups.columns.actions'),
       key: 'actions',
       fixed: 'right',
       width: 230,
@@ -253,7 +250,7 @@ export function DeviceGroupsPage() {
             size="small"
             onClick={() => navigate(`/devices?groupId=${encodeURIComponent(group.id)}`)}
           >
-            查看设备
+            {t('deviceGroups.actions.viewDevices')}
           </Button>
           <Button
             type="link"
@@ -262,7 +259,7 @@ export function DeviceGroupsPage() {
             disabled={!client || status !== 'connected'}
             onClick={() => openGroupEditor(group)}
           >
-            编辑
+            {t('common.actions.edit')}
           </Button>
           <Button
             type="link"
@@ -272,7 +269,7 @@ export function DeviceGroupsPage() {
             disabled={!client || status !== 'connected'}
             onClick={() => confirmGroupDeletion(group)}
           >
-            删除
+            {t('common.actions.delete')}
           </Button>
         </Space>
       ),
@@ -285,8 +282,8 @@ export function DeviceGroupsPage() {
       {modalContextHolder}
       <div className="page-heading">
         <div>
-          <h1>设备分组</h1>
-          <p>管理设备分组，查看各分组下的设备数量</p>
+          <h1>{t('deviceGroups.title')}</h1>
+          <p>{t('deviceGroups.subtitle')}</p>
         </div>
         <Button
           type="primary"
@@ -296,7 +293,7 @@ export function DeviceGroupsPage() {
           }
           onClick={() => openGroupEditor()}
         >
-          新建分组
+          {t('deviceGroups.createGroup')}
         </Button>
       </div>
       <section className="console-card devices-table-card">
@@ -305,19 +302,22 @@ export function DeviceGroupsPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             prefix={<SearchOutlined />}
-            placeholder="搜索分组名称、描述..."
+            placeholder={t('deviceGroups.searchPlaceholder')}
             allowClear
           />
           <div className="toolbar-spacer" />
           <Tag>
-            {filteredGroups.length} / {groups.length} 个分组
+            {t('deviceGroups.countTag', {
+              filtered: filteredGroups.length,
+              total: groups.length,
+            })}
           </Tag>
           <Button
             icon={<ReloadOutlined />}
             disabled={status !== 'connected'}
             onClick={() => void refreshSnapshot()}
           >
-            刷新
+            {t('common.actions.refresh')}
           </Button>
         </div>
         <Table
@@ -328,35 +328,55 @@ export function DeviceGroupsPage() {
             defaultPageSize: 20,
             showSizeChanger: true,
             pageSizeOptions: [20, 50, 100],
-            showTotal: (total) => `共 ${total} 个分组`,
+            showTotal: (total) => t('deviceGroups.totalCount', { count: total }),
           }}
           scroll={{ x: 1490 }}
           locale={{
             emptyText: (
-              <Empty description={groups.length ? '没有符合筛选条件的分组' : '等待网关同步分组'} />
+              <Empty
+                description={
+                  groups.length
+                    ? t('deviceGroups.empty.filtered')
+                    : t('deviceGroups.empty.waiting')
+                }
+              />
             ),
           }}
         />
       </section>
       <Modal
-        title={editingGroup === 'new' ? '新建设备分组' : '编辑设备分组'}
+        title={
+          editingGroup === 'new'
+            ? t('deviceGroups.modal.createTitle')
+            : t('deviceGroups.modal.editTitle')
+        }
         open={Boolean(editingGroup)}
         onCancel={() => setEditingGroup(null)}
         onOk={() => void submitGroup()}
-        okText={editingGroup === 'new' ? '创建分组' : '保存修改'}
-        cancelText="取消"
+        okText={
+          editingGroup === 'new'
+            ? t('deviceGroups.modal.createOk')
+            : t('deviceGroups.modal.editOk')
+        }
+        cancelText={t('common.actions.cancel')}
         confirmLoading={submitting}
         destroyOnHidden
       >
         <Form form={form} layout="vertical" preserve={false}>
           <Form.Item
             name="name"
-            label="分组名称"
-            rules={[{ required: true, whitespace: true, message: '请输入分组名称' }]}
+            label={t('deviceGroups.modal.name')}
+            rules={[
+              {
+                required: true,
+                whitespace: true,
+                message: t('deviceGroups.modal.nameRequired'),
+              },
+            ]}
           >
             <Input maxLength={128} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={t('deviceGroups.modal.desc')}>
             <Input.TextArea rows={3} maxLength={500} />
           </Form.Item>
         </Form>

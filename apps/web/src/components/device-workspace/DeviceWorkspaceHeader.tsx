@@ -9,7 +9,9 @@ import {
   WindowsOutlined,
 } from '@ant-design/icons';
 import { Tag } from 'antd';
+import { useTranslation } from 'react-i18next';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
+import { useFormatters } from '../../i18n/formatters';
 
 function platformIcon(platform: string) {
   const lower = platform.toLowerCase();
@@ -19,24 +21,26 @@ function platformIcon(platform: string) {
 }
 
 export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }) {
+  const { t } = useTranslation();
+  const { time, number } = useFormatters();
   const hw = model.hardware;
   const isDiffName = model.device.name && model.hostname && model.device.name !== model.hostname;
 
   return (
     <header className="workspace-device-header console-card">
       <div className="workspace-device-identity">
-        <span className="workspace-device-icon">{platformIcon(model.platform)}</span>
+        <span className="workspace-device-icon">{platformIcon(model.platform ?? '')}</span>
         <div>
           <div className="workspace-device-title">
             <strong>{model.device.name}</strong>
             {isDiffName && <span className="workspace-rname">({model.hostname})</span>}
             <span className={model.device.online ? 'is-online' : 'is-offline'}>
-              <i /> {model.device.online ? '在线' : '离线'}
+              <i /> {model.device.online ? t('common.status.online') : t('common.status.offline')}
             </span>
           </div>
           <div className="workspace-device-badges">
-            <Tag color="blue">{model.groupName}</Tag>
-            <Tag color="cyan">{model.platform}</Tag>
+            <Tag color="blue">{model.groupName ?? t('common.status.ungrouped')}</Tag>
+            <Tag color="cyan">{model.platform ?? t('common.status.unknown')}</Tag>
             {hw?.agentVersion && (
               <Tag color="geekblue">
                 {hw.agentVersion} {hw.agentIsRoot ? '(Root)' : ''}
@@ -44,7 +48,7 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
             )}
             {hw?.security?.pendingReboot && (
               <Tag color="warning" icon={<WarningOutlined />}>
-                待重启
+                {t('deviceWorkspace.header.pendingReboot')}
               </Tag>
             )}
           </div>
@@ -53,35 +57,35 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
 
       <div className="workspace-header-metrics">
         <div className="workspace-header-metric">
-          <span><ThunderboltOutlined /> 处理器</span>
-          <strong title={hw?.cpuName || model.cpuName}>{hw?.cpuShortName || model.cpuName}</strong>
-          <small>{hw?.cpuSpeed || '系统硬件'}</small>
+          <span><ThunderboltOutlined /> {t('deviceWorkspace.header.cpu')}</span>
+          <strong title={hw?.cpuName || model.cpuName}>{hw?.cpuShortName || model.cpuName || '—'}</strong>
+          <small>{hw?.cpuSpeed || t('deviceWorkspace.header.systemHardware')}</small>
         </div>
         <div className="workspace-header-metric">
-          <span><AppstoreOutlined /> 物理内存</span>
-          <strong>{hw?.memoryTotal || model.memorySummary}</strong>
-          <small>{hw?.memorySlots ? `${hw.memorySlots} 个插槽` : hw?.memorySpeed || '系统内存'}</small>
+          <span><AppstoreOutlined /> {t('deviceWorkspace.header.memory')}</span>
+          <strong>{hw?.memoryTotal || model.memorySummary || '—'}</strong>
+          <small>{hw?.memorySlots ? t('deviceWorkspace.header.slots', { count: hw.memorySlots }) : hw?.memorySpeed || t('deviceWorkspace.header.systemMemory')}</small>
         </div>
         <div className="workspace-header-metric">
-          <span><DatabaseOutlined /> 存储容量</span>
-          <strong>{hw?.storageTotal || model.storageSummary}</strong>
-          <small>{hw?.storageRemaining !== '未提供' ? `余 ${hw?.storageRemaining}` : '本地磁盘'}</small>
+          <span><DatabaseOutlined /> {t('deviceWorkspace.header.storage')}</span>
+          <strong>{hw?.storageTotal || model.storageSummary || '—'}</strong>
+          <small>{hw?.storageRemaining ? t('deviceWorkspace.header.remaining', { value: hw.storageRemaining }) : t('deviceWorkspace.header.localDisk')}</small>
         </div>
         <div className="workspace-header-metric">
-          <span><DesktopOutlined /> 显卡/显示</span>
-          <strong title={hw?.gpuName || '—'}>{hw?.gpuName || '标准显示'}</strong>
+          <span><DesktopOutlined /> {t('deviceWorkspace.header.display')}</span>
+          <strong title={hw?.gpuName || '—'}>{hw?.gpuName || t('deviceWorkspace.header.standardDisplay')}</strong>
           <small>{hw?.gpuResolution || hw?.primaryNic || '—'}</small>
         </div>
       </div>
 
       <div className="workspace-header-meta">
-        <span><ClockCircleOutlined /> 运行时间</span>
-        <strong>{model.uptime}</strong>
-        <small>{hw?.lastConnectAddr ? `来源 ${hw.lastConnectAddr}` : `心跳 ${model.lastHeartbeat === '刚刚' ? '刚刚' : new Date(model.lastHeartbeat).toLocaleTimeString('zh-CN')}`}</small>
+        <span><ClockCircleOutlined /> {t('deviceWorkspace.header.uptime')}</span>
+        <strong>{model.uptimeSeconds === undefined ? '—' : t('deviceWorkspace.header.hours', { value: number(model.uptimeSeconds / 3600, { maximumFractionDigits: 1 }) })}</strong>
+        <small>{hw?.lastConnectAddr ? t('deviceWorkspace.header.source', { value: hw.lastConnectAddr }) : model.lastHeartbeatAt ? t('deviceWorkspace.header.heartbeat', { value: time(model.lastHeartbeatAt) }) : '—'}</small>
       </div>
 
       <Tag color={model.device.online ? 'success' : 'default'}>
-        {model.device.online ? '可连接' : '不可连接'}
+        {model.device.online ? t('deviceWorkspace.header.connectable') : t('deviceWorkspace.header.unavailable')}
       </Tag>
     </header>
   );

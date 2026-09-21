@@ -9,21 +9,22 @@ import {
 } from '@ant-design/icons';
 import type { DeviceUiCapabilities, UiPermission } from '@meshcentral/control-client';
 import { Tooltip } from 'antd';
+import { useTranslation } from 'react-i18next';
 import type { WorkspaceTab } from '../../features/device-workspace/types';
 
 const tabs: Array<{
   key: WorkspaceTab;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   permission?: keyof Pick<DeviceUiCapabilities, 'desktop' | 'terminal' | 'files'>;
 }> = [
-  { key: 'overview', label: '概览', icon: <DashboardOutlined /> },
-  { key: 'desktop', label: '远程桌面', icon: <DesktopOutlined />, permission: 'desktop' },
-  { key: 'terminal', label: '终端', icon: <CodeOutlined />, permission: 'terminal' },
-  { key: 'files', label: '文件管理', icon: <FileOutlined />, permission: 'files' },
-  { key: 'processes', label: '进程', icon: <MonitorOutlined /> },
-  { key: 'services', label: '服务', icon: <SettingOutlined /> },
-  { key: 'logs', label: '日志', icon: <UnorderedListOutlined /> },
+  { key: 'overview', labelKey: 'deviceWorkspace.tabs.overview', icon: <DashboardOutlined /> },
+  { key: 'desktop', labelKey: 'deviceWorkspace.tabs.desktop', icon: <DesktopOutlined />, permission: 'desktop' },
+  { key: 'terminal', labelKey: 'deviceWorkspace.tabs.terminal', icon: <CodeOutlined />, permission: 'terminal' },
+  { key: 'files', labelKey: 'deviceWorkspace.tabs.files', icon: <FileOutlined />, permission: 'files' },
+  { key: 'processes', labelKey: 'deviceWorkspace.tabs.processes', icon: <MonitorOutlined /> },
+  { key: 'services', labelKey: 'deviceWorkspace.tabs.services', icon: <SettingOutlined /> },
+  { key: 'logs', labelKey: 'deviceWorkspace.tabs.logs', icon: <UnorderedListOutlined /> },
 ];
 
 export function workspaceTabPermission(
@@ -49,8 +50,9 @@ export function WorkspaceTabs({
   capabilities: DeviceUiCapabilities;
   remoteControlAllowed: boolean;
 }) {
+  const { t } = useTranslation();
   return (
-    <nav className="workspace-tabs" aria-label="设备工作台功能">
+    <nav className="workspace-tabs" aria-label={t('deviceWorkspace.ariaLabel')}>
       {tabs.map((tab) => {
         const permission = workspaceTabPermission(tab.key, capabilities, remoteControlAllowed);
         if (permission && !permission.visible) return null;
@@ -62,7 +64,7 @@ export function WorkspaceTabs({
             onClick={() => onChange(tab.key)}
           >
             {tab.icon}
-            <span>{tab.label}</span>
+            <span>{t(tab.labelKey)}</span>
           </button>
         );
         return permission?.message ? (

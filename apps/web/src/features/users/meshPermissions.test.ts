@@ -26,6 +26,22 @@ describe('mesh permissions', () => {
     expect(summarizeMeshRights(0)).toBe('仅设备组可见');
     expect(summarizeMeshRights(0x8 | 0x10)).toBe('远程桌面控制、Mesh Agent 控制台');
     expect(summarizeMeshRights(0x8 | 0x10 | 0x20)).toContain('等 3 项');
+
+    const mockT = (key: string, options?: Record<string, unknown>) => {
+      if (key === 'permissions.summary.allRights') return 'Full permissions';
+      if (key === 'permissions.summary.groupOnly') return 'Group visibility only';
+      if (key === 'permissions.summary.separator') return ', ';
+      if (key === 'permissions.mesh.remoteDesktop.label') return 'Remote desktop';
+      if (key === 'permissions.mesh.agentConsole.label') return 'Agent console';
+      if (key === 'permissions.summary.itemsAndMore') {
+        return `${options?.items} etc ${options?.count} items`;
+      }
+      return key;
+    };
+
+    expect(summarizeMeshRights(MESH_RIGHT_ADMIN, mockT)).toBe('Full permissions');
+    expect(summarizeMeshRights(0, mockT)).toBe('Group visibility only');
+    expect(summarizeMeshRights(0x8 | 0x10, mockT)).toBe('Remote desktop, Agent console');
   });
 
   it('evaluates terminal capability without treating administrator restriction bits as denial', () => {

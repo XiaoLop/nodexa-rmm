@@ -24,6 +24,7 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import {
   summarizeBatchUpload,
@@ -50,18 +51,6 @@ interface UploadFormValues {
   overwritePolicy: 'skip' | 'overwrite';
   concurrency: number;
 }
-
-const statusLabels: Record<BatchUploadTaskStatus, string> = {
-  queued: '等待',
-  connecting: '连接中',
-  checking: '检查中',
-  uploading: '上传中',
-  success: '成功',
-  skipped: '跳过',
-  failed: '失败',
-  cancelling: '取消中',
-  cancelled: '已取消',
-};
 
 const statusColors: Record<BatchUploadTaskStatus, string> = {
   queued: 'default',
@@ -91,8 +80,8 @@ function formatDuration(task: BatchUploadTask): string {
   if (!task.startedAt) return '—';
   const duration = Math.max(0, (task.completedAt ?? Date.now()) - task.startedAt);
   if (duration < 1000) return `${duration} ms`;
-  if (duration < 60_000) return `${(duration / 1000).toFixed(1)} 秒`;
-  return `${Math.floor(duration / 60_000)}分${Math.round((duration % 60_000) / 1000)}秒`;
+  if (duration < 60_000) return `${(duration / 1000).toFixed(1)} s`;
+  return `${Math.floor(duration / 60_000)}m ${Math.round((duration % 60_000) / 1000)}s`;
 }
 
 function hasMixedPlatforms(devices: BatchUploadDeviceSnapshot[]): boolean {
@@ -107,7 +96,18 @@ function hasMixedPlatforms(devices: BatchUploadDeviceSnapshot[]): boolean {
   return families.size > 1;
 }
 
+function formatTaskDetail(
+  detail: BatchUploadTask['detail'],
+  t: (key: string) => string,
+): string {
+  if (!detail) return '—';
+  const key = `batchUpload.details.${detail.code}`;
+  const translated = t(key);
+  return translated === key ? detail.raw ?? detail.code : translated;
+}
+
 export function BatchFileUploadModal({
+
   open,
   devices,
   gatewayClient,
@@ -116,6 +116,7 @@ export function BatchFileUploadModal({
   manager,
   onClose,
 }: BatchFileUploadModalProps) {
+  const { t } = useTranslation();
   const [form] = Form.useForm<UploadFormValues>();
   const [messageApi, messageContextHolder] = message.useMessage();
   const snapshot = useSyncExternalStore(
@@ -148,7 +149,7 @@ export function BatchFileUploadModal({
 
   const startUpload = async () => {
     if (!selectedFiles.length || !gatewayClient || !baseUrl || !connected) {
-      void messageApi.error(!selectedFiles.length ? '请选择本地文件。' : '网关或中继地址不可用。');
+      void messageApi.error(!selectedFiles.length ? t('batchUpload.messages.selectFilesFirst') : t('batchUpload.messages.gatewayUnavailable'));
       return;
     }
     try {
@@ -158,12 +159,13 @@ export function BatchFileUploadModal({
         .map((file) => validateTargetFileName(file.name))
         .find((error) => error !== undefined);
       if (directoryError || nameError) {
-        void messageApi.error(directoryError ?? nameError);
+        const err = directoryError ?? nameError;
+        void messageApi.error(err ? t(`batchUpload.validation.${err}`) : '');
         return;
       }
       const normalizedNames = selectedFiles.map((file) => file.name.toLocaleLowerCase());
       if (new Set(normalizedNames).size !== normalizedNames.length) {
-        void messageApi.error('所选文件包含重复文件名，请调整后重试。');
+        void messageApi.error(t('batchUpload.messages.duplicateFileNames'));
         return;
       }
       const config: BatchUploadConfig = {
@@ -185,11 +187,11 @@ export function BatchFileUploadModal({
       return;
     }
     Modal.confirm({
-      title: '批量上传仍在运行',
-      content: '可返回任务列表继续查看，或取消全部任务后关闭。',
-      okText: '取消全部并关闭',
+      title: t('batchUpload.closeRunningConfirmTitle'),
+      content: t('batchUpload.closeRunningConfirmContent'),
+      okText: t('batchUpload.closeRunningConfirmOk'),
       okButtonProps: { danger: true },
-      cancelText: '返回任务列表',
+      cancelText: t('batchUpload.closeRunningConfirmCancel'),
       onOk: () => {
         manager.cancelAll();
         onClose();
@@ -199,7 +201,7 @@ export function BatchFileUploadModal({
 
   const columns: TableColumnsType<BatchUploadTask> = [
     {
-      title: '设备',
+      title: t('batchUpload.columns.device'),
       key: 'device',
       width: 190,
       render: (_, task) => (
@@ -214,13 +216,13 @@ export function BatchFileUploadModal({
       ),
     },
     {
-      title: '平台',
+      title: t('batchUpload.columns.platform'),
       key: 'platform',
       width: 115,
-      render: (_, task) => task.device.platform || '未知',
+      render: (_, task) => task.device.platform || t('common.status.unknown'),
     },
     {
-      title: '文件',
+      title: t('batchUpload.columns.file'),
       dataIndex: 'targetFileName',
       width: 180,
       ellipsis: { showTitle: false },
@@ -229,15 +231,15 @@ export function BatchFileUploadModal({
       ),
     },
     {
-      title: '状态',
+      title: t('batchUpload.columns.status'),
       dataIndex: 'status',
       width: 95,
       render: (status: BatchUploadTaskStatus) => (
-        <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
+        <Tag color={statusColors[status]}>{t(`batchUpload.status.${status}`)}</Tag>
       ),
     },
     {
-      title: '进度',
+      title: t('batchUpload.columns.progress'),
       key: 'progress',
       width: 170,
       render: (_, task) => (
@@ -255,23 +257,23 @@ export function BatchFileUploadModal({
       ),
     },
     {
-      title: '已确认 / 总大小',
+      title: t('batchUpload.columns.bytes'),
       key: 'bytes',
       width: 155,
       render: (_, task) =>
         `${formatBytes(task.acknowledgedBytes)} / ${formatBytes(task.totalBytes)}`,
     },
-    { title: '耗时', key: 'duration', width: 90, render: (_, task) => formatDuration(task) },
+    { title: t('batchUpload.columns.duration'), key: 'duration', width: 90, render: (_, task) => formatDuration(task) },
     {
-      title: '详情',
+      title: t('batchUpload.columns.detail'),
       dataIndex: 'detail',
       ellipsis: { showTitle: false },
-      render: (detail?: string) => (
-        <Typography.Text ellipsis={{ tooltip: detail }}>{detail || '—'}</Typography.Text>
+      render: (detail?: BatchUploadTask['detail']) => (
+        <Typography.Text ellipsis={{ tooltip: formatTaskDetail(detail, t) }}>{formatTaskDetail(detail, t)}</Typography.Text>
       ),
     },
     {
-      title: '操作',
+      title: t('batchUpload.columns.action'),
       key: 'action',
       width: 80,
       fixed: 'right',
@@ -279,7 +281,7 @@ export function BatchFileUploadModal({
         const cancellable = ['queued', 'connecting', 'checking', 'uploading'].includes(task.status);
         return cancellable ? (
           <Button type="link" danger size="small" onClick={() => manager.cancelTask(task.id)}>
-            取消
+            {t('common.actions.cancel')}
           </Button>
         ) : null;
       },
@@ -294,7 +296,7 @@ export function BatchFileUploadModal({
         title={
           <Space>
             <UploadOutlined />
-            批量上传文件（{devices.length} 台设备）
+            {t('batchUpload.modalTitle', { count: devices.length })}
           </Space>
         }
         width={1180}
@@ -304,7 +306,7 @@ export function BatchFileUploadModal({
           configurable
             ? [
                 <Button key="close" onClick={closeModal}>
-                  关闭
+                  {t('batchUpload.closeRunningConfirmCancel')}
                 </Button>,
                 <Button
                   key="start"
@@ -313,7 +315,7 @@ export function BatchFileUploadModal({
                   disabled={!selectedFiles.length || !connected || !baseUrl}
                   onClick={() => void startUpload()}
                 >
-                  开始上传
+                  {t('batchUpload.startUpload')}
                 </Button>,
               ]
             : [
@@ -323,7 +325,7 @@ export function BatchFileUploadModal({
                     icon={<ReloadOutlined />}
                     onClick={() => manager.retryFailed()}
                   >
-                    重试全部失败任务
+                    {t('batchUpload.retryFailed')}
                   </Button>
                 ) : null,
                 running ? (
@@ -333,11 +335,11 @@ export function BatchFileUploadModal({
                     icon={<StopOutlined />}
                     onClick={() => manager.cancelAll()}
                   >
-                    取消全部
+                    {t('batchUpload.cancelAll')}
                   </Button>
                 ) : null,
                 <Button key="close" onClick={closeModal}>
-                  关闭
+                  {t('batchUpload.close')}
                 </Button>,
               ]
         }
@@ -347,8 +349,8 @@ export function BatchFileUploadModal({
             <Alert
               showIcon
               type="warning"
-              message="选中设备包含不同平台"
-              description="目标目录必须在所有设备上有效，系统不会自动转换 Windows 与 POSIX 路径。"
+              message={t('batchUpload.mixedPlatformTitle')}
+              description={t('batchUpload.mixedPlatformDesc')}
             />
           )}
           {configurable ? (
@@ -358,7 +360,7 @@ export function BatchFileUploadModal({
               initialValues={{ overwritePolicy: 'skip', concurrency: 4 }}
               className="batch-upload-form"
             >
-              <Form.Item label="本地文件" required>
+              <Form.Item label={t('batchUpload.fileLabel')} required>
                 <input
                   ref={fileInputRef}
                   hidden
@@ -373,63 +375,63 @@ export function BatchFileUploadModal({
                     icon={<FolderOpenOutlined />}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    选择文件
+                    {t('batchUpload.selectFiles')}
                   </Button>
                   {selectedFiles.length ? (
                     <Typography.Text
                       ellipsis={{ tooltip: selectedFiles.map((file) => file.name).join('、') }}
                     >
-                      已选择 {selectedFiles.length} 个文件 ·{' '}
+                      {t('batchUpload.filesSelectedInfo', { count: selectedFiles.length, size: '' }).split('·')[0]} ·{' '}
                       {formatBytes(selectedFiles.reduce((total, file) => total + file.size, 0))}
                     </Typography.Text>
                   ) : (
-                    <Typography.Text type="secondary">尚未选择文件</Typography.Text>
+                    <Typography.Text type="secondary">{t('batchUpload.noFilesSelected')}</Typography.Text>
                   )}
                 </div>
               </Form.Item>
               <div className="batch-upload-form-grid">
                 <Form.Item
                   name="targetDirectory"
-                  label="目标目录"
-                  rules={[{ required: true, message: '请输入目标目录。' }]}
+                  label={t('batchUpload.targetDirectory')}
+                  rules={[{ required: true, message: t('batchUpload.targetDirectoryRequired') }]}
                 >
-                  <Input placeholder="例如 C:\\Temp 或 /tmp" />
+                  <Input placeholder={t('batchUpload.targetDirectoryPlaceholder')} />
                 </Form.Item>
-                <Form.Item name="concurrency" label="最大并发数">
+                <Form.Item name="concurrency" label={t('batchUpload.concurrency')}>
                   <InputNumber min={1} max={8} precision={0} style={{ width: '100%' }} />
                 </Form.Item>
               </div>
-              <Form.Item name="overwritePolicy" label="同名文件策略">
+              <Form.Item name="overwritePolicy" label={t('batchUpload.overwritePolicy')}>
                 <Radio.Group>
-                  <Radio value="skip">跳过（推荐）</Radio>
-                  <Radio value="overwrite">覆盖（取决于当前 Agent 行为）</Radio>
+                  <Radio value="skip">{t('batchUpload.policySkip')}</Radio>
+                  <Radio value="overwrite">{t('batchUpload.policyOverwrite')}</Radio>
                 </Radio.Group>
               </Form.Item>
               <Alert
                 showIcon
                 type="info"
-                message={`即将向 ${devices.length} 台设备上传 ${selectedFiles.length} 个文件；离线设备会直接跳过。`}
-                description="文件会保留原始名称；每个设备与文件组成独立任务，并发 Worker 和中继连接最多 8 个。"
+                message={t('batchUpload.startNoticeTitle', { deviceCount: devices.length, fileCount: selectedFiles.length })}
+                description={t('batchUpload.startNoticeDesc')}
               />
             </Form>
           ) : (
             <>
               <div className="batch-upload-summary">
-                <Statistic title="总任务" value={summary.total} />
-                <Statistic title="等待" value={summary.queued} />
-                <Statistic title="进行中" value={summary.active} />
-                <Statistic title="成功" value={summary.success} />
-                <Statistic title="跳过" value={summary.skipped} />
-                <Statistic title="失败" value={summary.failed} />
-                <Statistic title="已取消" value={summary.cancelled} />
+                <Statistic title={t('batchUpload.statistics.total')} value={summary.total} />
+                <Statistic title={t('batchUpload.statistics.queued')} value={summary.queued} />
+                <Statistic title={t('batchUpload.statistics.active')} value={summary.active} />
+                <Statistic title={t('batchUpload.statistics.success')} value={summary.success} />
+                <Statistic title={t('batchUpload.statistics.skipped')} value={summary.skipped} />
+                <Statistic title={t('batchUpload.statistics.failed')} value={summary.failed} />
+                <Statistic title={t('batchUpload.statistics.cancelled')} value={summary.cancelled} />
               </div>
               {!connected && running && (
                 <Alert
                   showIcon
                   type="error"
                   icon={<CloseCircleOutlined />}
-                  message="网关连接已断开"
-                  description="正在运行的控制请求会失败；可等待任务结束后重试失败设备。"
+                  message={t('batchUpload.gatewayDisconnectedTitle')}
+                  description={t('batchUpload.gatewayDisconnectedDesc')}
                 />
               )}
               <Table<BatchUploadTask>

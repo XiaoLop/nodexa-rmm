@@ -21,6 +21,7 @@ import {
 import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Space, Tag, Tooltip, message } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GATEWAY_RELAY_URL } from '../../../config/gateway';
 import { XtermTerminal, type XtermTerminalHandle } from './XtermTerminal';
 
@@ -41,15 +42,15 @@ const CONNECTING_STATES = new Set<TerminalConnectionState>([
   'handshaking',
 ]);
 
-const STATUS_LABELS: Record<TerminalConnectionState, string> = {
-  idle: '未连接',
-  authorizing: '正在申请中继授权',
-  notifying: '正在通知设备 Agent',
-  connecting: '正在连接中继',
-  handshaking: '正在等待终端配对',
-  ready: '已连接',
-  closed: '会话已结束',
-  error: '连接失败',
+const STATUS_KEYS: Record<TerminalConnectionState, string> = {
+  idle: 'idle',
+  authorizing: 'authorizing',
+  notifying: 'notifying',
+  connecting: 'connecting',
+  handshaking: 'handshaking',
+  ready: 'ready',
+  closed: 'closed',
+  error: 'error',
 };
 
 interface TerminalPanelProps {
@@ -74,15 +75,16 @@ function isUnsafeControlCharacter(character: string): boolean {
   return (code >= 0 && code <= 8) || code === 11 || code === 12 || (code >= 14 && code <= 31) || code === 127;
 }
 
-function connectionErrorMessage(error: unknown): string {
+function connectionErrorMessage(error: unknown): { code?: 'agentRoute' | 'cancelled' | 'relay'; raw?: string } {
   if (error instanceof RelayAgentRouteError) {
-    return '设备 Agent 当前无法建立终端通道，请稍后重试。';
+    return { code: 'agentRoute' };
   }
-  if (error instanceof RelayCancelledError) return '终端连接已取消。';
-  return error instanceof Error ? error.message : '终端中继连接失败。';
+  if (error instanceof RelayCancelledError) return { code: 'cancelled' };
+  return error instanceof Error ? { raw: error.message } : { code: 'relay' };
 }
 
 export function TerminalPanel({ device, gatewayClient, gatewayConnected, terminalAllowed }: TerminalPanelProps) {
+  const { t } = useTranslation();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [status, setStatus] = useState<TerminalConnectionState>('idle');
   const [error, setError] = useState<string>();
@@ -126,7 +128,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
   useEffect(() => {
     if (gatewayConnected || (!sessionRef.current && !abortRef.current)) return;
     disconnect('Gateway connection was lost.');
-    setError('网关连接已断开，终端会话已结束。');
+    setError(t('deviceWorkspace.terminal.gatewayDisconnected'));
   }, [gatewayConnected]);
   useEffect(() => {
     if (!startedAt || status !== 'ready') return;
@@ -141,10 +143,10 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
     if (!device.online || !gatewayConnected || !gatewayClient || terminalAllowed === false) {
       setError(
         terminalAllowed === false
-          ? '当前账户没有该设备的终端权限。'
+          ? t('deviceWorkspace.terminal.permissionDenied')
           : !device.online
-            ? '设备当前离线，无法建立终端中继。'
-            : '网关控制通道不可用。',
+            ? t('deviceWorkspace.terminal.deviceOffline')
+            : t('deviceWorkspace.terminal.gatewayUnavailable'),
       );
       setStatus('error');
       return;
@@ -193,14 +195,15 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
       setStartedAt(Date.now());
       setDuration(0);
       setStatus('ready');
-      xtermRef.current?.writeLocal('\r\n\x1b[32m已建立新的终端会话。\x1b[0m\r\n');
+      xtermRef.current?.writeLocal(`\r\n\x1b[32m${t('deviceWorkspace.terminal.sessionEstablished')}\x1b[0m\r\n`);
       xtermRef.current?.focus();
     } catch (connectionError) {
       if (controller.signal.aborted) {
         setStatus('closed');
         return;
       }
-      setError(connectionErrorMessage(connectionError));
+      const connectionFailure = connectionErrorMessage(connectionError);
+      setError(connectionFailure.raw ?? t(`deviceWorkspace.terminal.errors.${connectionFailure.code}`));
       setStatus('error');
     }
   };
@@ -224,21 +227,21 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
       if (requiresPasteConfirmation(text)) setPendingPaste(text);
       else sessionRef.current?.write(text);
     } catch {
-      void messageApi.error('无法读取剪贴板，请确认页面使用 HTTPS 且已授予权限。');
+      void messageApi.error(t('deviceWorkspace.terminal.clipboardReadFailed'));
     }
   };
 
   const copySelection = async () => {
     const selection = xtermRef.current?.getSelection() ?? '';
     if (!selection) {
-      void messageApi.info('请先在终端中选择文本。');
+      void messageApi.info(t('deviceWorkspace.terminal.selectTextFirst'));
       return;
     }
     try {
       await navigator.clipboard.writeText(selection);
-      void messageApi.success('已复制终端选区。');
+      void messageApi.success(t('deviceWorkspace.terminal.selectionCopied'));
     } catch {
-      void messageApi.error('无法写入剪贴板。');
+      void messageApi.error(t('deviceWorkspace.terminal.clipboardWriteFailed'));
     }
   };
 
@@ -259,7 +262,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
         <Space size={4}>
           {connecting ? (
             <Button icon={<CloseOutlined />} onClick={cancelConnection}>
-              取消连接
+              {t('deviceWorkspace.terminal.cancelConnection')}
             </Button>
           ) : status !== 'ready' ? (
             <Button
@@ -268,18 +271,18 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
               disabled={unavailable}
               onClick={() => void connect()}
             >
-              连接终端
+              {t('deviceWorkspace.terminal.connect')}
             </Button>
           ) : (
             <Button icon={<DisconnectOutlined />} danger onClick={() => disconnect('User disconnected terminal session.')}>
-              断开
+              {t('deviceWorkspace.terminal.disconnect')}
             </Button>
           )}
-          <Tooltip title="搜索缓冲区"><Button aria-label="搜索缓冲区" icon={<SearchOutlined />} onClick={() => setSearchOpen((value) => !value)} /></Tooltip>
-          <Tooltip title="复制选区"><Button aria-label="复制选区" icon={<CopyOutlined />} onClick={() => void copySelection()} /></Tooltip>
-          <Tooltip title="粘贴"><Button aria-label="粘贴" onClick={() => void requestPaste()}>粘贴</Button></Tooltip>
-          <Tooltip title="清除本地显示"><Button aria-label="清除本地显示" icon={<ClearOutlined />} onClick={() => xtermRef.current?.clear()} /></Tooltip>
-          <Tooltip title="全屏"><Button aria-label="全屏" icon={<ExpandOutlined />} onClick={() => void toggleFullscreen()} /></Tooltip>
+          <Tooltip title={t('deviceWorkspace.terminal.searchBuffer')}><Button aria-label={t('deviceWorkspace.terminal.searchBuffer')} icon={<SearchOutlined />} onClick={() => setSearchOpen((value) => !value)} /></Tooltip>
+          <Tooltip title={t('deviceWorkspace.terminal.copySelection')}><Button aria-label={t('deviceWorkspace.terminal.copySelection')} icon={<CopyOutlined />} onClick={() => void copySelection()} /></Tooltip>
+          <Tooltip title={t('deviceWorkspace.terminal.paste')}><Button aria-label={t('deviceWorkspace.terminal.paste')} onClick={() => void requestPaste()}>{t('deviceWorkspace.terminal.paste')}</Button></Tooltip>
+          <Tooltip title={t('deviceWorkspace.terminal.clear')}><Button aria-label={t('deviceWorkspace.terminal.clear')} icon={<ClearOutlined />} onClick={() => xtermRef.current?.clear()} /></Tooltip>
+          <Tooltip title={t('deviceWorkspace.terminal.fullscreen')}><Button aria-label={t('deviceWorkspace.terminal.fullscreen')} icon={<ExpandOutlined />} onClick={() => void toggleFullscreen()} /></Tooltip>
         </Space>
         {searchOpen ? (
           <Input
@@ -287,7 +290,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
             allowClear
             size="small"
             prefix={<SearchOutlined />}
-            placeholder="搜索终端输出"
+            placeholder={t('deviceWorkspace.terminal.searchPlaceholder')}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             onPressEnter={() => xtermRef.current?.searchNext(searchQuery)}
@@ -297,7 +300,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
           />
         ) : null}
       </div>
-      {recorded ? <Alert banner type="warning" showIcon message="此会话正在由服务端录制" /> : null}
+      {recorded ? <Alert banner type="warning" showIcon message={t('deviceWorkspace.terminal.recordedNotice')} /> : null}
       {error ? <Alert banner type="error" showIcon message={error} /> : null}
       <div className="terminal-stage">
         <XtermTerminal
@@ -308,23 +311,23 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
         />
         {status !== 'ready' ? (
           <div className="terminal-overlay">
-            <strong>{connecting ? STATUS_LABELS[status] : unavailable ? '终端当前不可用' : STATUS_LABELS[status]}</strong>
-            <span>{terminalAllowed === false ? '当前账户没有终端权限' : !device.online ? '设备离线' : !gatewayConnected ? '网关已断开' : connecting ? '可以取消本次连接' : '连接后可开始交互式 Shell 会话'}</span>
+            <strong>{connecting ? t(`deviceWorkspace.terminal.status.${STATUS_KEYS[status]}`) : unavailable ? t('deviceWorkspace.terminal.unavailable') : t(`deviceWorkspace.terminal.status.${STATUS_KEYS[status]}`)}</strong>
+            <span>{terminalAllowed === false ? t('deviceWorkspace.terminal.noPermission') : !device.online ? t('deviceWorkspace.terminal.deviceOfflineShort') : !gatewayConnected ? t('deviceWorkspace.terminal.gatewayDisconnectedShort') : connecting ? t('deviceWorkspace.terminal.cancelHint') : t('deviceWorkspace.terminal.interactiveHint')}</span>
           </div>
         ) : null}
       </div>
       <footer className="terminal-statusbar">
-        <span><i className={status === 'ready' ? 'is-ready' : ''} />{STATUS_LABELS[status]}</span>
+        <span><i className={status === 'ready' ? 'is-ready' : ''} />{t(`deviceWorkspace.terminal.status.${STATUS_KEYS[status]}`)}</span>
         <span>{size.cols} × {size.rows}</span>
-        <span>{latency === undefined ? '延迟 —' : `延迟 ${latency} ms`}</span>
-        <span>会话 {durationText}</span>
+        <span>{latency === undefined ? t('deviceWorkspace.terminal.latencyUnknown') : t('deviceWorkspace.terminal.latency', { value: latency })}</span>
+        <span>{t('deviceWorkspace.terminal.sessionDuration', { value: durationText })}</span>
         {recorded ? <Tag color="warning">REC</Tag> : null}
       </footer>
       <Modal
-        title="确认粘贴到远程终端"
+        title={t('deviceWorkspace.terminal.confirmPasteTitle')}
         open={pendingPaste !== undefined}
-        okText="确认粘贴"
-        cancelText="取消"
+        okText={t('deviceWorkspace.terminal.confirmPaste')}
+        cancelText={t('common.actions.cancel')}
         onCancel={() => setPendingPaste(undefined)}
         onOk={() => {
           if (pendingPaste !== undefined) sessionRef.current?.write(pendingPaste);
@@ -332,8 +335,8 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
           xtermRef.current?.focus();
         }}
       >
-        <p>内容包含多行、控制字符或较长文本。确认后将直接发送到远端 Shell。</p>
-        <div className="terminal-paste-meta">{pendingPaste?.length ?? 0} 个字符，{pendingPaste?.split(/\r\n|\r|\n/).length ?? 0} 行</div>
+        <p>{t('deviceWorkspace.terminal.confirmPasteDescription')}</p>
+        <div className="terminal-paste-meta">{t('deviceWorkspace.terminal.pasteMeta', { characters: pendingPaste?.length ?? 0, lines: pendingPaste?.split(/\r\n|\r|\n/).length ?? 0 })}</div>
         <pre className="terminal-paste-preview">{pastePreview(pendingPaste ?? '')}</pre>
       </Modal>
     </section>

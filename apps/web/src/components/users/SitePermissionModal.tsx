@@ -2,6 +2,7 @@ import { SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ManagedUser } from '@meshcentral/control-client';
 import { Alert, Button, Checkbox, Modal, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   SITE_PERMISSION_CATEGORIES,
   SITE_PERMISSIONS,
@@ -18,12 +19,14 @@ interface SitePermissionModalProps {
 }
 
 export function SitePermissionModal({
+
   open,
   user,
   submitting = false,
   onCancel,
   onSubmit,
 }: SitePermissionModalProps) {
+  const { t } = useTranslation();
   const [fullAdministrator, setFullAdministrator] = useState(false);
   const [selectedFlags, setSelectedFlags] = useState<number[]>([]);
 
@@ -67,14 +70,14 @@ export function SitePermissionModal({
       title={
         <Space size={8}>
           <SafetyCertificateOutlined style={{ color: '#2f80ff' }} />
-          <span>设置用户权限</span>
+          <span>{t('permissions.siteModal.title')}</span>
         </Space>
       }
       open={open}
       width={660}
       centered
-      okText="保存权限"
-      cancelText="取消"
+      okText={t('common.actions.save')}
+      cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
       onCancel={onCancel}
       onOk={() => void onSubmit(rights)}
@@ -82,7 +85,7 @@ export function SitePermissionModal({
     >
       <div className="mesh-permission-modal">
         <Typography.Text type="secondary">
-          正在设置用户「{user?.name}」的站点权限。账户启用或锁定状态不会在此修改。
+          {t('permissions.siteModal.notice', { name: user?.name })}
         </Typography.Text>
 
         <div className="mesh-permission-toolbar">
@@ -92,7 +95,7 @@ export function SitePermissionModal({
               checked={fullAdministrator}
               onChange={setFullAdministrator}
             />
-            <Typography.Text strong>全站管理员</Typography.Text>
+            <Typography.Text strong>{t('permissions.summary.siteAdmin')}</Typography.Text>
             <Typography.Text type="secondary">0xFFFFFFFF</Typography.Text>
           </Space>
           {!fullAdministrator ? (
@@ -102,17 +105,17 @@ export function SitePermissionModal({
                 size="small"
                 onClick={() => setSelectedFlags(SITE_PERMISSIONS.map(({ flag }) => flag))}
               >
-                全选
+                {t('permissions.actions.selectAll')}
               </Button>
               <Button type="link" size="small" onClick={() => setSelectedFlags([])}>
-                清空
+                {t('permissions.actions.clear')}
               </Button>
             </Space>
           ) : null}
         </div>
 
         {fullAdministrator ? (
-          <Alert showIcon type="warning" message="全站管理员拥有当前及未来的全部站点权限。" />
+          <Alert showIcon type="warning" message={t('permissions.siteModal.adminNotice')} />
         ) : null}
 
         <div className="mesh-permission-body">
@@ -132,26 +135,26 @@ export function SitePermissionModal({
                 <div key={category.key} className="mesh-permission-section">
                   <div className="mesh-permission-section-header">
                     <Space size={6}>
-                      <span className="mesh-permission-section-title">{category.label}</span>
+                      <span className="mesh-permission-section-title">{t(category.labelKey)}</span>
                       <span className="mesh-permission-section-count">
                         ({selectedCount}/{permissions.length})
                       </span>
                     </Space>
                     {!fullAdministrator ? (
                       <Button type="link" size="small" onClick={() => toggleCategory(category.key)}>
-                        {selectedCount === permissions.length ? '取消全选' : '本组全选'}
+                        {selectedCount === permissions.length ? t('permissions.actions.deselectGroup') : t('permissions.actions.selectGroup')}
                       </Button>
                     ) : null}
                   </div>
                   <div className="mesh-permission-grid">
                     {permissions.map((permission) => (
-                      <Tooltip key={permission.flag} title={permission.description}>
+                      <Tooltip key={permission.flag} title={t(permission.descriptionKey)}>
                         <div className="mesh-permission-item">
                           <Checkbox value={permission.flag}>
-                            <span className="mesh-permission-label">{permission.label}</span>
+                            <span className="mesh-permission-label">{t(permission.labelKey)}</span>
                             {permission.risk ? (
                               <Tag color="warning" bordered={false} className="mesh-permission-risk-tag">
-                                敏感
+                                {t('permissions.riskTag')}
                               </Tag>
                             ) : null}
                           </Checkbox>

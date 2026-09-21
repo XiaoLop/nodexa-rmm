@@ -9,8 +9,27 @@ import {
   supportedLanguages,
 } from './language';
 
+function getSafeStorageItem(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setSafeStorageItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
 const initialLanguage = resolveLanguage(
-  localStorage.getItem(languageStorageKey) ?? navigator.language,
+  getSafeStorageItem(languageStorageKey) ??
+    (typeof navigator !== 'undefined' ? navigator.language : undefined),
 );
 
 void i18n.use(initReactI18next).init({
@@ -27,13 +46,19 @@ void i18n.use(initReactI18next).init({
   returnNull: false,
 });
 
-document.documentElement.lang = initialLanguage;
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = initialLanguage;
+}
 
 i18n.on('languageChanged', (language) => {
   const resolvedLanguage = resolveLanguage(language);
-  localStorage.setItem(languageStorageKey, resolvedLanguage);
-  document.documentElement.lang = resolvedLanguage;
+  setSafeStorageItem(languageStorageKey, resolvedLanguage);
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = resolvedLanguage;
+  }
 });
 
 export { default as i18n } from 'i18next';
+export * from './language';
+export * from './formatters';
 export * from './language';

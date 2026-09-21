@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -67,6 +68,7 @@ function SectionHeader({
 }
 
 export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCreateModalProps) {
+  const { t } = useTranslation();
   const [form] = Form.useForm<UserCreateForm>();
   const passwordMode = Form.useWatch('passwordMode', form) ?? 'manual';
 
@@ -114,10 +116,10 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
           </div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 600, color: '#f1f5fb', lineHeight: 1.3 }}>
-              创建用户
+              {t('users.modal.createTitle')}
             </div>
             <div style={{ fontSize: 12, color: '#8c9bb0', fontWeight: 400, marginTop: 2 }}>
-              配置新用户账号标识、登录凭证及安全策略
+              {t('users.modal.createSubtitle')}
             </div>
           </div>
         </div>
@@ -129,7 +131,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
           <Button onClick={onCancel} disabled={submitting}>
-            取消
+            {t('common.actions.cancel')}
           </Button>
           <Button
             type="primary"
@@ -137,7 +139,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
             loading={submitting}
             onClick={() => void submit().catch(() => undefined)}
           >
-            创建用户
+            {t('common.actions.create')}
           </Button>
         </div>
       }
@@ -153,17 +155,17 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
         style={{ marginTop: 16 }}
       >
         {/* 账号与登录凭据 */}
-        <SectionHeader icon={<LockOutlined />} title="账号与凭据" />
+        <SectionHeader icon={<LockOutlined />} title={t('users.modal.accountAndCredentials')} />
 
         <Form.Item
           name="username"
-          label="用户名"
-          rules={[{ required: true, whitespace: true, message: '请输入用户名' }]}
+          label={t('users.modal.username')}
+          rules={[{ required: true, whitespace: true, message: t('users.modal.usernameRequired') }]}
           style={{ marginBottom: 14 }}
         >
           <Input
             prefix={<UserOutlined style={{ color: '#6e84a3' }} />}
-            placeholder="例如：ops_admin 或 alex"
+            placeholder={t('users.modal.usernamePlaceholder')}
             maxLength={128}
             autoComplete="off"
           />
@@ -171,19 +173,19 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
 
         <Form.Item
           name="passwordMode"
-          label="密码生成方式"
+          label={t('users.modal.passwordMode')}
           style={{ marginBottom: 12 }}
         >
           <Segmented
             block
             options={[
               {
-                label: '手动设置初始密码',
+                label: t('users.modal.manualPassword'),
                 value: 'manual',
                 icon: <KeyOutlined />,
               },
               {
-                label: '服务端生成随机密码',
+                label: t('users.modal.randomPassword'),
                 value: 'random',
                 icon: <ThunderboltOutlined />,
               },
@@ -196,13 +198,13 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
             <Col span={12}>
               <Form.Item
                 name="password"
-                label="初始密码"
-                rules={[{ required: true, whitespace: true, message: '请输入初始密码' }]}
+                label={t('users.modal.password')}
+                rules={[{ required: true, whitespace: true, message: t('users.modal.passwordRequired') }]}
                 style={{ marginBottom: 16 }}
               >
                 <Input.Password
                   prefix={<LockOutlined style={{ color: '#6e84a3' }} />}
-                  placeholder="请输入初始密码"
+                  placeholder={t('users.modal.passwordPlaceholder')}
                   autoComplete="new-password"
                 />
               </Form.Item>
@@ -210,15 +212,15 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
             <Col span={12}>
               <Form.Item
                 name="confirmPassword"
-                label="确认密码"
+                label={t('users.modal.confirmPassword')}
                 dependencies={['password']}
                 rules={[
-                  { required: true, message: '请再次输入密码' },
+                  { required: true, message: t('users.modal.confirmPasswordRequired') },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       return !value || getFieldValue('password') === value
                         ? Promise.resolve()
-                        : Promise.reject(new Error('两次输入的密码不一致'));
+                        : Promise.reject(new Error(t('users.modal.passwordMismatch')));
                     },
                   }),
                 ]}
@@ -226,7 +228,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
               >
                 <Input.Password
                   prefix={<LockOutlined style={{ color: '#6e84a3' }} />}
-                  placeholder="再次输入以确认"
+                  placeholder={t('users.modal.confirmPasswordPlaceholder')}
                   autoComplete="new-password"
                 />
               </Form.Item>
@@ -236,8 +238,8 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
           <Alert
             showIcon
             type="info"
-            message="由系统自动生成强随机密码"
-            description="用户创建成功后，服务端将返回生成的密码并在通知中显示，请及时记录。"
+            message={t('users.modal.randomPasswordNoticeTitle')}
+            description={t('users.modal.randomPasswordNoticeDesc')}
             style={{
               marginBottom: 16,
               backgroundColor: '#0c1a2d',
@@ -247,24 +249,24 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
         )}
 
         {/* 个人与联系信息 */}
-        <SectionHeader icon={<IdcardOutlined />} title="个人与联系信息" subtitle="选填" />
+        <SectionHeader icon={<IdcardOutlined />} title={t('users.modal.personalInfo')} subtitle={t('users.modal.optional')} />
 
         <Row gutter={12}>
           <Col span={12}>
-            <Form.Item name="realName" label="真实姓名" style={{ marginBottom: 14 }}>
+            <Form.Item name="realName" label={t('users.modal.realName')} style={{ marginBottom: 14 }}>
               <Input
                 prefix={<IdcardOutlined style={{ color: '#6e84a3' }} />}
-                placeholder="例如：张三"
+                placeholder={t('users.modal.realNamePlaceholder')}
                 maxLength={256}
                 autoComplete="off"
               />
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="phone" label="联系电话" style={{ marginBottom: 14 }}>
+            <Form.Item name="phone" label={t('users.modal.phone')} style={{ marginBottom: 14 }}>
               <Input
                 prefix={<PhoneOutlined style={{ color: '#6e84a3' }} />}
-                placeholder="例如：13800138000"
+                placeholder={t('users.modal.phonePlaceholder')}
                 maxLength={64}
                 autoComplete="off"
               />
@@ -274,14 +276,14 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
 
         <Form.Item
           name="email"
-          label="电子邮箱"
-          rules={[{ type: 'email', message: '请输入有效的邮箱地址' }]}
+          label={t('users.modal.email')}
+          rules={[{ type: 'email', message: t('users.modal.emailInvalid') }]}
           style={{ marginBottom: 16 }}
         >
           <Input
             type="email"
             prefix={<MailOutlined style={{ color: '#6e84a3' }} />}
-            placeholder="例如：user@example.com"
+            placeholder={t('users.modal.emailPlaceholder')}
             maxLength={256}
             autoComplete="off"
           />

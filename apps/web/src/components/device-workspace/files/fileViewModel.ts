@@ -7,7 +7,7 @@ const typeOrder: Record<FileEntry['kind'], number> = {
   unknown: 3,
 };
 
-const nameCollator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 export function sortFileEntries(entries: readonly FileEntry[]): FileEntry[] {
   return [...entries].sort(
@@ -30,7 +30,7 @@ export function formatFileSize(value?: number): string {
 }
 
 export function isZipEntry(entry: FileEntry | undefined): boolean {
-  return entry?.kind === 'file' && entry.name.toLocaleLowerCase().endsWith('.zip');
+  return entry?.kind === 'file' && entry.name.toLowerCase().endsWith('.zip');
 }
 
 export interface FileCommandAvailability {

@@ -9,6 +9,8 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../i18n';
 
 export type MetricTone = 'blue' | 'green' | 'purple' | 'amber' | 'red';
 
@@ -27,12 +29,13 @@ export function MetricCard({
   icon: ReactNode;
   chart?: number[];
 }) {
+  const { number } = useFormatters();
   return (
     <section className={`metric-card tone-${tone}`}>
       <div className="metric-icon">{icon}</div>
       <div className="metric-copy">
         <span>{label}</span>
-        <strong>{value}</strong>
+        <strong>{number(value)}</strong>
         <small>{hint}</small>
       </div>
       {chart && <Sparkline values={chart} />}
@@ -40,7 +43,16 @@ export function MetricCard({
   );
 }
 
-export function Sparkline({ values, tone = 'green' }: { values: number[]; tone?: MetricTone }) {
+export function Sparkline({
+  values,
+  tone = 'green',
+  ariaLabel,
+}: {
+  values: number[];
+  tone?: MetricTone;
+  ariaLabel?: string;
+}) {
+  const { t } = useTranslation();
   if (values.length < 2) return null;
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
@@ -53,13 +65,19 @@ export function Sparkline({ values, tone = 'green' }: { values: number[]; tone?:
     })
     .join(' ');
   return (
-    <svg className={`sparkline tone-${tone}`} viewBox="0 0 100 38" role="img" aria-label="趋势">
+    <svg
+      className={`sparkline tone-${tone}`}
+      viewBox="0 0 100 38"
+      role="img"
+      aria-label={ariaLabel ?? t('dashboard.trend.ariaTrend')}
+    >
       <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" />
     </svg>
   );
 }
 
 export function TrendChart({ online, offline }: { online: number[]; offline: number[] }) {
+  const { t } = useTranslation();
   const all = [...online, ...offline, 1];
   const max = Math.max(...all);
   const makePoints = (values: number[]) =>
@@ -74,10 +92,15 @@ export function TrendChart({ online, offline }: { online: number[]; offline: num
   return (
     <div className="trend-chart">
       <div className="chart-legend">
-        <span className="online">在线</span>
-        <span className="offline">离线</span>
+        <span className="online">{t('common.status.online')}</span>
+        <span className="offline">{t('common.status.offline')}</span>
       </div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="设备状态趋势">
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={t('dashboard.trend.ariaDeviceTrend')}
+      >
         {[20, 40, 60, 80].map((y) => (
           <line key={y} x1="4" y1={y} x2="96" y2={y} className="grid-line" />
         ))}
@@ -89,7 +112,7 @@ export function TrendChart({ online, offline }: { online: number[]; offline: num
         <span>06:00</span>
         <span>12:00</span>
         <span>18:00</span>
-        <span>现在</span>
+        <span>{t('common.status.now')}</span>
       </div>
     </div>
   );
@@ -98,10 +121,14 @@ export function TrendChart({ online, offline }: { online: number[]; offline: num
 export function DonutChart({
   data,
   total,
+  totalLabel,
 }: {
   data: Array<{ label: string; value: number; color: string }>;
   total: number;
+  totalLabel?: string;
 }) {
+  const { t } = useTranslation();
+  const { number, percent } = useFormatters();
   const denominator = Math.max(
     data.reduce((sum, item) => sum + item.value, 0),
     1,
@@ -122,8 +149,8 @@ export function DonutChart({
         style={{ background: `conic-gradient(${gradient || '#253348 0 100%'})` }}
       >
         <div>
-          <strong>{total}</strong>
-          <span>总设备</span>
+          <strong>{number(total)}</strong>
+          <span>{totalLabel ?? t('dashboard.platforms.totalDevices')}</span>
         </div>
       </div>
       <div className="donut-legend">
@@ -131,8 +158,8 @@ export function DonutChart({
           <div key={item.label}>
             <i style={{ background: item.color }} />
             <span>{item.label}</span>
-            <b>{Math.round((item.value / denominator) * 100)}%</b>
-            <em>({item.value})</em>
+            <b>{percent(item.value / denominator, 0)}</b>
+            <em>({number(item.value)})</em>
           </div>
         ))}
       </div>

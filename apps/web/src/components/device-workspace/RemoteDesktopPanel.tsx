@@ -11,10 +11,11 @@ import {
 import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Select, Space, Tag, message } from 'antd';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GATEWAY_RELAY_URL } from '../../config/gateway';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
 import { DesktopCanvas, type DesktopCanvasHandle } from './desktop/DesktopCanvas';
-import { getRemoteClipboard, setRemoteClipboard } from './desktop/desktopClipboard';
+import { getRemoteClipboard, RemoteClipboardError, setRemoteClipboard } from './desktop/desktopClipboard';
 
 type ConnectionState =
   | 'idle'
@@ -35,16 +36,16 @@ const CONNECTING_STATES = new Set<ConnectionState>([
   'waiting-screen',
 ]);
 
-const STATUS_LABELS: Record<ConnectionState, string> = {
-  idle: '未连接',
-  authorizing: '正在申请中继授权',
-  notifying: '正在通知设备 Agent',
-  connecting: '正在连接中继',
-  handshaking: '正在等待桌面配对',
-  'waiting-screen': '正在等待桌面画面',
-  connected: '已连接',
-  closed: '会话已结束',
-  error: '连接失败',
+const STATUS_KEYS: Record<ConnectionState, string> = {
+  idle: 'idle',
+  authorizing: 'authorizing',
+  notifying: 'notifying',
+  connecting: 'connecting',
+  handshaking: 'handshaking',
+  'waiting-screen': 'waitingScreen',
+  connected: 'connected',
+  closed: 'closed',
+  error: 'error',
 };
 
 type DesktopAccess = 'denied' | 'view-only' | 'limited-input' | 'control';
@@ -68,10 +69,15 @@ export interface RemoteDesktopPanelHandle {
   disconnect(): void;
 }
 
-function connectionErrorMessage(error: unknown): string {
-  if (error instanceof RelayAgentRouteError) return '设备 Agent 当前无法建立桌面通道，请稍后重试。';
-  if (error instanceof RelayCancelledError) return '桌面连接已取消。';
-  return error instanceof Error ? error.message : '远程桌面中继连接失败。';
+function connectionErrorMessage(error: unknown): { code?: 'agentRoute' | 'cancelled' | 'relay'; raw?: string } {
+  if (error instanceof RelayAgentRouteError) return { code: 'agentRoute' };
+  if (error instanceof RelayCancelledError) return { code: 'cancelled' };
+  return error instanceof Error ? { raw: error.message } : { code: 'relay' };
+}
+
+function clipboardErrorMessage(error: unknown, t: (key: string) => string): string {
+  if (error instanceof RemoteClipboardError) return t(`deviceWorkspace.remoteDesktop.clipboardErrors.${error.code}`);
+  return error instanceof Error ? error.message : t('deviceWorkspace.remoteDesktop.pasteFailed');
 }
 
 export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDesktopPanelProps>(function RemoteDesktopPanel({
@@ -88,6 +94,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   onSessionActiveChange,
   onLatencyChange,
 }, ref) {
+  const { t } = useTranslation();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [status, setStatus] = useState<ConnectionState>('idle');
   const [error, setError] = useState<string>();
@@ -128,7 +135,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   useEffect(() => {
     if (!gatewayConnected && (sessionRef.current || abortRef.current)) {
       disconnect('Gateway connection was lost.');
-      setError('网关连接已断开，桌面会话已结束。');
+      setError(t('deviceWorkspace.remoteDesktop.gatewayDisconnected'));
     }
   }, [gatewayConnected]);
   useEffect(() => {
@@ -144,7 +151,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         desktopSession.setCompression({ quality });
       } catch (compressionError) {
         if (sessionRef.current === desktopSession) {
-          void messageApi.error(compressionError instanceof Error ? compressionError.message : '更新远程桌面画质失败。');
+          void messageApi.error(compressionError instanceof Error ? compressionError.message : t('deviceWorkspace.remoteDesktop.qualityUpdateFailed'));
         }
       }
     }, 150);
@@ -156,10 +163,10 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     if (!device.online || !gatewayConnected || !gatewayClient || desktopAccess === 'denied') {
       setError(
         desktopAccess === 'denied'
-          ? '当前账户没有远程桌面权限。'
+          ? t('deviceWorkspace.remoteDesktop.permissionDenied')
           : !device.online
-            ? '设备当前离线，无法建立远程桌面。'
-            : '网关控制通道不可用.',
+            ? t('deviceWorkspace.remoteDesktop.deviceOffline')
+            : t('deviceWorkspace.remoteDesktop.gatewayUnavailable'),
       );
       setStatus('error');
       return;
@@ -218,7 +225,8 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     } catch (connectionError) {
       if (!controller.signal.aborted) {
         onSessionActiveChange?.(false);
-        setError(connectionErrorMessage(connectionError));
+        const connectionFailure = connectionErrorMessage(connectionError);
+        setError(connectionFailure.raw ?? t(`deviceWorkspace.remoteDesktop.errors.${connectionFailure.code}`));
         setStatus('error');
       }
     }
@@ -244,7 +252,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     try {
       const text = await navigator.clipboard.readText();
       if (!text) {
-        void messageApi.info('本地剪贴板为空。');
+        void messageApi.info(t('deviceWorkspace.remoteDesktop.localClipboardEmpty'));
         return;
       }
       setPasteText(text);
@@ -260,19 +268,19 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     if (!gatewayClient || !desktopSession || !pasteText) return;
     setPasteSubmitting(true);
     try {
-      if (sessionRef.current !== desktopSession) throw new Error('远程桌面会话已结束。');
+      if (sessionRef.current !== desktopSession) throw new Error(t('deviceWorkspace.remoteDesktop.sessionClosed'));
       setRemoteClipboard(gatewayClient, device.id, pasteText);
       await new Promise((resolve) => window.setTimeout(resolve, 150));
-      if (sessionRef.current !== desktopSession) throw new Error('远程桌面会话已结束。');
+      if (sessionRef.current !== desktopSession) throw new Error(t('deviceWorkspace.remoteDesktop.sessionClosed'));
       desktopSession.sendKey(17, 'down');
       desktopSession.sendKey(86, 'down');
       desktopSession.sendKey(86, 'up');
       desktopSession.sendKey(17, 'up');
       setPasteModalOpen(false);
       setPasteText('');
-      void messageApi.success('剪贴板内容已提交，并触发远端 Ctrl+V。');
+      void messageApi.success(t('deviceWorkspace.remoteDesktop.clipboardSubmitted'));
     } catch (clipboardError) {
-      void messageApi.error(clipboardError instanceof Error ? clipboardError.message : '粘贴到远端失败。');
+      void messageApi.error(clipboardErrorMessage(clipboardError, t));
     } finally {
       setPasteSubmitting(false);
     }
@@ -290,9 +298,9 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
       }
       const text = await getRemoteClipboard(gatewayClient, device.id);
       await navigator.clipboard.writeText(text);
-      void messageApi.success(`已将远端剪贴板的 ${text.length} 个字符写入本地剪贴板。`);
+      void messageApi.success(t('deviceWorkspace.remoteDesktop.clipboardCopied', { count: text.length }));
     } catch (clipboardError) {
-      void messageApi.error(clipboardError instanceof Error ? clipboardError.message : '同步远端剪贴板失败。');
+      void messageApi.error(clipboardErrorMessage(clipboardError, t));
     }
   };
 
@@ -305,36 +313,36 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
       <section className="console-card remote-desktop-card" ref={shellRef}>
         <div className="remote-toolbar">
           <Button type="primary" size="small" icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} onClick={() => void toggleFullscreen()} disabled={!screen}>
-            {fullscreen ? '退出全屏' : '全屏'}
+            {fullscreen ? t('deviceWorkspace.remoteDesktop.exitFullscreen') : t('deviceWorkspace.remoteDesktop.fullscreen')}
           </Button>
           <Button size="small" icon={<CameraOutlined />} onClick={saveScreenshot} disabled={!screen}>
-            截图
+            {t('deviceWorkspace.remoteDesktop.screenshot')}
           </Button>
           <Button size="small" icon={<DisconnectOutlined />} onClick={() => disconnect()} disabled={!canDisconnect}>
-            结束会话
+            {t('deviceWorkspace.remoteDesktop.endSession')}
           </Button>
           <Button size="small" icon={<CompressOutlined />} onClick={() => desktopSession?.sendCad()} disabled={!desktopSession || desktopAccess === 'denied' || desktopAccess === 'view-only'}>
             Ctrl+Alt+Del
           </Button>
           <Button size="small" icon={<SnippetsOutlined />} onClick={() => void pasteLocalClipboardToRemote()} disabled={!desktopSession || !gatewayClient || desktopAccess === 'denied' || desktopAccess === 'view-only'}>
-            粘贴到远端
+            {t('deviceWorkspace.remoteDesktop.pasteRemote')}
           </Button>
           <Button size="small" icon={<CopyOutlined />} onClick={() => void copyRemoteClipboardToLocal()} disabled={!desktopSession || !gatewayClient}>
-            复制到本地
+            {t('deviceWorkspace.remoteDesktop.copyLocal')}
           </Button>
           <Space size={6}>
             <Button type="primary" size="small" onClick={() => void connect()} disabled={unavailable || CONNECTING_STATES.has(status) || status === 'connected'}>
-              {CONNECTING_STATES.has(status) ? '连接中' : '连接桌面'}
+              {CONNECTING_STATES.has(status) ? t('deviceWorkspace.remoteDesktop.connecting') : t('deviceWorkspace.remoteDesktop.connect')}
             </Button>
-            {desktopAccess === 'view-only' && <Tag color="gold">只读</Tag>}
-            {desktopAccess === 'limited-input' && <Tag color="orange">受限输入</Tag>}
-            {desktopAccess === undefined && <Tag>权限待服务端确认</Tag>}
-            {recorded && <Tag color="blue">已录制</Tag>}
+            {desktopAccess === 'view-only' && <Tag color="gold">{t('deviceWorkspace.remoteDesktop.viewOnly')}</Tag>}
+            {desktopAccess === 'limited-input' && <Tag color="orange">{t('deviceWorkspace.remoteDesktop.limitedInput')}</Tag>}
+            {desktopAccess === undefined && <Tag>{t('deviceWorkspace.remoteDesktop.accessPending')}</Tag>}
+            {recorded && <Tag color="blue">{t('deviceWorkspace.remoteDesktop.recorded')}</Tag>}
           </Space>
         </div>
         <div className="remote-status-row">
           <span>
-            <i /> {STATUS_LABELS[status]}
+            <i /> {t(`deviceWorkspace.remoteDesktop.status.${STATUS_KEYS[status]}`)}
             {screen ? ` · ${screen.width} × ${screen.height}` : ''}
             {error ? ` · ${error}` : ''}
           </span>
@@ -343,13 +351,13 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             value={scale}
             onChange={onScaleChange}
             options={[
-              { value: 'fit', label: '适应窗口' },
+              { value: 'fit', label: t('deviceWorkspace.remoteDesktop.fitWindow') },
               { value: '100', label: '100%' },
               { value: '75', label: '75%' },
             ]}
           />
         </div>
-        {error && <Alert type="error" showIcon message={error} action={<Button size="small" onClick={() => void connect()}>重试</Button>} />}
+        {error && <Alert type="error" showIcon message={error} action={<Button size="small" onClick={() => void connect()}>{t('common.actions.retry')}</Button>} />}
         <div className="remote-screen-shell">
           <div className="remote-screen" data-scale={scale}>
             <DesktopCanvas
@@ -363,17 +371,17 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             />
             {!screen && (
               <div className="remote-empty">
-                {unavailable ? '当前不可建立远程桌面会话' : CONNECTING_STATES.has(status) ? '正在建立新的桌面会话' : '连接后显示远程桌面'}
+                {unavailable ? t('deviceWorkspace.remoteDesktop.unavailable') : CONNECTING_STATES.has(status) ? t('deviceWorkspace.remoteDesktop.establishing') : t('deviceWorkspace.remoteDesktop.connectToView')}
               </div>
             )}
           </div>
         </div>
       </section>
       <Modal
-        title="粘贴本地剪贴板到远端？"
+        title={t('deviceWorkspace.remoteDesktop.pasteTitle')}
         open={pasteModalOpen}
-        okText="粘贴到远端"
-        cancelText="取消"
+        okText={t('deviceWorkspace.remoteDesktop.pasteRemote')}
+        cancelText={t('common.actions.cancel')}
         okButtonProps={{ disabled: !pasteText }}
         confirmLoading={pasteSubmitting}
         onCancel={() => {
@@ -382,16 +390,16 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         }}
         onOk={() => void submitClipboardToRemote()}
       >
-        {manualPasteRequired && <Alert type="info" showIcon message="浏览器无法自动读取剪贴板，请在下方粘贴内容。" />}
+        {manualPasteRequired && <Alert type="info" showIcon message={t('deviceWorkspace.remoteDesktop.manualPaste')} />}
         <Input.TextArea
           autoFocus
           value={pasteText}
           onChange={(event) => setPasteText(event.target.value)}
-          placeholder="在此粘贴本地剪贴板内容"
+          placeholder={t('deviceWorkspace.remoteDesktop.pastePlaceholder')}
           autoSize={{ minRows: 4, maxRows: 12 }}
           style={{ marginTop: manualPasteRequired ? 12 : 0 }}
         />
-        <div style={{ marginTop: 8 }}>将向 {model.hostname} 提交 {pasteText.length} 个字符。</div>
+        <div style={{ marginTop: 8 }}>{t('deviceWorkspace.remoteDesktop.pasteSummary', { hostname: model.hostname, count: pasteText.length })}</div>
       </Modal>
     </div>
   );

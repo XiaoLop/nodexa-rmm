@@ -2,6 +2,16 @@ import type { GatewayClient } from '@meshcentral/control-client';
 
 const CLIPBOARD_TIMEOUT_MS = 10_000;
 
+export type RemoteClipboardErrorCode = 'missingText' | 'timeout' | 'sendFailed';
+
+export class RemoteClipboardError extends Error {
+  constructor(public readonly code: RemoteClipboardErrorCode, cause?: unknown) {
+    super(code);
+    this.name = 'RemoteClipboardError';
+    if (cause !== undefined) this.cause = cause;
+  }
+}
+
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
 }
@@ -38,19 +48,19 @@ export function getRemoteClipboard(
       const responseDeviceId = response.nodeid ?? response.nodeId;
       if (typeof responseDeviceId === 'string' && responseDeviceId !== deviceId) return;
       if (typeof response.data !== 'string') {
-        finish(() => reject(new Error('远端剪贴板响应不包含文本内容。')));
+        finish(() => reject(new RemoteClipboardError('missingText')));
         return;
       }
       finish(() => resolve(response.data as string));
     });
     const timeout = setTimeout(
-      () => finish(() => reject(new Error('远端剪贴板没有响应，可能为空、无权限或当前 Agent 不支持。'))),
+      () => finish(() => reject(new RemoteClipboardError('timeout'))),
       timeoutMs,
     );
     try {
       client.send({ action: 'msg', type: 'getclip', nodeid: deviceId, tag });
     } catch (error) {
-      finish(() => reject(error instanceof Error ? error : new Error('远端剪贴板请求发送失败。')));
+      finish(() => reject(error instanceof Error ? error : new RemoteClipboardError('sendFailed')));
     }
   });
 }

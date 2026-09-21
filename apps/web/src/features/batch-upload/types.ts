@@ -30,6 +30,12 @@ export interface BatchUploadConfig {
   concurrency: number;
 }
 
+export interface BatchUploadDetail {
+  code: string;
+  params?: Record<string, string | number>;
+  raw?: string;
+}
+
 export interface BatchUploadTask {
   id: string;
   batchId: string;
@@ -45,7 +51,7 @@ export interface BatchUploadTask {
   startedAt?: number;
   completedAt?: number;
   errorCode?: string;
-  detail?: string;
+  detail?: BatchUploadDetail;
   workerId?: string;
 }
 
@@ -80,20 +86,28 @@ export function snapshotDevice(device: Device): BatchUploadDeviceSnapshot {
   };
 }
 
-export function validateTargetDirectory(value: string): string | undefined {
-  if (value.includes('\0')) return '目标目录不能包含空字节。';
+export type BatchUploadValidationError =
+  | 'directoryNullByte'
+  | 'directoryRequired'
+  | 'directoryTraversal'
+  | 'fileNameRequired'
+  | 'fileNameNullByte'
+  | 'fileNameInvalid';
+
+export function validateTargetDirectory(value: string): BatchUploadValidationError | undefined {
+  if (value.includes('\0')) return 'directoryNullByte';
   const trimmed = value.trim();
-  if (!trimmed) return '请输入目标目录。';
+  if (!trimmed) return 'directoryRequired';
   const parts = trimmed.split(/[\\/]+/);
-  if (parts.includes('..')) return '目标目录不能包含父目录跳转（..）。';
+  if (parts.includes('..')) return 'directoryTraversal';
   return undefined;
 }
 
-export function validateTargetFileName(value: string): string | undefined {
-  if (!value) return '请输入目标文件名。';
-  if (value.includes('\0')) return '目标文件名不能包含空字节。';
+export function validateTargetFileName(value: string): BatchUploadValidationError | undefined {
+  if (!value) return 'fileNameRequired';
+  if (value.includes('\0')) return 'fileNameNullByte';
   if (value === '.' || value === '..' || value.includes('/') || value.includes('\\')) {
-    return '目标文件名必须是单个安全文件名，不能包含路径分隔符。';
+    return 'fileNameInvalid';
   }
   return undefined;
 }

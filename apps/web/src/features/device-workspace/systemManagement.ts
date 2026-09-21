@@ -35,7 +35,7 @@ function parseJsonValue(value: unknown): unknown {
   try {
     return JSON.parse(value) as unknown;
   } catch {
-    throw new Error('设备返回了无法解析的数据。');
+    throw new Error('device-response-invalid-json');
   }
 }
 
@@ -51,7 +51,7 @@ function readMessageValue(message: unknown, type: 'ps' | 'services', deviceId: s
 export function parseProcessMessage(message: unknown, deviceId: string): DeviceProcess[] | undefined {
   const value = readMessageValue(message, 'ps', deviceId);
   if (value === undefined) return undefined;
-  if (!isRecord(value)) throw new Error('设备返回的进程列表格式无效。');
+  if (!isRecord(value)) throw new Error('device-process-list-invalid');
 
   return Object.entries(value).flatMap(([key, item]) => {
     if (!isRecord(item)) return [];
@@ -70,7 +70,7 @@ export function parseProcessMessage(message: unknown, deviceId: string): DeviceP
 export function parseServicesMessage(message: unknown, deviceId: string): DeviceService[] | undefined {
   const value = readMessageValue(message, 'services', deviceId);
   if (value === undefined) return undefined;
-  if (!Array.isArray(value)) throw new Error('设备返回的服务列表格式无效。');
+  if (!Array.isArray(value)) throw new Error('device-service-list-invalid');
 
   return value.flatMap((item) => {
     if (!isRecord(item) || typeof item.name !== 'string') return [];

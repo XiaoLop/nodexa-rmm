@@ -2,6 +2,7 @@ import type { GatewayClient } from '@meshcentral/control-client';
 import { batchUploadBandwidthConfig, calculateBatchUploadChunkSize } from './bandwidth';
 import type {
   BatchUploadConfig,
+  BatchUploadDetail,
   BatchUploadDeviceSnapshot,
   BatchUploadSnapshot,
   BatchUploadTask,
@@ -25,7 +26,7 @@ interface WorkerStatus {
   type: 'status';
   taskId: string;
   status: BatchUploadTaskStatus;
-  detail?: string;
+  detail?: BatchUploadDetail;
 }
 
 interface WorkerProgress {
@@ -41,14 +42,14 @@ interface WorkerCompleted {
   type: 'completed';
   taskId: string;
   result: 'success' | 'skipped';
-  detail?: string;
+  detail?: BatchUploadDetail;
 }
 
 interface WorkerFailed {
   type: 'failed';
   taskId: string;
   errorCode: string;
-  error: string;
+  error?: BatchUploadDetail;
 }
 
 interface WorkerCancelled {
@@ -154,7 +155,7 @@ export class BatchUploadManager {
         status: task.device.online ? ('queued' as const) : ('skipped' as const),
         totalBytes: file.size,
         completedAt: task.device.online ? undefined : now,
-        detail: task.device.online ? undefined : '设备离线，未建立文件中继。',
+        detail: task.device.online ? undefined : { code: 'deviceOffline' },
       })),
     );
     this.snapshot = {
@@ -181,14 +182,14 @@ export class BatchUploadManager {
       this.updateTask(taskId, {
         status: 'cancelled',
         completedAt: Date.now(),
-        detail: '用户取消。',
+        detail: { code: 'cancelledByUser' },
       });
       this.finishIfDone();
       return;
     }
     const slot = this.workers.find((candidate) => candidate.taskId === taskId);
     if (!slot) return;
-    this.updateTask(taskId, { status: 'cancelling', detail: '正在取消上传…' });
+    this.updateTask(taskId, { status: 'cancelling', detail: { code: 'cancelling' } });
     slot.worker.postMessage({ type: 'cancel', taskId });
   }
 
@@ -203,13 +204,13 @@ export class BatchUploadManager {
       ...this.snapshot,
       tasks: this.snapshot.tasks.map((task) =>
         queued.has(task.id)
-          ? { ...task, status: 'cancelled', completedAt: now, detail: '批量任务已取消。' }
+          ? { ...task, status: 'cancelled', completedAt: now, detail: { code: 'cancelledByUser' } }
           : task,
       ),
     };
     for (const slot of this.workers) {
       if (slot.taskId) {
-        this.updateTask(slot.taskId, { status: 'cancelling', detail: '正在取消上传…' }, false);
+        this.updateTask(slot.taskId, { status: 'cancelling', detail: { code: 'cancelling' } }, false);
         slot.worker.postMessage({ type: 'cancel', taskId: slot.taskId });
       }
     }
@@ -265,7 +266,7 @@ export class BatchUploadManager {
               ...task,
               status: 'failed',
               errorCode: 'gateway-disconnected',
-              detail: '网关连接已断开，任务未开始。',
+              detail: { code: 'gatewayDisconnected' },
               completedAt: now,
             }
           : task,
@@ -300,7 +301,7 @@ export class BatchUploadManager {
         this.updateTask(taskId, {
           status: 'failed',
           errorCode: 'worker-error',
-          detail: event.message || '上传 Worker 异常。',
+          detail: event.message ? { code: 'workerError', raw: event.message } : { code: 'workerError' },
           completedAt: Date.now(),
           workerId: undefined,
         });
@@ -365,7 +366,7 @@ export class BatchUploadManager {
       case 'cancelled':
         this.updateTask(message.taskId, {
           status: 'cancelled',
-          detail: '用户取消。',
+          detail: { code: 'cancelledByUser' },
           completedAt: Date.now(),
           workerId: undefined,
         });
@@ -381,7 +382,7 @@ export class BatchUploadManager {
       slot.worker.postMessage({
         type: 'rpc-error',
         requestId: message.requestId,
-        error: '网关不可用。',
+        error: 'gateway-unavailable',
       });
       return;
     }
@@ -394,7 +395,7 @@ export class BatchUploadManager {
         slot.worker.postMessage({
           type: 'rpc-error',
           requestId: message.requestId,
-          error: error instanceof Error ? error.message : '网关请求失败。',
+          error: error instanceof Error ? error.message : 'gateway-request-failed',
         });
       }
     }
@@ -402,7 +403,7 @@ export class BatchUploadManager {
 
   private handleControlSend(slot: WorkerSlot, message: WorkerControlSend): void {
     try {
-      if (!this.gatewayClient || !slot.taskId) throw new Error('网关不可用。');
+      if (!this.gatewayClient || !slot.taskId) throw new Error('gateway-unavailable');
       this.gatewayClient.send(message.payload);
       slot.worker.postMessage({
         type: 'rpc-result',
@@ -413,7 +414,7 @@ export class BatchUploadManager {
       slot.worker.postMessage({
         type: 'rpc-error',
         requestId: message.requestId,
-        error: error instanceof Error ? error.message : '网关发送失败。',
+        error: error instanceof Error ? error.message : 'gateway-send-failed',
       });
     }
   }

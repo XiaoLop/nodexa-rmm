@@ -40,6 +40,11 @@ export interface FileArchiveProgress {
   progress?: number;
 }
 
+export interface FileSessionError {
+  code: string;
+  raw?: string;
+}
+
 interface UseDeviceFilesSessionOptions {
   device: Device;
   gatewayClient?: GatewayClient;
@@ -55,7 +60,7 @@ export function useDeviceFilesSession({
 }: UseDeviceFilesSessionOptions) {
   const [status, setStatus] = useState<FileWorkspaceStatus>('connecting');
   const [listing, setListing] = useState<DirectoryListing>();
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<FileSessionError>();
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [activeTransfer, setActiveTransfer] = useState<FileTransferView>();
   const [archiveProgress, setArchiveProgress] = useState<FileArchiveProgress>();
@@ -84,12 +89,15 @@ export function useDeviceFilesSession({
 
   const setOperationError = (operationError: unknown, fallback: string) => {
     if (operationError instanceof FileOperationError && operationError.code === 'cancelled') return;
-    setError(operationError instanceof Error ? operationError.message : fallback);
+    setError({
+      code: operationError instanceof FileOperationError ? operationError.code : fallback,
+      raw: operationError instanceof Error ? operationError.message : undefined,
+    });
   };
 
   const readDirectory = async (path: string, preserveSelection = false) => {
     const files = filesRef.current;
-    if (!files) throw new FileOperationError('文件中继尚未连接。', 'connection-lost');
+    if (!files) throw new FileOperationError('File relay is not connected.', 'connection-lost');
     const lifecycle = lifecycleRef.current;
     setError(undefined);
     setStatus('busy');
@@ -103,7 +111,7 @@ export function useDeviceFilesSession({
       setStatus('ready');
     } catch (directoryError) {
       if (lifecycleRef.current !== lifecycle) return;
-      setOperationError(directoryError, '目录读取失败。');
+      setOperationError(directoryError, 'read-directory');
       setStatus('error');
       throw directoryError;
     }
@@ -169,7 +177,7 @@ export function useDeviceFilesSession({
         relayRef.current = relay;
         relay.onError((relayError) => {
           if (lifecycleRef.current !== lifecycle) return;
-          setOperationError(relayError, '文件中继连接中断。');
+          setOperationError(relayError, 'connection-lost');
           setStatus('disconnected');
         });
         relay.onClose(() => {
@@ -194,7 +202,7 @@ export function useDeviceFilesSession({
         await readDirectory('');
       } catch (connectionError) {
         if (controller.signal.aborted || lifecycleRef.current !== lifecycle) return;
-        setOperationError(connectionError, '文件中继连接失败。');
+        setOperationError(connectionError, 'connection-lost');
         setStatus('error');
       }
     })();
@@ -214,7 +222,7 @@ export function useDeviceFilesSession({
       send(files);
       await refresh();
     } catch (operationError) {
-      setOperationError(operationError, '文件操作无法发送。');
+      setOperationError(operationError, 'operation');
     }
   };
 
@@ -296,7 +304,7 @@ export function useDeviceFilesSession({
       });
       if (lifecycleRef.current === lifecycle) await refresh();
     } catch (uploadError) {
-      if (lifecycleRef.current === lifecycle) setOperationError(uploadError, '文件上传失败。');
+      if (lifecycleRef.current === lifecycle) setOperationError(uploadError, 'upload');
     } finally {
       if (lifecycleRef.current === lifecycle) {
         setActiveTransfer(undefined);
@@ -341,7 +349,7 @@ export function useDeviceFilesSession({
         }
       }
     } catch (downloadError) {
-      setOperationError(downloadError, '文件下载失败。');
+      setOperationError(downloadError, 'download');
     }
   };
 
@@ -357,7 +365,7 @@ export function useDeviceFilesSession({
       );
       setArchiveProgress({ type: 'zipping' });
     } catch (archiveError) {
-      setOperationError(archiveError, '压缩请求无法发送。');
+      setOperationError(archiveError, 'archive');
     }
   };
 
@@ -369,7 +377,7 @@ export function useDeviceFilesSession({
       files.extractZip(entry.path, destination);
       setArchiveProgress({ type: 'unzipping' });
     } catch (archiveError) {
-      setOperationError(archiveError, '解压请求无法发送。');
+      setOperationError(archiveError, 'archive');
     }
   };
 
@@ -393,7 +401,7 @@ export function useDeviceFilesSession({
     download,
     createZip,
     extractZip,
-    cancelTransfer: () => filesRef.current?.cancelActive('用户取消文件传输。'),
+    cancelTransfer: () => filesRef.current?.cancelActive('File transfer cancelled by user.'),
     reconnect: () => setReconnectVersion((current) => current + 1),
   };
 }

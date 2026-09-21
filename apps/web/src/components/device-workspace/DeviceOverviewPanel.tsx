@@ -19,33 +19,24 @@ import type { GatewayClient, GatewayEvent } from '@meshcentral/control-client';
 import { formatEventMessage } from '@meshcentral/shared-state';
 import { Button, Empty, Progress, Tag } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type {
   DeviceWorkspaceModel,
   WorkspaceTab,
 } from '../../features/device-workspace/types';
+import { useFormatters } from '../../i18n/formatters';
 
-function formatEventTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '刚刚';
-  return new Intl.DateTimeFormat('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(date);
-}
-
-function statusIndicator(status: string | undefined, okValue = 'OK') {
+function statusIndicator(status: string | undefined, labels: { unknown: string; healthy: string; warning: string; danger: string }, okValue = 'OK') {
   if (!status) {
-    return { className: '', icon: <CheckCircleFilled />, text: '未检测' };
+    return { className: '', icon: <CheckCircleFilled />, text: labels.unknown };
   }
   if (status === okValue || status === 'true') {
-    return { className: 'is-healthy', icon: <CheckCircleFilled />, text: '正常运行' };
+    return { className: 'is-healthy', icon: <CheckCircleFilled />, text: labels.healthy };
   }
   if (status === 'WARNING') {
-    return { className: 'is-warning', icon: <ExclamationCircleFilled />, text: '存在警告' };
+    return { className: 'is-warning', icon: <ExclamationCircleFilled />, text: labels.warning };
   }
-  return { className: 'is-danger', icon: <CloseCircleFilled />, text: '异常或关闭' };
+  return { className: 'is-danger', icon: <CloseCircleFilled />, text: labels.danger };
 }
 
 export function DeviceOverviewPanel({
@@ -61,13 +52,11 @@ export function DeviceOverviewPanel({
   gatewayConnected: boolean;
   onNavigate: (tab: WorkspaceTab) => void;
 }) {
+  const { t } = useTranslation();
+  const { time, dateTime } = useFormatters();
   const hw = model.hardware;
   const sec = hw?.security;
-  const hasSystemSummary = model.hasSystemDetails && (
-    hw.cpuName !== '未提供' ||
-    hw.memoryTotal !== '未提供' ||
-    hw.storageTotal !== '未提供'
-  );
+  const hasSystemSummary = model.hasSystemDetails && Boolean(hw.cpuName || hw.memoryTotal || hw.storageTotal);
   const hasNetworkSummary = model.hasNetworkDetails && hw.interfaces.length > 0;
   const hasSecurityDetails = Boolean(
     sec?.antiVirus ||
@@ -102,47 +91,48 @@ export function DeviceOverviewPanel({
       .slice(0, 20);
   }, [events, historyEvents, model.device.id]);
 
-  const avStatus = statusIndicator(sec?.antiVirus);
-  const fwStatus = statusIndicator(sec?.firewall);
-  const updateStatus = statusIndicator(sec?.autoUpdate);
+  const statusLabels = { unknown: t('deviceWorkspace.overview.status.unknown'), healthy: t('deviceWorkspace.overview.status.healthy'), warning: t('deviceWorkspace.overview.status.warning'), danger: t('deviceWorkspace.overview.status.danger') };
+  const avStatus = statusIndicator(sec?.antiVirus, statusLabels);
+  const fwStatus = statusIndicator(sec?.firewall, statusLabels);
+  const updateStatus = statusIndicator(sec?.autoUpdate, statusLabels);
   const rtpStatus = statusIndicator(
-    sec?.realTimeProtection === undefined ? undefined : sec.realTimeProtection ? 'OK' : 'PROBLEM',
+    sec?.realTimeProtection === undefined ? undefined : sec.realTimeProtection ? 'OK' : 'PROBLEM', statusLabels,
   );
 
   return (
     <div className="workspace-overview">
       {(hasSystemSummary || hasNetworkSummary) && (
         <div className="workspace-overview-metrics workspace-static-facts">
-          {model.hasSystemDetails && hw.cpuName !== '未提供' && (
+          {model.hasSystemDetails && hw.cpuName && (
             <section className="workspace-overview-metric tone-primary">
               <div>
-                <span>处理器 (CPU)</span>
+                <span>{t('deviceWorkspace.overview.cpu')}</span>
                 <strong title={hw.cpuName}>{hw.cpuShortName}</strong>
-                {hw.cpuSpeed && <em>频率 {hw.cpuSpeed}</em>}
+                {hw.cpuSpeed && <em>{t('deviceWorkspace.overview.frequency', { value: hw.cpuSpeed })}</em>}
               </div>
               <ThunderboltOutlined className="workspace-metric-icon" />
             </section>
           )}
 
-          {model.hasSystemDetails && hw.memoryTotal !== '未提供' && (
+          {model.hasSystemDetails && hw.memoryTotal && (
             <section className="workspace-overview-metric tone-success">
               <div>
-                <span>系统物理内存</span>
+                <span>{t('deviceWorkspace.overview.memory')}</span>
                 <strong>{hw.memoryTotal}</strong>
                 {(hw.memorySlots > 0 || hw.memorySpeed) && (
-                  <em>{hw.memorySlots > 0 ? `${hw.memorySlots} 个插槽` : ''} {hw.memorySpeed ? `· ${hw.memorySpeed}` : ''}</em>
+                  <em>{hw.memorySlots > 0 ? t('deviceWorkspace.overview.slots', { count: hw.memorySlots }) : ''} {hw.memorySpeed ? `· ${hw.memorySpeed}` : ''}</em>
                 )}
               </div>
               <AppstoreOutlined className="workspace-metric-icon" />
             </section>
           )}
 
-          {model.hasSystemDetails && hw.storageTotal !== '未提供' && (
+          {model.hasSystemDetails && hw.storageTotal && (
             <section className="workspace-overview-metric tone-warning">
               <div>
-                <span>本地存储空间</span>
+                <span>{t('deviceWorkspace.overview.storage')}</span>
                 <strong>{hw.storageTotal}</strong>
-                <em>{hw.storageRemaining !== '未提供' ? `可用 ${hw.storageRemaining}` : ''}{hw.volumes.length > 0 ? ` · ${hw.volumes.length} 个逻辑卷` : ''}</em>
+                <em>{hw.storageRemaining ? t('deviceWorkspace.overview.available', { value: hw.storageRemaining }) : ''}{hw.volumes.length > 0 ? ` · ${t('deviceWorkspace.overview.volumes', { count: hw.volumes.length })}` : ''}</em>
               </div>
               <DatabaseOutlined className="workspace-metric-icon" />
             </section>
@@ -151,9 +141,9 @@ export function DeviceOverviewPanel({
           {hasNetworkSummary && (
             <section className="workspace-overview-metric tone-cyan">
               <div>
-                <span>主网络适配器</span>
+                <span>{t('deviceWorkspace.overview.network')}</span>
                 <strong>{hw.primarySpeed || hw.interfaces[0]?.name}</strong>
-                <em>{model.ipAddress !== '—' ? `${model.ipAddress} · ` : ''}{hw.interfaces.length} 个活动网卡</em>
+                <em>{model.ipAddress ? `${model.ipAddress} · ` : ''}{t('deviceWorkspace.overview.interfaces', { count: hw.interfaces.length })}</em>
               </div>
               <GlobalOutlined className="workspace-metric-icon" />
             </section>
@@ -166,57 +156,57 @@ export function DeviceOverviewPanel({
           <section className="console-card workspace-panel workspace-health-card">
             <div className="card-header">
               <div>
-                <h2>设备健康与安全中心</h2>
-                <span>{hasSecurityDetails ? '系统运行基线与 Windows 安全中心检测' : '设备与业务网关连接状态'}</span>
+                <h2>{t('deviceWorkspace.overview.healthTitle')}</h2>
+                <span>{hasSecurityDetails ? t('deviceWorkspace.overview.securityDescription') : t('deviceWorkspace.overview.connectionDescription')}</span>
               </div>
               <Tag color={model.device.online ? 'success' : 'default'}>
-                {model.device.online ? '设备在线' : '设备离线'}
+                {model.device.online ? t('common.status.online') : t('common.status.offline')}
               </Tag>
             </div>
 
             {sec?.pendingReboot && (
               <div className="workspace-pending-banner">
                 <WarningOutlined />
-                <span>系统提示：检测到待重启事项（{sec.pendingReboot}），建议适时重启设备。</span>
+                <span>{t('deviceWorkspace.overview.pendingReboot', { value: sec.pendingReboot })}</span>
               </div>
             )}
 
             <div className="workspace-health-grid">
               <div className={model.device.online ? 'is-healthy' : 'is-danger'}>
                 <DesktopOutlined />
-                <span>设备信令<strong>{model.device.online ? '连接正常' : '已断开'}</strong></span>
+                <span>{t('deviceWorkspace.overview.deviceSignal')}<strong>{model.device.online ? t('deviceWorkspace.overview.connected') : t('common.status.disconnected')}</strong></span>
                 {model.device.online ? <CheckCircleFilled /> : <CloseCircleFilled />}
               </div>
               <div className={gatewayConnected ? 'is-healthy' : 'is-danger'}>
                 <CloudServerOutlined />
-                <span>业务网关<strong>{gatewayConnected ? '正常连接' : '网关离线'}</strong></span>
+                <span>{t('deviceWorkspace.overview.gateway')}<strong>{gatewayConnected ? t('deviceWorkspace.overview.connected') : t('deviceWorkspace.overview.gatewayOffline')}</strong></span>
                 {gatewayConnected ? <CheckCircleFilled /> : <CloseCircleFilled />}
               </div>
               {sec?.antiVirus && (
                 <div className={avStatus.className}>
                   <SafetyCertificateOutlined />
-                  <span>病毒防护<strong>{avStatus.text}</strong></span>
+                  <span>{t('deviceWorkspace.overview.antivirus')}<strong>{avStatus.text}</strong></span>
                   {avStatus.icon}
                 </div>
               )}
               {sec?.firewall && (
                 <div className={fwStatus.className}>
                   <SafetyCertificateOutlined />
-                  <span>系统防火墙<strong>{fwStatus.text}</strong></span>
+                  <span>{t('deviceWorkspace.overview.firewall')}<strong>{fwStatus.text}</strong></span>
                   {fwStatus.icon}
                 </div>
               )}
               {sec?.autoUpdate && (
                 <div className={updateStatus.className}>
                   <ClockCircleOutlined />
-                  <span>自动更新<strong>{updateStatus.text}</strong></span>
+                  <span>{t('deviceWorkspace.overview.updates')}<strong>{updateStatus.text}</strong></span>
                   {updateStatus.icon}
                 </div>
               )}
               {sec?.realTimeProtection !== undefined && (
                 <div className={rtpStatus.className}>
                   <SafetyCertificateOutlined />
-                  <span>实时保护<strong>{rtpStatus.text}</strong></span>
+                  <span>{t('deviceWorkspace.overview.realtimeProtection')}<strong>{rtpStatus.text}</strong></span>
                   {rtpStatus.icon}
                 </div>
               )}
@@ -227,10 +217,10 @@ export function DeviceOverviewPanel({
             <section className="console-card workspace-panel workspace-volumes-card">
               <div className="card-header">
                 <div>
-                  <h2>磁盘卷存储分布</h2>
-                  <span>磁盘逻辑分区与剩余容量</span>
+                  <h2>{t('deviceWorkspace.overview.volumesTitle')}</h2>
+                  <span>{t('deviceWorkspace.overview.volumesDescription')}</span>
                 </div>
-                <small style={{ color: 'var(--muted)', fontSize: 10 }}>共 {hw.volumes.length} 个卷</small>
+                <small style={{ color: 'var(--muted)', fontSize: 10 }}>{t('deviceWorkspace.overview.volumeCount', { count: hw.volumes.length })}</small>
               </div>
               <div className="workspace-volume-list">
                 {hw.volumes.map((vol) => (
@@ -240,7 +230,7 @@ export function DeviceOverviewPanel({
                         <HddOutlined style={{ color: '#4096ff' }} />
                         {vol.letter} {vol.name ? `[${vol.name}]` : ''}
                       </strong>
-                      <span>{vol.type} · 已用 {vol.usedPercent}%</span>
+                      <span>{vol.type} · {t('deviceWorkspace.overview.usedPercent', { value: vol.usedPercent })}</span>
                     </div>
                     <Progress
                       percent={vol.usedPercent}
@@ -249,8 +239,8 @@ export function DeviceOverviewPanel({
                       strokeColor={vol.usedPercent >= 90 ? '#ff4d4f' : vol.usedPercent >= 75 ? '#faad14' : '#2f80ff'}
                     />
                     <div className="workspace-volume-meta">
-                      <span>总容量 <b>{vol.sizeFormatted}</b></span>
-                      <span>剩余可用 <b>{vol.remainingFormatted}</b></span>
+                      <span>{t('deviceWorkspace.overview.totalCapacity')} <b>{vol.sizeFormatted}</b></span>
+                      <span>{t('deviceWorkspace.overview.remaining')} <b>{vol.remainingFormatted}</b></span>
                     </div>
                   </div>
                 ))}
@@ -262,19 +252,19 @@ export function DeviceOverviewPanel({
         <section className="console-card workspace-panel workspace-profile-card">
           <div className="card-header">
             <div>
-              <h2>系统与硬件规格</h2>
-              <span>设备身份与底层组件信息</span>
+              <h2>{t('deviceWorkspace.overview.profileTitle')}</h2>
+              <span>{t('deviceWorkspace.overview.profileDescription')}</span>
             </div>
           </div>
           <dl className="workspace-profile-list">
-            <div><dt><DesktopOutlined /> 主机名</dt><dd title={model.hostname}>{model.hostname}</dd></div>
-            <div><dt><CloudServerOutlined /> 操作系统</dt><dd title={model.platform}>{model.platform}</dd></div>
-            {model.hasSystemDetails && hw.cpuName !== '未提供' && <div><dt><ThunderboltOutlined /> 处理器型号</dt><dd title={hw.cpuName}>{hw.cpuName}</dd></div>}
-            {model.hasSystemDetails && hw.gpuName !== '—' && <div><dt><DesktopOutlined /> 显卡设备</dt><dd title={hw.gpuName}>{hw.gpuName}</dd></div>}
-            {model.hasSystemDetails && hw.boardName !== '—' && <div><dt><AppstoreOutlined /> 主板 / BIOS</dt><dd title={`${hw.boardName} (${hw.biosVersion})`}>{hw.boardName}</dd></div>}
-            {model.currentUser !== '—' && <div><dt><UserOutlined /> 当前用户</dt><dd>{model.currentUser}</dd></div>}
-            {model.uptime !== '—' && <div><dt><ClockCircleOutlined /> 在线运行时长</dt><dd>{model.uptime}</dd></div>}
-            {hw.agentVersion && <div><dt><ApiOutlined /> Agent 核心</dt><dd>{hw.agentVersion} {hw.agentIsRoot ? '(管理员模式)' : ''}</dd></div>}
+            <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.hostname')}</dt><dd title={model.hostname}>{model.hostname}</dd></div>
+            <div><dt><CloudServerOutlined /> {t('deviceWorkspace.overview.fields.platform')}</dt><dd title={model.platform}>{model.platform}</dd></div>
+            {model.hasSystemDetails && hw.cpuName && <div><dt><ThunderboltOutlined /> {t('deviceWorkspace.overview.fields.cpu')}</dt><dd title={hw.cpuName}>{hw.cpuName}</dd></div>}
+            {model.hasSystemDetails && hw.gpuName && <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.gpu')}</dt><dd title={hw.gpuName}>{hw.gpuName}</dd></div>}
+            {model.hasSystemDetails && hw.boardName && <div><dt><AppstoreOutlined /> {t('deviceWorkspace.overview.fields.board')}</dt><dd title={`${hw.boardName} (${hw.biosVersion ?? ''})`}>{hw.boardName}</dd></div>}
+            {model.currentUser && <div><dt><UserOutlined /> {t('deviceWorkspace.overview.fields.currentUser')}</dt><dd>{model.currentUser}</dd></div>}
+            {model.uptimeSeconds !== undefined && <div><dt><ClockCircleOutlined /> {t('deviceWorkspace.overview.fields.uptime')}</dt><dd>{Math.floor(model.uptimeSeconds / 86400)}d {Math.floor((model.uptimeSeconds % 86400) / 3600)}h</dd></div>}
+            {hw.agentVersion && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.agent')}</dt><dd>{hw.agentVersion} {hw.agentIsRoot ? `(${t('deviceWorkspace.overview.adminMode')})` : ''}</dd></div>}
           </dl>
         </section>
       </div>
@@ -282,8 +272,8 @@ export function DeviceOverviewPanel({
       <div className="workspace-overview-bottom">
         <section className="console-card workspace-panel workspace-overview-activity">
           <div className="card-header">
-            <div><h2>最近设备活动</h2><span>当前设备的实时网关事件</span></div>
-            <Button type="link" onClick={() => onNavigate('logs')}>查看日志</Button>
+            <div><h2>{t('deviceWorkspace.overview.activityTitle')}</h2><span>{t('deviceWorkspace.overview.activityDescription')}</span></div>
+            <Button type="link" onClick={() => onNavigate('logs')}>{t('deviceWorkspace.overview.viewLogs')}</Button>
           </div>
           <div className="workspace-overview-event-list">
             {recentEvents.map((event) => (
@@ -291,26 +281,26 @@ export function DeviceOverviewPanel({
                 <i className={event.type === 'deviceOffline' ? 'is-danger' : ''} />
                 <span>
                   <strong>{formatEventMessage(event, [model.device], [])}</strong>
-                  <small>{event.user ?? '系统'}</small>
+                  <small>{event.user ?? t('common.status.systemEvent')}</small>
                 </span>
-                <time>{formatEventTime(event.occurredAt)}</time>
+                <time>{time(event.occurredAt)}</time>
               </div>
             ))}
-            {recentEvents.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无设备活动" />}
+            {recentEvents.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('deviceWorkspace.overview.noActivity')} />}
           </div>
         </section>
 
         <section className="console-card workspace-panel workspace-overview-quality">
           <div className="card-header">
-            <div><h2>网络配置与连接审计</h2><span>接口详情与最后接入来源</span></div>
+            <div><h2>{t('deviceWorkspace.overview.networkTitle')}</h2><span>{t('deviceWorkspace.overview.networkDescription')}</span></div>
           </div>
           <dl className="workspace-profile-list">
-            {model.ipAddress !== '—' && <div><dt><GlobalOutlined /> IPv4 地址</dt><dd>{model.ipAddress}</dd></div>}
-            {model.macAddress !== '—' && <div><dt><GlobalOutlined /> 物理 MAC</dt><dd>{model.macAddress}</dd></div>}
-            {model.hasNetworkDetails && hw.primaryNic !== '未提供' && <div><dt><ApiOutlined /> 主网卡接口</dt><dd>{hw.primaryNic}</dd></div>}
-            {model.hasNetworkDetails && hw.dns.length > 0 && <div><dt><GlobalOutlined /> DNS 服务器</dt><dd title={hw.dns.join(', ')}>{hw.dns[0]}</dd></div>}
-            {hw.lastConnectAddr && <div><dt><DesktopOutlined /> 远端接入源</dt><dd title={hw.lastConnectAddr}>{hw.lastConnectAddr}</dd></div>}
-            {(hw.lastConnectTime || model.lastHeartbeat) && <div><dt><ClockCircleOutlined /> 最后连接时间</dt><dd>{hw.lastConnectTime || (model.lastHeartbeat === '刚刚' ? '刚刚' : new Date(model.lastHeartbeat).toLocaleString('zh-CN'))}</dd></div>}
+            {model.ipAddress && <div><dt><GlobalOutlined /> {t('deviceWorkspace.overview.fields.ipv4')}</dt><dd>{model.ipAddress}</dd></div>}
+            {model.macAddress && <div><dt><GlobalOutlined /> {t('deviceWorkspace.overview.fields.mac')}</dt><dd>{model.macAddress}</dd></div>}
+            {model.hasNetworkDetails && hw.primaryNic && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.primaryNic')}</dt><dd>{hw.primaryNic}</dd></div>}
+            {model.hasNetworkDetails && hw.dns.length > 0 && <div><dt><GlobalOutlined /> {t('deviceWorkspace.overview.fields.dns')}</dt><dd title={hw.dns.join(', ')}>{hw.dns[0]}</dd></div>}
+            {hw.lastConnectAddr && <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.remoteSource')}</dt><dd title={hw.lastConnectAddr}>{hw.lastConnectAddr}</dd></div>}
+            {(hw.lastConnectTime || model.lastHeartbeatAt) && <div><dt><ClockCircleOutlined /> {t('deviceWorkspace.overview.fields.lastConnection')}</dt><dd>{hw.lastConnectTime || dateTime(model.lastHeartbeatAt as string)}</dd></div>}
           </dl>
         </section>
       </div>

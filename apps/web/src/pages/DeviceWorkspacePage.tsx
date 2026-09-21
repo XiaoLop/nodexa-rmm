@@ -11,6 +11,7 @@ import {
 } from '@meshcentral/control-client';
 import { Button, Empty, message } from 'antd';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceLogsPanel } from '../components/device-workspace/DeviceLogsPanel';
@@ -67,6 +68,7 @@ function workspaceTab(value: string | null): WorkspaceTab {
 }
 
 export function DeviceWorkspacePage() {
+  const { t } = useTranslation();
   const data = useGatewayData();
   const navigate = useNavigate();
   const { deviceId } = useParams();
@@ -86,7 +88,7 @@ export function DeviceWorkspacePage() {
     mouse: true,
     screenInput: false,
     resolution: '1280 × 720',
-    colorDepth: '32 位',
+    colorDepth: 32,
     quality: 58,
   });
   const device = data.devices.find((item) => item.id === deviceId);
@@ -169,7 +171,7 @@ export function DeviceWorkspacePage() {
       <main
         className="device-workspace-page page-stack workspace-loading"
         aria-busy="true"
-        aria-label="正在加载设备工作区"
+        aria-label={t('deviceWorkspace.loading')}
       >
         {messageContextHolder}
         <header
@@ -264,7 +266,7 @@ export function DeviceWorkspacePage() {
           </div>
         </section>
 
-        <span className="workspace-loading-announcement">正在连接网关并加载设备信息...</span>
+        <span className="workspace-loading-announcement">{t('deviceWorkspace.loadingAnnouncement')}</span>
       </main>
     );
   }

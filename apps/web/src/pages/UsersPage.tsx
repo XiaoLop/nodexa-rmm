@@ -28,38 +28,18 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UserCreateModal } from '../components/users/UserCreateModal';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useFormatters } from '../i18n';
 import '../assets/styles/users.css';
 
-function formatDateTime(value?: string, missing = '未提供') {
-  if (!value) return missing;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return missing;
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '未知错误';
-}
-
-function findLatestUser(users: ManagedUser[], userId: string): ManagedUser {
-  const user = users.find((item) => item.id === userId);
-  if (!user) throw new Error('目标用户已不存在，请刷新列表。');
-  return user;
-}
-
 export function UsersPage() {
+  const { t } = useTranslation();
+  const formatters = useFormatters();
   const navigate = useNavigate();
   const { client, status, userInfo } = useGatewayData();
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -78,6 +58,23 @@ export function UsersPage() {
   const requestSequence = useRef(0);
   const connected = Boolean(client && status === 'connected');
 
+  const formatDateTime = useCallback(
+    (value?: string, missing?: string) => {
+      if (!value) return missing ?? '—';
+      return formatters.dateTime(value) || (missing ?? '—');
+    },
+    [formatters],
+  );
+
+  const findLatestUser = useCallback(
+    (userList: ManagedUser[], userId: string): ManagedUser => {
+      const user = userList.find((item) => item.id === userId);
+      if (!user) throw new Error(t('users.messages.targetUserNotFound'));
+      return user;
+    },
+    [t],
+  );
+
   const loadUsers = useCallback(async (): Promise<ManagedUser[] | undefined> => {
     if (!client || status !== 'connected') return undefined;
     const sequence = ++requestSequence.current;
@@ -95,12 +92,14 @@ export function UsersPage() {
       }
       return result;
     } catch (error) {
-      if (sequence === requestSequence.current) setListError(errorMessage(error));
+      if (sequence === requestSequence.current) {
+        setListError(error instanceof Error ? error.message : t('common.status.unknown'));
+      }
       return undefined;
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [client, status]);
+  }, [client, status, t]);
 
   useEffect(() => {
     if (status === 'connected') void loadUsers();
@@ -110,14 +109,14 @@ export function UsersPage() {
   }, [loadUsers, status]);
 
   const filteredUsers = useMemo(
-    () => filterManagedUsers(users, query, filter),
-    [filter, query, users],
+    () => filterManagedUsers(users, query, filter, formatters.language),
+    [filter, formatters.language, query, users],
   );
 
   const refreshAfterMutation = async (successMessage: string, uncertainMessage?: string) => {
     const refreshed = await loadUsers();
     if (!refreshed) {
-      void messageApi.warning(uncertainMessage ?? `${successMessage}，但列表刷新失败。`);
+      void messageApi.warning(uncertainMessage ?? t('userDetails.partialRefreshFailed', { successMessage }));
       return false;
     }
     void messageApi.success(successMessage);
@@ -130,12 +129,13 @@ export function UsersPage() {
     try {
       await client.users.create(values);
       const refreshed = await refreshAfterMutation(
-        `已创建用户「${values.username}」`,
-        '用户可能已创建，但列表刷新失败。请先刷新列表，不要重复提交。',
+        t('users.messages.createSuccess', { username: values.username }),
+        t('users.messages.createUncertain'),
       );
       if (refreshed) setCreateOpen(false);
     } catch (error) {
-      void messageApi.error(`创建用户失败：${errorMessage(error)}`);
+      const detail = error instanceof Error ? error.message : t('common.status.unknown');
+      void messageApi.error(t('users.messages.createFailed', { detail }));
       throw error;
     } finally {
       setSubmitting(false);
@@ -146,28 +146,38 @@ export function UsersPage() {
     if (!client || status !== 'connected') return;
     const locking = !target.locked;
     modal.confirm({
-      title: locking ? '禁用用户' : '启用用户',
+      title: locking ? t('users.confirm.lockTitle') : t('users.confirm.unlockTitle'),
       content: locking
-        ? `确定要禁用用户「${target.name}」吗？当前版本尚未确认禁用是否会立即终止已有会话。`
-        : `确定要启用用户「${target.name}」吗？`,
-      okText: locking ? '禁用用户' : '启用用户',
-      cancelText: '取消',
+        ? t('users.confirm.lockContent', { name: target.name })
+        : t('users.confirm.unlockContent', { name: target.name }),
+      okText: locking ? t('common.actions.disable') : t('common.actions.enable'),
+      cancelText: t('common.actions.cancel'),
       okButtonProps: { danger: locking },
       onOk: async () => {
         const latestUsers = await client.users.list();
         const latest = findLatestUser(latestUsers, target.id);
-        if (isCurrentUser(latest, userInfo?.id)) throw new Error('不能禁用或启用当前登录用户。');
+        if (isCurrentUser(latest, userInfo?.id)) {
+          throw new Error(t('users.messages.cannotModifySelf'));
+        }
         if (locking && isLastActiveAdministrator(latest, latestUsers)) {
-          throw new Error('不能禁用最后一个可登录的全站管理员。');
+          throw new Error(t('users.messages.cannotLockLastAdmin'));
         }
         try {
           await client.users.setLocked(latest.id, locking, latest.siteRights);
           await refreshAfterMutation(
-            locking ? `账户「${latest.name}」已禁用` : `账户「${latest.name}」已启用`,
-            locking ? '账户禁用请求已成功，但列表刷新失败，活动会话状态也尚未确认。' : undefined,
+            locking
+              ? t('users.messages.lockSuccess', { name: latest.name })
+              : t('users.messages.unlockSuccess', { name: latest.name }),
+            locking ? t('users.messages.lockUncertain') : undefined,
           );
         } catch (error) {
-          void messageApi.error(`${locking ? '禁用' : '启用'}用户失败：${errorMessage(error)}`);
+          const detail = error instanceof Error ? error.message : t('common.status.unknown');
+          void messageApi.error(
+            t('users.messages.lockFailed', {
+              action: locking ? t('common.actions.disable') : t('common.actions.enable'),
+              detail,
+            }),
+          );
           throw error;
         }
       },
@@ -176,11 +186,11 @@ export function UsersPage() {
 
   const openDelete = (target: ManagedUser) => {
     if (isCurrentUser(target, userInfo?.id)) {
-      void messageApi.error('不能删除当前登录用户。');
+      void messageApi.error(t('users.messages.cannotDeleteSelf'));
       return;
     }
     if (isLastActiveAdministrator(target, users)) {
-      void messageApi.error('不能删除最后一个可登录的全站管理员。');
+      void messageApi.error(t('users.messages.cannotDeleteLastAdmin'));
       return;
     }
     setDeleteConfirmation('');
@@ -193,15 +203,20 @@ export function UsersPage() {
     try {
       const latestUsers = await client.users.list();
       const latest = findLatestUser(latestUsers, deletingUser.id);
-      if (isCurrentUser(latest, userInfo?.id)) throw new Error('不能删除当前登录用户。');
+      if (isCurrentUser(latest, userInfo?.id)) {
+        throw new Error(t('users.messages.cannotDeleteSelf'));
+      }
       if (isLastActiveAdministrator(latest, latestUsers)) {
-        throw new Error('不能删除最后一个可登录的全站管理员。');
+        throw new Error(t('users.messages.cannotDeleteLastAdmin'));
       }
       await client.users.remove(latest.id, latest.name);
-      const refreshed = await refreshAfterMutation(`已删除用户「${latest.name}」`);
+      const refreshed = await refreshAfterMutation(
+        t('users.messages.deleteSuccess', { name: latest.name }),
+      );
       if (refreshed) setDeletingUser(undefined);
     } catch (error) {
-      void messageApi.error(`删除用户失败：${errorMessage(error)}`);
+      const detail = error instanceof Error ? error.message : t('common.status.unknown');
+      void messageApi.error(t('users.messages.deleteFailed', { detail }));
     } finally {
       setSubmitting(false);
     }
@@ -209,7 +224,7 @@ export function UsersPage() {
 
   const columns: TableColumnsType<ManagedUser> = [
     {
-      title: '用户',
+      title: t('users.columns.user'),
       key: 'user',
       fixed: 'left',
       width: 250,
@@ -226,47 +241,57 @@ export function UsersPage() {
       ),
     },
     {
-      title: '状态',
+      title: t('users.columns.status'),
       key: 'status',
       width: 190,
       render: (_, user) => (
         <Space size={[4, 4]} wrap>
-          <Tag color={user.locked ? 'error' : 'success'}>{user.locked ? '已锁定' : '正常'}</Tag>
-          {user.resetNextLogin ? <Tag color="warning">待修改密码</Tag> : null}
+          <Tag color={user.locked ? 'error' : 'success'}>
+            {user.locked ? t('users.status.locked') : t('users.status.active')}
+          </Tag>
+          {user.resetNextLogin ? <Tag color="warning">{t('users.status.resetRequired')}</Tag> : null}
         </Space>
       ),
     },
     {
-      title: '账户类型',
+      title: t('users.columns.type'),
       key: 'type',
       width: 130,
       render: (_, user) =>
-        isFullAdministrator(user.siteRights) ? <Tag color="blue">全站管理员</Tag> : '普通用户',
+        isFullAdministrator(user.siteRights) ? (
+          <Tag color="blue">{t('users.status.siteAdmin')}</Tag>
+        ) : (
+          t('users.status.standardUser')
+        ),
     },
     {
-      title: '当前在线',
+      title: t('users.columns.online'),
       key: 'online',
       width: 140,
       render: (_, user) => {
-        if (!sessionsKnown) return <Tag>未知</Tag>;
+        if (!sessionsKnown) return <Tag>{t('users.status.unknown')}</Tag>;
         const count = sessionCounts[user.id] ?? 0;
-        return count > 0 ? <Tag color="success">在线 · {count}</Tag> : <Tag>离线</Tag>;
+        return count > 0 ? (
+          <Tag color="success">{t('users.status.onlineWithCount', { count })}</Tag>
+        ) : (
+          <Tag>{t('common.status.offline')}</Tag>
+        );
       },
     },
     {
-      title: '最近登录',
+      title: t('users.columns.lastLoginAt'),
       dataIndex: 'lastLoginAt',
       width: 180,
-      render: (value?: string) => formatDateTime(value, '从未登录'),
+      render: (value?: string) => formatDateTime(value, t('users.status.neverLoggedIn')),
     },
     {
-      title: '最近访问',
+      title: t('users.columns.lastAccessAt'),
       dataIndex: 'lastAccessAt',
       width: 180,
       render: (value?: string) => formatDateTime(value),
     },
     {
-      title: '操作',
+      title: t('users.columns.actions'),
       key: 'actions',
       fixed: 'right',
       width: 275,
@@ -276,7 +301,7 @@ export function UsersPage() {
         return (
           <Space size="small">
             <Button type="link" size="small" onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}>
-              查看
+              {t('common.actions.view')}
             </Button>
             <Button
               type="link"
@@ -285,7 +310,7 @@ export function UsersPage() {
               disabled={!connected}
               onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}
             >
-              编辑
+              {t('common.actions.edit')}
             </Button>
             <Button
               type="link"
@@ -295,7 +320,7 @@ export function UsersPage() {
               disabled={!connected || current || (!user.locked && protectsAdmin)}
               onClick={() => confirmLockChange(user)}
             >
-              {user.locked ? '启用' : '禁用'}
+              {user.locked ? t('common.actions.enable') : t('common.actions.disable')}
             </Button>
             <Button
               type="link"
@@ -305,7 +330,7 @@ export function UsersPage() {
               disabled={!connected || current || protectsAdmin}
               onClick={() => openDelete(user)}
             >
-              删除
+              {t('common.actions.delete')}
             </Button>
           </Space>
         );
@@ -319,8 +344,8 @@ export function UsersPage() {
       {modalContextHolder}
       <div className="page-heading">
         <div>
-          <h1>用户管理</h1>
-          <p>管理 MeshCentral 本地用户及账户锁定状态</p>
+          <h1>{t('users.title')}</h1>
+          <p>{t('users.subtitle')}</p>
         </div>
         <Button
           type="primary"
@@ -328,7 +353,7 @@ export function UsersPage() {
           disabled={!connected}
           onClick={() => setCreateOpen(true)}
         >
-          创建用户
+          {t('users.createUser')}
         </Button>
       </div>
 
@@ -336,19 +361,19 @@ export function UsersPage() {
         <Alert
           type="warning"
           showIcon
-          message="业务网关未连接"
-          description="当前保留最近一次加载的数据供查看，所有写操作已禁用。重新连接后将自动刷新。"
+          message={t('header.gatewayDisconnected')}
+          description={t('users.gatewayDisconnectedNotice')}
         />
       ) : null}
       {listError ? (
         <Alert
           type="error"
           showIcon
-          message="用户列表加载失败"
+          message={t('users.loadFailed')}
           description={listError}
           action={
             <Button size="small" onClick={() => void loadUsers()}>
-              重新加载
+              {t('users.reload')}
             </Button>
           }
         />
@@ -360,23 +385,23 @@ export function UsersPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             prefix={<SearchOutlined />}
-            placeholder="搜索用户名、真实姓名或邮箱"
+            placeholder={t('users.searchPlaceholder')}
             allowClear
           />
           <Select<UserFilter>
             value={filter}
             onChange={setFilter}
             options={[
-              { value: 'all', label: '全部用户' },
-              { value: 'active', label: '正常' },
-              { value: 'locked', label: '锁定' },
-              { value: 'administrator', label: '全站管理员' },
-              { value: 'reset-required', label: '待修改密码' },
+              { value: 'all', label: t('users.filters.all') },
+              { value: 'active', label: t('users.filters.active') },
+              { value: 'locked', label: t('users.filters.locked') },
+              { value: 'administrator', label: t('users.filters.administrator') },
+              { value: 'reset-required', label: t('users.filters.resetRequired') },
             ]}
           />
           <div className="toolbar-spacer" />
           <Tag>
-            {filteredUsers.length} / {users.length} 个用户
+            {t('users.countTag', { filtered: filteredUsers.length, total: users.length })}
           </Tag>
           <Button
             icon={<ReloadOutlined />}
@@ -384,7 +409,7 @@ export function UsersPage() {
             loading={loading}
             onClick={() => void loadUsers()}
           >
-            刷新
+            {t('common.actions.refresh')}
           </Button>
         </div>
         <Table
@@ -396,12 +421,12 @@ export function UsersPage() {
             defaultPageSize: 20,
             showSizeChanger: true,
             pageSizeOptions: [20, 50, 100],
-            showTotal: (total) => `共 ${total} 个用户`,
+            showTotal: (total) => t('users.totalCount', { count: total }),
           }}
           scroll={{ x: 1345 }}
           locale={{
             emptyText: (
-              <Empty description={users.length ? '没有符合筛选条件的用户' : '暂无用户数据'} />
+              <Empty description={users.length ? t('users.empty.filtered') : t('users.empty.waiting')} />
             ),
           }}
         />
@@ -414,12 +439,12 @@ export function UsersPage() {
         onSubmit={createUser}
       />
       <Modal
-        title="删除用户"
+        title={t('users.confirm.deleteTitle')}
         open={Boolean(deletingUser)}
         onCancel={() => setDeletingUser(undefined)}
         onOk={() => void deleteUser()}
-        okText="永久删除"
-        cancelText="取消"
+        okText={t('users.confirm.deleteOk')}
+        cancelText={t('common.actions.cancel')}
         okButtonProps={{
           danger: true,
           disabled: deleteConfirmation !== deletingUser?.name,
@@ -428,10 +453,12 @@ export function UsersPage() {
         destroyOnHidden
       >
         <p>
-          用户「{deletingUser?.name}」将被永久删除，此操作无法通过前端撤销。最近登录：
-          {formatDateTime(deletingUser?.lastLoginAt, '从未登录')}。
+          {t('users.confirm.deleteNotice', {
+            name: deletingUser?.name,
+            lastLogin: formatDateTime(deletingUser?.lastLoginAt, t('users.status.neverLoggedIn')),
+          })}
         </p>
-        <p>请输入用户名以确认删除：</p>
+        <p>{t('users.confirm.deleteInputTip')}</p>
         <Input
           value={deleteConfirmation}
           onChange={(event) => setDeleteConfirmation(event.target.value)}

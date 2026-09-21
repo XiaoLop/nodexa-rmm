@@ -1,21 +1,23 @@
 import { isFullAdministrator, type ManagedUser } from '@meshcentral/control-client';
+import { createCollator } from '../../i18n';
+import type { AppLanguage } from '../../i18n/language';
 
 export type UserFilter = 'all' | 'active' | 'locked' | 'administrator' | 'reset-required';
-
-const userNameCollator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
 
 export function filterManagedUsers(
   users: ManagedUser[],
   query: string,
   filter: UserFilter,
+  lang?: AppLanguage,
 ): ManagedUser[] {
-  const normalizedQuery = query.trim().toLocaleLowerCase('zh-CN');
+  const collator = createCollator(lang, { numeric: true, sensitivity: 'base' });
+  const normalizedQuery = query.trim().toLowerCase();
   return users
     .filter((user) => {
       const matchesQuery =
         !normalizedQuery ||
         [user.name, user.realName, user.email].some((value) =>
-          value?.toLocaleLowerCase('zh-CN').includes(normalizedQuery),
+          value?.toLowerCase().includes(normalizedQuery),
         );
       if (!matchesQuery) return false;
       if (filter === 'active') return !user.locked;
@@ -24,5 +26,5 @@ export function filterManagedUsers(
       if (filter === 'reset-required') return user.resetNextLogin === true;
       return true;
     })
-    .sort((left, right) => userNameCollator.compare(left.name, right.name));
+    .sort((left, right) => collator.compare(left.name, right.name));
 }

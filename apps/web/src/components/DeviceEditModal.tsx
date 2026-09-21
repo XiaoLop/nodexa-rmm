@@ -2,6 +2,7 @@ import type { GatewayClient } from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { Form, Input, Modal, Select, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DeviceEditModalProps {
   device: Device | null;
@@ -41,6 +42,7 @@ function formValues(device: Device): DeviceEditValues {
 }
 
 export function DeviceEditModal({ device, groups, client, onClose, onSaved }: DeviceEditModalProps) {
+  const { t } = useTranslation();
   const [form] = Form.useForm<DeviceEditValues>();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [submitting, setSubmitting] = useState(false);
@@ -64,11 +66,11 @@ export function DeviceEditModal({ device, groups, client, onClose, onSaved }: De
         groupId: values.groupId,
       });
       await onSaved();
-      void messageApi.success(`已更新「${device.name}」`);
+      void messageApi.success(t('devices.editModal.success', { name: device.name }));
       onClose();
     } catch (error) {
-      const detail = error instanceof Error ? error.message : '未知错误';
-      void messageApi.error(`更新设备失败：${detail}`);
+      const detail = error instanceof Error ? error.message : t('common.status.unknown');
+      void messageApi.error(t('devices.editModal.failed', { detail }));
     } finally {
       setSubmitting(false);
     }
@@ -78,27 +80,35 @@ export function DeviceEditModal({ device, groups, client, onClose, onSaved }: De
     <>
       {messageContextHolder}
       <Modal
-        title="编辑设备"
+        title={t('devices.editModal.title')}
         open={Boolean(device)}
         onCancel={onClose}
         onOk={() => void submit()}
-        okText="保存修改"
-        cancelText="取消"
+        okText={t('common.actions.save')}
+        cancelText={t('common.actions.cancel')}
         confirmLoading={submitting}
         destroyOnHidden
       >
         <Form form={form} layout="vertical" preserve={false} initialValues={initialValues}>
-          <Form.Item name="name" label="设备名称" rules={[{ required: true, whitespace: true, message: '请输入设备名称' }]}>
+          <Form.Item
+            name="name"
+            label={t('devices.editModal.name')}
+            rules={[{ required: true, whitespace: true, message: t('devices.editModal.nameRequired') }]}
+          >
             <Input maxLength={128} />
           </Form.Item>
-          <Form.Item name="desc" label="描述">
+          <Form.Item name="desc" label={t('devices.editModal.desc')}>
             <Input.TextArea rows={3} maxLength={500} />
           </Form.Item>
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" tokenSeparators={[',']} placeholder="输入标签后按回车" />
+          <Form.Item name="tags" label={t('devices.editModal.tags')}>
+            <Select mode="tags" tokenSeparators={[',']} placeholder={t('devices.editModal.tagsPlaceholder')} />
           </Form.Item>
-          <Form.Item name="groupId" label="所属分组">
-            <Select allowClear placeholder="请选择分组" options={groups.map((group) => ({ value: group.id, label: group.name }))} />
+          <Form.Item name="groupId" label={t('devices.editModal.group')}>
+            <Select
+              allowClear
+              placeholder={t('devices.editModal.groupPlaceholder')}
+              options={groups.map((group) => ({ value: group.id, label: group.name }))}
+            />
           </Form.Item>
         </Form>
       </Modal>

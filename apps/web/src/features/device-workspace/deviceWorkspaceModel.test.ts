@@ -34,9 +34,9 @@ describe('createDeviceWorkspaceModel', () => {
       currentUser: 'Administrator',
       groupName: '办公室',
     });
-    expect(model.cpuName).toBe('未提供');
-    expect(model.memorySummary).toBe('未提供');
-    expect(model.networkSummary).toBe('未提供');
+    expect(model.cpuName).toBeUndefined();
+    expect(model.memorySummary).toBeUndefined();
+    expect(model.networkSummary).toBeUndefined();
     expect(model.hardware.volumes).toEqual([]);
     expect(model.hasSystemDetails).toBe(false);
     expect(model.hasNetworkDetails).toBe(false);
@@ -46,9 +46,9 @@ describe('createDeviceWorkspaceModel', () => {
     const model = createDeviceWorkspaceModel({ id: 'node-2', name: 'Node 2', online: false });
 
     expect(model.hostname).toBe('Node 2');
-    expect(model.ipAddress).toBe('—');
-    expect(model.macAddress).toBe('—');
-    expect(model.groupName).toBe('未分组');
+    expect(model.ipAddress).toBeUndefined();
+    expect(model.macAddress).toBeUndefined();
+    expect(model.groupName).toBeUndefined();
   });
 
   it('calculates uptime from the device last boot timestamp', () => {
@@ -62,7 +62,7 @@ describe('createDeviceWorkspaceModel', () => {
       raw: { lastbootuptime: Date.parse('2026-09-14T05:30:00.000Z') },
     });
 
-    expect(model.uptime).toBe('2 天 2 小时');
+    expect(model.uptimeSeconds).toBe(181_800);
   });
 
   it('stops counting uptime at the last online time for an offline device', () => {
@@ -77,7 +77,7 @@ describe('createDeviceWorkspaceModel', () => {
       raw: { lastbootuptime: Date.parse('2026-09-10T05:30:00.000Z') },
     });
 
-    expect(model.uptime).toBe('2 天 2 小时');
+    expect(model.uptimeSeconds).toBe(181_800);
   });
 
   it('does not infer uptime for an offline device without a valid last online time', () => {
@@ -88,7 +88,7 @@ describe('createDeviceWorkspaceModel', () => {
       raw: { lastbootuptime: Date.parse('2026-09-10T05:30:00.000Z') },
     });
 
-    expect(model.uptime).toBe('—');
+    expect(model.uptimeSeconds).toBeUndefined();
   });
 
   it('parses the Windows DMTF boot time from system details', () => {
@@ -105,7 +105,7 @@ describe('createDeviceWorkspaceModel', () => {
       },
     } as any);
 
-    expect(model.uptime).toBe('17 小时 25 分钟');
+    expect(model.uptimeSeconds).toBe(62_714);
   });
 
   it('populates structured hardware, volumes, security, and connection info from device details', () => {
