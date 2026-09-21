@@ -89,6 +89,11 @@ describe('getApplicationUiCapabilities', () => {
     expect(capabilities.createDeviceGroups).toBe(true);
   });
 
+  it('restricts server status to site administrators', () => {
+    expect(getApplicationUiCapabilities(0).manageSettings).toBe(false);
+    expect(getApplicationUiCapabilities(SiteRight.Administrator).manageSettings).toBe(true);
+  });
+
   it('grants all application capabilities to a site administrator', () => {
     expect(Object.values(getApplicationUiCapabilities(SiteRight.Administrator))).not.toContain(
       false,

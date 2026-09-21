@@ -137,6 +137,15 @@ export const enUS = {
     "subTitle": "The unified console framework is ready. This module will be enabled once the gateway API becomes available."
   },
   "dashboard": {
+    "status": {
+      "eyebrow": "System posture",
+      "healthy": "All systems operational",
+      "attentionRequired": "Some devices need attention",
+      "gatewayUnavailable": "Gateway is currently unavailable",
+      "summary": "{{online}} of {{total}} online, {{attention}} items need attention",
+      "updatedAt": "Updated at {{time}}",
+      "awaitingUpdate": "Waiting for gateway data"
+    },
     "metrics": {
       "totalDevices": "Total devices",
       "totalDevicesHint": "Gateway realtime snapshot",
@@ -156,6 +165,24 @@ export const enUS = {
       "ariaTrend": "Trend",
       "ariaDeviceTrend": "Device status trend"
     },
+    "attention": {
+      "title": "Needs attention",
+      "description": "Issues identified from current live state",
+      "count": "{{count}} items",
+      "gatewayTitle": "Gateway connection issue",
+      "gatewayDescription": "Click to reconnect to the gateway now",
+      "lastSeen": "Last seen {{time}}",
+      "offline": "Device is currently offline",
+      "groupHealth": "{{online}} of {{total}} devices online",
+      "empty": "No issues require attention"
+    },
+    "server": {
+      "cpu": "CPU load (1/5/15 min)",
+      "memory": "Server memory",
+      "memoryValue": "{{used}} / {{total}}",
+      "agentSessions": "Agent sessions",
+      "connectedUsers": "Connected users"
+    },
     "gateway": {
       "title": "Gateway connection",
       "description": "Realtime gateway communication status",
@@ -163,7 +190,8 @@ export const enUS = {
       "connectedAt": "Connected at",
       "reconnectCount": "Reconnect attempts",
       "lastMessage": "Last message",
-      "gatewayConfigured": "Configured gateway"
+      "gatewayConfigured": "Configured gateway",
+      "deviceAvailability": "Device availability"
     },
     "events": {
       "title": "Realtime events",
@@ -177,13 +205,16 @@ export const enUS = {
       "title": "Platform distribution",
       "description": "Operating system breakdown",
       "totalDevices": "Total",
-      "other": "Other"
+      "other": "Other",
+      "empty": "No platform data"
     },
     "groups": {
       "title": "Device groups",
       "description": "Online device overview by group",
       "deviceCount": "{{count}} devices",
       "onlineCount": "{{count}} online",
+      "health": "{{online}} of {{total}} online",
+      "noDevices": "No devices",
       "empty": "No device groups"
     }
   },

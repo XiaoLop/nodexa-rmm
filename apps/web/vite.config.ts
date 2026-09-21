@@ -17,8 +17,8 @@ export default defineConfig({
         target: 'https://mesh.xiaonext.com',
         changeOrigin: true,
         ws: true,
-        cookieDomainRewrite: '',
-        cookiePathRewrite: '/api',
+        cookieDomainRewrite: '', // cookie 域名重写
+        cookiePathRewrite: '/api', // cookie 路径重写
         rewrite: (path) => path.replace(/^\/api/, '')
       },
     },

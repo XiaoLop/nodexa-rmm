@@ -106,6 +106,14 @@
   .dashboard-insights-grid {
     grid-template-columns: 1fr;
   }
+  .dashboard-status {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .dashboard-status-meta {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    padding-top: 4px;
+  }
   .metric-card {
     min-height: 82px;
   }

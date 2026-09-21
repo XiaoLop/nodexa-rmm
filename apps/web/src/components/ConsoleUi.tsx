@@ -21,6 +21,9 @@ export function MetricCard({
   tone,
   icon,
   chart,
+  badge,
+  onClick,
+  extra,
 }: {
   label: string;
   value: number;
@@ -28,15 +31,39 @@ export function MetricCard({
   tone: MetricTone;
   icon: ReactNode;
   chart?: number[];
+  badge?: ReactNode;
+  onClick?: () => void;
+  extra?: ReactNode;
 }) {
   const { number } = useFormatters();
   return (
-    <section className={`metric-card tone-${tone}`}>
+    <section
+      className={`metric-card tone-${tone} ${onClick ? 'is-clickable' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
       <div className="metric-icon">{icon}</div>
       <div className="metric-copy">
-        <span>{label}</span>
+        <div className="metric-label-row">
+          <span>{label}</span>
+          {badge && <span className="metric-badge">{badge}</span>}
+        </div>
         <strong>{number(value)}</strong>
-        <small>{hint}</small>
+        <div className="metric-hint-row">
+          <small>{hint}</small>
+          {extra}
+        </div>
       </div>
       {chart && <Sparkline values={chart} />}
     </section>

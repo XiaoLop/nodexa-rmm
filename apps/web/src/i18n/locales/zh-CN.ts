@@ -137,6 +137,15 @@ export const zhCN = {
     "subTitle": "当前已完成统一控制台框架。此模块将在业务网关开放对应 API 后启用。"
   },
   "dashboard": {
+    "status": {
+      "eyebrow": "系统态势",
+      "healthy": "所有系统运行正常",
+      "attentionRequired": "存在需要关注的设备",
+      "gatewayUnavailable": "业务网关当前不可用",
+      "summary": "{{online}} / {{total}} 台在线，{{attention}} 项需关注",
+      "updatedAt": "更新于 {{time}}",
+      "awaitingUpdate": "等待网关数据"
+    },
     "metrics": {
       "totalDevices": "总设备数",
       "totalDevicesHint": "网关实时快照",
@@ -156,6 +165,24 @@ export const zhCN = {
       "ariaTrend": "趋势",
       "ariaDeviceTrend": "设备状态趋势"
     },
+    "attention": {
+      "title": "需要关注",
+      "description": "根据当前真实状态识别的异常项",
+      "count": "{{count}} 项",
+      "gatewayTitle": "网关连接异常",
+      "gatewayDescription": "点击立即尝试重新连接业务网关",
+      "lastSeen": "最后在线于 {{time}}",
+      "offline": "设备当前离线",
+      "groupHealth": "{{online}} / {{total}} 台设备在线",
+      "empty": "当前没有需要处理的异常"
+    },
+    "server": {
+      "cpu": "CPU 负载（1/5/15 分钟）",
+      "memory": "服务端内存",
+      "memoryValue": "{{used}} / {{total}}",
+      "agentSessions": "Agent 会话",
+      "connectedUsers": "在线用户"
+    },
     "gateway": {
       "title": "网关连接",
       "description": "业务网关实时通信状态",
@@ -163,7 +190,8 @@ export const zhCN = {
       "connectedAt": "连接时间",
       "reconnectCount": "重连次数",
       "lastMessage": "最后消息",
-      "gatewayConfigured": "已配置业务网关"
+      "gatewayConfigured": "已配置业务网关",
+      "deviceAvailability": "设备可用率"
     },
     "events": {
       "title": "实时事件",
@@ -177,13 +205,16 @@ export const zhCN = {
       "title": "平台分布",
       "description": "设备操作系统构成",
       "totalDevices": "总设备",
-      "other": "其他"
+      "other": "其他",
+      "empty": "暂无平台数据"
     },
     "groups": {
       "title": "设备分组",
       "description": "各分组在线设备概览",
       "deviceCount": "{{count}} 台",
       "onlineCount": "{{count}} 在线",
+      "health": "{{online}} / {{total}} 台在线",
+      "noDevices": "暂无设备",
       "empty": "暂无设备分组"
     }
   },
