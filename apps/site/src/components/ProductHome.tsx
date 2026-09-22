@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence, type Variants } from "motion/react";
 import {
   ArrowRight,
   BellRing,
@@ -13,20 +17,25 @@ import {
   Gauge,
   Globe2,
   Laptop,
+  Layers,
   LockKeyhole,
+  Monitor,
   MonitorSmartphone,
   Network,
   Play,
   Radar,
   ServerCog,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   TerminalSquare,
+  Users,
   Workflow,
   Zap,
 } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import type { ContactInfo } from "@/config/contact";
 
 const capabilityIcons = [Radar, MonitorSmartphone, Workflow, ShieldCheck];
 const capabilityAccents = ["blue", "cyan", "violet", "green"];
@@ -35,17 +44,85 @@ const workflowIcons = [BellRing, Sparkles, TerminalSquare, CircleCheck];
 const mobileIcons = [Laptop, BellRing, Network];
 const deploymentIcons = [Boxes, CloudCog, Command, FileUp];
 
-export function ProductHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
+const showcaseIcons = [Monitor, Gauge, Layers, Users];
+
+// Animation variants
+const fadeInUp: Variants = {
+  hidden: { opacity: 0, y: 22 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
+
+const staggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+export function ProductHome({ locale, dictionary, contact }: { locale: Locale; dictionary: Dictionary; contact: ContactInfo }) {
   const alternateLocale = locale === "zh-CN" ? "en" : "zh-CN";
+  const imgLocale = locale === "zh-CN" ? "zh-CN" : "en-US";
+
+  const productImages = {
+    workspace: `/product/device-workspace-${imgLocale}.png`,
+    dashboard: `/product/dashboard-${imgLocale}.png`,
+    devices: `/product/devices-${imgLocale}.png`,
+    security: `/product/user-management-${imgLocale}.png`,
+    login: `/product/login-${imgLocale}.png`,
+  };
+
+  const [activeHeroView, setActiveHeroView] = useState<"workspace" | "dashboard" | "devices">("workspace");
+  const [activeShowcaseIndex, setActiveShowcaseIndex] = useState<number>(0);
+
+  const heroUrls = {
+    workspace: "nodexa://fleet/workstation-01/desktop",
+    dashboard: "nodexa://analytics/overview",
+    devices: "nodexa://inventory/managed-nodes",
+  };
+
+  const showcaseTabs = dictionary.showcase.tabs;
+  const currentShowcase = showcaseTabs[activeShowcaseIndex] || showcaseTabs[0];
+
+  const showcaseImageKeys = ["workspace", "dashboard", "devices", "security"] as const;
+  const currentShowcaseImg = productImages[showcaseImageKeys[activeShowcaseIndex] || "workspace"];
+
+  const heroQuickTabs: Array<{ id: "workspace" | "dashboard" | "devices"; label: string; icon: typeof Monitor }> = [
+    { id: "workspace", label: dictionary.hero.quickViews.workspace, icon: Monitor },
+    { id: "dashboard", label: dictionary.hero.quickViews.dashboard, icon: Gauge },
+    { id: "devices", label: dictionary.hero.quickViews.devices, icon: Layers },
+  ];
+
+  const contactItems = [
+    contact.email ? { label: dictionary.contact.email, value: contact.email, href: `mailto:${contact.email}` } : null,
+    contact.telegram ? {
+      label: dictionary.contact.telegram,
+      value: contact.telegram,
+      href: contact.telegram.startsWith("http")
+        ? contact.telegram
+        : `https://t.me/${contact.telegram.replace(/^@/, "")}`,
+    } : null,
+    contact.wechat ? { label: dictionary.contact.wechat, value: contact.wechat } : null,
+  ].filter((item): item is { label: string; value: string; href?: string } => Boolean(item));
+
   return (
     <main>
-      <header className="site-header">
+      <motion.header
+        className="site-header"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
         <a className="brand" href="#top" aria-label={dictionary.header.homeLabel}>
           <span className="brand-mark"><Image src="/logo.png" alt="" width={42} height={42} priority /></span>
           <span><strong>Nodexa</strong><small>RMM</small></span>
         </a>
         <nav className="site-nav" aria-label={dictionary.header.navigationLabel}>
           <a href="#capabilities">{dictionary.header.capabilities}</a>
+          <a href="#showcase">{dictionary.header.showcase}</a>
           <a href="#workflow">{dictionary.header.automation}</a>
           <a href="#security">{dictionary.header.security}</a>
           <a href="#deployment">{dictionary.header.deployment}</a>
@@ -54,160 +131,554 @@ export function ProductHome({ locale, dictionary }: { locale: Locale; dictionary
           <a className="language-switch" href={`/${alternateLocale}`} aria-label={dictionary.header.languageLabel}>
             <Globe2 aria-hidden="true" size={15} />{dictionary.header.languageShort}
           </a>
-          <a className="header-action" href="http://localhost:5173/login">
-            {dictionary.header.console} <ArrowRight aria-hidden="true" size={16} />
+          <a className="header-action" href="#contact">
+            {dictionary.header.contact} <ArrowRight aria-hidden="true" size={16} />
           </a>
         </div>
-      </header>
+      </motion.header>
 
       <section className="hero" id="top">
         <div className="hero-atmosphere" aria-hidden="true" />
         <div className="hero-content shell">
-          <div className="hero-copy">
-            <div className="eyebrow"><span className="status-dot" />{dictionary.hero.eyebrow}</div>
-            <h1>{dictionary.hero.title}<span>{dictionary.hero.titleAccent}</span></h1>
-            <p>{dictionary.hero.description}</p>
-            <div className="hero-actions">
-              <a className="button button-primary" href="http://localhost:5173/login">
+          <motion.div
+            className="hero-copy"
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+          >
+            <motion.div variants={fadeInUp} className="eyebrow">
+              <span className="status-dot" />{dictionary.hero.eyebrow}
+            </motion.div>
+            <motion.h1 variants={fadeInUp}>
+              {dictionary.hero.title}<span>{dictionary.hero.titleAccent}</span>
+            </motion.h1>
+            <motion.p variants={fadeInUp}>{dictionary.hero.description}</motion.p>
+            <motion.div variants={fadeInUp} className="hero-actions">
+              <a className="button button-primary" href="#contact">
                 {dictionary.hero.primaryAction} <ArrowRight aria-hidden="true" size={18} />
               </a>
-              <a className="button button-secondary" href="#product-tour">
+              <a className="button button-secondary" href="#showcase">
                 <Play aria-hidden="true" size={17} fill="currentColor" />{dictionary.hero.secondaryAction}
               </a>
-            </div>
-            <div className="hero-proof" aria-label={dictionary.hero.proofLabel}>
+            </motion.div>
+            <motion.div variants={fadeInUp} className="hero-proof" aria-label={dictionary.hero.proofLabel}>
               {dictionary.hero.proofs.map((proof) => <span key={proof}><Check size={15} />{proof}</span>)}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="hero-visual" id="product-tour">
+          <motion.div
+            className="hero-visual"
+            id="product-tour"
+            initial={{ opacity: 0, scale: 0.98, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.15, ease: "easeOut" }}
+          >
+            <div className="console-quick-switch" role="tablist" aria-label="Quick View Tabs">
+              {heroQuickTabs.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeHeroView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`console-quick-btn relative ${isActive ? "active" : ""}`}
+                    onClick={() => setActiveHeroView(item.id)}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="hero-tab-pill"
+                        className="absolute inset-0 rounded-[20px] border border-[#3b7cff] bg-[#3b7cff]/20 shadow-[0_0_16px_rgba(59,124,255,0.28)]"
+                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <Icon size={14} />{item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="console-frame">
               <div className="console-bar">
-                <span className="console-brand"><Image src="/logo.png" alt="" width={20} height={20} />Nodexa Operations</span>
+                <div className="console-brand">
+                  <div className="console-window-dots" aria-hidden="true">
+                    <span className="console-dot console-dot-close" />
+                    <span className="console-dot console-dot-min" />
+                    <span className="console-dot console-dot-max" />
+                  </div>
+                  <Image src="/logo.png" alt="" width={18} height={18} />
+                  <span>Nodexa Console</span>
+                </div>
+                <div className="console-address-bar" aria-hidden="true">
+                  <LockKeyhole size={10} />
+                  <motion.span
+                    key={heroUrls[activeHeroView]}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {heroUrls[activeHeroView]}
+                  </motion.span>
+                </div>
                 <span className="live-indicator"><i />{dictionary.hero.liveWorkspace}</span>
               </div>
-              <Image className="console-image" src="/product/remote-desktop.png" alt={dictionary.hero.consoleAlt} width={839} height={613} priority />
+              <div className="console-image-wrapper">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeHeroView}
+                    initial={{ opacity: 0, scale: 0.985, filter: "blur(3px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 1.015, filter: "blur(3px)" }}
+                    transition={{ duration: 0.26, ease: "easeOut" }}
+                    className="w-full h-full"
+                  >
+                    <Image
+                      className="console-image"
+                      src={productImages[activeHeroView]}
+                      alt={dictionary.hero.consoleAlt}
+                      width={1920}
+                      height={1080}
+                      priority
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
-            <div className="metric-float metric-online">
+            <motion.div
+              className="metric-float metric-online"
+              initial={{ opacity: 0, scale: 0.88, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+            >
               <span className="metric-icon"><Gauge size={18} /></span>
               <span><b>99.9%</b><small>{dictionary.hero.availability}</small></span>
-            </div>
-            <div className="metric-float metric-latency">
+            </motion.div>
+            <motion.div
+              className="metric-float metric-latency"
+              initial={{ opacity: 0, scale: 0.88, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+            >
               <span className="pulse-ring"><i /></span>
               <span><b>28 ms</b><small>{dictionary.hero.latency}</small></span>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-        <div className="hero-stats shell">{dictionary.hero.stats.map((stat) => <div key={stat.label}><strong>{stat.value}</strong><span>{stat.label}</span></div>)}</div>
+
+        <motion.div
+          className="hero-stats shell"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-30px" }}
+          variants={staggerContainer}
+        >
+          {dictionary.hero.stats.map((stat) => (
+            <motion.div key={stat.label} variants={fadeInUp}>
+              <strong>{stat.value}</strong>
+              <span>{stat.label}</span>
+            </motion.div>
+          ))}
+        </motion.div>
       </section>
 
       <section className="section capabilities-section" id="capabilities">
         <div className="shell">
-          <div className="section-heading split-heading">
+          <motion.div
+            className="section-heading split-heading"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5 }}
+          >
             <div><span className="section-kicker">{dictionary.capabilities.kicker}</span><h2>{dictionary.capabilities.title}<br />{dictionary.capabilities.titleAccent}</h2></div>
             <p>{dictionary.capabilities.description}</p>
-          </div>
-          <div className="capability-grid">
+          </motion.div>
+          <motion.div
+            className="capability-grid"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-40px" }}
+            variants={staggerContainer}
+          >
             {dictionary.capabilities.items.map(({ title, description }, index) => {
               const Icon = capabilityIcons[index];
               return (
-              <article className="capability-item" key={title}>
+              <motion.article
+                className="capability-item cursor-pointer"
+                key={title}
+                variants={fadeInUp}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+              >
                 <span className={`capability-icon ${capabilityAccents[index]}`}><Icon size={23} /></span>
                 <span className="capability-index">0{index + 1}</span>
                 <h3>{title}</h3><p>{description}</p>
-                <a href="#workflow">{dictionary.capabilities.learnMore} <ChevronRight size={15} /></a>
-              </article>
+                <a href="#showcase" onClick={() => setActiveShowcaseIndex(index)}>
+                  {dictionary.capabilities.learnMore} <ChevronRight size={15} />
+                </a>
+              </motion.article>
             );})}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Showcase Section: Interactive Product Viewers */}
+      <section className="showcase-section" id="showcase">
+        <div className="shell">
+          <motion.div
+            className="showcase-header"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="section-kicker">{dictionary.showcase.kicker}</span>
+            <h2>{dictionary.showcase.title}<span>{dictionary.showcase.titleAccent}</span></h2>
+            <p>{dictionary.showcase.description}</p>
+          </motion.div>
+
+          <div className="showcase-tabs-nav" role="tablist" aria-label="Console Views">
+            {showcaseTabs.map((tab, idx) => {
+              const TabIcon = showcaseIcons[idx] || Monitor;
+              const isActive = activeShowcaseIndex === idx;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`showcase-tab-btn relative ${isActive ? "active" : ""}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveShowcaseIndex(idx)}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="showcase-tab-pill"
+                      className="absolute inset-0 rounded-[10px] border border-blue-500/80 bg-blue-600/15 shadow-[0_10px_28px_rgba(40,108,255,0.25)] pointer-events-none"
+                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                    />
+                  )}
+                  <div className="showcase-tab-top relative z-10">
+                    <TabIcon size={18} />
+                    <span className="showcase-tab-tag">{tab.tag}</span>
+                  </div>
+                  <strong className="showcase-tab-title relative z-10">{tab.name}</strong>
+                  <span className="showcase-tab-sub relative z-10">{tab.subtitle}</span>
+                </button>
+              );
+            })}
           </div>
+
+          <motion.div
+            className="showcase-window"
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <div className="showcase-window-bar">
+              <div className="showcase-window-left">
+                <div className="console-window-dots" aria-hidden="true">
+                  <span className="console-dot console-dot-close" />
+                  <span className="console-dot console-dot-min" />
+                  <span className="console-dot console-dot-max" />
+                </div>
+                <div className="showcase-window-url">
+                  <LockKeyhole size={11} />
+                  <motion.span
+                    key={currentShowcase.id}
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    https://console.nodexa.internal/{currentShowcase.id}
+                  </motion.span>
+                </div>
+              </div>
+              <span className="showcase-badge-pill">
+                <i />{dictionary.showcase.previewBadge}
+              </span>
+            </div>
+
+            <div className="showcase-content-area">
+              <div className="showcase-image-holder">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentShowcase.id}
+                    initial={{ opacity: 0, scale: 0.985, filter: "blur(3px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 1.015, filter: "blur(3px)" }}
+                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    className="w-full h-full"
+                  >
+                    <Image
+                      className="showcase-img"
+                      src={currentShowcaseImg}
+                      alt={currentShowcase.title}
+                      width={1920}
+                      height={1080}
+                      priority
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentShowcase.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+                className="showcase-footer-meta"
+              >
+                <div className="showcase-meta-copy">
+                  <h4>{currentShowcase.title}</h4>
+                  <p>{currentShowcase.description}</p>
+                </div>
+                <div className="showcase-highlights-list">
+                  {currentShowcase.highlights.map((item) => (
+                    <span className="showcase-hl-chip" key={item}>
+                      <Sparkles size={13} />
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
         </div>
       </section>
 
       <section className="section workflow-section" id="workflow">
         <div className="shell workflow-layout">
-          <div className="workflow-copy">
+          <motion.div
+            className="workflow-copy"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.55 }}
+          >
             <span className="section-kicker">{dictionary.workflow.kicker}</span>
             <h2>{dictionary.workflow.title}<br />{dictionary.workflow.titleAccent}</h2>
             <p>{dictionary.workflow.description}</p>
             <a className="text-link" href="#deployment">{dictionary.workflow.link} <ArrowRight size={17} /></a>
-          </div>
-          <div className="workflow-board">
+          </motion.div>
+          <motion.div
+            className="workflow-board"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-40px" }}
+            variants={staggerContainer}
+          >
             <div className="workflow-path" aria-hidden="true" />
             {dictionary.workflow.steps.map(({ label, detail }, index) => {
               const Icon = workflowIcons[index];
               return (
-              <div className="workflow-step" key={label}>
+              <motion.div
+                className="workflow-step"
+                key={label}
+                variants={fadeInUp}
+                whileHover={{ scale: 1.025, transition: { duration: 0.2 } }}
+              >
                 <span className="step-number">{index + 1}</span><span className="step-icon"><Icon size={22} /></span>
                 <strong>{label}</strong><small>{detail}</small>
-              </div>
+              </motion.div>
             );})}
-            <div className="command-preview">
+            <motion.div
+              className="command-preview"
+              variants={fadeInUp}
+              whileHover={{ scale: 1.01 }}
+            >
               <div><span /><span /><span /></div>
               <code>nodexa run patch-security --group production</code>
               <p><Zap size={14} fill="currentColor" />{dictionary.workflow.commandResult}</p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       <section className="section mobile-section">
         <div className="shell mobile-layout">
-          <div className="mobile-stage">
-            <div className="mobile-image-wrap">
-              <Image src="/product/mobile-overview.png" alt={dictionary.mobile.imageAlt} width={882} height={1922} />
+          <motion.div
+            className="access-stage"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <div className="access-stage-backdrop" aria-hidden="true" />
+            <div className="access-window">
+              <div className="access-bar">
+                <div className="console-window-dots" aria-hidden="true">
+                  <span className="console-dot console-dot-close" />
+                  <span className="console-dot console-dot-min" />
+                  <span className="console-dot console-dot-max" />
+                </div>
+                <span>https://console.nodexa.internal/login</span>
+                <span className="live-indicator"><i />Protected</span>
+              </div>
+              <div className="access-image-wrap">
+                <Image
+                  className="access-image"
+                  src={productImages.login}
+                  alt={dictionary.mobile.imageAlt}
+                  width={1920}
+                  height={1080}
+                />
+              </div>
             </div>
-            <div className="mobile-badge"><Globe2 size={20} /><span><b>{dictionary.mobile.badgeTitle}</b><small>{dictionary.mobile.badgeDescription}</small></span></div>
-          </div>
-          <div className="mobile-copy">
+            <motion.div
+              className="access-badge"
+              initial={{ scale: 0.9, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+            >
+              <ShieldAlert size={22} />
+              <span><b>{dictionary.mobile.badgeTitle}</b><small>{dictionary.mobile.badgeDescription}</small></span>
+            </motion.div>
+          </motion.div>
+          <motion.div
+            className="mobile-copy"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
             <span className="section-kicker">{dictionary.mobile.kicker}</span>
             <h2>{dictionary.mobile.title}<br />{dictionary.mobile.titleAccent}</h2>
             <p>{dictionary.mobile.description}</p>
-            <div className="feature-list">
+            <motion.div
+              className="feature-list"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={staggerContainer}
+            >
               {dictionary.mobile.features.map((feature, index) => {
                 const Icon = mobileIcons[index];
-                return <div key={feature.title}><Icon size={20} /><span><b>{feature.title}</b><small>{feature.description}</small></span></div>;
+                return (
+                  <motion.div key={feature.title} variants={fadeInUp}>
+                    <Icon size={20} />
+                    <span><b>{feature.title}</b><small>{feature.description}</small></span>
+                  </motion.div>
+                );
               })}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       <section className="section security-section" id="security">
         <div className="shell security-layout">
-          <div className="security-copy">
+          <motion.div
+            className="security-copy"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5 }}
+          >
             <span className="section-kicker light">{dictionary.security.kicker}</span>
             <h2>{dictionary.security.title}<br />{dictionary.security.titleAccent}</h2>
             <p>{dictionary.security.description}</p>
-            <div className="trust-list">{dictionary.security.trustItems.map((item) => <span key={item}><Check size={15} />{item}</span>)}</div>
-          </div>
-          <div className="architecture" aria-label={dictionary.security.architectureLabel}>
-            <div className="architecture-node endpoints"><MonitorSmartphone size={24} /><span><b>Operations</b><small>Web / Mobile</small></span></div>
+            <div className="trust-list">
+              {dictionary.security.trustItems.map((item) => (
+                <span key={item}><Check size={15} />{item}</span>
+              ))}
+            </div>
+          </motion.div>
+          <motion.div
+            className="architecture"
+            aria-label={dictionary.security.architectureLabel}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-40px" }}
+            variants={staggerContainer}
+          >
+            <motion.div variants={fadeInUp} className="architecture-node endpoints">
+              <MonitorSmartphone size={24} />
+              <span><b>Operations</b><small>Web / Mobile</small></span>
+            </motion.div>
             <div className="architecture-line"><i /></div>
-            <div className="architecture-node gateway"><LockKeyhole size={24} /><span><b>Secure Gateway</b><small>Auth / Policy / Audit</small></span></div>
+            <motion.div variants={fadeInUp} className="architecture-node gateway">
+              <LockKeyhole size={24} />
+              <span><b>Secure Gateway</b><small>Auth / Policy / Audit</small></span>
+            </motion.div>
             <div className="architecture-line"><i /></div>
-            <div className="architecture-node infrastructure"><ServerCog size={24} /><span><b>Infrastructure</b><small>Devices / Services</small></span></div>
+            <motion.div variants={fadeInUp} className="architecture-node infrastructure">
+              <ServerCog size={24} />
+              <span><b>Infrastructure</b><small>Devices / Services</small></span>
+            </motion.div>
             <span className="encrypted-label"><Fingerprint size={14} />{dictionary.security.encryptedChannel}</span>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <section className="section deployment-section" id="deployment">
-        <div className="shell deployment-layout">
+        <motion.div
+          className="shell deployment-layout"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.55 }}
+        >
           <div><span className="section-kicker">{dictionary.deployment.kicker}</span><h2>{dictionary.deployment.title}</h2></div>
           <p>{dictionary.deployment.description}</p>
-          <div className="deployment-options">
+          <motion.div
+            className="deployment-options"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+          >
             {dictionary.deployment.options.map((option, index) => {
               const Icon = deploymentIcons[index];
-              return <span key={option}><Icon size={20} /><b>{option}</b></span>;
+              return (
+                <motion.span
+                  key={option}
+                  variants={fadeInUp}
+                  whileHover={{ scale: 1.05, transition: { duration: 0.15 } }}
+                >
+                  <Icon size={20} /><b>{option}</b>
+                </motion.span>
+              );
             })}
+          </motion.div>
+        </motion.div>
+      </section>
+
+      <section className="section contact-section" id="contact">
+        <div className="shell contact-layout">
+          <div>
+            <span className="section-kicker">{dictionary.contact.kicker}</span>
+            <h2>{dictionary.contact.title}</h2>
+            <p>{dictionary.contact.description}</p>
           </div>
+          {contactItems.length > 0 ? (
+            <div className="contact-list">
+              {contactItems.map((item) => {
+                const content = <><span>{item.label}</span><strong>{item.value}</strong></>;
+                return item.href ? <a key={item.label} href={item.href}>{content}<ArrowRight size={17} /></a> : <div key={item.label}>{content}</div>;
+              })}
+            </div>
+          ) : (
+            <p className="contact-empty">{dictionary.contact.empty}</p>
+          )}
         </div>
       </section>
 
       <section className="final-cta">
-        <div className="shell cta-inner">
+        <motion.div
+          className="shell cta-inner"
+          initial={{ opacity: 0, scale: 0.96 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-30px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
           <div><span className="section-kicker light">{dictionary.cta.kicker}</span><h2>{dictionary.cta.title}<br />{dictionary.cta.titleAccent}</h2></div>
-          <a className="button button-light" href="http://localhost:5173/login">{dictionary.cta.action} <ArrowRight size={18} /></a>
-        </div>
+          <a className="button button-light" href="#contact">{dictionary.cta.action} <ArrowRight size={18} /></a>
+        </motion.div>
       </section>
 
       <footer className="site-footer">

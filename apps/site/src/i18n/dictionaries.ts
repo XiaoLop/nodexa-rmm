@@ -9,10 +9,12 @@ export type Dictionary = {
     homeLabel: string;
     navigationLabel: string;
     capabilities: string;
+    showcase: string;
     automation: string;
     security: string;
     deployment: string;
     console: string;
+    contact: string;
     languageLabel: string;
     languageShort: string;
   };
@@ -29,7 +31,25 @@ export type Dictionary = {
     availability: string;
     latency: string;
     liveWorkspace: string;
+    quickViews: {
+      workspace: string;
+      dashboard: string;
+      devices: string;
+    };
     stats: [Stat, Stat, Stat, Stat];
+  };
+  showcase: {
+    kicker: string;
+    title: string;
+    titleAccent: string;
+    description: string;
+    previewBadge: string;
+    tabs: [
+      { id: string; name: string; title: string; subtitle: string; description: string; tag: string; highlights: [string, string, string] },
+      { id: string; name: string; title: string; subtitle: string; description: string; tag: string; highlights: [string, string, string] },
+      { id: string; name: string; title: string; subtitle: string; description: string; tag: string; highlights: [string, string, string] },
+      { id: string; name: string; title: string; subtitle: string; description: string; tag: string; highlights: [string, string, string] }
+    ];
   };
   capabilities: {
     kicker: string;
@@ -74,6 +94,7 @@ export type Dictionary = {
     options: [string, string, string, string];
   };
   cta: { kicker: string; title: string; titleAccent: string; action: string };
+  contact: { kicker: string; title: string; description: string; email: string; telegram: string; wechat: string; empty: string };
   footer: { description: string; copyright: string };
 };
 
@@ -86,10 +107,12 @@ const zhCN: Dictionary = {
     homeLabel: "Nodexa RMM 首页",
     navigationLabel: "主导航",
     capabilities: "产品能力",
+    showcase: "产品视图",
     automation: "自动化",
     security: "安全架构",
     deployment: "部署方式",
-    console: "进入控制台",
+    console: "联系我们",
+    contact: "联系我们",
     languageLabel: "切换语言",
     languageShort: "EN",
   },
@@ -98,7 +121,7 @@ const zhCN: Dictionary = {
     title: "让每一台设备",
     titleAccent: "都清晰、可控。",
     description: "Nodexa RMM 将监控、远程访问、自动化与安全治理整合到一个工作空间，帮助 IT 团队更快发现问题、更稳妥地完成处置。",
-    primaryAction: "打开管理控制台",
+    primaryAction: "了解产品方案",
     secondaryAction: "浏览产品能力",
     proofLabel: "平台特性",
     proofs: ["无需浏览器插件", "支持私有化部署", "跨平台设备接入"],
@@ -106,11 +129,61 @@ const zhCN: Dictionary = {
     availability: "平台可用性",
     latency: "当前会话延迟",
     liveWorkspace: "实时工作区",
+    quickViews: {
+      workspace: "远程桌面",
+      dashboard: "运维看板",
+      devices: "设备矩阵",
+    },
     stats: [
       { value: "一处", label: "管理所有终端" },
       { value: "秒级", label: "状态与事件同步" },
       { value: "全程", label: "会话安全审计" },
       { value: "随时", label: "桌面与移动协同" },
+    ],
+  },
+  showcase: {
+    kicker: "IMMERSIVE CONSOLE EXPERIENCE",
+    title: "真实控制台视图，",
+    titleAccent: "直观驾驭每一项复杂运维",
+    description: "无需安装本地客户端，直接在现代浏览器中调度全局资产、穿透受控桌面、执行批量任务与精细权限把控。",
+    previewBadge: "系统真机截图",
+    tabs: [
+      {
+        id: "workspace",
+        name: "远程桌面",
+        title: "免插件高性能远程桌面与工作台",
+        subtitle: "极速接管，像坐在终端机前一样自然",
+        description: "高响应流传输结合原生键盘鼠标控制、剪贴板交互与系统指标实时观测，复杂故障排查一步到位。",
+        tag: "远程核心",
+        highlights: ["毫秒级画面低延迟响应", "终端与文件系统深度集成", "无须繁琐安装客户端插件"],
+      },
+      {
+        id: "dashboard",
+        name: "运维仪表盘",
+        title: "全局设备态势与系统健康监控",
+        subtitle: "资产与运行状态，一屏了然",
+        description: "聚合统计全网在线终端、告警分布、节点资源负载与实时事件流，驱动主动式故障预防与迅速处置。",
+        tag: "态势感知",
+        highlights: ["全网在线率与健康度大盘", "系统负载预警与动态跟踪", "事件通知流实时秒级推送"],
+      },
+      {
+        id: "devices",
+        name: "设备资产矩阵",
+        title: "多层级资产纳管与批量任务调度",
+        subtitle: "万台设备，结构化统一分组",
+        description: "支持灵活的树形设备分组、操作系统精准识别、多维度标签过滤及批量命令调度，告别逐台重复维护。",
+        tag: "资产与批量",
+        highlights: ["树形多租户资产分类", "多条件智能筛选与搜索", "批量安全下发运维动作"],
+      },
+      {
+        id: "security",
+        name: "权限与用户管理",
+        title: "企业级 RBAC 细粒度权限管控与审计",
+        subtitle: "最小特权原则，关键操作全程留痕",
+        description: "按部门与角色授予精确的设备访问权限与会话能力，所有接入与关键运维动作全程留存合规审计日志。",
+        tag: "安全治理",
+        highlights: ["RBAC 精细化多角色授权", "会话与指令完整安全审计", "敏感凭据隔离不落地"],
+      },
     ],
   },
   capabilities: {
@@ -141,17 +214,17 @@ const zhCN: Dictionary = {
     commandResult: "24 台设备任务已并行下发",
   },
   mobile: {
-    kicker: "DESKTOP TO POCKET",
-    title: "运维现场，",
-    titleAccent: "不只在办公桌前",
-    description: "通过一致的设备模型和事件流，让桌面控制台与移动端自然衔接。无论是快速确认告警，还是进入设备详情，重要上下文始终随手可用。",
-    imageAlt: "Nodexa RMM 移动端设备、事件和账户界面",
-    badgeTitle: "Anywhere operations",
-    badgeDescription: "响应不受位置限制",
+    kicker: "SEAMLESS ONBOARDING & ACCESS",
+    title: "安全凭据隔离，",
+    titleAccent: "极简极速接入",
+    description: "通过现代化的安全控制台与凭据治理，管理员可在现代浏览器中直接接入受控网关，免除传统 VPN 和复杂本地客户端的维护成本。",
+    imageAlt: "Nodexa RMM 安全身份认证与控制台接入界面",
+    badgeTitle: "Zero-Trust Gateway",
+    badgeDescription: "端到端加密与凭据隔离",
     features: [
-      { title: "完整工作台", description: "为复杂操作提供专业视图" },
-      { title: "移动事件流", description: "及时掌握设备状态变化" },
-      { title: "统一设备模型", description: "跨端共享分组与状态上下文" },
+      { title: "全功能工作台", description: "为复杂设备管理与桌面运维提供专业交互" },
+      { title: "实时状态感知", description: "设备上线、告警触发与会话建立秒级响应" },
+      { title: "统一设备模型", description: "跨平台多架构设备共享一致的分组与属性上下文" },
     ],
   },
   security: {
@@ -173,7 +246,16 @@ const zhCN: Dictionary = {
     kicker: "READY FOR CLEARER OPERATIONS?",
     title: "从下一台设备开始，",
     titleAccent: "重建你的运维视图。",
-    action: "进入 Nodexa RMM",
+    action: "联系我们",
+  },
+  contact: {
+    kicker: "TALK TO US",
+    title: "准备好了解 Nodexa RMM？",
+    description: "告诉我们你的设备规模、运维场景和部署要求，我们会为你介绍适合的产品方案。",
+    email: "邮箱",
+    telegram: "Telegram",
+    wechat: "微信",
+    empty: "联系方式即将公布，敬请期待。",
   },
   footer: {
     description: "Unified Device Operations Platform",
@@ -190,10 +272,12 @@ const en = {
     homeLabel: "Nodexa RMM home",
     navigationLabel: "Main navigation",
     capabilities: "Capabilities",
+    showcase: "Console Views",
     automation: "Automation",
     security: "Security",
     deployment: "Deployment",
-    console: "Open console",
+    console: "Contact us",
+    contact: "Contact us",
     languageLabel: "Switch language",
     languageShort: "中文",
   },
@@ -202,7 +286,7 @@ const en = {
     title: "Every device.",
     titleAccent: "Clear and under control.",
     description: "Nodexa RMM brings monitoring, secure remote access, automation, and governance into one workspace so IT teams can detect issues sooner and resolve them with confidence.",
-    primaryAction: "Open management console",
+    primaryAction: "Learn about the product",
     secondaryAction: "Explore capabilities",
     proofLabel: "Platform benefits",
     proofs: ["No browser plugin", "Private deployment ready", "Cross-platform agents"],
@@ -210,11 +294,61 @@ const en = {
     availability: "Platform availability",
     latency: "Current session latency",
     liveWorkspace: "Live workspace",
+    quickViews: {
+      workspace: "Remote Desktop",
+      dashboard: "Dashboard",
+      devices: "Fleet Matrix",
+    },
     stats: [
       { value: "One", label: "workspace for every endpoint" },
       { value: "Live", label: "device and event updates" },
       { value: "Full", label: "session audit trail" },
       { value: "Any", label: "desktop or mobile workflow" },
+    ],
+  },
+  showcase: {
+    kicker: "IMMERSIVE CONSOLE EXPERIENCE",
+    title: "Real operations views,",
+    titleAccent: "purpose-built for scale and precision",
+    description: "Operate across fleets, inspect desktops, run batch remediations, and enforce zero-trust security directly in modern browsers without fat clients.",
+    previewBadge: "Production Screenshots",
+    tabs: [
+      {
+        id: "workspace",
+        name: "Remote Desktop",
+        title: "Plugin-free High Performance Remote Desktop",
+        subtitle: "Direct control as if standing in front of the console",
+        description: "Low-latency streaming combined with native keyboard/mouse events, clipboard sharing, and live system vital metrics.",
+        tag: "Core Control",
+        highlights: ["Sub-second responsive streaming", "Terminal & file browser integrated", "Zero client installation required"],
+      },
+      {
+        id: "dashboard",
+        name: "Operations Dashboard",
+        title: "Fleet-wide Health Signals & Availability",
+        subtitle: "Global status at a single glance",
+        description: "Aggregate statistics on online endpoints, alert distribution, host performance loads, and live incident telemetry.",
+        tag: "Observability",
+        highlights: ["Real-time availability monitoring", "Resource spike threshold alerts", "Real-time system telemetry stream"],
+      },
+      {
+        id: "devices",
+        name: "Fleet Matrix",
+        title: "Multi-tier Asset Grouping & Batch Actions",
+        subtitle: "Structured fleet control at scale",
+        description: "Organize nodes with hierarchical groups, OS tagging, and attribute filtering. Run batch commands across fleets in seconds.",
+        tag: "Fleet Management",
+        highlights: ["Hierarchical tree & tag search", "Batch script execution engine", "Unified cross-platform agent"],
+      },
+      {
+        id: "security",
+        name: "User & Access Control",
+        title: "Enterprise RBAC & Full Audit Trail",
+        subtitle: "Least privilege by default, verified in depth",
+        description: "Grant fine-grained endpoint access and action permissions per department, retaining comprehensive immutable logs for compliance.",
+        tag: "Governance",
+        highlights: ["Granular role-based access control", "Complete session and command audit", "Zero-trust credential isolation"],
+      },
     ],
   },
   capabilities: {
@@ -245,17 +379,17 @@ const en = {
     commandResult: "Tasks dispatched to 24 devices",
   },
   mobile: {
-    kicker: "DESKTOP TO POCKET",
-    title: "Operations happen",
-    titleAccent: "beyond the desk",
-    description: "A shared device model and event stream keep the desktop console and mobile experience aligned. Critical context remains available whether you are reviewing an alert or opening a device record.",
-    imageAlt: "Nodexa RMM mobile device, event, and account screens",
-    badgeTitle: "Anywhere operations",
-    badgeDescription: "Respond from wherever you are",
+    kicker: "SEAMLESS ONBOARDING & ACCESS",
+    title: "Isolated credentials,",
+    titleAccent: "instant secure onboarding",
+    description: "Operate through a modern zero-trust gateway where credentials remain isolated on server side. Access fleets instantly in modern browsers without VPNs or client software overhead.",
+    imageAlt: "Nodexa RMM secure authentication and gateway interface",
+    badgeTitle: "Zero-Trust Gateway",
+    badgeDescription: "End-to-end TLS & credential isolation",
     features: [
-      { title: "Full operations workspace", description: "A focused view for complex tasks" },
-      { title: "Mobile event stream", description: "Stay current on device changes" },
-      { title: "Shared device model", description: "Keep groups and status in sync" },
+      { title: "Full Operations Workspace", description: "Professional views for deep troubleshooting" },
+      { title: "Live Telemetry Feed", description: "Instant feedback on availability and alerts" },
+      { title: "Unified Device Context", description: "Cross-platform consistency across all fleets" },
     ],
   },
   security: {
@@ -277,7 +411,16 @@ const en = {
     kicker: "READY FOR CLEARER OPERATIONS?",
     title: "Start with the next device.",
     titleAccent: "Rebuild your operations view.",
-    action: "Open Nodexa RMM",
+    action: "Contact us",
+  },
+  contact: {
+    kicker: "TALK TO US",
+    title: "Ready to learn about Nodexa RMM?",
+    description: "Tell us about your fleet, operations, and deployment needs. We will introduce the right product approach for your team.",
+    email: "Email",
+    telegram: "Telegram",
+    wechat: "WeChat",
+    empty: "Contact details will be available soon.",
   },
   footer: {
     description: "Unified Device Operations Platform",

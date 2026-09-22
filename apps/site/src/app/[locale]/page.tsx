@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductHome } from "@/components/ProductHome";
+import { getContactInfo } from "@/config/contact";
 import { isLocale, locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
@@ -41,5 +42,5 @@ export default async function LocalePage({ params }: LocalePageProps) {
     notFound();
   }
 
-  return <ProductHome locale={locale} dictionary={getDictionary(locale)} />;
+  return <ProductHome locale={locale} dictionary={getDictionary(locale)} contact={getContactInfo()} />;
 }
