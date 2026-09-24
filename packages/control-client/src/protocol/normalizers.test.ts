@@ -51,8 +51,23 @@ describe('protocol normalizers', () => {
     ).toMatchObject({ id: 'user//admin', name: 'Admin' });
   });
 
+  it('uses the Agent connection bit instead of power state for online status', () => {
+    expect(normalizeDevices({ group: [{ _id: 'powered', name: 'Powered', pwr: 1 }] })[0]).toMatchObject(
+      { online: false },
+    );
+    expect(
+      normalizeDevices({ group: [{ _id: 'amt-only', name: 'AMT only', conn: 2, pwr: 1 }] })[0],
+    ).toMatchObject({ online: false, connectionFlags: 2 });
+    expect(normalizeDevices({ group: [{ _id: 'unknown', name: 'Unknown' }] })[0]).toMatchObject({
+      online: false,
+    });
+  });
+
   it('normalizes realtime events', () => {
     expect(normalizeEvent({ action: 'nodeconnect', nodeid: 'one', conn: 0 })?.type).toBe(
+      'deviceOffline',
+    );
+    expect(normalizeEvent({ action: 'nodeconnect', nodeid: 'one', conn: 2 })?.type).toBe(
       'deviceOffline',
     );
     expect(normalizeEvent({ action: 'changenode', nodeid: 'one' })?.type).toBe('deviceChanged');

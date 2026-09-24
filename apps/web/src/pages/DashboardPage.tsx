@@ -2,27 +2,27 @@ import {
   AndroidOutlined,
   AppleOutlined,
   ArrowRightOutlined,
-  CheckCircleFilled,
+  BellOutlined,
+  CheckCircleOutlined,
   ClockCircleOutlined,
+  CloseCircleOutlined,
   DesktopOutlined,
-  ExclamationCircleFilled,
-  GlobalOutlined,
   HistoryOutlined,
+  LineChartOutlined,
   LinuxOutlined,
   RightOutlined,
   RobotOutlined,
   SyncOutlined,
   UserOutlined,
-  WarningFilled,
   WindowsOutlined,
 } from '@ant-design/icons';
-import type { GatewayEvent, ServerStats } from '@meshcentral/control-client';
-import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
+import type { GatewayEvent, ServerStats, ServerTimelineStats } from '@meshcentral/control-client';
+import { formatEventMessage, getEventTargetName, getUserDisplayName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Progress, Spin, Tag, Tooltip } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { MetricCard, iconForMetric } from '../components/ConsoleUi';
+import { MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { useFormatters } from '../i18n';
@@ -92,6 +92,53 @@ function getPlatformMeta(osKey: string) {
   }
 }
 
+const TIMELINE_BUCKET_MS = {
+  24: 60 * 60 * 1000,
+  168: 6 * 60 * 60 * 1000,
+  720: 24 * 60 * 60 * 1000,
+} as const;
+
+function downsampleTimelineStats(
+  stats: ServerTimelineStats[],
+  hours: 24 | 168 | 720,
+): ServerTimelineStats[] {
+  const buckets = new Map<number, ServerTimelineStats[]>();
+  const bucketMs = TIMELINE_BUCKET_MS[hours];
+
+  for (const stat of stats) {
+    const timestamp = Date.parse(stat.time);
+    if (!Number.isFinite(timestamp)) continue;
+    const bucket = Math.floor(timestamp / bucketMs) * bucketMs;
+    const items = buckets.get(bucket) ?? [];
+    items.push(stat);
+    buckets.set(bucket, items);
+  }
+
+  return [...buckets.entries()]
+    .sort(([left], [right]) => left - right)
+    .slice(-48)
+    .flatMap(([bucket, items]) => {
+      const last = items.at(-1);
+      if (!last) return [];
+      const agentValues = items
+        .map((item) => item.connections?.connectedAgents)
+        .filter((value): value is number => value !== undefined);
+      const connectedAgents = agentValues.length
+        ? Math.round(agentValues.reduce((sum, value) => sum + value, 0) / agentValues.length)
+        : undefined;
+
+      return [{
+        ...last,
+        time: new Date(bucket).toISOString(),
+        connections: last.connections
+          ? { ...last.connections, connectedAgents }
+          : connectedAgents === undefined
+            ? undefined
+            : { connectedAgents },
+      }];
+    });
+  }
+
 export function DashboardPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
@@ -102,6 +149,9 @@ export function DashboardPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string>();
   const [serverStats, setServerStats] = useState<ServerStats>();
+  const [timelineHours, setTimelineHours] = useState<24 | 168 | 720>(24);
+  const [timelineStats, setTimelineStats] = useState<ServerTimelineStats[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   const online = data.devices.filter((device) => device.online).length;
   const offline = data.devices.length - online;
@@ -194,19 +244,6 @@ export function DashboardPage() {
     [allGroups],
   );
 
-  const offlineDevices = useMemo(
-    () =>
-      data.devices
-        .filter((device) => !device.online)
-        .sort((left, right) => {
-          const leftSeen = left.lastSeenAt ? Date.parse(left.lastSeenAt) : 0;
-          const rightSeen = right.lastSeenAt ? Date.parse(right.lastSeenAt) : 0;
-          return rightSeen - leftSeen;
-        })
-        .slice(0, 4),
-    [data.devices],
-  );
-
   const unhealthyGroups = useMemo(
     () =>
       allGroups.filter((group) => group.count >= 2 && group.online / group.count < 0.75),
@@ -214,22 +251,40 @@ export function DashboardPage() {
   );
   const attentionCount = offline + unhealthyGroups.length + (data.status === 'connected' ? 0 : 1);
   const statusTone = data.status !== 'connected' ? 'danger' : attentionCount ? 'warning' : 'success';
-  const statusIcon =
-    statusTone === 'success' ? (
-      <CheckCircleFilled />
-    ) : statusTone === 'warning' ? (
-      <WarningFilled />
-    ) : (
-      <ExclamationCircleFilled />
-    );
-
-  const host = (() => {
-    try {
-      return data.gatewayUrl ? new URL(data.gatewayUrl).host : t('common.status.notConfigured');
-    } catch {
-      return t('dashboard.gateway.gatewayConfigured');
+  const gatewayStatusMeta = useMemo(() => {
+    switch (data.status) {
+      case 'connected':
+        return {
+          color: 'success' as const,
+          icon: <CheckCircleOutlined />,
+          label: t('common.status.connected'),
+        };
+      case 'connecting':
+        return {
+          color: 'processing' as const,
+          icon: <SyncOutlined spin />,
+          label: t('common.status.connecting'),
+        };
+      case 'reconnecting':
+        return {
+          color: 'warning' as const,
+          icon: <SyncOutlined spin />,
+          label: t('common.status.reconnecting'),
+        };
+      case 'disconnected':
+        return {
+          color: 'default' as const,
+          icon: <CloseCircleOutlined />,
+          label: t('common.status.disconnected'),
+        };
+      default:
+        return {
+          color: 'error' as const,
+          icon: <CloseCircleOutlined />,
+          label: t('common.status.unavailable'),
+        };
     }
-  })();
+  }, [data.status, t]);
 
   const cpuAverage = serverStats?.cpuAverage.slice(0, 3);
   const memoryUsed =
@@ -245,6 +300,37 @@ export function DashboardPage() {
       ? undefined
       : Math.round((memoryUsed / serverStats.totalMemory) * 100);
 
+  const timeline = useMemo(() => {
+    const points = downsampleTimelineStats(timelineStats, timelineHours);
+    const online = points.map((point) => point.connections?.connectedAgents ?? 0);
+    const total = data.devices.length || Math.max(...online, 0);
+    const offline = online.map((value) => Math.max(total - value, 0));
+    const labels = points.map((point) => {
+      if (timelineHours === 24) {
+        return formatters.time(point.time, { second: undefined, hourCycle: 'h23' });
+      }
+      if (timelineHours === 168) {
+        return formatters.dateTime(point.time, {
+          year: undefined,
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: undefined,
+          hourCycle: 'h23',
+        });
+      }
+      return formatters.date(point.time, {
+        year: undefined,
+        month: '2-digit',
+        day: '2-digit',
+      });
+    });
+    return { online, offline, labels };
+  }, [data.devices.length, formatters, timelineHours, timelineStats]);
+
+  const displayName = getUserDisplayName(data.userInfo, data.username);
+
   useEffect(() => {
     if (!applicationCapabilities.manageSettings || !data.client || data.status !== 'connected') {
       setServerStats(undefined);
@@ -253,6 +339,31 @@ export function DashboardPage() {
     setServerStats(undefined);
     return data.client.server.subscribeStats(setServerStats);
   }, [applicationCapabilities.manageSettings, data.client, data.status]);
+
+  useEffect(() => {
+    if (!data.client || data.status !== 'connected') {
+      setTimelineStats([]);
+      setTimelineLoading(false);
+      return;
+    }
+    let active = true;
+    setTimelineLoading(true);
+    setTimelineStats([]);
+    void data.client.server
+      .getTimelineStats(timelineHours)
+      .then((stats) => {
+        if (active) setTimelineStats(stats);
+      })
+      .catch(() => {
+        if (active) setTimelineStats([]);
+      })
+      .finally(() => {
+        if (active) setTimelineLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [data.client, data.status, timelineHours]);
 
   useEffect(() => {
     if (!data.client || data.status !== 'connected') return;
@@ -283,49 +394,25 @@ export function DashboardPage() {
     <div className="dashboard-page page-stack">
       {data.error && <Alert type="error" showIcon title={data.error} closable />}
 
-      {/* Top Posture Banner */}
-      <section className={`dashboard-status dashboard-status-${statusTone}`}>
-        <div className="dashboard-status-mark">{statusIcon}</div>
-        <div className="dashboard-status-copy">
-          <span>{t('dashboard.status.eyebrow')}</span>
-          <strong>
-            {data.status !== 'connected'
-              ? t('dashboard.status.gatewayUnavailable')
-              : attentionCount
-                ? t('dashboard.status.attentionRequired')
-                : t('dashboard.status.healthy')}
-          </strong>
-          <div className="dashboard-status-pills">
-            <span className="pill-highlight">
-              {online} / {data.devices.length} {t('common.status.online')}
-            </span>
-            {attentionCount > 0 && (
-              <span className="pill-warning">
-                {t('dashboard.attention.count', { count: attentionCount })}
-              </span>
-            )}
-            <span>
-              {data.groups.length} {t('dashboard.metrics.deviceGroups')}
-            </span>
+      <section className="dashboard-welcome">
+        <div className="dashboard-welcome-copy">
+          <span>{t('dashboard.welcome.greeting')}</span>
+          <strong>{displayName}</strong>
+          <p>{t('dashboard.welcome.description')}</p>
+          <div className="dashboard-welcome-status">
+            <i className={statusTone} />
+            <span>{data.status === 'connected' ? t('dashboard.welcome.operational') : t('dashboard.status.gatewayUnavailable')}</span>
+            <b>·</b>
+            <span>{data.lastConnectedAt ? t('dashboard.welcome.lastLogin', { time: formatters.dateTime(data.lastConnectedAt) }) : t('dashboard.status.awaitingUpdate')}</span>
           </div>
         </div>
-        <div className="dashboard-status-meta">
-          <span>
-            <ClockCircleOutlined />
-            {data.lastMessageAt
-              ? t('dashboard.status.updatedAt', {
-                  time: formatters.time(data.lastMessageAt),
-                })
-              : t('dashboard.status.awaitingUpdate')}
-          </span>
-          <Button
-            className="reconnect-btn"
-            icon={<SyncOutlined />}
-            loading={data.status === 'connecting' || data.status === 'reconnecting'}
-            onClick={() => void data.reconnect().catch(() => undefined)}
-          >
-            {t('common.actions.reconnect')}
-          </Button>
+        <div className="dashboard-welcome-art" aria-hidden="true">
+          <img src="/image/logo.png" alt="" />
+        </div>
+        <div className="dashboard-quick-actions">
+          <button type="button" onClick={() => navigate('/devices')}><DesktopOutlined /><span>{t('dashboard.welcome.addDevice')}</span><RightOutlined /></button>
+          <button type="button" onClick={() => navigate('/admin/users')}><UserOutlined /><span>{t('dashboard.welcome.createUser')}</span><RightOutlined /></button>
+          <button type="button" onClick={() => navigate('/settings')}><BellOutlined /><span>{t('dashboard.welcome.alertRules')}</span><RightOutlined /></button>
         </div>
       </section>
 
@@ -373,98 +460,29 @@ export function DashboardPage() {
 
       {/* Overview Grid: Attention vs Connection & Server */}
       <div className="dashboard-overview-grid">
-        <section className="console-card attention-card">
+        <section className="console-card attention-card online-trend-card">
           <div className="card-header">
             <div>
-              <h2>{t('dashboard.attention.title')}</h2>
-              <span>{t('dashboard.attention.description')}</span>
+              <h2>
+                <LineChartOutlined className="trend-title-icon" />
+                {t('dashboard.trend.title')}
+              </h2>
+              <span>{t('dashboard.trend.description')}</span>
             </div>
-            <Tag color={attentionCount ? 'warning' : 'success'}>
-              {t('dashboard.attention.count', { count: attentionCount })}
-            </Tag>
+            <div className="trend-range-switcher">
+              {([24, 168, 720] as const).map((hours) => (
+                <button type="button" className={timelineHours === hours ? 'active' : ''} key={hours} onClick={() => setTimelineHours(hours)}>
+                  {t(`dashboard.trend.tag${hours === 24 ? '24h' : hours === 168 ? '7d' : '30d'}`)}
+                </button>
+              ))}
+            </div>
           </div>
-
-          <div className="attention-list">
-            {data.status !== 'connected' && (
-              <button
-                type="button"
-                className="attention-item-btn"
-                onClick={() => void data.reconnect().catch(() => undefined)}
-              >
-                <div className="attention-icon-wrap danger">
-                  <ExclamationCircleFilled />
-                </div>
-                <div className="attention-item-content">
-                  <strong>{t('dashboard.attention.gatewayTitle')}</strong>
-                  <small>{t('dashboard.attention.gatewayDescription')}</small>
-                </div>
-                <RightOutlined className="attention-arrow" />
-              </button>
-            )}
-
-            {offlineDevices.map((device) => (
-              <button
-                type="button"
-                className="attention-item-btn"
-                key={device.id}
-                onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}/workspace`)}
-              >
-                <div className="attention-icon-wrap warning">
-                  <DesktopOutlined />
-                </div>
-                <div className="attention-item-content">
-                  <strong>{device.name}</strong>
-                  <small>
-                    {device.lastSeenAt
-                      ? t('dashboard.attention.lastSeen', {
-                          time: formatters.dateTime(device.lastSeenAt),
-                        })
-                      : t('dashboard.attention.offline')}
-                  </small>
-                </div>
-                <RightOutlined className="attention-arrow" />
-              </button>
-            ))}
-
-            {unhealthyGroups.slice(0, Math.max(4 - offlineDevices.length, 1)).map((group) => (
-              <button
-                type="button"
-                className="attention-item-btn"
-                key={group.id}
-                onClick={() =>
-                  navigate(
-                    group.id === '__ungrouped__'
-                      ? '/devices?groupId=__ungrouped__'
-                      : `/devices?groupId=${encodeURIComponent(group.id)}`,
-                  )
-                }
-              >
-                <div className="attention-icon-wrap warning">
-                  <WarningFilled />
-                </div>
-                <div className="attention-item-content">
-                  <strong>{group.name}</strong>
-                  <small>
-                    {t('dashboard.attention.groupHealth', {
-                      online: group.online,
-                      total: group.count,
-                    })}
-                  </small>
-                </div>
-                <RightOutlined className="attention-arrow" />
-              </button>
-            ))}
-
-            {attentionCount === 0 && (
-              <div className="attention-healthy-state">
-                <div className="healthy-icon-ring">
-                  <CheckCircleFilled />
-                </div>
-                <h3>{t('dashboard.status.healthy')}</h3>
-                <p>{t('dashboard.attention.empty')}</p>
-              </div>
-            )}
-          </div>
+          <TrendChart
+            online={timeline.online.length > 1 ? timeline.online : [online, online]}
+            offline={timeline.offline.length > 1 ? timeline.offline : [offline, offline]}
+            labels={timeline.labels.length > 1 ? timeline.labels : undefined}
+            loading={timelineLoading}
+          />
         </section>
 
         <section className="console-card connection-card">
@@ -473,22 +491,12 @@ export function DashboardPage() {
               <h2>{t('dashboard.gateway.title')}</h2>
               <span>{t('dashboard.gateway.description')}</span>
             </div>
-            <Tag color={data.status === 'connected' ? 'success' : 'warning'}>
-              {data.status === 'connected'
-                ? t('common.status.connected')
-                : t('common.status.unavailable')}
+            <Tag color={gatewayStatusMeta.color} icon={gatewayStatusMeta.icon}>
+              {gatewayStatusMeta.label}
             </Tag>
           </div>
 
           <div className="connection-meta-grid">
-            <div className="connection-meta-item">
-              <span>
-                <GlobalOutlined /> {t('dashboard.gateway.address')}
-              </span>
-              <Tooltip title={host}>
-                <strong>{host}</strong>
-              </Tooltip>
-            </div>
             <div className="connection-meta-item">
               <span>
                 <ClockCircleOutlined /> {t('dashboard.gateway.connectedAt')}
@@ -497,22 +505,29 @@ export function DashboardPage() {
             </div>
             <div className="connection-meta-item">
               <span>
-                <SyncOutlined /> {t('dashboard.gateway.reconnectCount')}
-              </span>
-              <strong>{formatters.number(data.reconnectAttempt)}</strong>
-            </div>
-            <div className="connection-meta-item">
-              <span>
                 <HistoryOutlined /> {t('dashboard.gateway.lastMessage')}
               </span>
               <strong>{data.lastMessageAt ? formatters.time(data.lastMessageAt) : '—'}</strong>
+            </div>
+            <div className="connection-meta-item">
+              <span>
+                <SyncOutlined /> {t('dashboard.gateway.reconnectCount')}
+              </span>
+              <strong className={data.reconnectAttempt > 0 ? 'has-warning' : ''}>
+                {formatters.number(data.reconnectAttempt)}
+              </strong>
             </div>
           </div>
 
           <div className="connection-health">
             <div className="connection-health-header">
               <span>{t('dashboard.gateway.deviceAvailability')}</span>
-              <strong>{onlineRate}%</strong>
+              <div className="connection-health-stats">
+                <span className="connection-health-count">
+                  {online} / {data.devices.length}
+                </span>
+                <strong>{onlineRate}%</strong>
+              </div>
             </div>
             <Progress
               percent={onlineRate}

@@ -6,6 +6,10 @@ import type {
   ServerInfo,
   ServerStateStats,
   ServerStats,
+  ServerTimelineConnections,
+  ServerTimelineMemory,
+  ServerTimelineStats,
+  ServerTimelineTraffic,
   UserInfo,
   UserInfoLink,
   UserLinkType,
@@ -78,10 +82,9 @@ export function normalizeDevice(
   const id =
     stringValue(value._id) ?? stringValue(value.id) ?? stringValue(value.nodeid) ?? fallbackId;
   if (!id) return undefined;
-  let online: boolean | undefined;
+  let online = false;
   if (typeof value.online === 'boolean') online = value.online;
-  else if (typeof value.conn === 'number') online = value.conn > 0;
-  else if (typeof value.pwr === 'number') online = value.pwr > 0;
+  else if (typeof value.conn === 'number') online = (value.conn & 1) !== 0;
   let agentVersion = stringValue(value.agentVersion) ?? stringValue(value.agentvers);
   if (
     !agentVersion &&
@@ -107,7 +110,7 @@ export function normalizeDevice(
     name: stringValue(value.name) ?? stringValue(value.rname) ?? stringValue(value.host) ?? id,
     groupId: stringValue(value.groupId) ?? stringValue(value.meshid) ?? fallbackGroupId,
     groupName: stringValue(value.groupName) ?? stringValue(value.meshname),
-    online: online as boolean,
+    online,
     connectionFlags,
     agentId,
     agentCapabilities,
@@ -208,11 +211,10 @@ export function normalizeEvent(value: unknown): GatewayEvent | undefined {
   const action = stringValue(raw.action) ?? 'unknown';
   const deviceId = stringValue(raw.deviceId) ?? stringValue(raw.nodeid);
   const node = isRecord(raw.node) ? raw.node : undefined;
-  const conn =
-    typeof raw.conn === 'number' ? raw.conn : typeof raw.pwr === 'number' ? raw.pwr : undefined;
+  const conn = typeof raw.conn === 'number' ? raw.conn : undefined;
   let type: GatewayEvent['type'] = 'unknown';
   if (action === 'nodeconnect' || action === 'connect' || action === 'connected')
-    type = conn !== undefined && conn <= 0 ? 'deviceOffline' : 'deviceOnline';
+    type = conn !== undefined && (conn & 1) === 0 ? 'deviceOffline' : 'deviceOnline';
   else if (action === 'nodedisconnect' || action === 'disconnect' || action === 'disconnected')
     type = 'deviceOffline';
   else if (action === 'changenode') type = 'deviceChanged';
@@ -316,6 +318,84 @@ export function normalizeServerStats(value: unknown): ServerStats | undefined {
         )
       : [],
     serverState,
+    raw: value,
+  };
+}
+
+export function normalizeServerTimelineStats(value: unknown): ServerTimelineStats | undefined {
+  if (!isRecord(value)) return undefined;
+  const finiteNumber = (field: unknown): number | undefined =>
+    typeof field === 'number' && Number.isFinite(field) ? field : undefined;
+  const record = (field: unknown): Record<string, unknown> | undefined =>
+    isRecord(field) ? field : undefined;
+  const normalizeNumberRecord = (field: unknown): Record<string, number> | undefined => {
+    const raw = record(field);
+    if (!raw) return undefined;
+    const normalized: Record<string, number> = {};
+    for (const [key, item] of Object.entries(raw)) {
+      const number = finiteNumber(item);
+      if (number !== undefined) normalized[key] = number;
+    }
+    return normalized;
+  };
+  const rawConnections = record(value.conn);
+  const rawMemory = record(value.mem);
+  const rawTraffic = record(value.traffic);
+  const connections: ServerTimelineConnections | undefined = rawConnections
+    ? {
+        connectedAgents: finiteNumber(rawConnections.ca),
+        connectedUsers: finiteNumber(rawConnections.cu),
+        userSessions: finiteNumber(rawConnections.us),
+        relaySessions: finiteNumber(rawConnections.rs),
+        connectedIntelAmt: finiteNumber(rawConnections.am),
+        connectedIntelAmtCira: finiteNumber(rawConnections.amc),
+        raw: rawConnections,
+      }
+    : undefined;
+  const memory: ServerTimelineMemory | undefined = rawMemory
+    ? {
+        rss: finiteNumber(rawMemory.rss),
+        heapTotal: finiteNumber(rawMemory.heapTotal),
+        heapUsed: finiteNumber(rawMemory.heapUsed),
+        external: finiteNumber(rawMemory.external),
+        arrayBuffers: finiteNumber(rawMemory.arrayBuffers),
+        raw: rawMemory,
+      }
+    : undefined;
+  const traffic: ServerTimelineTraffic | undefined = rawTraffic
+    ? {
+        time: finiteNumber(rawTraffic.time),
+        delta: finiteNumber(rawTraffic.delta),
+        httpRequestCount: finiteNumber(rawTraffic.httpRequestCount),
+        httpWebSocketCount: finiteNumber(rawTraffic.httpWebSocketCount),
+        httpIn: finiteNumber(rawTraffic.httpIn),
+        httpOut: finiteNumber(rawTraffic.httpOut),
+        relayCount: normalizeNumberRecord(rawTraffic.relayCount),
+        relayIn: normalizeNumberRecord(rawTraffic.relayIn),
+        relayOut: normalizeNumberRecord(rawTraffic.relayOut),
+        localRelayCount: finiteNumber(rawTraffic.localRelayCount),
+        localRelayIn: finiteNumber(rawTraffic.localRelayIn),
+        localRelayOut: finiteNumber(rawTraffic.localRelayOut),
+        agentCtrlIn: finiteNumber(rawTraffic.AgentCtrlIn),
+        agentCtrlOut: finiteNumber(rawTraffic.AgentCtrlOut),
+        lmsIn: finiteNumber(rawTraffic.LMSIn),
+        lmsOut: finiteNumber(rawTraffic.LMSOut),
+        ciraIn: finiteNumber(rawTraffic.CIRAIn),
+        ciraOut: finiteNumber(rawTraffic.CIRAOut),
+        raw: rawTraffic,
+      }
+    : undefined;
+  const time = timestampValue(value.time);
+  if (!time) return undefined;
+  return {
+    time,
+    expire: timestampValue(value.expire),
+    connections,
+    memory,
+    traffic,
+    cpu: Array.isArray(value.cpu)
+      ? value.cpu.filter((item): item is number => finiteNumber(item) !== undefined)
+      : undefined,
     raw: value,
   };
 }

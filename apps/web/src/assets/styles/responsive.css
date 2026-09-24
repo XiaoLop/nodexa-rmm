@@ -11,6 +11,20 @@
   .dashboard-overview-grid {
     grid-template-columns: minmax(0, 1.6fr) minmax(270px, 1fr);
   }
+  .dashboard-welcome {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+  .dashboard-welcome-art {
+    display: none;
+  }
+  .dashboard-quick-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .dashboard-quick-actions button {
+    flex: 1;
+  }
   .dashboard-insights-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -108,6 +122,25 @@
   }
   .dashboard-status {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+  .dashboard-welcome {
+    display: block;
+  }
+  .dashboard-welcome-copy {
+    min-height: 150px;
+    padding: 22px 20px;
+  }
+  .dashboard-quick-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+  .dashboard-quick-actions button {
+    min-height: 38px;
+  }
+  .trend-range-switcher button {
+    min-width: 48px;
+    padding-inline: 6px;
   }
   .dashboard-status-meta {
     grid-column: 1 / -1;

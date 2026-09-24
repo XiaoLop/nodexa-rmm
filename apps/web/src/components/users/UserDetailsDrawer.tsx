@@ -26,7 +26,7 @@ export function UserDetailsDrawer({
     <Drawer
       title={user ? t('userDetails.drawerTitle', { name: user.name }) : t('userDetails.title')}
       open={Boolean(user)}
-      width="min(620px, 100vw)"
+      size="min(620px, 100vw)"
       onClose={onClose}
       destroyOnHidden
     >

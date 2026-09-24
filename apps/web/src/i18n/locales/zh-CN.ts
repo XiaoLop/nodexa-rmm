@@ -162,8 +162,22 @@ export const zhCN = {
       "title": "设备状态趋势",
       "description": "过去 24 小时在线与离线设备变化",
       "tag24h": "24 小时",
+      "tag7d": "7 天",
+      "tag30d": "30 天",
+      "onlineValue": "在线 {{count}} 台",
+      "offlineValue": "离线 {{count}} 台",
+      "loading": "正在加载统计数据…",
       "ariaTrend": "趋势",
       "ariaDeviceTrend": "设备状态趋势"
+    },
+    "welcome": {
+      "greeting": "欢迎回来，",
+      "description": "以下是您的系统运行概况",
+      "operational": "系统运行正常",
+      "lastLogin": "上次登录 {{time}}",
+      "addDevice": "添加设备",
+      "createUser": "创建用户",
+      "alertRules": "设置告警规则"
     },
     "attention": {
       "title": "需要关注",

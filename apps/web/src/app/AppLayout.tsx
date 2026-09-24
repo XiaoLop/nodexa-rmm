@@ -24,6 +24,7 @@ import {
   Menu,
   Tooltip,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -177,9 +178,9 @@ function AppLayoutContent() {
     () => resolvePageMeta(location.pathname, t),
     [i18n.resolvedLanguage, location.pathname, t],
   );
-  const visibleMenuItems = useMemo(
+  const visibleMenuItems = useMemo<NonNullable<MenuProps['items']>>(
     () =>
-      menuItems.flatMap<NavigationItem | NavigationGroup>((item) => {
+      menuItems.flatMap<NonNullable<MenuProps['items']>[number]>((item) => {
         if ('type' in item) {
           const children = item.children.filter(
             (child) => !child.required || capabilities[child.required],
@@ -187,10 +188,11 @@ function AppLayoutContent() {
           return children.length > 0
             ? [
                 {
-                  ...item,
+                  type: item.type,
                   label: t(item.labelKey),
                   children: children.map((child) => ({
-                    ...child,
+                    key: child.key,
+                    icon: child.icon,
                     label: t(child.labelKey),
                   })),
                 },
@@ -198,7 +200,7 @@ function AppLayoutContent() {
             : [];
         }
         return !item.required || capabilities[item.required]
-          ? [{ ...item, label: t(item.labelKey) }]
+          ? [{ key: item.key, icon: item.icon, label: t(item.labelKey) }]
           : [];
       }),
     [capabilities, i18n.resolvedLanguage, t],

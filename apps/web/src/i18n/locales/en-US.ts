@@ -162,8 +162,22 @@ export const enUS = {
       "title": "Device status trend",
       "description": "Online and offline device fluctuations in the past 24 hours",
       "tag24h": "24 hours",
+      "tag7d": "7 days",
+      "tag30d": "30 days",
+      "onlineValue": "{{count}} online",
+      "offlineValue": "{{count}} offline",
+      "loading": "Loading statistics…",
       "ariaTrend": "Trend",
       "ariaDeviceTrend": "Device status trend"
+    },
+    "welcome": {
+      "greeting": "Welcome back,",
+      "description": "Here is an overview of your system health",
+      "operational": "System operational",
+      "lastLogin": "Last login {{time}}",
+      "addDevice": "Add device",
+      "createUser": "Create user",
+      "alertRules": "Set alert rules"
     },
     "attention": {
       "title": "Needs attention",

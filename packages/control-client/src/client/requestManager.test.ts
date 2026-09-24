@@ -86,4 +86,30 @@ describe('RequestManager', () => {
     manager.consume({ action: 'getDeviceDetails', data: '[{"node":{"_id":"node//one"}}]' });
     await expect(second).resolves.toMatchObject({ action: 'getDeviceDetails' });
   });
+
+  it('serializes responseid-less server timeline stats requests', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const manager = new RequestManager(
+      (payload) => sent.push(payload as Record<string, unknown>),
+      1_000,
+      () => undefined,
+    );
+    const first = manager.request({ action: 'servertimelinestats', hours: 24 });
+    const second = manager.request({ action: 'servertimelinestats', hours: 168 });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ action: 'servertimelinestats', hours: 24 });
+
+    expect(
+      manager.consume({
+        action: 'servertimelinestats',
+        events: [{ time: '2026-09-23T00:00:00.000Z' }],
+      }),
+    ).toBe(true);
+    await expect(first).resolves.toMatchObject({ action: 'servertimelinestats' });
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toMatchObject({ action: 'servertimelinestats', hours: 168 });
+
+    expect(manager.consume({ action: 'servertimelinestats', events: [] })).toBe(true);
+    await expect(second).resolves.toMatchObject({ action: 'servertimelinestats' });
+  });
 });

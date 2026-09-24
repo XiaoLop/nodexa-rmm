@@ -195,7 +195,10 @@ export function DeviceLogsPanel({
           <Select
             aria-label={t('deviceWorkspace.logs.filterAria')}
             value={eventFilter ?? allEventFilter}
-            options={eventFilters.map((filter) => ({ ...filter, label: t(filter.labelKey) }))}
+            options={eventFilters.map(({ labelKey, value }) => ({
+              label: t(labelKey),
+              value,
+            }))}
             onChange={(value) => setEventFilter(value === allEventFilter ? undefined : value)}
           />
           <Select
@@ -250,7 +253,7 @@ export function DeviceLogsPanel({
       <Drawer
         title={t('deviceWorkspace.logs.drawer.title')}
         placement="right"
-        width="min(680px, 100vw)"
+        size="min(680px, 100vw)"
         open={Boolean(selectedEvent)}
         onClose={() => setSelectedEvent(undefined)}
         rootClassName="workspace-log-drawer"

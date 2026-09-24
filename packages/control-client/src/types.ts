@@ -153,6 +153,57 @@ export interface ServerStats {
   raw: unknown;
 }
 
+export interface ServerTimelineMemory {
+  rss?: number;
+  heapTotal?: number;
+  heapUsed?: number;
+  external?: number;
+  arrayBuffers?: number;
+  raw?: unknown;
+}
+
+export interface ServerTimelineConnections {
+  connectedAgents?: number;
+  connectedUsers?: number;
+  userSessions?: number;
+  relaySessions?: number;
+  connectedIntelAmt?: number;
+  connectedIntelAmtCira?: number;
+  raw?: unknown;
+}
+
+export interface ServerTimelineTraffic {
+  time?: number;
+  delta?: number;
+  httpRequestCount?: number;
+  httpWebSocketCount?: number;
+  httpIn?: number;
+  httpOut?: number;
+  relayCount?: Record<string, number>;
+  relayIn?: Record<string, number>;
+  relayOut?: Record<string, number>;
+  localRelayCount?: number;
+  localRelayIn?: number;
+  localRelayOut?: number;
+  agentCtrlIn?: number;
+  agentCtrlOut?: number;
+  lmsIn?: number;
+  lmsOut?: number;
+  ciraIn?: number;
+  ciraOut?: number;
+  raw?: unknown;
+}
+
+export interface ServerTimelineStats {
+  time: string;
+  connections?: ServerTimelineConnections;
+  memory?: ServerTimelineMemory;
+  traffic?: ServerTimelineTraffic;
+  cpu?: number[];
+  expire?: string;
+  raw: unknown;
+}
+
 export type UserLinkType = 'device-group' | 'user-group' | 'device' | 'unknown';
 
 export interface UserLink {

@@ -96,8 +96,8 @@ interface GatewayEvent {
 
 | `type` | 识别来源 | 表示什么 | 常见用途 |
 | --- | --- | --- | --- |
-| `deviceOnline` | `nodeconnect`、`connect`、`connected`，且 `conn/pwr` 未表示离线 | 设备建立连接或恢复在线 | 更新在线状态、触发轻量刷新 |
-| `deviceOffline` | `nodedisconnect`、`disconnect`、`disconnected`，或连接事件的 `conn/pwr <= 0` | 设备断开或变为离线 | 标记离线、停止需要在线设备的操作 |
+| `deviceOnline` | `nodeconnect`、`connect`、`connected`，且 `conn & 1` 不为 `0`（事件未携带 `conn` 时按连接事件处理） | 设备 Agent 建立连接或恢复在线 | 更新在线状态、触发轻量刷新 |
+| `deviceOffline` | `nodedisconnect`、`disconnect`、`disconnected`，或连接事件的 `conn & 1` 为 `0` | 设备 Agent 断开或变为离线 | 标记离线、停止需要在线设备的操作 |
 | `deviceChanged` | `changenode` | 设备属性发生变化 | 刷新名称、分组、标签等设备数据 |
 | `deviceRemoved` | `removenode`、`deletenode` | 设备被删除 | 从列表和选择集中移除设备 |
 | `relayLog` | `relaylog` 或 `etype: relay` | Relay 会话日志 | 审计远程访问和会话活动 |

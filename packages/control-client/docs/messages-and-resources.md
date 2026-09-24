@@ -152,6 +152,24 @@ await client.users.setSiteRights('user//test', 4);
 
 ## 服务器 `client.server`
 
+`getTimelineStats(hours)` 查询服务端保存的时间线快照，`hours` 必须是 `0` 到 `720` 的整数：
+
+```ts
+const snapshots = await client.server.getTimelineStats(24);
+for (const snapshot of snapshots) {
+  console.log(snapshot.time, snapshot.connections?.connectedAgents);
+  console.log(snapshot.memory?.heapUsed, snapshot.traffic?.agentCtrlIn);
+}
+```
+
+快照请求发送：
+
+```json
+{ "action": "servertimelinestats", "hours": 24 }
+```
+
+返回值是标准化后的 `ServerTimelineStats[]`。`time` 和 `expire` 使用 ISO 时间字符串；`conn`、`mem`、`traffic` 分别映射为 `connections`、`memory`、`traffic`，字段名也会转换为 camelCase。每个结果的 `raw` 以及各子对象的 `raw` 保留服务端原始数据。
+
 `subscribeStats(listener, intervalMs = 10000)` 发送以下单向消息，并返回本地监听器的取消函数：
 
 ```json

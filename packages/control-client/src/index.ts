@@ -17,6 +17,7 @@ export {
   normalizeLastConnects,
   normalizeServerInfo,
   normalizeServerStats,
+  normalizeServerTimelineStats,
   normalizeUserInfo,
   timestampValue,
 } from './protocol/normalizers';

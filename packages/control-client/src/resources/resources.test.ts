@@ -58,6 +58,39 @@ class ControllableClient extends FakeClient {
 }
 
 describe('resources', () => {
+  it('requests server timeline statistics', async () => {
+    const client = new FakeClient();
+    const server = new ServerResource(client);
+    client.responses.push({
+      events: [
+        {
+          time: '2026-09-22T02:19:19.933Z',
+          conn: { ca: 84, cu: 0 },
+          mem: { rss: 213278720 },
+          traffic: { AgentCtrlIn: 55917 },
+          cpu: [0.03, 0.08, 0.02],
+        },
+      ],
+    });
+
+    await expect(server.getTimelineStats(24)).resolves.toMatchObject([
+      {
+        time: '2026-09-22T02:19:19.933Z',
+        connections: { connectedAgents: 84 },
+        memory: { rss: 213278720 },
+        traffic: { agentCtrlIn: 55917 },
+        cpu: [0.03, 0.08, 0.02],
+      },
+    ]);
+    expect(client.requests.at(-1)).toEqual({
+      action: 'servertimelinestats',
+      hours: 24,
+    });
+    await expect(server.getTimelineStats(-1)).rejects.toThrow(GatewayValidationError);
+    await expect(server.getTimelineStats(721)).rejects.toThrow(GatewayValidationError);
+    await expect(server.getTimelineStats(1.5)).rejects.toThrow(GatewayValidationError);
+  });
+
   it('subscribes to server statistics pushes', () => {
     const client = new FakeClient();
     const server = new ServerResource(client);

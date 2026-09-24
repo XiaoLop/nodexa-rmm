@@ -73,7 +73,7 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
     <Drawer
       title={user ? t('users.editDrawer.title', { name: user.name }) : t('users.editDrawer.titleDefault')}
       open={Boolean(user)}
-      width="min(520px, 100vw)"
+      size="min(520px, 100vw)"
       onClose={onClose}
       destroyOnHidden
       extra={

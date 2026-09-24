@@ -79,7 +79,7 @@ function EventDetailsDrawer({
     <Drawer
       title={t('events.drawer.title')}
       placement="right"
-      width="min(720px, 100vw)"
+      size="min(720px, 100vw)"
       open={Boolean(event)}
       onClose={onClose}
       rootClassName="realtime-event-drawer"

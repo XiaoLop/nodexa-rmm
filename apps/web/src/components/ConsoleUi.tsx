@@ -8,9 +8,17 @@ import {
   FolderOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
+import { CanvasRenderer } from 'echarts/renderers';
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import { LineChart } from 'echarts/charts';
+import * as echarts from 'echarts/core';
+import type { EChartsOption } from 'echarts';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useEffect, useRef } from 'react';
 import { useFormatters } from '../i18n';
+
+echarts.use([CanvasRenderer, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
 export type MetricTone = 'blue' | 'green' | 'purple' | 'amber' | 'red';
 
@@ -103,43 +111,244 @@ export function Sparkline({
   );
 }
 
-export function TrendChart({ online, offline }: { online: number[]; offline: number[] }) {
+export function TrendChart({
+  online,
+  offline,
+  labels,
+  loading = false,
+}: {
+  online: number[];
+  offline: number[];
+  labels?: string[];
+  loading?: boolean;
+}) {
   const { t } = useTranslation();
-  const all = [...online, ...offline, 1];
-  const max = Math.max(...all);
-  const makePoints = (values: number[]) =>
-    values
-      .map((value, index) => {
-        const x = 4 + (index / Math.max(values.length - 1, 1)) * 92;
-        const y = 86 - (value / max) * 70;
-        return `${x},${y}`;
-      })
-      .join(' ');
+  const chartLabels = labels?.length
+    ? labels
+    : ['00:00', '06:00', '12:00', '18:00', t('common.status.now')];
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const latestOnline = online.length > 0 ? (online[online.length - 1] ?? 0) : 0;
+  const latestOffline = offline.length > 0 ? (offline[offline.length - 1] ?? 0) : 0;
+  const total = latestOnline + latestOffline;
+  const onlineRate = total > 0 ? ((latestOnline / total) * 100).toFixed(1) : '100.0';
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const chart = echarts.init(chartRef.current);
+    const option: EChartsOption = {
+      animation: true,
+      animationDuration: 600,
+      animationEasing: 'cubicOut',
+      grid: {
+        top: 20,
+        right: 16,
+        bottom: 24,
+        left: 20,
+        containLabel: true,
+      },
+      legend: { show: false },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'line',
+          lineStyle: {
+            color: 'rgba(99, 146, 218, 0.45)',
+            width: 1.5,
+            type: 'dashed',
+          },
+        },
+        backgroundColor: 'rgba(10, 22, 40, 0.94)',
+        borderColor: 'rgba(84, 133, 214, 0.32)',
+        borderWidth: 1,
+        padding: [10, 14],
+        textStyle: { color: '#c9d8ec', fontSize: 11 },
+        extraCssText:
+          'backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55); min-width: 155px;',
+        formatter: (params) => {
+          const values = Array.isArray(params) ? params : [params];
+          const index = values[0]?.dataIndex ?? 0;
+          const onCount = online[index] ?? 0;
+          const offCount = offline[index] ?? 0;
+          const curTotal = onCount + offCount;
+          const curRate = curTotal > 0 ? ((onCount / curTotal) * 100).toFixed(1) : '100.0';
+          const time = chartLabels[index] ?? t('common.status.now');
+
+          return [
+            `<div style="font-size: 11px; font-weight: 600; color: #8fa5c2; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 4px;">${time}</div>`,
+            `<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 5px;">`,
+            `  <span style="display: inline-flex; align-items: center; gap: 6px; color: #d0deef; font-size: 11px;">`,
+            `    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #25d990; box-shadow: 0 0 6px rgba(37, 217, 144, 0.8);"></span>`,
+            `    ${t('common.status.online')}`,
+            `  </span>`,
+            `  <strong style="color: #25d990; font-weight: 600; font-size: 12px;">${onCount}</strong>`,
+            `</div>`,
+            `<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 6px;">`,
+            `  <span style="display: inline-flex; align-items: center; gap: 6px; color: #d0deef; font-size: 11px;">`,
+            `    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #8da6ca;"></span>`,
+            `    ${t('common.status.offline')}`,
+            `  </span>`,
+            `  <strong style="color: #8da6ca; font-weight: 600; font-size: 12px;">${offCount}</strong>`,
+            `</div>`,
+            `<div style="border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #7287a3;">`,
+            `  <span>${t('dashboard.metrics.onlineRate', { rate: curRate })}</span>`,
+            `</div>`,
+          ].join('');
+        },
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: chartLabels,
+        axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+        axisTick: { show: false },
+        axisLabel: {
+          color: '#768ca8',
+          fontSize: 11,
+          margin: 12,
+          interval: Math.max(Math.ceil(chartLabels.length / 5) - 1, 0),
+          showMinLabel: true,
+          showMaxLabel: true,
+          hideOverlap: true,
+        },
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        minInterval: 1,
+        splitNumber: 4,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#687e9b', fontSize: 11, margin: 10 },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.05)',
+            type: 'dashed',
+          },
+        },
+      },
+      series: [
+        {
+          name: t('common.status.online'),
+          type: 'line',
+          data: online,
+          smooth: 0.35,
+          showSymbol: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          emphasis: {
+            scale: 1.5,
+            itemStyle: {
+              color: '#25d990',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              shadowColor: 'rgba(37, 217, 144, 0.6)',
+              shadowBlur: 8,
+            },
+          },
+          lineStyle: {
+            color: '#25d990',
+            width: 2.5,
+            shadowColor: 'rgba(37, 217, 144, 0.35)',
+            shadowBlur: 10,
+            shadowOffsetY: 4,
+          },
+          itemStyle: { color: '#25d990' },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(37, 217, 144, 0.32)' },
+                { offset: 0.65, color: 'rgba(37, 217, 144, 0.08)' },
+                { offset: 1, color: 'rgba(37, 217, 144, 0.00)' },
+              ],
+            },
+          },
+        },
+        {
+          name: t('common.status.offline'),
+          type: 'line',
+          data: offline,
+          smooth: 0.35,
+          showSymbol: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          emphasis: {
+            scale: 1.5,
+            itemStyle: {
+              color: '#8da6ca',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              shadowColor: 'rgba(141, 166, 202, 0.6)',
+              shadowBlur: 8,
+            },
+          },
+          lineStyle: {
+            color: '#8da6ca',
+            width: 2,
+            shadowColor: 'rgba(141, 166, 202, 0.3)',
+            shadowBlur: 8,
+            shadowOffsetY: 3,
+          },
+          itemStyle: { color: '#8da6ca' },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(141, 166, 202, 0.24)' },
+                { offset: 0.65, color: 'rgba(141, 166, 202, 0.06)' },
+                { offset: 1, color: 'rgba(141, 166, 202, 0.00)' },
+              ],
+            },
+          },
+        },
+      ],
+    };
+    chart.setOption(option);
+    const resizeObserver = new ResizeObserver(() => chart.resize());
+    resizeObserver.observe(chartRef.current);
+    return () => {
+      resizeObserver.disconnect();
+      chart.dispose();
+    };
+  }, [chartLabels, offline, online, t]);
 
   return (
     <div className="trend-chart">
-      <div className="chart-legend">
-        <span className="online">{t('common.status.online')}</span>
-        <span className="offline">{t('common.status.offline')}</span>
+      <div className="trend-summary-bar chart-legend">
+        <div className="trend-stat-pill online">
+          <span className="indicator-dot" />
+          <span className="pill-label">{t('common.status.online')}</span>
+          <strong>{latestOnline}</strong>
+          <span className="rate-badge">{onlineRate}%</span>
+        </div>
+        <div className="trend-stat-pill offline">
+          <span className="indicator-dot" />
+          <span className="pill-label">{t('common.status.offline')}</span>
+          <strong>{latestOffline}</strong>
+        </div>
       </div>
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={t('dashboard.trend.ariaDeviceTrend')}
-      >
-        {[20, 40, 60, 80].map((y) => (
-          <line key={y} x1="4" y1={y} x2="96" y2={y} className="grid-line" />
-        ))}
-        <polyline points={makePoints(online)} className="trend-online" />
-        <polyline points={makePoints(offline)} className="trend-offline" />
-      </svg>
-      <div className="chart-axis">
-        <span>00:00</span>
-        <span>06:00</span>
-        <span>12:00</span>
-        <span>18:00</span>
-        <span>{t('common.status.now')}</span>
+      <div className="trend-plot">
+        <div
+          ref={chartRef}
+          className="trend-echarts"
+          role="img"
+          aria-label={t('dashboard.trend.ariaDeviceTrend')}
+        />
+        {loading && (
+          <div className="trend-loading" role="status" aria-live="polite">
+            <span className="trend-loading-spinner" />
+            <span>{t('dashboard.trend.loading')}</span>
+          </div>
+        )}
       </div>
     </div>
   );

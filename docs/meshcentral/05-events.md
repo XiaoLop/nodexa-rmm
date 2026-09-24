@@ -451,7 +451,7 @@ function normalizeEvent(data) {
   // 1. 节点与设备在线/离线/属性变更/Agent日志
   if (event.etype === 'node') {
     if (action === 'nodeconnect') {
-      const isOnline = typeof event.conn === 'number' && event.conn > 0;
+      const isOnline = typeof event.conn === 'number' && (event.conn & 1) !== 0;
       return { type: isOnline ? 'deviceOnline' : 'deviceOffline', nodeid: event.nodeid, raw: event };
     }
     if (action === 'changenode') {
