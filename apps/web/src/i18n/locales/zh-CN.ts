@@ -49,6 +49,11 @@ export const zhCN = {
     "ariaLabel": "设备工作台功能",
     "loading": "正在加载设备工作区",
     "loadingAnnouncement": "正在连接网关并加载设备信息...",
+    "loadFailed": "设备信息加载失败",
+    "notFound": "未找到该设备",
+    "backToList": "返回设备列表",
+    "partialRefreshFailed": "设备部分数据刷新失败",
+    "duration": { "years": "{{count}} 年", "months": "{{count}} 个月", "days": "{{count}} 天", "hours": "{{count}} 小时", "minutes": "{{count}} 分钟" },
     "tabs": { "overview": "概览", "desktop": "远程桌面", "terminal": "终端", "files": "文件管理", "processes": "进程", "services": "服务", "logs": "日志" },
     "header": { "pendingReboot": "待重启", "cpu": "处理器", "systemHardware": "系统硬件", "memory": "物理内存", "slots": "{{count}} 个插槽", "systemMemory": "系统内存", "storage": "存储容量", "remaining": "余 {{value}}", "localDisk": "本地磁盘", "display": "显卡/显示", "standardDisplay": "标准显示", "uptime": "运行时间", "hours": "{{value}} 小时", "source": "来源 {{value}}", "heartbeat": "心跳 {{value}}", "connectable": "可连接", "unavailable": "不可连接" },
     "overview": { "status": { "unknown": "未检测", "healthy": "正常运行", "warning": "存在警告", "danger": "异常或关闭" }, "cpu": "处理器 (CPU)", "frequency": "频率 {{value}}", "memory": "系统物理内存", "slots": "{{count}} 个插槽", "storage": "本地存储空间", "available": "可用 {{value}}", "volumes": "{{count}} 个逻辑卷", "network": "主网络适配器", "interfaces": "{{count}} 个活动网卡", "healthTitle": "设备健康与安全中心", "securityDescription": "系统运行基线与 Windows 安全中心检测", "connectionDescription": "设备与业务网关连接状态", "pendingReboot": "系统提示：检测到待重启事项（{{value}}），建议适时重启设备。", "deviceSignal": "设备信令", "connected": "连接正常", "gateway": "业务网关", "gatewayOffline": "网关离线", "antivirus": "病毒防护", "firewall": "系统防火墙", "updates": "自动更新", "realtimeProtection": "实时保护", "volumesTitle": "磁盘卷存储分布", "volumesDescription": "磁盘逻辑分区与剩余容量", "volumeCount": "共 {{count}} 个卷", "usedPercent": "已用 {{value}}%", "totalCapacity": "总容量", "remaining": "剩余可用", "profileTitle": "系统与硬件规格", "profileDescription": "设备身份与底层组件信息", "fields": { "hostname": "主机名", "platform": "操作系统", "cpu": "处理器型号", "gpu": "显卡设备", "board": "主板 / BIOS", "currentUser": "当前用户", "uptime": "在线运行时长", "agent": "Agent 核心", "ipv4": "IPv4 地址", "mac": "物理 MAC", "primaryNic": "主网卡接口", "dns": "DNS 服务器", "remoteSource": "远端接入源", "lastConnection": "最后连接时间" }, "adminMode": "管理员模式", "activityTitle": "最近设备活动", "activityDescription": "当前设备的实时网关事件", "viewLogs": "查看日志", "noActivity": "暂无设备活动", "networkTitle": "网络配置与连接审计", "networkDescription": "接口详情与最后接入来源" },
@@ -674,7 +679,8 @@ export const zhCN = {
       "unavailable": "当前操作不可用。",
       "editProfile": "编辑资料",
       "setPermissions": "设置权限",
-      "setFeatures": "设置功能"
+      "setFeatures": "设置功能",
+      "backToList": "返回用户列表"
     },
     "itemsCount": "{{count}} 项",
     "empty": { "access": "暂无{{title}}" },

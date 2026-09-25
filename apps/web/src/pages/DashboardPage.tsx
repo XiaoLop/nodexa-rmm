@@ -396,8 +396,7 @@ export function DashboardPage() {
 
       <section className="dashboard-welcome">
         <div className="dashboard-welcome-copy">
-          <span>{t('dashboard.welcome.greeting')}</span>
-          <strong>{displayName}</strong>
+          <span>{t('dashboard.welcome.greeting') + '' + displayName}</span>
           <p>{t('dashboard.welcome.description')}</p>
           <div className="dashboard-welcome-status">
             <i className={statusTone} />

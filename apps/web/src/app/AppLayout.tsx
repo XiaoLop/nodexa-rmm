@@ -15,7 +15,6 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import {
-  Avatar,
   Badge,
   Button,
   Dropdown,
@@ -32,6 +31,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isFullAdministrator } from '@meshcentral/control-client';
 import { gatewaySelectors, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/BrandLogo';
+import { UserAvatar } from '../components/users/UserAvatar';
 import { useGateway } from '../features/gateway/GatewayProvider';
 import {
   useApplicationUiCapabilities,
@@ -304,7 +304,7 @@ function AppLayoutContent() {
               trigger={['click']}
             >
               <button className="user-menu">
-                <Avatar icon={<UserOutlined />} />
+                <UserAvatar username={userInfo?.name ?? userInfo?.id.replace(/^user\/\//, '')} />
                 <span>
                   <strong>{displayName}</strong>
                   <small>

@@ -39,10 +39,10 @@ function hardwareRecord(details: DeviceDetails | undefined) {
   return hardware && typeof hardware === 'object' ? (hardware as Record<string, unknown>) : undefined;
 }
 
-function formatBytes(value: unknown) {
+export function formatBytes(value: unknown) {
   const bytes = typeof value === 'string' ? Number(value) : value;
   if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) return undefined;
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   let current = bytes;
   let index = 0;
   while (current >= 1024 && index < units.length - 1) {
@@ -50,6 +50,50 @@ function formatBytes(value: unknown) {
     index += 1;
   }
   return `${current.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+export function formatBitRate(value: unknown) {
+  const bitsPerSecond = typeof value === 'string' ? Number(value) : value;
+  if (
+    typeof bitsPerSecond !== 'number' ||
+    !Number.isFinite(bitsPerSecond) ||
+    bitsPerSecond <= 0
+  ) {
+    return undefined;
+  }
+  const units = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps', 'Pbps'];
+  let current = bitsPerSecond;
+  let index = 0;
+  while (current >= 1000 && index < units.length - 1) {
+    current /= 1000;
+    index += 1;
+  }
+  const fractionDigits = index === 0 || Number.isInteger(current) ? 0 : 1;
+  return `${current.toFixed(fractionDigits)} ${units[index]}`;
+}
+
+export interface UptimeParts {
+  years: number;
+  months: number;
+  days: number;
+  hours: number;
+  minutes: number;
+}
+
+export function splitUptime(seconds: number): UptimeParts {
+  let remainingMinutes = Math.max(0, Math.floor(seconds / 60));
+  const minutesPerYear = 365 * 24 * 60;
+  const minutesPerMonth = 30 * 24 * 60;
+  const minutesPerDay = 24 * 60;
+  const years = Math.floor(remainingMinutes / minutesPerYear);
+  remainingMinutes %= minutesPerYear;
+  const months = Math.floor(remainingMinutes / minutesPerMonth);
+  remainingMinutes %= minutesPerMonth;
+  const days = Math.floor(remainingMinutes / minutesPerDay);
+  remainingMinutes %= minutesPerDay;
+  const hours = Math.floor(remainingMinutes / 60);
+  const minutes = remainingMinutes % 60;
+  return { years, months, days, hours, minutes };
 }
 
 function bootTimestamp(value: unknown) {
@@ -120,11 +164,7 @@ function parseInterfaces(networkInfo: unknown): NetworkInterfaceInfo[] {
       const ipv4 = items.find((item) => item && typeof item === 'object' && (item as Record<string, unknown>).family === 'IPv4') as Record<string, unknown> | undefined;
       const target = ipv4 ?? items[0] as Record<string, unknown> | undefined;
       if (target) {
-        const speedNum = typeof target.speed === 'number' ? target.speed : undefined;
-        let speedText: string | undefined;
-        if (speedNum) {
-          speedText = speedNum >= 1_000_000_000 ? `${speedNum / 1_000_000_000} Gbps` : `${Math.round(speedNum / 1_000_000)} Mbps`;
-        }
+        const speedText = formatBitRate(target.speed);
         list.push({
           name,
           ip: stringFrom(target.address),
@@ -137,6 +177,39 @@ function parseInterfaces(networkInfo: unknown): NetworkInterfaceInfo[] {
     }
   }
   return list;
+}
+
+const VIRTUAL_INTERFACE_PATTERN =
+  /loopback|virtual|vpn|tunnel|tap|tun|docker|vmware|hyper-v|vethernet|vbox|wsl|tailscale|zerotier/i;
+const PHYSICAL_INTERFACE_PATTERN = /ethernet|以太网|wi-?fi|wlan|wireless|无线/i;
+
+function isUsableIpv4(address: string | undefined) {
+  return Boolean(
+    address &&
+      !address.startsWith('127.') &&
+      !address.startsWith('169.254.') &&
+      address !== '0.0.0.0',
+  );
+}
+
+function primaryInterfaceScore(networkInterface: NetworkInterfaceInfo) {
+  const status = networkInterface.status.toLowerCase();
+  let score = 0;
+  if (networkInterface.gateway) score += 1000;
+  if (status === 'up' || status === 'connected') score += 200;
+  if (isUsableIpv4(networkInterface.ip)) score += 100;
+  if (PHYSICAL_INTERFACE_PATTERN.test(networkInterface.name)) score += 30;
+  if (VIRTUAL_INTERFACE_PATTERN.test(networkInterface.name)) score -= 50;
+  return score;
+}
+
+function selectPrimaryInterface(interfaces: NetworkInterfaceInfo[]) {
+  return interfaces.reduce<NetworkInterfaceInfo | undefined>((selected, candidate) => {
+    if (!selected) return candidate;
+    return primaryInterfaceScore(candidate) > primaryInterfaceScore(selected)
+      ? candidate
+      : selected;
+  }, undefined);
 }
 
 function staticDetails(details: DeviceDetails | undefined) {
@@ -171,7 +244,7 @@ function staticDetails(details: DeviceDetails | undefined) {
   const networkRecord = detailRecord(details, 'networkInfo');
   const lastConnectRecord = detailRecord(details, 'lastConnect');
   const interfaces = parseInterfaces(networkRecord);
-  const primaryInterface = interfaces[0];
+  const primaryInterface = selectPrimaryInterface(interfaces);
 
   const identifiers = systemRecord?.identifiers && typeof systemRecord.identifiers === 'object' ? (systemRecord.identifiers as Record<string, unknown>) : undefined;
   const boardName = stringFrom(identifiers?.board_name) ?? stringFrom(identifiers?.product_name) ?? '—';

@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { splitUptime } from '../../features/device-workspace/deviceWorkspaceModel';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
 import { useFormatters } from '../../i18n/formatters';
 
@@ -22,9 +23,21 @@ function platformIcon(platform: string) {
 
 export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }) {
   const { t } = useTranslation();
-  const { time, number } = useFormatters();
+  const { time } = useFormatters();
   const hw = model.hardware;
   const isDiffName = model.device.name && model.hostname && model.device.name !== model.hostname;
+  const uptime = model.uptimeSeconds === undefined ? undefined : splitUptime(model.uptimeSeconds);
+  const uptimeText = uptime
+    ? [
+        uptime.years ? t('deviceWorkspace.duration.years', { count: uptime.years }) : '',
+        uptime.months ? t('deviceWorkspace.duration.months', { count: uptime.months }) : '',
+        uptime.days ? t('deviceWorkspace.duration.days', { count: uptime.days }) : '',
+        uptime.hours ? t('deviceWorkspace.duration.hours', { count: uptime.hours }) : '',
+        uptime.minutes || (!uptime.years && !uptime.months && !uptime.days && !uptime.hours)
+          ? t('deviceWorkspace.duration.minutes', { count: uptime.minutes })
+          : '',
+      ].filter(Boolean).join(' ')
+    : '—';
 
   return (
     <header className="workspace-device-header console-card">
@@ -80,7 +93,7 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
 
       <div className="workspace-header-meta">
         <span><ClockCircleOutlined /> {t('deviceWorkspace.header.uptime')}</span>
-        <strong>{model.uptimeSeconds === undefined ? '—' : t('deviceWorkspace.header.hours', { value: number(model.uptimeSeconds / 3600, { maximumFractionDigits: 1 }) })}</strong>
+        <strong>{uptimeText}</strong>
         <small>{hw?.lastConnectAddr ? t('deviceWorkspace.header.source', { value: hw.lastConnectAddr }) : model.lastHeartbeatAt ? t('deviceWorkspace.header.heartbeat', { value: time(model.lastHeartbeatAt) }) : '—'}</small>
       </div>
 

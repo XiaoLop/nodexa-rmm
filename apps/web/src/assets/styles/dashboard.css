@@ -52,7 +52,7 @@
 
 /* Welcome header */
 .dashboard-welcome {
-  min-height: 174px;
+  min-height: 154px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr) 270px;
   align-items: stretch;
@@ -164,7 +164,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 5px;
-  padding: 16px;
+  padding: 8px;
   background: rgba(2, 12, 30, 0.26);
 }
 

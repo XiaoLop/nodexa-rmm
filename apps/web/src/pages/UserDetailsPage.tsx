@@ -37,6 +37,7 @@ import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermi
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
 import { SitePermissionModal } from '../components/users/SitePermissionModal';
 import { UserFeatureRestrictionModal } from '../components/users/UserFeatureRestrictionModal';
+import { UserAvatar } from '../components/users/UserAvatar';
 import {
   UserEditDrawer,
   type UserEditSubmission,
@@ -213,6 +214,7 @@ export function UserDetailsPage() {
   const { client, status, devices, groups: gatewayGroups, userInfo } = useGatewayData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [user, setUser] = useState<ManagedUser>();
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(() => Date.now());
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
   const [events, setEvents] = useState<GatewayEvent[]>([]);
   const [sessionCount, setSessionCount] = useState(0);
@@ -258,9 +260,11 @@ export function UserDetailsPage() {
   }, [client, status, t, userId]);
 
   useEffect(() => {
-    void loadDetails();
-    return () => { requestSequence.current += 1; };
-  }, [loadDetails]);
+    if (status === 'connected') void loadDetails();
+    return () => {
+      requestSequence.current += 1;
+    };
+  }, [loadDetails, status]);
 
   const availableGroups = gatewayGroups;
   const deviceGroupRows = useMemo(
@@ -309,7 +313,7 @@ export function UserDetailsPage() {
       if (image) client.users.updateImage(latest.id, image);
       await loadDetails();
       if (image) {
-        setUser((current) => current?.id === latest.id ? { ...current, image } : current);
+        setAvatarRefreshKey(Date.now());
       }
       setEditingProfile(false);
       void messageApi.success(t('userDetails.messages.userUpdated', { name: latest.name }));
@@ -507,28 +511,130 @@ export function UserDetailsPage() {
     });
   };
 
-  if (!user && loading) {
-    return <main className="user-details-page user-detail-placeholder"><Spin size="large" /><p>{t('userDetails.loading')}</p></main>;
+  const isInitialLoading = !user && (loading || status !== 'connected');
+  if (isInitialLoading) {
+    return (
+      <main
+        className="page-stack user-details-page user-group-loading"
+        aria-busy="true"
+        aria-label={t('userDetails.loading')}
+      >
+        <nav className="user-detail-breadcrumb user-group-loading-breadcrumb" aria-hidden="true">
+          <span className="user-group-loading-line is-breadcrumb" />
+          <span>›</span>
+          <span className="user-group-loading-line is-breadcrumb-current" />
+        </nav>
+
+        <section className="user-detail-hero user-group-loading-hero" aria-hidden="true">
+          <div className="user-detail-profile">
+            <span className="user-group-loading-avatar">
+              <UserOutlined />
+            </span>
+            <div className="user-group-loading-profile-copy">
+              <span className="user-group-loading-line is-title" />
+              <span className="user-group-loading-line is-description" />
+              <span className="user-group-loading-line is-id" />
+              <div className="user-group-loading-actions">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          </div>
+
+          <div className="user-detail-meta-container">
+            <div className="user-detail-meta-grid">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div className="user-detail-meta-item user-group-loading-meta" key={index}>
+                  <span className="user-group-loading-line is-meta-label" />
+                  <span className="user-group-loading-line is-meta-value" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="user-detail-sessions">
+            <div className="user-detail-sessions-card user-group-loading-status">
+              <span className="user-group-loading-status-icon">
+                <ApiOutlined />
+              </span>
+              <div>
+                <span className="user-group-loading-line is-status-label" />
+                <span className="user-group-loading-line is-status-value" />
+                <span className="user-group-loading-line is-status-note" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="user-group-loading-content" aria-hidden="true">
+          <div className="user-group-loading-tabs">
+            <span className="is-active" />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="user-group-loading-body">
+            <div className="user-group-loading-heading">
+              <span className="user-group-loading-line is-section-title" />
+              <span className="user-group-loading-line is-section-action" />
+            </div>
+            {Array.from({ length: 4 }, (_, index) => (
+              <div className="user-group-loading-row" key={index}>
+                <span className="user-group-loading-row-icon" />
+                <span className="user-group-loading-line is-row-primary" />
+                <span className="user-group-loading-line is-row-secondary" />
+                <span className="user-group-loading-line is-row-tag" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <span className="user-group-loading-announcement">{t('userDetails.loading')}...</span>
+      </main>
+    );
   }
 
-  if (!user && (loadError || status !== 'connected')) {
+  if (loadError && !user) {
     return (
       <main className="user-details-page page-stack">
         <nav className="user-detail-breadcrumb" aria-label={t('userDetails.breadcrumb')}>
-          <button onClick={() => navigate('/admin/users')}>{t('navigation.userManagement')}</button><span>›</span><strong>{t('navigation.userDetails')}</strong>
+          <button onClick={() => navigate('/admin/users')}>{t('navigation.userManagement')}</button>
+          <span>›</span>
+          <strong>{t('userDetails.loadFailed')}</strong>
         </nav>
         <Alert
           showIcon
           type="error"
           message={t('userDetails.loadFailed')}
-          description={loadError ?? t('userDetails.gatewayDisconnected')}
-          action={<Button onClick={() => void loadDetails()} disabled={status !== 'connected'}>{t('common.actions.retry')}</Button>}
+          description={loadError}
+          action={
+            <Button onClick={() => void loadDetails()} disabled={status !== 'connected'}>
+              {t('common.actions.retry')}
+            </Button>
+          }
         />
       </main>
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <main className="user-details-page page-stack">
+        <nav className="user-detail-breadcrumb" aria-label={t('userDetails.breadcrumb')}>
+          <button onClick={() => navigate('/admin/users')}>{t('navigation.userManagement')}</button>
+          <span>›</span>
+          <strong>{t('userDetails.errors.userDeleted')}</strong>
+        </nav>
+        <Empty description={t('userDetails.errors.userDeleted')} style={{ marginTop: 60 }}>
+          <Button type="primary" onClick={() => navigate('/admin/users')}>
+            {t('userDetails.actions.backToList')}
+          </Button>
+        </Empty>
+      </main>
+    );
+  }
 
   const activeTitle = tabs.find((tab) => tab.key === activeTab)?.labelKey;
 
@@ -545,9 +651,11 @@ export function UserDetailsPage() {
       <section className="user-detail-hero">
         <div className="user-detail-profile">
           <div className="user-detail-avatar-wrapper">
-            <span className={`user-detail-avatar ${user.locked ? 'is-locked' : online ? 'is-online' : 'is-offline'}`}>
-              {user.image ? <img src={user.image} alt="" /> : <UserOutlined />}
-            </span>
+            <UserAvatar
+              className={`user-detail-avatar ${user.locked ? 'is-locked' : online ? 'is-online' : 'is-offline'}`}
+              username={user.name}
+              refreshKey={avatarRefreshKey}
+            />
             <span
               className={`user-detail-status-indicator ${user.locked ? 'status-locked' : online ? 'status-online' : 'status-offline'}`}
               title={user.locked ? t('userDetails.status.locked') : online ? t('common.status.online') : t('common.status.offline')}

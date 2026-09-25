@@ -5,7 +5,6 @@ import {
   ReloadOutlined,
   SearchOutlined,
   UnlockOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import {
   isFullAdministrator,
@@ -30,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UserCreateModal } from '../components/users/UserCreateModal';
+import { UserAvatar } from '../components/users/UserAvatar';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
 import { useGatewayData } from '../features/gateway/useGatewayData';
@@ -236,9 +236,7 @@ export function UsersPage() {
       width: 250,
       render: (_, user) => (
         <div className="user-identity">
-          <span className="user-identity-icon">
-            <UserOutlined />
-          </span>
+          <UserAvatar className="user-identity-icon" username={user.name} />
           <span>
             <strong>{user.name}</strong>
             <small>{user.realName || user.email || user.id}</small>

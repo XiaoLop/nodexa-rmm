@@ -8,9 +8,11 @@ import {
   MeshRight,
   hasMeshRight,
   resolveEffectiveDeviceRights,
+  type Device,
+  type GatewayEvent,
 } from '@meshcentral/control-client';
-import { Button, Empty, message } from 'antd';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Empty, message } from 'antd';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
@@ -33,6 +35,7 @@ import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceW
 import type { WorkspaceTab } from '../features/device-workspace/types';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { getDeviceCapabilities } from '../features/permissions/useUiCapabilities';
+import '../assets/styles/user-details.css';
 import '../assets/styles/device-workspace.css';
 
 const DeviceFilesPanel = lazy(() =>
@@ -80,6 +83,12 @@ export function DeviceWorkspacePage() {
   const [desktopSessionActive, setDesktopSessionActive] = useState(false);
   const [deviceDetails, setDeviceDetails] =
     useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
+  const [fetchedDevice, setFetchedDevice] = useState<Device>();
+  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+  const [loadedDeviceId, setLoadedDeviceId] = useState<string>();
+  const [failedDeviceId, setFailedDeviceId] = useState<string>();
+  const [loadError, setLoadError] = useState<string>();
+  const requestSequence = useRef(0);
   const [desktopLatency, setDesktopLatency] = useState<number>();
   const [desktopLatencyTrend, setDesktopLatencyTrend] = useState<number[]>([]);
   const [desktopLatencyTimedOut, setDesktopLatencyTimedOut] = useState(false);
@@ -91,27 +100,52 @@ export function DeviceWorkspacePage() {
     colorDepth: 32,
     quality: 58,
   });
-  const device = data.devices.find((item) => item.id === deviceId);
-  const workspaceLoading =
-    !device &&
-    (data.initializing ||
-      data.status === 'idle' ||
-      data.status === 'connecting' ||
-      data.status === 'reconnecting');
+
+  const loadDetails = useCallback(async () => {
+    if (!data.client || data.status !== 'connected' || !deviceId) return;
+    const sequence = ++requestSequence.current;
+    setLoadError(undefined);
+    setFailedDeviceId(undefined);
+    try {
+      const [details, deviceEvents] = await Promise.all([
+        data.client.devices.details(deviceId),
+        data.client.events.listByDevice(deviceId, { limit: 20 }),
+      ]);
+      if (sequence !== requestSequence.current) return;
+      setDeviceDetails(details);
+      setHistoryEvents(deviceEvents);
+      setLoadedDeviceId(deviceId);
+      if (details.device) {
+        setFetchedDevice(details.device);
+      }
+    } catch (error) {
+      if (sequence === requestSequence.current) {
+        setFailedDeviceId(deviceId);
+        setLoadError(
+          error instanceof Error ? error.message : t('common.status.unknown'),
+        );
+      }
+    }
+  }, [data.client, data.status, deviceId, t]);
+
   useEffect(() => {
-    let cancelled = false;
-    setDeviceDetails(undefined);
-    if (!deviceId || !device || data.status !== 'connected' || !data.client) return;
-    void data.client.devices
-      .details(deviceId)
-      .then((details) => {
-        if (!cancelled) setDeviceDetails(details);
-      })
-      .catch(() => undefined);
+    if (data.status === 'connected') void loadDetails();
     return () => {
-      cancelled = true;
+      requestSequence.current += 1;
     };
-  }, [data.client, data.status, device?.id, deviceId]);
+  }, [data.status, loadDetails]);
+
+  const storeDevice = data.devices.find((item) => item.id === deviceId);
+  const device = useMemo(() => {
+    if (storeDevice && fetchedDevice) {
+      return { ...fetchedDevice, ...storeDevice };
+    }
+    return storeDevice ?? fetchedDevice;
+  }, [fetchedDevice, storeDevice]);
+
+  const detailsReady = loadedDeviceId === deviceId && Boolean(deviceDetails);
+  const currentLoadError = failedDeviceId === deviceId ? loadError : undefined;
+  const isInitialLoading = !detailsReady && !currentLoadError;
   const model = useMemo(() => {
     if (!device) return undefined;
     const groupName = data.groups.find((group) => group.id === device.groupId)?.name;
@@ -166,7 +200,7 @@ export function DeviceWorkspacePage() {
     if (permission && !permission.visible) setActiveTab('overview');
   }, [activeTab, capabilities, remoteControlAllowed]);
 
-  if (workspaceLoading) {
+  if (isInitialLoading) {
     return (
       <main
         className="device-workspace-page page-stack workspace-loading"
@@ -174,6 +208,11 @@ export function DeviceWorkspacePage() {
         aria-label={t('deviceWorkspace.loading')}
       >
         {messageContextHolder}
+        <nav className="user-detail-breadcrumb user-group-loading-breadcrumb" aria-hidden="true">
+          <span className="user-group-loading-line is-breadcrumb" />
+          <span>›</span>
+          <span className="user-group-loading-line is-breadcrumb-current" />
+        </nav>
         <header
           className="workspace-device-header console-card workspace-loading-header"
           aria-hidden="true"
@@ -271,22 +310,66 @@ export function DeviceWorkspacePage() {
     );
   }
 
-  if (!model || !capabilities) {
+  if (currentLoadError && !detailsReady) {
     return (
-      <section className="console-card workspace-missing">
+      <main className="device-workspace-page page-stack">
         {messageContextHolder}
-        <Empty description="未找到该设备">
-          <Button type="primary" onClick={() => navigate('/devices')}>
-            返回设备列表
-          </Button>
-        </Empty>
-      </section>
+        <nav className="user-detail-breadcrumb" aria-label={t('navigation.deviceWorkspace')}>
+          <button onClick={() => navigate('/devices')}>{t('navigation.allDevices')}</button>
+          <span>›</span>
+          <strong>{t('deviceWorkspace.loadFailed')}</strong>
+        </nav>
+        <Alert
+          type="error"
+          showIcon
+          message={t('deviceWorkspace.loadFailed')}
+          description={currentLoadError}
+          action={
+            <Button onClick={() => void loadDetails()} disabled={data.status !== 'connected'}>
+              {t('common.actions.retry')}
+            </Button>
+          }
+        />
+      </main>
+    );
+  }
+
+  if (!device || !model || !capabilities) {
+    return (
+      <main className="device-workspace-page page-stack">
+        {messageContextHolder}
+        <nav className="user-detail-breadcrumb" aria-label={t('navigation.deviceWorkspace')}>
+          <button onClick={() => navigate('/devices')}>{t('navigation.allDevices')}</button>
+          <span>›</span>
+          <strong>{t('deviceWorkspace.notFound')}</strong>
+        </nav>
+        <section className="console-card workspace-missing">
+          <Empty description={t('deviceWorkspace.notFound')}>
+            <Button type="primary" onClick={() => navigate('/devices')}>
+              {t('deviceWorkspace.backToList')}
+            </Button>
+          </Empty>
+        </section>
+      </main>
     );
   }
 
   return (
     <main className="device-workspace-page page-stack">
       {messageContextHolder}
+      <nav className="user-detail-breadcrumb" aria-label={t('navigation.deviceWorkspace')}>
+        <button onClick={() => navigate('/devices')}>{t('navigation.allDevices')}</button>
+        <span>›</span>
+        <strong>{device.name}</strong>
+      </nav>
+      {currentLoadError ? (
+        <Alert
+          showIcon
+          type="warning"
+          message={t('deviceWorkspace.partialRefreshFailed')}
+          description={currentLoadError}
+        />
+      ) : null}
       <DeviceWorkspaceHeader model={model} />
       <WorkspaceTabs
         active={activeTab}
@@ -299,7 +382,7 @@ export function DeviceWorkspacePage() {
           <DeviceOverviewPanel
             model={model}
             events={data.events}
-            gatewayClient={data.client}
+            historyEvents={historyEvents}
             gatewayConnected={data.status === 'connected'}
             onNavigate={setActiveTab}
           />

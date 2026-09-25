@@ -1,9 +1,10 @@
-import { DeleteOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons';
+import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ManagedUser, UserUpdate } from '@meshcentral/control-client';
-import { Avatar, Button, Drawer, Form, Input, Space, Upload, message } from 'antd';
+import { Button, Drawer, Form, Input, Space, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UserAvatar } from './UserAvatar';
 
 export interface UserEditSubmission {
   updates: UserUpdate;
@@ -31,7 +32,7 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
         realName: user.realName ?? '',
         phone: user.phone ?? '',
       });
-      setImage(user.image);
+      setImage(undefined);
     } else {
       setImage(undefined);
     }
@@ -65,7 +66,7 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
     if (email !== (user.email ?? '')) updates.email = email;
     if (realName !== (user.realName ?? '')) updates.realName = realName;
     if (phone !== (user.phone ?? '')) updates.phone = phone;
-    await onSubmit({ updates, image: image !== user.image ? image : undefined });
+    await onSubmit({ updates, image });
   };
 
   return (
@@ -91,7 +92,7 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
       <Form form={form} layout="vertical" preserve={false}>
         <Form.Item label={t('users.editDrawer.avatar')}>
           <div className="user-edit-avatar-field">
-            <Avatar size={72} src={image} icon={<UserOutlined />} />
+            <UserAvatar size={72} username={user?.name} src={image} />
             <Space wrap>
               <Upload
                 accept="image/jpeg,image/png,image/gif,image/webp"
@@ -101,8 +102,8 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
               >
                 <Button icon={<UploadOutlined />}>{t('users.editDrawer.selectImage')}</Button>
               </Upload>
-              {image !== user?.image ? (
-                <Button icon={<DeleteOutlined />} onClick={() => setImage(user?.image)}>
+              {image ? (
+                <Button icon={<DeleteOutlined />} onClick={() => setImage(undefined)}>
                   {t('users.editDrawer.restoreAvatar')}
                 </Button>
               ) : null}

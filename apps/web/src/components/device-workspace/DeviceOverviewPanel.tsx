@@ -15,11 +15,12 @@ import {
   UserOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import type { GatewayClient, GatewayEvent } from '@meshcentral/control-client';
+import type { GatewayEvent } from '@meshcentral/control-client';
 import { formatEventMessage } from '@meshcentral/shared-state';
 import { Button, Empty, Progress, Tag } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { splitUptime } from '../../features/device-workspace/deviceWorkspaceModel';
 import type {
   DeviceWorkspaceModel,
   WorkspaceTab,
@@ -42,19 +43,31 @@ function statusIndicator(status: string | undefined, labels: { unknown: string; 
 export function DeviceOverviewPanel({
   model,
   events,
-  gatewayClient,
+  historyEvents,
   gatewayConnected,
   onNavigate,
 }: {
   model: DeviceWorkspaceModel;
   events: GatewayEvent[];
-  gatewayClient?: GatewayClient;
+  historyEvents: GatewayEvent[];
   gatewayConnected: boolean;
   onNavigate: (tab: WorkspaceTab) => void;
 }) {
   const { t } = useTranslation();
   const { time, dateTime } = useFormatters();
   const hw = model.hardware;
+  const uptime = model.uptimeSeconds === undefined ? undefined : splitUptime(model.uptimeSeconds);
+  const uptimeText = uptime
+    ? [
+        uptime.years ? t('deviceWorkspace.duration.years', { count: uptime.years }) : '',
+        uptime.months ? t('deviceWorkspace.duration.months', { count: uptime.months }) : '',
+        uptime.days ? t('deviceWorkspace.duration.days', { count: uptime.days }) : '',
+        uptime.hours ? t('deviceWorkspace.duration.hours', { count: uptime.hours }) : '',
+        uptime.minutes || (!uptime.years && !uptime.months && !uptime.days && !uptime.hours)
+          ? t('deviceWorkspace.duration.minutes', { count: uptime.minutes })
+          : '',
+      ].filter(Boolean).join(' ')
+    : '—';
   const sec = hw?.security;
   const hasSystemSummary = model.hasSystemDetails && Boolean(hw.cpuName || hw.memoryTotal || hw.storageTotal);
   const hasNetworkSummary = model.hasNetworkDetails && hw.interfaces.length > 0;
@@ -64,23 +77,6 @@ export function DeviceOverviewPanel({
     sec?.autoUpdate ||
     sec?.realTimeProtection !== undefined,
   );
-  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setHistoryEvents([]);
-    if (!gatewayClient || !gatewayConnected) return;
-    void gatewayClient.events
-      .listByDevice(model.device.id, { limit: 20 })
-      .then((result) => {
-        if (!cancelled) setHistoryEvents(result);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [gatewayClient, gatewayConnected, model.device.id]);
-
   const recentEvents = useMemo(() => {
     const byId = new Map(historyEvents.map((event) => [event.id, event]));
     for (const event of events) {
@@ -263,7 +259,7 @@ export function DeviceOverviewPanel({
             {model.hasSystemDetails && hw.gpuName && <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.gpu')}</dt><dd title={hw.gpuName}>{hw.gpuName}</dd></div>}
             {model.hasSystemDetails && hw.boardName && <div><dt><AppstoreOutlined /> {t('deviceWorkspace.overview.fields.board')}</dt><dd title={`${hw.boardName} (${hw.biosVersion ?? ''})`}>{hw.boardName}</dd></div>}
             {model.currentUser && <div><dt><UserOutlined /> {t('deviceWorkspace.overview.fields.currentUser')}</dt><dd>{model.currentUser}</dd></div>}
-            {model.uptimeSeconds !== undefined && <div><dt><ClockCircleOutlined /> {t('deviceWorkspace.overview.fields.uptime')}</dt><dd>{Math.floor(model.uptimeSeconds / 86400)}d {Math.floor((model.uptimeSeconds % 86400) / 3600)}h</dd></div>}
+            {model.uptimeSeconds !== undefined && <div><dt><ClockCircleOutlined /> {t('deviceWorkspace.overview.fields.uptime')}</dt><dd>{uptimeText}</dd></div>}
             {hw.agentVersion && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.agent')}</dt><dd>{hw.agentVersion} {hw.agentIsRoot ? `(${t('deviceWorkspace.overview.adminMode')})` : ''}</dd></div>}
           </dl>
         </section>

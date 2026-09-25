@@ -1,7 +1,12 @@
 import { MeshRight } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createDeviceWorkspaceModel } from './deviceWorkspaceModel';
+import {
+  createDeviceWorkspaceModel,
+  formatBitRate,
+  formatBytes,
+  splitUptime,
+} from './deviceWorkspaceModel';
 
 const device: Device = {
   id: 'node/domain/device-1',
@@ -167,6 +172,43 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hasNetworkDetails).toBe(true);
   });
 
+  it('selects the active physical interface with a default gateway', () => {
+    const model = createDeviceWorkspaceModel(device, {
+      networkInfo: {
+        netif2: {
+          'vEthernet (WSL)': [
+            {
+              family: 'IPv4',
+              address: '172.28.192.1',
+              speed: 100_000_000_000_000_000,
+              status: 'up',
+            },
+          ],
+          'Wi-Fi': [
+            {
+              family: 'IPv4',
+              address: '192.168.1.21',
+              gateway: '192.168.1.1',
+              speed: 866_000_000,
+              status: 'up',
+            },
+          ],
+          'Ethernet 2': [
+            {
+              family: 'IPv4',
+              address: '10.10.0.8',
+              speed: 1_000_000_000,
+              status: 'down',
+            },
+          ],
+        },
+      },
+    } as any);
+
+    expect(model.hardware.primaryNic).toBe('Wi-Fi (866 Mbps)');
+    expect(model.hardware.primarySpeed).toBe('866 Mbps');
+  });
+
   it('uses the resolved group name when the device only contains a group id', () => {
     const model = createDeviceWorkspaceModel(
       { id: 'node-3', name: 'Node 3', online: true, groupId: 'mesh/domain/group-1' },
@@ -198,5 +240,28 @@ describe('createDeviceWorkspaceModel', () => {
       createDeviceWorkspaceModel({ id: 'files-unknown', name: 'Unknown', online: true })
         .filesAllowed,
     ).toBeUndefined();
+  });
+});
+
+describe('device workspace unit formatting', () => {
+  it('formats storage and memory through terabytes and petabytes', () => {
+    expect(formatBytes(1024 ** 4)).toBe('1.0 TB');
+    expect(formatBytes(1.5 * 1024 ** 5)).toBe('1.5 PB');
+  });
+
+  it('formats network rates through terabits and petabits per second', () => {
+    expect(formatBitRate(1_000_000_000_000)).toBe('1 Tbps');
+    expect(formatBitRate(2_500_000_000_000_000)).toBe('2.5 Pbps');
+  });
+
+  it('splits long uptime into years, months, days, hours, and minutes', () => {
+    const seconds = (((1 * 365 + 2 * 30 + 3) * 24 + 4) * 60 + 5) * 60;
+    expect(splitUptime(seconds)).toEqual({
+      years: 1,
+      months: 2,
+      days: 3,
+      hours: 4,
+      minutes: 5,
+    });
   });
 });
