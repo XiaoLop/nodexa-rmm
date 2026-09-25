@@ -1,6 +1,5 @@
 import {
   DeleteOutlined,
-  EditOutlined,
   LockOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -222,6 +221,13 @@ export function UsersPage() {
     }
   };
 
+  const openUserDetails = (user: ManagedUser) => {
+    navigate(`/admin/users/${encodeURIComponent(user.id)}`);
+  };
+
+  const isInteractiveTarget = (target: EventTarget | null) =>
+    target instanceof Element && Boolean(target.closest('button, a, input, select, textarea, [role="button"]'));
+
   const columns: TableColumnsType<ManagedUser> = [
     {
       title: t('users.columns.user'),
@@ -229,7 +235,7 @@ export function UsersPage() {
       fixed: 'left',
       width: 250,
       render: (_, user) => (
-        <button className="user-identity" onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}>
+        <div className="user-identity">
           <span className="user-identity-icon">
             <UserOutlined />
           </span>
@@ -237,7 +243,7 @@ export function UsersPage() {
             <strong>{user.name}</strong>
             <small>{user.realName || user.email || user.id}</small>
           </span>
-        </button>
+        </div>
       ),
     },
     {
@@ -294,24 +300,12 @@ export function UsersPage() {
       title: t('users.columns.actions'),
       key: 'actions',
       fixed: 'right',
-      width: 275,
+      width: 190,
       render: (_, user) => {
         const current = isCurrentUser(user, userInfo?.id);
         const protectsAdmin = isLastActiveAdministrator(user, users);
         return (
           <Space size="small">
-            <Button type="link" size="small" onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}>
-              {t('common.actions.view')}
-            </Button>
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              disabled={!connected}
-              onClick={() => navigate(`/admin/users/${encodeURIComponent(user.id)}`)}
-            >
-              {t('common.actions.edit')}
-            </Button>
             <Button
               type="link"
               size="small"
@@ -413,9 +407,22 @@ export function UsersPage() {
           </Button>
         </div>
         <Table
+          className="users-table"
           rowKey="id"
           columns={columns}
           dataSource={filteredUsers}
+          onRow={(user) => ({
+            tabIndex: 0,
+            onClick: (event) => {
+              if (!isInteractiveTarget(event.target)) openUserDetails(user);
+            },
+            onKeyDown: (event) => {
+              if (!isInteractiveTarget(event.target) && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                openUserDetails(user);
+              }
+            },
+          })}
           loading={loading && users.length === 0}
           pagination={{
             defaultPageSize: 20,
@@ -423,7 +430,7 @@ export function UsersPage() {
             pageSizeOptions: [20, 50, 100],
             showTotal: (total) => t('users.totalCount', { count: total }),
           }}
-          scroll={{ x: 1345 }}
+          scroll={{ x: 1260 }}
           locale={{
             emptyText: (
               <Empty description={users.length ? t('users.empty.filtered') : t('users.empty.waiting')} />

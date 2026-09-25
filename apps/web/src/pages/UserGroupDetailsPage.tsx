@@ -131,6 +131,11 @@ export function UserGroupDetailsPage() {
     };
   }, [loadDetails, status]);
 
+  useEffect(() => {
+    if (!editOpen || !group) return;
+    editForm.setFieldsValue({ name: group.name, description: group.description });
+  }, [editForm, editOpen, group]);
+
   const memberLinks = useMemo(
     () => group?.links.filter((link) => link.type === 'user') ?? [],
     [group],
@@ -643,10 +648,7 @@ export function UserGroupDetailsPage() {
                 size="small"
                 icon={<EditOutlined />}
                 disabled={!canWrite}
-                onClick={() => {
-                  editForm.setFieldsValue({ name: group.name, description: group.description });
-                  setEditOpen(true);
-                }}
+                onClick={() => setEditOpen(true)}
               >
                 {t('userGroups.details.actions.editProfile')}
               </Button>

@@ -555,6 +555,23 @@ describe('resources', () => {
     });
     await expect(siteRights).resolves.toMatchObject({ action: 'accountchange' });
 
+    const removeRights = users.setRemoveRights('user//new-user', 0x00000600);
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'edituser',
+      id: 'user//new-user',
+      removeRights: 0x00000600,
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        account: { _id: 'user//new-user', removeRights: 0x00000600 },
+      },
+    });
+    await expect(removeRights).resolves.toMatchObject({ action: 'accountchange' });
+
     const remove = users.remove('user//new-user', 'new-user');
     await Promise.resolve();
     expect(client.sent.at(-1)).toEqual({

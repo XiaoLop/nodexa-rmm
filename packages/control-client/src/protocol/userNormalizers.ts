@@ -63,6 +63,11 @@ export function normalizeManagedUser(value: unknown, fallbackId?: string): Manag
     email: stringValue(value.email),
     phone: stringValue(value.phone),
     siteRights,
+    removeRights: normalizeRights(
+      typeof value.removeRights === 'number' && Number.isFinite(value.removeRights)
+        ? value.removeRights
+        : 0,
+    ),
     locked: isUserLocked(siteRights),
     resetNextLogin: typeof value.resetNextLogin === 'boolean' ? value.resetNextLogin : undefined,
     createdAt: timestampValue(value.creation),

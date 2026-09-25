@@ -144,12 +144,16 @@ export function UserGroupsPage() {
       .sort((left, right) => collator.compare(left.name, right.name));
   }, [collator, filter, groups, query]);
 
+  useEffect(() => {
+    if (!editor) return;
+    form.setFieldsValue({
+      name: editor.mode === 'clone' ? `${editor.group?.name ?? ''} (Copy)` : editor.group?.name ?? '',
+      description: editor.group?.description ?? '',
+    });
+  }, [editor, form]);
+
   const openEditor = (mode: EditorMode, group?: UserGroup) => {
     setEditor({ mode, group });
-    form.setFieldsValue({
-      name: mode === 'clone' ? `${group?.name ?? ''} (Copy)` : group?.name ?? '',
-      description: group?.description ?? '',
-    });
   };
 
   const submitEditor = async () => {
@@ -180,7 +184,6 @@ export function UserGroupsPage() {
           : t('userGroups.messages.createSuccess', { name: values.name }),
       );
       setEditor(undefined);
-      form.resetFields();
     } catch (error) {
       const detail = error instanceof Error ? error.message : t('common.status.unknown');
       void messageApi.error(t('userGroups.messages.mutationFailed', { detail }));
@@ -454,7 +457,6 @@ export function UserGroupsPage() {
         open={Boolean(editor)}
         onCancel={() => {
           setEditor(undefined);
-          form.resetFields();
         }}
         onOk={() => void submitEditor()}
         confirmLoading={submitting}

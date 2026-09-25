@@ -33,7 +33,6 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
       });
       setImage(user.image);
     } else {
-      form.resetFields();
       setImage(undefined);
     }
   }, [form, user]);

@@ -1,3 +1,28 @@
+.users-page,
+.users-page > *,
+.users-page .page-heading > div,
+.users-page .devices-table-card {
+  min-width: 0;
+}
+
+.users-page .devices-table-card {
+  width: 100%;
+}
+
+.users-page .ant-table-pagination {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.users-table .ant-table-tbody > tr.ant-table-row {
+  cursor: pointer;
+}
+
+.users-table .ant-table-tbody > tr.ant-table-row:focus-visible {
+  outline: 2px solid #358cff;
+  outline-offset: -2px;
+}
+
 .users-toolbar > .ant-input-affix-wrapper {
   width: min(360px, 34vw);
 }
@@ -52,7 +77,6 @@
   color: inherit;
   background: transparent;
   text-align: left;
-  cursor: pointer;
 }
 
 .user-identity-icon {

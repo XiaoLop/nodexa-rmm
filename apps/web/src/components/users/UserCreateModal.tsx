@@ -73,7 +73,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
   const passwordMode = Form.useWatch('passwordMode', form) ?? 'manual';
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
       form.resetFields();
     }
   }, [form, open]);
@@ -91,7 +91,6 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
       phone: values.phone?.trim() || undefined,
       resetNextLogin: false,
     });
-    form.resetFields();
   };
 
   return (

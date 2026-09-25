@@ -83,6 +83,7 @@ describe('protocol normalizers', () => {
             realname: 'Alice',
             email: 'alice@example.com',
             siteadmin: -1,
+            removeRights: 1536,
             creation: 1_710_000_000,
             login: 1_710_000_100,
             pastlogin: 1_709_000_000,
@@ -100,6 +101,7 @@ describe('protocol normalizers', () => {
       name: 'alice',
       realName: 'Alice',
       siteRights: 0xffffffff,
+      removeRights: 1536,
       locked: false,
       createdAt: '2024-03-09T16:00:00.000Z',
       links: [

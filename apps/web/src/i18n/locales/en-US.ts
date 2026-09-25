@@ -615,13 +615,45 @@ export const enUS = {
       "types": { "deviceOnline": "Device online", "deviceOffline": "Device offline", "deviceChanged": "Device changed", "deviceRemoved": "Device removed", "relayLog": "Remote connection", "agentLog": "Agent log", "manualOperation": "Manual operation", "commandExecution": "Command execution", "batchUpload": "Batch upload", "userSessionCount": "Session change", "unknown": "Other" }
     },
     "columns": { "name": "Name", "permission": "Permission", "actions": "Actions" },
-    "actions": { "add": "Add", "remove": "Remove", "confirmRemove": "Confirm removal", "unavailable": "This action is unavailable.", "editProfile": "Edit profile", "setPermissions": "Set permissions" },
+    "actions": { "add": "Add", "remove": "Remove", "confirmRemove": "Confirm removal", "unavailable": "This action is unavailable.", "editProfile": "Edit profile", "setPermissions": "Set permissions", "setFeatures": "Set features" },
     "itemsCount": "{{count}} items", "empty": { "access": "No {{title}}" }, "loading": "Loading user details", "breadcrumb": "Breadcrumb", "loadFailed": "Failed to load user details", "gatewayDisconnected": "Gateway is not connected.", "partialRefreshFailed": "{{successMessage}}, but the list failed to refresh.", "missing": "Not provided", "missingRealName": "No full name provided", "missingEmail": "No email provided", "neverLoggedIn": "Never logged in", "activeSessions": "Active sessions",
     "status": { "locked": "Locked", "userOnline": "User is currently online", "userOffline": "User is currently offline" },
     "fields": { "id": "User ID", "username": "Username", "realName": "Full name", "email": "Email", "phone": "Phone", "accountStatus": "Account status", "accountType": "Account type", "online": "Online now", "userId": "User ID", "createdAt": "Created at", "lastLoginAt": "Last login", "lastAccessAt": "Last access", "passwordChangedAt": "Password changed", "sitePermissions": "Site permissions" },
     "confirm": { "disableTitle": "Disable user", "enableTitle": "Enable user", "disableContent": "Disable user \"{{name}}\"?", "enableContent": "Enable user \"{{name}}\"?", "deleteTitle": "Delete user", "deleteContent": "Permanently delete user \"{{name}}\"? This action cannot be undone.", "deleteOk": "Permanently delete", "removeGroupTitle": "Remove device group permission", "removeGroupContent": "Remove direct permission for user \"{{user}}\" on device group \"{{name}}\"? The user may still inherit access through a user group.", "removeDeviceTitle": "Remove device permission", "removeDeviceContent": "Remove direct permission for user \"{{user}}\" on device \"{{name}}\"?" },
-    "messages": { "profileUnchanged": "User profile has not changed.", "userUpdated": "Updated user \"{{name}}\"", "userUpdateFailed": "Failed to update user: {{detail}}", "siteRightsUpdated": "Updated site permissions for user \"{{name}}\"", "siteRightsFailed": "Failed to set user permissions: {{detail}}", "userDisabled": "Account \"{{name}}\" disabled", "userEnabled": "Account \"{{name}}\" enabled", "userDeleted": "Deleted user \"{{name}}\"", "groupAdded": "Added device group \"{{name}}\"", "groupUpdated": "Updated permissions for \"{{name}}\"", "groupSaveFailed": "Failed to save device group permissions: {{detail}}", "groupRemoved": "Removed device group \"{{name}}\"", "groupRemoveFailed": "Failed to remove device group permissions: {{detail}}", "deviceAdded": "Added device \"{{name}}\"", "deviceUpdated": "Updated permissions for \"{{name}}\"", "deviceSaveFailed": "Failed to save device permissions: {{detail}}", "deviceRemoved": "Removed device \"{{name}}\"" },
+    "messages": { "profileUnchanged": "User profile has not changed.", "userUpdated": "Updated user \"{{name}}\"", "userUpdateFailed": "Failed to update user: {{detail}}", "siteRightsUpdated": "Updated site permissions for user \"{{name}}\"", "siteRightsFailed": "Failed to set user permissions: {{detail}}", "featureRestrictionsUpdated": "Updated feature restrictions for user \"{{name}}\"", "featureRestrictionsFailed": "Failed to set user features: {{detail}}", "userDisabled": "Account \"{{name}}\" disabled", "userEnabled": "Account \"{{name}}\" enabled", "userDeleted": "Deleted user \"{{name}}\"", "groupAdded": "Added device group \"{{name}}\"", "groupUpdated": "Updated permissions for \"{{name}}\"", "groupSaveFailed": "Failed to save device group permissions: {{detail}}", "groupRemoved": "Removed device group \"{{name}}\"", "groupRemoveFailed": "Failed to remove device group permissions: {{detail}}", "deviceAdded": "Added device \"{{name}}\"", "deviceUpdated": "Updated permissions for \"{{name}}\"", "deviceSaveFailed": "Failed to save device permissions: {{detail}}", "deviceRemoved": "Removed device \"{{name}}\"" },
     "errors": { "unknown": "Unknown error", "invalidRights": "The selected permissions do not apply to an individual device. Please choose again.", "accessDenied": "The current account is not authorized to perform this action.", "invalidUser": "The target user does not exist or is unavailable.", "invalidDevice": "The target device does not exist or is unavailable.", "userDeleted": "The target user does not exist or has been deleted.", "dataNotLoaded": "User data has not loaded.", "userDeletedReturn": "The target user no longer exists. Return to the user list.", "cannotEditCurrentPermissions": "You cannot modify permissions for the current signed-in user.", "cannotRemoveLastAdmin": "You cannot remove site administrator rights from the last sign-in-capable user.", "cannotChangeCurrentStatus": "You cannot disable or enable the current signed-in user.", "cannotDisableLastAdmin": "You cannot disable the last sign-in-capable site administrator.", "cannotDeleteCurrent": "You cannot delete the current signed-in user.", "cannotDeleteLastAdmin": "You cannot delete the last sign-in-capable site administrator.", "cannotEditCurrentDeviceGroups": "You cannot modify device group permissions for the current signed-in user.", "groupDeleted": "The target device group does not exist or has been deleted.", "cannotEditCurrentDevices": "You cannot modify device permissions for the current signed-in user.", "deviceDeleted": "The target device does not exist or has been deleted." }
+  },
+  "featureRestrictions": {
+    "title": "Set user features",
+    "notice": "Select the features to disable or restrict for user \"{{name}}\". Unselected features remain available.",
+    "status": {
+      "unrestricted": "No restrictions (all features available)",
+      "restricted": "{{count}} feature(s) restricted"
+    },
+    "categories": {
+      "remote": "Remote Access & Control",
+      "system": "System Management & Commands",
+      "maintenance": "Maintenance & Power"
+    },
+    "restoreAll": "Restore all features",
+    "selectGroup": "Select group",
+    "deselectGroup": "Clear group",
+    "broadImpactTag": "Global restriction",
+    "remoteControlNotice": "Disabling all remote control blocks desktop, terminal, files, and all other remote features.",
+    "items": {
+      "remoteControl": { "label": "Disable all remote control", "description": "Desktop, terminal, files, and all other remote features are unavailable." },
+      "desktopAccess": { "label": "Disable remote desktop", "description": "Remote desktop sessions cannot be established." },
+      "remoteViewOnly": { "label": "Remote desktop view only", "description": "The desktop is visible, but mouse and keyboard input are disabled." },
+      "terminalAccess": { "label": "Disable remote terminal", "description": "Terminal and shell access are unavailable." },
+      "fileAccess": { "label": "Disable device files", "description": "Device files cannot be browsed, uploaded, or downloaded." },
+      "registryAccess": { "label": "Disable Windows registry", "description": "The Windows registry cannot be viewed or modified." },
+      "softwareAccess": { "label": "Disable software management", "description": "The installed software list cannot be viewed or managed." },
+      "agentConsole": { "label": "Disable Agent console", "description": "The internal MeshAgent console is unavailable." },
+      "uninstall": { "label": "Disable remote Agent uninstall", "description": "The client Agent cannot be remotely uninstalled." },
+      "remoteCommand": { "label": "Disable background commands", "description": "Silent remote commands cannot be executed in the background." },
+      "wake": { "label": "Disable network wake", "description": "Wake-on-LAN is unavailable." },
+      "resetOff": { "label": "Disable power operations", "description": "Shutdown, restart, sleep, and other power operations are unavailable." }
+    }
   },
   "userGroups": {
     "title": "User groups",

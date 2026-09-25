@@ -7,6 +7,7 @@ const user = (overrides: Partial<ManagedUser>): ManagedUser => ({
   id: 'user//one',
   name: 'one',
   siteRights: 0,
+  removeRights: 0,
   locked: false,
   raw: {},
   ...overrides,

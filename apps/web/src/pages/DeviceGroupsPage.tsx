@@ -21,7 +21,7 @@ import {
   theme,
   type TableColumnsType,
 } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
@@ -91,8 +91,15 @@ export function DeviceGroupsPage() {
       .sort(compareGroupName);
   }, [compareGroupName, groups, query]);
 
+  useEffect(() => {
+    if (!editingGroup) return;
+    form.setFieldsValue({
+      name: editingGroup === 'new' ? '' : editingGroup.name,
+      description: editingGroup === 'new' ? '' : editingGroup.description,
+    });
+  }, [editingGroup, form]);
+
   const openGroupEditor = (group?: DeviceGroup) => {
-    form.setFieldsValue({ name: group?.name ?? '', description: group?.description ?? '' });
     setEditingGroup(group ?? 'new');
   };
 

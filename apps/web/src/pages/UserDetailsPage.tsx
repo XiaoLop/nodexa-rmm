@@ -14,6 +14,7 @@ import {
   PlusOutlined,
   SafetyCertificateFilled,
   SafetyCertificateOutlined,
+  SettingOutlined,
   TeamOutlined,
   UnlockOutlined,
   UserOutlined,
@@ -35,6 +36,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
 import { SitePermissionModal } from '../components/users/SitePermissionModal';
+import { UserFeatureRestrictionModal } from '../components/users/UserFeatureRestrictionModal';
 import {
   UserEditDrawer,
   type UserEditSubmission,
@@ -222,6 +224,7 @@ export function UserDetailsPage() {
   >();
   const [editingProfile, setEditingProfile] = useState(false);
   const [sitePermissionOpen, setSitePermissionOpen] = useState(false);
+  const [featureRestrictionOpen, setFeatureRestrictionOpen] = useState(false);
   const [userMutationSubmitting, setUserMutationSubmitting] = useState(false);
   const [permissionSubmitting, setPermissionSubmitting] = useState(false);
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -281,6 +284,7 @@ export function UserDetailsPage() {
       setPermissionEditor(undefined);
       setDevicePermissionEditor(undefined);
       setSitePermissionOpen(false);
+      setFeatureRestrictionOpen(false);
     }
   }, [isViewingCurrentUser]);
 
@@ -336,6 +340,25 @@ export function UserDetailsPage() {
       void messageApi.success(t('userDetails.messages.siteRightsUpdated', { name: latest.name }));
     } catch (error) {
       void messageApi.error(t('userDetails.messages.siteRightsFailed', { detail: errorMessage(error, t) }));
+    } finally {
+      setUserMutationSubmitting(false);
+    }
+  };
+
+  const saveFeatureRestrictions = async (removeRights: number) => {
+    if (!client || !user) return;
+    setUserMutationSubmitting(true);
+    try {
+      const { latest } = await findLatestUser();
+      if (isCurrentUser(latest, userInfo?.id)) {
+        throw new Error(t('userDetails.errors.cannotEditCurrentPermissions'));
+      }
+      await client.users.setRemoveRights(latest.id, removeRights);
+      await loadDetails();
+      setFeatureRestrictionOpen(false);
+      void messageApi.success(t('userDetails.messages.featureRestrictionsUpdated', { name: latest.name }));
+    } catch (error) {
+      void messageApi.error(t('userDetails.messages.featureRestrictionsFailed', { detail: errorMessage(error, t) }));
     } finally {
       setUserMutationSubmitting(false);
     }
@@ -565,6 +588,16 @@ export function UserDetailsPage() {
                   {t('userDetails.actions.setPermissions')}
                 </Button>
               </Tooltip>
+              <Tooltip title={isViewingCurrentUser ? t('userDetails.errors.cannotEditCurrentPermissions') : undefined}>
+                <Button
+                  size="small"
+                  icon={<SettingOutlined />}
+                  disabled={status !== 'connected' || isViewingCurrentUser}
+                  onClick={() => setFeatureRestrictionOpen(true)}
+                >
+                  {t('userDetails.actions.setFeatures')}
+                </Button>
+              </Tooltip>
               <Button
                 size="small"
                 danger={!user.locked}
@@ -739,6 +772,13 @@ export function UserDetailsPage() {
         submitting={userMutationSubmitting}
         onCancel={() => setSitePermissionOpen(false)}
         onSubmit={saveSitePermissions}
+      />
+      <UserFeatureRestrictionModal
+        open={featureRestrictionOpen && !isViewingCurrentUser}
+        user={user}
+        submitting={userMutationSubmitting}
+        onCancel={() => setFeatureRestrictionOpen(false)}
+        onSubmit={saveFeatureRestrictions}
       />
       <UserEditDrawer
         user={editingProfile ? user : undefined}

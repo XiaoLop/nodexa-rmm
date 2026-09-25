@@ -220,6 +220,7 @@ export interface ManagedUser {
   email?: string;
   phone?: string;
   siteRights: number;
+  removeRights: number;
   locked: boolean;
   resetNextLogin?: boolean;
   createdAt?: string;

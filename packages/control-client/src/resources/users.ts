@@ -189,6 +189,23 @@ export class UsersResource {
     });
   }
 
+  setRemoveRights(userId: string, removeRights: number): Promise<unknown> {
+    const id = required(userId, 'User ID');
+    if (!Number.isInteger(removeRights) || removeRights < 0 || removeRights > 0xffffffff) {
+      throw new GatewayValidationError('Remove rights must be an unsigned 32-bit integer.');
+    }
+    const normalizedRemoveRights = removeRights >>> 0;
+    return this.mutate({
+      action: 'edituser',
+      payload: { action: 'edituser', id, removeRights: normalizedRemoveRights },
+      matchesEvent: (event) => event.action === 'accountchange' && matchesUserId(event, id),
+      verify: async () => {
+        const user = (await this.list()).find((item) => item.id === id);
+        return user?.removeRights === normalizedRemoveRights ? user : undefined;
+      },
+    });
+  }
+
   remove(userId: string, username?: string): Promise<unknown> {
     const userid = required(userId, 'User ID');
     const normalizedUsername = required(

@@ -673,7 +673,8 @@ export const zhCN = {
       "confirmRemove": "确认移除",
       "unavailable": "当前操作不可用。",
       "editProfile": "编辑资料",
-      "setPermissions": "设置权限"
+      "setPermissions": "设置权限",
+      "setFeatures": "设置功能"
     },
     "itemsCount": "{{count}} 项",
     "empty": { "access": "暂无{{title}}" },
@@ -723,6 +724,8 @@ export const zhCN = {
       "userUpdateFailed": "更新用户失败：{{detail}}",
       "siteRightsUpdated": "已更新用户「{{name}}」的站点权限",
       "siteRightsFailed": "设置用户权限失败：{{detail}}",
+      "featureRestrictionsUpdated": "已更新用户「{{name}}」的功能限制",
+      "featureRestrictionsFailed": "设置用户功能失败：{{detail}}",
       "userDisabled": "账户「{{name}}」已禁用",
       "userEnabled": "账户「{{name}}」已启用",
       "userDeleted": "已删除用户「{{name}}」",
@@ -755,6 +758,38 @@ export const zhCN = {
       "groupDeleted": "目标设备组不存在或已被删除。",
       "cannotEditCurrentDevices": "不能修改当前登录用户的设备权限。",
       "deviceDeleted": "目标设备不存在或已被删除。"
+    }
+  },
+  "featureRestrictions": {
+    "title": "设置用户功能",
+    "notice": "为用户「{{name}}」选择需要禁用或限制的功能。未选中的功能保持可用。",
+    "status": {
+      "unrestricted": "无功能限制（全部可用）",
+      "restricted": "已限制 {{count}} 项功能"
+    },
+    "categories": {
+      "remote": "远程访问与控制",
+      "system": "系统管理与命令",
+      "maintenance": "设备维护与电源"
+    },
+    "restoreAll": "恢复所有功能",
+    "selectGroup": "本组全选",
+    "deselectGroup": "取消本组",
+    "broadImpactTag": "全范围限制",
+    "remoteControlNotice": "“禁止一切远程控制”会使桌面、终端、文件等远程功能全部不可用。",
+    "items": {
+      "remoteControl": { "label": "禁止一切远程控制", "description": "桌面、终端、文件等远程功能全部不可用。" },
+      "desktopAccess": { "label": "禁止访问远程桌面", "description": "无法建立远程桌面连接。" },
+      "remoteViewOnly": { "label": "远程桌面仅查看", "description": "可以查看桌面，但不能移动鼠标或使用键盘输入。" },
+      "terminalAccess": { "label": "禁止访问远程终端", "description": "无法访问终端或 Shell 命令行。" },
+      "fileAccess": { "label": "禁止访问设备文件", "description": "无法上传、下载或浏览设备文件系统。" },
+      "registryAccess": { "label": "禁止访问 Windows 注册表", "description": "无法查看或修改 Windows 注册表。" },
+      "softwareAccess": { "label": "禁止查看与管理软件", "description": "无法查看或管理软件安装列表。" },
+      "agentConsole": { "label": "禁止访问 Agent 控制台", "description": "无法访问 MeshAgent 内部控制台。" },
+      "uninstall": { "label": "禁止远程卸载 Agent", "description": "无法从控制台远程卸载客户端 Agent。" },
+      "remoteCommand": { "label": "禁止后台远程命令", "description": "无法在后台静默执行远程命令。" },
+      "wake": { "label": "禁止网络唤醒", "description": "无法执行 Wake-on-LAN。" },
+      "resetOff": { "label": "禁止电源操作", "description": "无法执行关机、重启、睡眠等电源操作。" }
     }
   },
   "userGroups": {
