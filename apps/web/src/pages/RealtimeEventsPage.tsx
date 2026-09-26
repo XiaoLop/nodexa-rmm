@@ -229,6 +229,14 @@ export function RealtimeEventsPage() {
   }, [data.events, eventFilter, historyEvents]);
   const waitingForConnection = !data.client || data.status !== 'connected';
   const tableLoading = loading || (waitingForConnection && events.length === 0);
+  const devicesById = useMemo(
+    () => new Map(data.devices.map((device) => [device.id, device])),
+    [data.devices],
+  );
+  const groupNamesById = useMemo(
+    () => new Map(data.groups.map((group) => [group.id, group.name])),
+    [data.groups],
+  );
 
   const columns = [
     {
@@ -246,8 +254,14 @@ export function RealtimeEventsPage() {
     {
       title: t('events.columns.device'),
       width: 150,
-      render: (_: unknown, event: GatewayEvent) =>
-        getEventTargetName(event, data.devices) || event.deviceId || t('common.status.systemEvent'),
+      render: (_: unknown, event: GatewayEvent) => {
+        const deviceName = getEventTargetName(event, data.devices);
+        if (!deviceName) return event.deviceId || t('common.status.systemEvent');
+
+        const device = event.deviceId ? devicesById.get(event.deviceId) : undefined;
+        const groupName = device?.groupName ?? groupNamesById.get(device?.groupId ?? '');
+        return groupName ? `${groupName}/${deviceName}` : deviceName;
+      },
     },
     { title: t('events.columns.user'), dataIndex: 'user', width: 125, render: (value?: string) => value || '—' },
     { title: t('events.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },

@@ -186,7 +186,7 @@
 
 因此当前的 `compose.production.yaml` 只是生产编排契约，还不能直接完成生产部署。
 
-另外，固定的 MeshCentral `1.2.5` npm 包缺失 `exeHandler.js`，生产镜像构建时需要恢复这个文件，见 `README.md`。
+另外，固定的 MeshCentral `1.1.54` npm 包缺失 `exeHandler.js`，生产镜像构建时需要恢复这个文件，见 `README.md`。
 
 还需要补：
 

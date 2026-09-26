@@ -1,0 +1,67 @@
+name: meshcentral-development
+
+services:
+  mongodb:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: meshcentral
+      MONGO_INITDB_ROOT_PASSWORD: development-password
+    volumes:
+      - ../apps/meshcentral/runtime/mongodb:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--quiet',
+          '--username',
+          'meshcentral',
+          '--password',
+          'development-password',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "quit(db.adminCommand('ping').ok ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  meshcentral:
+    build:
+      context: ..
+      dockerfile: apps/meshcentral/Dockerfile
+      args:
+        MESHCENTRAL_VERSION: 1.1.54
+    image: mesh-console-meshcentral:development
+    restart: unless-stopped
+    command:
+      - --configfile
+      - /run/config/meshcentral.json
+      - --datapath
+      - /var/lib/meshcentral/data
+    ports:
+      - '127.0.0.1:8443:8443'
+    volumes:
+      - ${MESHCENTRAL_CONFIG_FILE:-./config/meshcentral.example.json}:/run/config/meshcentral.json:ro
+      - ../apps/meshcentral/runtime/data:/var/lib/meshcentral/data
+      - ../apps/meshcentral/runtime/files:/var/lib/meshcentral/files
+      - ../apps/meshcentral/runtime/backups:/var/lib/meshcentral/backups
+      - ../apps/meshcentral/runtime/recordings:/var/lib/meshcentral/recordings
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:8443/health.ashx', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

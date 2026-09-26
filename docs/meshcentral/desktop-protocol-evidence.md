@@ -7,12 +7,12 @@
 ## 1. 版本与环境
 
 - checkout：`D:\web\MeshCentral`。
-- package.json:3：版本 `1.2.5`。
+- package.json:3：版本 `1.1.54`。
 - Git HEAD：`02eb8f71d2ce48bdbd59e4e4d4844b7edaf0e69d`。
 - Git 提交说明：`Fix: keyboard stops working after desktop reconnect (#8135)`。
 - 当前执行环境：Windows AMD64，Node `v24.9.0`；package.json:59–60 要求 Node >=20。这不是部署端或被控端环境证明。
 - 工作树已有删除：agents/MeshCmd.exe、MeshCmd64.exe、MeshService.exe、MeshService64.exe；本次未修改或恢复这些文件。
-- Windows/Linux/macOS 实际 Agent 版本：未取得。meshagent.js:531–552 从 Agent 认证命令 3 读取 infoVersion、agentId、agentVersion、platformType、capabilities；agentVersion 在偏移 10，是独立于服务器包版本的字段。不能用 1.2.5 代替 Agent 版本。
+- Windows/Linux/macOS 实际 Agent 版本：未取得。meshagent.js:531–552 从 Agent 认证命令 3 读取 infoVersion、agentId、agentVersion、platformType、capabilities；agentVersion 在偏移 10，是独立于服务器包版本的字段。不能用 1.1.54 代替 Agent 版本。
 - meshcentral.js:3232–3283 定义平台/架构映射，例如 Windows x64 service=4，Linux x64=6，macOS Intel=16，macOS ARM64=29。agents/hashagents.json 是打包文件 hash/size/mtime 清单，不是在线 Agent 的版本证据。
 - 首期支持范围尚未指定。建议先 Windows 10/11 x64 + Chromium Chrome/Edge + 单屏 + WebSocket + 不录制建立基线，再分别测试录制、同意、多屏和 Linux/macOS。此为建议而非已承诺支持范围；浏览器应记录准确版本，Linux 应区分 X11/Wayland。
 - 录制、同意、隐私、多显示器的实际启用状态均未知。sample-config.json 是示例，不能作为运行配置。

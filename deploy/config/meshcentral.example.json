@@ -1,0 +1,49 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
+    "settings": {
+        "cert": "localhost",
+        "port": 8443,
+        "aliasPort": 443,
+        "redirPort": 0,
+        "dataPath": "/var/lib/meshcentral/data",
+        "filesPath": "/var/lib/meshcentral/files",
+        "WANonly": true,
+        "tlsOffload": true,
+        "trustedProxy": "127.0.0.1",
+        "mongoDb": "mongodb://meshcentral:development-password@mongodb:27017/meshcentral?authSource=admin",
+        "mongoDbName": "meshcentral",
+        "selfUpdate": false,
+        "compression": true,
+        "wsCompression": false,
+        "agentWsCompression": false,
+        "autoBackup": {
+            "backupIntervalHours": 24,
+            "keepLastDaysBackup": 7,
+            "backupPath": "/var/lib/meshcentral/backups"
+        }
+    },
+    "domains": {
+        "": {
+            "title": "Mesh Console Dev",
+            "title2": "Local development",
+            "newAccounts": true,
+            "minify": false,
+            "sessionRecording": {
+                "filepath": "/var/lib/meshcentral/recordings",
+                "protocols": []
+            },
+            "agentFileInfo": {
+                "icon": "myagent.ico",
+                "fileDescription": "Remote Support Client",
+                "productName": "My Remote Agent"
+            },
+            "agentCustomization": {
+                "displayName": "远程管理助手",
+                "description": "用于远程管理和技术支持的服务程序",
+                "companyName": "My Company",
+                "fileName": "RemoteAgent",
+                "image": "myagent.png"
+            }
+        }
+    }
+}
