@@ -1,4 +1,6 @@
 import {
+  DEVICE_USER_ASSIGNABLE_RIGHTS_MASK,
+  DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK,
   MeshRight,
   canUseDeviceFiles,
   canUseTerminal,
@@ -249,41 +251,27 @@ export const MESH_PERMISSION_CATEGORIES = [
   },
 ] as const;
 
-const DEVICE_PERMISSION_FLAGS = new Set<number>([
-  MeshRight.RemoteControl,
-  MeshRight.AgentConsole,
-  MeshRight.ServerFiles,
-  MeshRight.WakeDevice,
-  MeshRight.SetNotes,
-  MeshRight.ChatNotify,
-  MeshRight.Uninstall,
-  MeshRight.RemoteCommand,
-  MeshRight.ResetOff,
-  MeshRight.GuestSharing,
-  MeshRight.DeviceDetails,
-  MeshRight.Relay,
-  MeshRight.RemoteViewOnly,
-  MeshRight.NoTerminal,
-  MeshRight.NoFiles,
-  MeshRight.NoAmt,
-  MeshRight.DesktopLimitedInput,
-  MeshRight.LimitEvents,
-  MeshRight.NoDesktop,
-  MeshRight.NoRegistry,
-  MeshRight.NoSoftware,
-]);
+function permissionsWithinMask(mask: number): MeshPermission[] {
+  return MESH_PERMISSIONS.filter(({ flag }) => (flag & mask) === flag);
+}
 
-export const DEVICE_PERMISSIONS = MESH_PERMISSIONS.filter(({ flag }) =>
-  DEVICE_PERMISSION_FLAGS.has(flag),
+export const DEVICE_USER_PERMISSIONS = permissionsWithinMask(
+  DEVICE_USER_ASSIGNABLE_RIGHTS_MASK,
 );
+
+export const DEVICE_USER_GROUP_PERMISSIONS = permissionsWithinMask(
+  DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK,
+);
+
+/** @deprecated Use the subject-specific device permission collection. */
+export const DEVICE_PERMISSIONS = DEVICE_USER_PERMISSIONS;
 
 export const DEVICE_PERMISSION_CATEGORIES = MESH_PERMISSION_CATEGORIES.filter(({ key }) =>
   DEVICE_PERMISSIONS.some((permission) => permission.category === key),
 );
 
-export const DEVICE_RIGHT_FULL = composeMeshRights(
-  DEVICE_PERMISSIONS.filter(({ category }) => category !== 'restrictions').map(({ flag }) => flag),
-);
+/** @deprecated Use DEVICE_USER_ASSIGNABLE_RIGHTS_MASK from control-client. */
+export const DEVICE_RIGHT_FULL = DEVICE_USER_ASSIGNABLE_RIGHTS_MASK;
 
 export const MESH_PERMISSION_PRESETS = [
   {

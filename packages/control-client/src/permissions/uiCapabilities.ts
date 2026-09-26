@@ -46,6 +46,13 @@ export interface DeviceUiCapabilities {
   edit: UiPermission;
 }
 
+export interface DeviceGroupUiCapabilities {
+  edit: UiPermission;
+  remove: UiPermission;
+  manageUsers: UiPermission;
+  manageComputers: UiPermission;
+}
+
 export interface ApplicationUiCapabilities {
   manageUsers: boolean;
   manageUserGroups: boolean;
@@ -201,9 +208,55 @@ export function getDeviceUiCapabilities(
   };
 }
 
+export function getDeviceGroupUiCapabilities(
+  rights: number | undefined,
+  gatewayConnected: boolean,
+): DeviceGroupUiCapabilities {
+  if (rights === undefined) {
+    const unknown = available(false, 'permission-unknown', '正在确认设备组权限');
+    return {
+      edit: unknown,
+      remove: unknown,
+      manageUsers: unknown,
+      manageComputers: unknown,
+    };
+  }
+
+  const normalized = normalizeRights(rights);
+  const administrator = isFullRights(normalized);
+  return {
+    edit: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.EditMesh),
+      gatewayConnected,
+    ),
+    remove: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.EditMesh),
+      gatewayConnected,
+    ),
+    manageUsers: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.ManageUsers),
+      gatewayConnected,
+    ),
+    manageComputers: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.ManageComputers),
+      gatewayConnected,
+    ),
+  };
+}
+
 export function getApplicationUiCapabilities(
   siteRights: number | undefined,
 ): ApplicationUiCapabilities {
+  if (siteRights === undefined) {
+    return {
+      manageUsers: false,
+      manageUserGroups: false,
+      viewAllEvents: false,
+      manageSettings: false,
+      createDeviceGroups: false,
+      addDevices: false,
+    };
+  }
   const normalized = normalizeRights(siteRights);
   const administrator = isSiteAdministrator(normalized);
   return {

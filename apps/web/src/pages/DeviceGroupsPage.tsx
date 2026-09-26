@@ -17,15 +17,22 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   message,
   theme,
   type TableColumnsType,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useGatewayData } from '../features/gateway/useGatewayData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
+import {
+  getDeviceGroupUiCapabilities,
+  resolveEffectiveDeviceGroupRights,
+  type UiPermission,
+} from '@meshcentral/control-client';
 import { createCollator, useFormatters } from '../i18n';
 import '../assets/styles/devices.css';
 
@@ -37,11 +44,28 @@ function nameCategory(name: string) {
   return 2;
 }
 
+function PermissionButton({
+  permission,
+  children,
+}: {
+  permission: UiPermission;
+  children: React.ReactElement;
+}) {
+  if (!permission.visible) return null;
+  return permission.message ? (
+    <Tooltip title={permission.message}>
+      <span>{children}</span>
+    </Tooltip>
+  ) : (
+    children
+  );
+}
+
 export function DeviceGroupsPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const { token } = theme.useToken();
-  const { groups, devices, client, status, refreshSnapshot } = useGatewayData();
+  const { groups, devices, client, status, userInfo, serverInfo, refreshSnapshot } = useGatewayData();
   const applicationCapabilities = useApplicationUiCapabilities();
   const navigate = useNavigate();
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -50,6 +74,27 @@ export function DeviceGroupsPage() {
   const [editingGroup, setEditingGroup] = useState<DeviceGroup | null | 'new'>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<{ name: string; description?: string }>();
+  const permissionContextRef = useRef({ groups, userInfo, serverInfo, status });
+  permissionContextRef.current = { groups, userInfo, serverInfo, status };
+
+  const groupCapabilities = useCallback(
+    (group: DeviceGroup) =>
+      getDeviceGroupUiCapabilities(
+        resolveEffectiveDeviceGroupRights(group, userInfo, serverInfo),
+        status === 'connected',
+      ),
+    [serverInfo, status, userInfo],
+  );
+
+  const latestGroupPermission = (groupId: string, capability: 'edit' | 'remove') => {
+    const context = permissionContextRef.current;
+    const group = context.groups.find((item) => item.id === groupId);
+    if (!group) return undefined;
+    return getDeviceGroupUiCapabilities(
+      resolveEffectiveDeviceGroupRights(group, context.userInfo, context.serverInfo),
+      context.status === 'connected',
+    )[capability];
+  };
 
   const collator = useMemo(
     () => createCollator(formatters.language, { numeric: true, sensitivity: 'base' }),
@@ -100,6 +145,10 @@ export function DeviceGroupsPage() {
   }, [editingGroup, form]);
 
   const openGroupEditor = (group?: DeviceGroup) => {
+    if (group && !groupCapabilities(group).edit.enabled) {
+      void messageApi.error(t('deviceGroups.messages.permissionDenied'));
+      return;
+    }
     setEditingGroup(group ?? 'new');
   };
 
@@ -111,6 +160,10 @@ export function DeviceGroupsPage() {
       if (editingGroup === 'new') {
         await client.groups.create(values.name.trim(), { description: values.description?.trim() });
       } else {
+        if (!latestGroupPermission(editingGroup.id, 'edit')?.enabled) {
+          void messageApi.error(t('deviceGroups.messages.permissionDenied'));
+          return;
+        }
         await client.groups.update(editingGroup.id, {
           name: values.name.trim(),
           description: values.description?.trim() ?? '',
@@ -133,6 +186,10 @@ export function DeviceGroupsPage() {
 
   const confirmGroupDeletion = (group: DeviceGroup) => {
     if (!client) return;
+    if (!groupCapabilities(group).remove.enabled) {
+      void messageApi.error(t('deviceGroups.messages.permissionDenied'));
+      return;
+    }
     const count = deviceStatsByGroup.get(group.id)?.total ?? 0;
     modal.confirm({
       title: t('deviceGroups.confirm.deleteTitle'),
@@ -142,6 +199,10 @@ export function DeviceGroupsPage() {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
+          if (!latestGroupPermission(group.id, 'remove')?.enabled) {
+            void messageApi.error(t('deviceGroups.messages.permissionDenied'));
+            return;
+          }
           await client.groups.remove(group.id);
           await refreshSnapshot();
           void messageApi.success(t('deviceGroups.messages.deleteSuccess', { name: group.name }));
@@ -250,8 +311,10 @@ export function DeviceGroupsPage() {
       key: 'actions',
       fixed: 'right',
       width: 230,
-      render: (_, group) => (
-        <Space size="small">
+      render: (_, group) => {
+        const capabilities = groupCapabilities(group);
+        return (
+          <Space size="small">
           <Button
             type="link"
             size="small"
@@ -259,27 +322,32 @@ export function DeviceGroupsPage() {
           >
             {t('deviceGroups.actions.viewDevices')}
           </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            disabled={!client || status !== 'connected'}
-            onClick={() => openGroupEditor(group)}
-          >
-            {t('common.actions.edit')}
-          </Button>
-          <Button
-            type="link"
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            disabled={!client || status !== 'connected'}
-            onClick={() => confirmGroupDeletion(group)}
-          >
-            {t('common.actions.delete')}
-          </Button>
-        </Space>
-      ),
+            <PermissionButton permission={capabilities.edit}>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                disabled={!client || !capabilities.edit.enabled}
+                onClick={() => openGroupEditor(group)}
+              >
+                {t('common.actions.edit')}
+              </Button>
+            </PermissionButton>
+            <PermissionButton permission={capabilities.remove}>
+              <Button
+                type="link"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                disabled={!client || !capabilities.remove.enabled}
+                onClick={() => confirmGroupDeletion(group)}
+              >
+                {t('common.actions.delete')}
+              </Button>
+            </PermissionButton>
+          </Space>
+        );
+      },
     },
   ];
 

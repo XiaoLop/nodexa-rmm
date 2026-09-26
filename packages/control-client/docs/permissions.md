@@ -86,6 +86,26 @@ normalizeMeshRights(-1); // MeshRight.Administrator
 
 `hasMeshRight()` 适合检查独立能力位，例如管理设备、唤醒或卸载。桌面、终端和设备文件同时受限制位影响，应使用能力判定函数。
 
+### 单设备可授予权限
+
+单设备直接授权使用 `adddeviceuser`，其可写权限范围小于设备组授权范围。当前已验证的用户直授和用户组直授掩码均为 `0x0000C0F8`：
+
+```ts
+import {
+  DEVICE_USER_ASSIGNABLE_RIGHTS_MASK,
+  DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK,
+  hasOnlyAssignableRights,
+  isAssignableDeviceUserRight,
+} from '@meshcentral/control-client';
+
+isAssignableDeviceUserRight(MeshRight.RemoteControl); // true
+hasOnlyAssignableRights(rights, DEVICE_USER_ASSIGNABLE_RIGHTS_MASK);
+```
+
+可授予权限包括 `RemoteControl`、`AgentConsole`、`ServerFiles`、`WakeDevice`、`SetNotes`、`ChatNotify` 和 `Uninstall`。设备组管理权限、限制位以及 `MeshRight.Administrator` 不能用于单设备直接授权。
+
+Web 授权编辑器应从这些公开掩码派生选项，不应自行维护另一份单设备权限列表。用户与用户组常量即使当前值相同也应分别使用，以便协议出现差异时保持调用语义明确。
+
 ## 能力判定
 
 ```ts

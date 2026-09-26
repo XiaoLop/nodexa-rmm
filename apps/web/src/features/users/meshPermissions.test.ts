@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEVICE_USER_ASSIGNABLE_RIGHTS_MASK,
+  DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK,
+} from '@meshcentral/control-client';
+import {
   DEVICE_PERMISSIONS,
   DEVICE_RIGHT_FULL,
+  DEVICE_USER_GROUP_PERMISSIONS,
+  DEVICE_USER_PERMISSIONS,
   MESH_RIGHT_ADMIN,
   MESH_PERMISSION_PRESETS,
   canUseTerminal,
@@ -52,9 +58,22 @@ describe('mesh permissions', () => {
   });
 
   it('uses the server-supported permission set for direct device grants', () => {
-    expect(DEVICE_RIGHT_FULL & 0x00000200).toBe(0);
-    expect(DEVICE_PERMISSIONS.map(({ flag }) => flag)).toContain(0x00010000);
-    expect(DEVICE_PERMISSIONS.map(({ flag }) => flag)).toContain(0x00020000);
+    expect(DEVICE_RIGHT_FULL).toBe(0x0000c0f8);
+    expect(new Set(DEVICE_USER_PERMISSIONS.map(({ flag }) => flag))).toEqual(
+      new Set([
+        0x00000008,
+        0x00000010,
+        0x00000020,
+        0x00000040,
+        0x00000080,
+        0x00004000,
+        0x00008000,
+      ]),
+    );
+    expect(DEVICE_USER_GROUP_PERMISSIONS).toEqual(DEVICE_USER_PERMISSIONS);
+    expect(DEVICE_PERMISSIONS).toBe(DEVICE_USER_PERMISSIONS);
+    expect(DEVICE_USER_ASSIGNABLE_RIGHTS_MASK).toBe(DEVICE_RIGHT_FULL);
+    expect(DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK).toBe(DEVICE_RIGHT_FULL);
   });
 
   it('provides presets using standard MeshCentral permission bits', () => {

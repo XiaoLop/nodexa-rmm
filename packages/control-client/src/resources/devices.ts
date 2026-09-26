@@ -10,6 +10,11 @@ import {
   normalizeDevices,
   normalizeLastConnects,
 } from '../protocol/normalizers';
+import {
+  DEVICE_USER_ASSIGNABLE_RIGHTS_MASK,
+  DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK,
+  hasOnlyAssignableRights,
+} from '../permissions/assignableRights';
 import type {
   AgentEmailInviteOptions,
   AgentInviteLinkResult,
@@ -37,14 +42,6 @@ interface ResourceClient {
   ): () => void;
 }
 const DEVICE_USER_GROUP_CONFIRMATION_TIMEOUT_MS = 5_000;
-const DEVICE_USER_RIGHTS_MASK =
-  0x00000008 |
-  0x00000010 |
-  0x00000020 |
-  0x00000040 |
-  0x00000080 |
-  0x00004000 |
-  0x00008000;
 const required = (value: string, name: string) => {
   if (!value.trim()) throw new GatewayValidationError(`${name} is required.`);
 };
@@ -194,7 +191,7 @@ export class DevicesResource {
     if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
       throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
     }
-    if ((rights & ~DEVICE_USER_RIGHTS_MASK) !== 0) {
+    if (!hasOnlyAssignableRights(rights, DEVICE_USER_ASSIGNABLE_RIGHTS_MASK)) {
       throw new GatewayValidationError(
         'Device user rights contain permissions that are not valid for a single device.',
       );
@@ -234,7 +231,7 @@ export class DevicesResource {
     if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
       throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
     }
-    if ((rights & ~DEVICE_USER_RIGHTS_MASK) !== 0) {
+    if (!hasOnlyAssignableRights(rights, DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK)) {
       throw new GatewayValidationError(
         'Device user group rights contain permissions that are not valid for a single device.',
       );

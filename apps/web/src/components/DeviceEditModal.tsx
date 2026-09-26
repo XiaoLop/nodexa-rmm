@@ -1,13 +1,19 @@
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { GatewayClient, ServerInfo, UserInfo } from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { Form, Input, Modal, Select, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  classifyDeviceGroupMoves,
+  manageableTargetGroups,
+} from '../features/permissions/deviceGroupMoves';
 
 interface DeviceEditModalProps {
   device: Device | null;
   groups: DeviceGroup[];
   client?: GatewayClient;
+  userInfo?: UserInfo;
+  serverInfo?: ServerInfo;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }
@@ -41,12 +47,31 @@ function formValues(device: Device): DeviceEditValues {
   };
 }
 
-export function DeviceEditModal({ device, groups, client, onClose, onSaved }: DeviceEditModalProps) {
+export function DeviceEditModal({
+  device,
+  groups,
+  client,
+  userInfo,
+  serverInfo,
+  onClose,
+  onSaved,
+}: DeviceEditModalProps) {
   const { t } = useTranslation();
   const [form] = Form.useForm<DeviceEditValues>();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [submitting, setSubmitting] = useState(false);
   const initialValues = useMemo(() => (device ? formValues(device) : undefined), [device]);
+  const targetGroups = useMemo(
+    () => manageableTargetGroups(groups, userInfo, serverInfo),
+    [groups, serverInfo, userInfo],
+  );
+  const groupOptions = useMemo(() => {
+    if (!device?.groupId) return targetGroups;
+    const currentGroup = groups.find((group) => group.id === device.groupId);
+    return currentGroup && !targetGroups.some((group) => group.id === currentGroup.id)
+      ? [currentGroup, ...targetGroups]
+      : targetGroups;
+  }, [device?.groupId, groups, targetGroups]);
 
   useEffect(() => {
     if (!device) return;
@@ -58,6 +83,35 @@ export function DeviceEditModal({ device, groups, client, onClose, onSaved }: De
     if (!device || !client) return;
     try {
       const values = await form.validateFields();
+      if (device.groupId) {
+        const sourceCheck = classifyDeviceGroupMoves({
+          devices: [device],
+          groups,
+          targetGroupId: device.groupId,
+          userInfo,
+          serverInfo,
+        });
+        const canManageSource = sourceCheck.sameTarget.length === 1 && targetGroups.some(
+          (group) => group.id === device.groupId,
+        );
+        if (!canManageSource) {
+          void messageApi.error(t('devices.editModal.permissionDenied'));
+          return;
+        }
+      }
+      if (values.groupId && values.groupId !== device.groupId) {
+        const moveCheck = classifyDeviceGroupMoves({
+          devices: [device],
+          groups,
+          targetGroupId: values.groupId,
+          userInfo,
+          serverInfo,
+        });
+        if (moveCheck.allowed.length !== 1) {
+          void messageApi.error(t('devices.editModal.movePermissionDenied'));
+          return;
+        }
+      }
       setSubmitting(true);
       await client.devices.update(device.id, {
         name: values.name.trim(),
@@ -107,7 +161,7 @@ export function DeviceEditModal({ device, groups, client, onClose, onSaved }: De
             <Select
               allowClear
               placeholder={t('devices.editModal.groupPlaceholder')}
-              options={groups.map((group) => ({ value: group.id, label: group.name }))}
+              options={groupOptions.map((group) => ({ value: group.id, label: group.name }))}
             />
           </Form.Item>
         </Form>

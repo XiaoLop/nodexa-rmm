@@ -1,11 +1,20 @@
 import {
   RetweetOutlined,
 } from '@ant-design/icons';
-import type { BatchDeviceResult, GatewayClient } from '@meshcentral/control-client';
+import type {
+  BatchDeviceResult,
+  GatewayClient,
+  ServerInfo,
+  UserInfo,
+} from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { Alert, Button, Modal, Select, Space, Table, Tag, Typography, type TableColumnsType } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  classifyDeviceGroupMoves,
+  manageableTargetGroups,
+} from '../features/permissions/deviceGroupMoves';
 
 interface BatchDeviceOperationsModalProps {
   open: boolean;
@@ -13,6 +22,8 @@ interface BatchDeviceOperationsModalProps {
   groups: DeviceGroup[];
   client?: GatewayClient;
   connected: boolean;
+  userInfo?: UserInfo;
+  serverInfo?: ServerInfo;
   onClose: () => void;
   onCompleted: (successfulDeviceIds: string[]) => void;
 }
@@ -33,6 +44,8 @@ export function BatchDeviceOperationsModal({
   groups,
   client,
   connected,
+  userInfo,
+  serverInfo,
   onClose,
   onCompleted,
 }: BatchDeviceOperationsModalProps) {
@@ -48,18 +61,63 @@ export function BatchDeviceOperationsModal({
     setResults(undefined);
   }, [open]);
 
-  const moveTargets = useMemo(
-    () => devices.filter((device) => !targetGroupId || device.groupId !== targetGroupId),
-    [devices, targetGroupId],
+  const targetGroups = useMemo(
+    () => manageableTargetGroups(groups, userInfo, serverInfo),
+    [groups, serverInfo, userInfo],
+  );
+  const classification = useMemo(
+    () =>
+      targetGroupId
+        ? classifyDeviceGroupMoves({
+            devices,
+            groups,
+            targetGroupId,
+            userInfo,
+            serverInfo,
+          })
+        : { allowed: [], denied: [], unknown: [], sameTarget: [] },
+    [devices, groups, serverInfo, targetGroupId, userInfo],
   );
   const submit = async () => {
-    if (!client || !connected || !targetGroupId || !moveTargets.length) return;
+    if (!client || !connected || !targetGroupId) return;
+
+    const latest = classifyDeviceGroupMoves({
+      devices,
+      groups,
+      targetGroupId,
+      userInfo,
+      serverInfo,
+    });
+    const skippedResults: BatchDeviceResult[] = [
+      ...latest.denied.map((device) => ({
+        deviceId: device.id,
+        deviceName: device.name,
+        status: 'skipped' as const,
+        message: t('batchOperations.skipReasons.permissionDenied'),
+      })),
+      ...latest.unknown.map((device) => ({
+        deviceId: device.id,
+        deviceName: device.name,
+        status: 'skipped' as const,
+        message: t('batchOperations.skipReasons.permissionUnknown'),
+      })),
+      ...latest.sameTarget.map((device) => ({
+        deviceId: device.id,
+        deviceName: device.name,
+        status: 'skipped' as const,
+        message: t('batchOperations.skipReasons.sameTarget'),
+      })),
+    ];
+    if (!latest.allowed.length) {
+      setResults(skippedResults);
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const deviceTargets = moveTargets.map((device) => ({ id: device.id, name: device.name }));
+      const deviceTargets = latest.allowed.map((device) => ({ id: device.id, name: device.name }));
       const result = await client.devices.updateManyGroup(deviceTargets, targetGroupId);
-      setResults(result.results);
+      setResults([...result.results, ...skippedResults]);
       onCompleted(
         result.results
           .filter((result) => result.status === 'submitted' || result.status === 'succeeded')
@@ -116,10 +174,10 @@ export function BatchDeviceOperationsModal({
                 key="submit"
                 type="primary"
                 loading={submitting}
-                disabled={!connected || !client || !moveTargets.length || !targetGroupId}
+                disabled={!connected || !client || !classification.allowed.length || !targetGroupId}
                 onClick={() => void submit()}
               >
-                {t('batchOperations.submitButton', { count: moveTargets.length })}
+                {t('batchOperations.submitButton', { count: classification.allowed.length })}
               </Button>,
             ]
       }
@@ -149,18 +207,19 @@ export function BatchDeviceOperationsModal({
             placeholder={t('batchOperations.selectTargetGroupPlaceholder')}
             value={targetGroupId}
             onChange={setTargetGroupId}
-            options={groups.map((group) => ({ value: group.id, label: group.name }))}
+            options={targetGroups.map((group) => ({ value: group.id, label: group.name }))}
             style={{ width: '100%' }}
           />
           {targetGroupId && (
             <Alert
               showIcon
-              type={moveTargets.length ? 'info' : 'warning'}
-              title={t('batchOperations.moveCountNotice', { count: moveTargets.length, name: selectedGroup?.name ?? t('common.status.defaultGroup') })}
-              description={
-                devices.length === moveTargets.length
-                  ? t('batchOperations.allTargetsEligible') : t('batchOperations.skippedSameGroup', { count: devices.length - moveTargets.length })
-              }
+              type={classification.allowed.length ? 'info' : 'warning'}
+              title={t('batchOperations.moveCountNotice', { count: classification.allowed.length, name: selectedGroup?.name ?? t('common.status.defaultGroup') })}
+              description={t('batchOperations.classificationSummary', {
+                denied: classification.denied.length,
+                unknown: classification.unknown.length,
+                sameTarget: classification.sameTarget.length,
+              })}
             />
           )}
         </Space>

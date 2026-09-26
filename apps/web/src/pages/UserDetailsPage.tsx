@@ -29,7 +29,7 @@ import {
   type UserLink,
 } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
-import { Alert, Button, Empty, Modal, Space, Spin, Tag, Tooltip, message } from 'antd';
+import { Alert, Button, Empty, Modal, Space, Tag, Tooltip, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -865,6 +865,7 @@ export function UserDetailsPage() {
         onSubmit={saveDeviceGroupPermission}
       />
       <DevicePermissionModal
+        subjectType="user"
         open={Boolean(devicePermissionEditor) && !deviceGroupManagementDisabled}
         groups={availableGroups}
         devices={devices}

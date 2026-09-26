@@ -925,6 +925,8 @@ export function DevicesPage() {
           device={editingDevice}
           groups={sortedGroups}
           client={client}
+          userInfo={userInfo}
+          serverInfo={serverInfo}
           onClose={() => setEditingDevice(null)}
           onSaved={refreshSnapshot}
         />
@@ -957,6 +959,8 @@ export function DevicesPage() {
           groups={sortedGroups}
           client={client}
           connected={status === 'connected'}
+          userInfo={userInfo}
+          serverInfo={serverInfo}
           onClose={() => setBatchMoveOpen(false)}
           onCompleted={handleBatchOperationCompleted}
         />

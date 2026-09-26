@@ -326,6 +326,8 @@ export const zhCN = {
       "group": "所属分组",
       "groupPlaceholder": "请选择分组",
       "success": "已更新「{{name}}」",
+      "permissionDenied": "当前没有管理该设备所在分组的权限，或权限状态尚未确认。",
+      "movePermissionDenied": "源设备组或目标设备组缺少管理设备权限，无法移动设备。",
       "failed": "更新设备失败：{{detail}}"
     },
     "inviteModal": {
@@ -385,6 +387,7 @@ export const zhCN = {
       "createSuccess": "已创建设备分组",
       "updateSuccess": "已更新设备分组",
       "saveFailed": "保存分组失败：{{detail}}",
+      "permissionDenied": "当前没有操作该设备组的权限，或权限状态尚未确认。",
       "deleteSuccess": "已删除分组「{{name}}」",
       "deleteFailed": "删除分组失败：{{detail}}"
     },
@@ -620,6 +623,8 @@ export const zhCN = {
     "selectGroupPrompt": "选择目标设备组",
     "selectTargetGroupPlaceholder": "选择目标设备组",
     "moveCountNotice": "将移动 {{count}} 台设备到“{{name}}”",
+    "classificationSummary": "无权：{{denied}} 台；权限未知：{{unknown}} 台；已在目标组：{{sameTarget}} 台。",
+    "skipReasons": { "permissionDenied": "源设备组或目标设备组缺少管理设备权限。", "permissionUnknown": "源设备组或目标设备组权限尚未确认。", "sameTarget": "设备已在目标设备组中。" },
     "allTargetsEligible": "所有选中设备均可移动。",
     "skippedSameGroup": "{{count}} 台设备已在目标设备组中。",
     "close": "关闭"
@@ -973,7 +978,9 @@ export const zhCN = {
       "selectDevicePlaceholder": "选择要授权的设备",
       "noAvailableDevices": "没有可添加的设备",
       "allDeviceRights": "全部单设备权限",
-      "fullRightsNotice": "将授予全部正向单设备权限，不包含限制项。"
+      "fullRightsNotice": "将授予当前接口支持的全部单设备权限。",
+      "unsupportedRightsTitle": "现有授权包含当前接口不支持的权限",
+      "unsupportedRightsDescription": "不支持的权限位：{{rights}}。为避免静默清除旧授权，当前记录暂不可保存。"
     },
     "site": {
       "manageUsers": {

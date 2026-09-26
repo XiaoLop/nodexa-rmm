@@ -326,6 +326,8 @@ export const enUS = {
       "group": "Group",
       "groupPlaceholder": "Select group",
       "success": "Updated \"{{name}}\"",
+      "permissionDenied": "You cannot manage the device's current group, or its permission state is not yet known.",
+      "movePermissionDenied": "Manage-computers permission is missing on the source or target group, so the device cannot be moved.",
       "failed": "Failed to update device: {{detail}}"
     },
     "inviteModal": {
@@ -385,6 +387,7 @@ export const enUS = {
       "createSuccess": "Device group created",
       "updateSuccess": "Device group updated",
       "saveFailed": "Failed to save group: {{detail}}",
+      "permissionDenied": "You do not have permission to modify this device group, or the permission state is not yet known.",
       "deleteSuccess": "Deleted group \"{{name}}\"",
       "deleteFailed": "Failed to delete group: {{detail}}"
     },
@@ -598,6 +601,8 @@ export const enUS = {
     "selectGroupPrompt": "Select a target device group",
     "selectTargetGroupPlaceholder": "Select target group",
     "moveCountNotice": "{{count}} devices will move to \"{{name}}\"",
+    "classificationSummary": "Denied: {{denied}}; permission unknown: {{unknown}}; already in target: {{sameTarget}}.",
+    "skipReasons": { "permissionDenied": "Manage-computers permission is missing on the source or target group.", "permissionUnknown": "Permissions for the source or target group are not yet known.", "sameTarget": "The device is already in the target group." },
     "allTargetsEligible": "All selected devices can be moved.",
     "skippedSameGroup": "{{count}} devices are already in the target group.",
     "close": "Close"
@@ -835,7 +840,9 @@ export const enUS = {
       "selectDevicePlaceholder": "Select device to grant",
       "noAvailableDevices": "No devices available to add",
       "allDeviceRights": "All individual device permissions",
-      "fullRightsNotice": "Grants all positive permissions, excluding restriction flags."
+      "fullRightsNotice": "Grants every individual device permission supported by this API.",
+      "unsupportedRightsTitle": "The existing grant contains unsupported permissions",
+      "unsupportedRightsDescription": "Unsupported permission bits: {{rights}}. Saving is disabled to avoid silently removing the existing grant."
     },
     "site": {
       "manageUsers": {

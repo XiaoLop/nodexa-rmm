@@ -1314,6 +1314,7 @@ export function UserGroupDetailsPage() {
         onSubmit={saveGroupPermission}
       />
       <DevicePermissionModal
+        subjectType="user-group"
         open={Boolean(devicePermissionEditor) && canWrite}
         groups={groups}
         devices={devices}

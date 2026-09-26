@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MeshRight } from './meshRights';
 import { SiteRight } from './siteRights';
-import { getApplicationUiCapabilities, getDeviceUiCapabilities } from './uiCapabilities';
+import {
+  getApplicationUiCapabilities,
+  getDeviceGroupUiCapabilities,
+  getDeviceUiCapabilities,
+} from './uiCapabilities';
 
 const onlineRuntime = {
   gatewayConnected: true,
@@ -76,7 +80,41 @@ describe('getDeviceUiCapabilities', () => {
   });
 });
 
+describe('getDeviceGroupUiCapabilities', () => {
+  it('maps device-group management rights to operations', () => {
+    const capabilities = getDeviceGroupUiCapabilities(
+      MeshRight.EditMesh | MeshRight.ManageComputers,
+      true,
+    );
+
+    expect(capabilities.edit).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.remove).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.manageComputers).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.manageUsers).toEqual({ visible: false, enabled: false });
+  });
+
+  it('fails closed while rights are unknown', () => {
+    expect(getDeviceGroupUiCapabilities(undefined, true).edit).toMatchObject({
+      visible: true,
+      enabled: false,
+      reason: 'permission-unknown',
+    });
+  });
+
+  it('keeps allowed operations disabled while disconnected', () => {
+    expect(getDeviceGroupUiCapabilities(MeshRight.EditMesh, false).edit).toMatchObject({
+      visible: true,
+      enabled: false,
+      reason: 'gateway-disconnected',
+    });
+  });
+});
+
 describe('getApplicationUiCapabilities', () => {
+  it('fails closed while site rights are unknown', () => {
+    expect(Object.values(getApplicationUiCapabilities(undefined))).not.toContain(true);
+  });
+
   it('derives management routes from site rights', () => {
     const capabilities = getApplicationUiCapabilities(
       SiteRight.ManageUsers | SiteRight.ManageUserGroups | SiteRight.NoNewDevices,
