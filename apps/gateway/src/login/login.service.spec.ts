@@ -24,9 +24,7 @@ function configFor(origin: string): GatewayConfig {
     trustProxy: false,
     upstreamTimeoutMs: 1_000,
     loginValidationTimeoutMs: 500,
-    wsIdleTimeoutMs: 0,
     tlsRejectUnauthorized: true,
-    allowMissingOrigin: true,
   };
 }
 

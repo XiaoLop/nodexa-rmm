@@ -8,9 +8,7 @@ export interface GatewayConfig {
   trustProxy: boolean | number;
   upstreamTimeoutMs: number;
   loginValidationTimeoutMs: number;
-  wsIdleTimeoutMs: number;
   tlsRejectUnauthorized: boolean;
-  allowMissingOrigin: boolean;
 }
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -97,13 +95,7 @@ export function loadGatewayConfig(env: NodeJS.ProcessEnv = process.env): Gateway
       env.GATEWAY_LOGIN_VALIDATION_TIMEOUT_MS,
       5_000,
     ),
-    wsIdleTimeoutMs: parsePositiveInteger(
-      'GATEWAY_WS_IDLE_TIMEOUT_MS',
-      env.GATEWAY_WS_IDLE_TIMEOUT_MS,
-      0,
-    ),
     tlsRejectUnauthorized,
-    allowMissingOrigin: parseBoolean(env.GATEWAY_ALLOW_MISSING_ORIGIN, !production),
   };
 }
 
