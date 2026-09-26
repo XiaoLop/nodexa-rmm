@@ -322,7 +322,7 @@ export function DeviceWorkspacePage() {
         <Alert
           type="error"
           showIcon
-          message={t('deviceWorkspace.loadFailed')}
+          title={t('deviceWorkspace.loadFailed')}
           description={currentLoadError}
           action={
             <Button onClick={() => void loadDetails()} disabled={data.status !== 'connected'}>
@@ -366,7 +366,7 @@ export function DeviceWorkspacePage() {
         <Alert
           showIcon
           type="warning"
-          message={t('deviceWorkspace.partialRefreshFailed')}
+          title={t('deviceWorkspace.partialRefreshFailed')}
           description={currentLoadError}
         />
       ) : null}

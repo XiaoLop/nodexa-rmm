@@ -237,7 +237,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
           <Alert
             showIcon
             type="info"
-            message={t('users.modal.randomPasswordNoticeTitle')}
+            title={t('users.modal.randomPasswordNoticeTitle')}
             description={t('users.modal.randomPasswordNoticeDesc')}
             style={{
               marginBottom: 16,

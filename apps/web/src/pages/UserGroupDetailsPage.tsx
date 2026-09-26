@@ -570,7 +570,7 @@ export function UserGroupDetailsPage() {
         <Alert
           type="error"
           showIcon
-          message={t('userGroups.details.loadFailed')}
+          title={t('userGroups.details.loadFailed')}
           description={loadError}
           action={<Button onClick={() => void loadDetails()}>{t('common.actions.retry')}</Button>}
         />
@@ -603,7 +603,7 @@ export function UserGroupDetailsPage() {
         <Alert
           type="warning"
           showIcon
-          message={t('userGroups.details.gatewayDisconnected')}
+          title={t('userGroups.details.gatewayDisconnected')}
           description={t('userGroups.details.gatewayDisconnectedDescription')}
         />
       ) : null}
@@ -611,7 +611,7 @@ export function UserGroupDetailsPage() {
         <Alert
           type="info"
           showIcon
-          message={t('userGroups.details.readOnly')}
+          title={t('userGroups.details.readOnly')}
           description={t('userGroups.details.readOnlyDescription')}
         />
       ) : null}
@@ -1272,7 +1272,7 @@ export function UserGroupDetailsPage() {
           <Alert
             type="warning"
             showIcon
-            message={t('userGroups.details.modals.irreversible')}
+            title={t('userGroups.details.modals.irreversible')}
             description={
               <div>
                 {t('userGroups.details.modals.deleteImpactIntro')}

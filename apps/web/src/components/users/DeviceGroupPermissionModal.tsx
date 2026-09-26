@@ -206,7 +206,7 @@ export function DeviceGroupPermissionModal({
           <Alert
             showIcon
             type="warning"
-            message={t('permissions.deviceModal.fullRightsNotice')}
+            title={t('permissions.deviceModal.fullRightsNotice')}
             style={{ padding: '6px 12px', fontSize: 12 }}
           />
         ) : null}

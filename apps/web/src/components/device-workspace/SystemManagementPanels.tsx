@@ -123,15 +123,15 @@ function PanelAlerts({
   return (
     <>
       {!deviceOnline ? (
-        <Alert banner type="warning" message={t('deviceWorkspace.systemManagement.deviceOffline')} />
+        <Alert banner type="warning" title={t('deviceWorkspace.systemManagement.deviceOffline')} />
       ) : !gatewayConnected ? (
-        <Alert banner type="warning" message={t('deviceWorkspace.systemManagement.gatewayDisconnected')} />
+        <Alert banner type="warning" title={t('deviceWorkspace.systemManagement.gatewayDisconnected')} />
       ) : null}
       {error && gatewayConnected && deviceOnline && (
         <Alert
           showIcon
           type="error"
-          message={t('deviceWorkspace.systemManagement.loadFailed')}
+          title={t('deviceWorkspace.systemManagement.loadFailed')}
           description={errorText}
           action={<Button size="small" onClick={onRetry}>{t('common.actions.retry')}</Button>}
         />

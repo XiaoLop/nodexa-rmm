@@ -205,7 +205,7 @@ export function LoginPage() {
             <Alert
               type="error"
               showIcon
-              message={error}
+              title={error}
               className="login-alert"
               closable
               onClose={() => setError(undefined)}

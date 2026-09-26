@@ -353,7 +353,7 @@ export function UsersPage() {
         <Alert
           type="warning"
           showIcon
-          message={t('header.gatewayDisconnected')}
+          title={t('header.gatewayDisconnected')}
           description={t('users.gatewayDisconnectedNotice')}
         />
       ) : null}
@@ -361,7 +361,7 @@ export function UsersPage() {
         <Alert
           type="error"
           showIcon
-          message={t('users.loadFailed')}
+          title={t('users.loadFailed')}
           description={listError}
           action={
             <Button size="small" onClick={() => void loadUsers()}>

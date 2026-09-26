@@ -357,7 +357,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             ]}
           />
         </div>
-        {error && <Alert type="error" showIcon message={error} action={<Button size="small" onClick={() => void connect()}>{t('common.actions.retry')}</Button>} />}
+        {error && <Alert type="error" showIcon title={error} action={<Button size="small" onClick={() => void connect()}>{t('common.actions.retry')}</Button>} />}
         <div className="remote-screen-shell">
           <div className="remote-screen" data-scale={scale}>
             <DesktopCanvas
@@ -390,7 +390,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         }}
         onOk={() => void submitClipboardToRemote()}
       >
-        {manualPasteRequired && <Alert type="info" showIcon message={t('deviceWorkspace.remoteDesktop.manualPaste')} />}
+        {manualPasteRequired && <Alert type="info" showIcon title={t('deviceWorkspace.remoteDesktop.manualPaste')} />}
         <Input.TextArea
           autoFocus
           value={pasteText}

@@ -190,7 +190,7 @@ export function DevicePermissionModal({
           </div>
         ) : null}
 
-        {fullAccess ? <Alert showIcon type="warning" message={t('permissions.deviceModal.fullRightsNotice')} /> : null}
+        {fullAccess ? <Alert showIcon type="warning" title={t('permissions.deviceModal.fullRightsNotice')} /> : null}
 
         <div className="mesh-permission-body">
           <Checkbox.Group

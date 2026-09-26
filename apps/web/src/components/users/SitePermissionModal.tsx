@@ -115,7 +115,7 @@ export function SitePermissionModal({
         </div>
 
         {fullAdministrator ? (
-          <Alert showIcon type="warning" message={t('permissions.siteModal.adminNotice')} />
+          <Alert showIcon type="warning" title={t('permissions.siteModal.adminNotice')} />
         ) : null}
 
         <div className="mesh-permission-body">

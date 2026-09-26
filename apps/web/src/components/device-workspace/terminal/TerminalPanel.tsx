@@ -300,8 +300,8 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
           />
         ) : null}
       </div>
-      {recorded ? <Alert banner type="warning" showIcon message={t('deviceWorkspace.terminal.recordedNotice')} /> : null}
-      {error ? <Alert banner type="error" showIcon message={error} /> : null}
+      {recorded ? <Alert banner type="warning" showIcon title={t('deviceWorkspace.terminal.recordedNotice')} /> : null}
+      {error ? <Alert banner type="error" showIcon title={error} /> : null}
       <div className="terminal-stage">
         <XtermTerminal
           ref={xtermRef}

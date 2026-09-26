@@ -364,7 +364,7 @@ export function UserGroupsPage() {
         <Alert
           type="warning"
           showIcon
-          message={t('header.gatewayDisconnected')}
+          title={t('header.gatewayDisconnected')}
           description={t('userGroups.gatewayDisconnectedNotice')}
         />
       ) : null}
@@ -372,7 +372,7 @@ export function UserGroupsPage() {
         <Alert
           type="info"
           showIcon
-          message={t('userGroups.readOnly')}
+          title={t('userGroups.readOnly')}
           description={t('userGroups.readOnlyDescription')}
         />
       ) : null}
@@ -380,7 +380,7 @@ export function UserGroupsPage() {
         <Alert
           type="error"
           showIcon
-          message={t('userGroups.loadFailed')}
+          title={t('userGroups.loadFailed')}
           description={listError}
           action={
             <Button size="small" onClick={() => void loadGroups()}>
@@ -470,7 +470,7 @@ export function UserGroupsPage() {
               style={{ marginBottom: 16 }}
               type="info"
               showIcon
-              message={t('userGroups.cloneMode')}
+              title={t('userGroups.cloneMode')}
               description={t('userGroups.cloneDescription', { name: editor.group?.name })}
             />
           ) : (
@@ -478,7 +478,7 @@ export function UserGroupsPage() {
               style={{ marginBottom: 16 }}
               type="info"
               showIcon
-              message={t('userGroups.inheritanceTitle')}
+              title={t('userGroups.inheritanceTitle')}
               description={t('userGroups.inheritanceDescription')}
             />
           )}
@@ -531,7 +531,7 @@ export function UserGroupsPage() {
             <Alert
               type="warning"
               showIcon
-              message={t('userGroups.confirm.irreversible')}
+              title={t('userGroups.confirm.irreversible')}
               description={
                 <div>
                   {t('userGroups.confirm.deleteImpactTitle')}

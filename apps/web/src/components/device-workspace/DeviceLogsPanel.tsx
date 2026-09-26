@@ -219,13 +219,13 @@ export function DeviceLogsPanel({
       </div>
 
       {!gatewayConnected && (
-        <Alert banner type="warning" message={t('deviceWorkspace.logs.disconnectedNotice')} />
+        <Alert banner type="warning" title={t('deviceWorkspace.logs.disconnectedNotice')} />
       )}
       {queryError && (
         <Alert
           showIcon
           type="error"
-          message={t('deviceWorkspace.logs.loadFailed')}
+          title={t('deviceWorkspace.logs.loadFailed')}
           description={queryError}
           action={<Button size="small" onClick={() => void loadHistory()}>{t('common.actions.retry')}</Button>}
         />

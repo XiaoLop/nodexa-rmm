@@ -92,7 +92,7 @@ export function UserFeatureRestrictionModal({
         </div>
 
         {selectedFlags.includes(0x00000008) ? (
-          <Alert showIcon type="warning" message={t('featureRestrictions.remoteControlNotice')} />
+          <Alert showIcon type="warning" title={t('featureRestrictions.remoteControlNotice')} />
         ) : null}
 
         <div className="mesh-permission-body">

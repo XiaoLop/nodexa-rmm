@@ -319,12 +319,12 @@ export function CommandExecutionModal({
             <Descriptions.Item label={t('commands.descriptions.eligible')}>{eligibleDevices.length}</Descriptions.Item>
             <Descriptions.Item label={t('commands.descriptions.skipped')}>{skippedCount}</Descriptions.Item>
           </Descriptions>
-          {!connected && <Alert showIcon type="error" message={t('commands.alerts.gatewayDisconnected')} />}
+          {!connected && <Alert showIcon type="error" title={t('commands.alerts.gatewayDisconnected')} />}
           {skippedCount > 0 && (
             <Alert
               showIcon
               type="warning"
-              message={t('commands.alerts.skippedNotice', { count: skippedCount })}
+              title={t('commands.alerts.skippedNotice', { count: skippedCount })}
             />
           )}
           <Space wrap>
@@ -385,13 +385,13 @@ export function CommandExecutionModal({
             className="command-editor"
           />
           {mayContainSecret(command) && (
-            <Alert showIcon type="warning" message={t('commands.sensitiveNotice')} />
+            <Alert showIcon type="warning" title={t('commands.sensitiveNotice')} />
           )}
           {risk === 'dangerous' && (
             <Alert
               showIcon
               type="error"
-              message={t('commands.dangerousTitle')}
+              title={t('commands.dangerousTitle')}
               description={
                 <Space direction="vertical">
                   <Typography.Text>{t('commands.dangerousDescription')}</Typography.Text>
@@ -432,7 +432,7 @@ export function CommandExecutionModal({
                     : 'warning'
               }
               icon={snapshot.status === 'succeeded' ? <CheckCircleOutlined /> : undefined}
-              message={t('commands.statusMessage', { status: t(`commands.status.${snapshot.status}`) })}
+              title={t('commands.statusMessage', { status: t(`commands.status.${snapshot.status}`) })}
               description={
                 snapshot.trackingStopped
                   ? t('commands.trackingStopped')

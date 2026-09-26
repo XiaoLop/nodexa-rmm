@@ -332,7 +332,7 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
         <Alert
           type="error"
           showIcon
-          message={controller.error.raw ?? t(`deviceWorkspace.files.errors.${controller.error.code}`, { defaultValue: controller.error.code })}
+          title={controller.error.raw ?? t(`deviceWorkspace.files.errors.${controller.error.code}`, { defaultValue: controller.error.code })}
           action={
             !controller.listing ? (
               <Button size="small" onClick={controller.reconnect}>

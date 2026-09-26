@@ -349,7 +349,7 @@ export function BatchFileUploadModal({
             <Alert
               showIcon
               type="warning"
-              message={t('batchUpload.mixedPlatformTitle')}
+              title={t('batchUpload.mixedPlatformTitle')}
               description={t('batchUpload.mixedPlatformDesc')}
             />
           )}
@@ -410,7 +410,7 @@ export function BatchFileUploadModal({
               <Alert
                 showIcon
                 type="info"
-                message={t('batchUpload.startNoticeTitle', { deviceCount: devices.length, fileCount: selectedFiles.length })}
+                title={t('batchUpload.startNoticeTitle', { deviceCount: devices.length, fileCount: selectedFiles.length })}
                 description={t('batchUpload.startNoticeDesc')}
               />
             </Form>
@@ -430,7 +430,7 @@ export function BatchFileUploadModal({
                   showIcon
                   type="error"
                   icon={<CloseCircleOutlined />}
-                  message={t('batchUpload.gatewayDisconnectedTitle')}
+                  title={t('batchUpload.gatewayDisconnectedTitle')}
                   description={t('batchUpload.gatewayDisconnectedDesc')}
                 />
               )}

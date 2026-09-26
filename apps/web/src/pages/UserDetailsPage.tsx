@@ -607,7 +607,7 @@ export function UserDetailsPage() {
         <Alert
           showIcon
           type="error"
-          message={t('userDetails.loadFailed')}
+          title={t('userDetails.loadFailed')}
           description={loadError}
           action={
             <Button onClick={() => void loadDetails()} disabled={status !== 'connected'}>
@@ -646,7 +646,7 @@ export function UserDetailsPage() {
         <button onClick={() => navigate('/admin/users')}>{t('navigation.userManagement')}</button><span>›</span><strong>{user.name}</strong>
       </nav>
 
-      {loadError ? <Alert showIcon type="warning" message={t('userDetails.partialRefreshFailed')} description={loadError} /> : null}
+      {loadError ? <Alert showIcon type="warning" title={t('userDetails.partialRefreshFailed')} description={loadError} /> : null}
 
       <section className="user-detail-hero">
         <div className="user-detail-profile">

@@ -129,7 +129,7 @@ export function BatchDeviceOperationsModal({
           <Alert
             showIcon
             type={results.some((result) => result.status === 'failed') ? 'warning' : 'success'}
-            message={t('batchOperations.completedNotice', { count: submittedCount ?? 0 })}
+            title={t('batchOperations.completedNotice', { count: submittedCount ?? 0 })}
             description={t('batchOperations.completedDesc')}
           />
           <Table
@@ -156,7 +156,7 @@ export function BatchDeviceOperationsModal({
             <Alert
               showIcon
               type={moveTargets.length ? 'info' : 'warning'}
-              message={t('batchOperations.moveCountNotice', { count: moveTargets.length, name: selectedGroup?.name ?? t('common.status.defaultGroup') })}
+              title={t('batchOperations.moveCountNotice', { count: moveTargets.length, name: selectedGroup?.name ?? t('common.status.defaultGroup') })}
               description={
                 devices.length === moveTargets.length
                   ? t('batchOperations.allTargetsEligible') : t('batchOperations.skippedSameGroup', { count: devices.length - moveTargets.length })

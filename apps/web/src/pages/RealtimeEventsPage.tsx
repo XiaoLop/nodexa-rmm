@@ -316,13 +316,13 @@ export function RealtimeEventsPage() {
           </Space>
         </div>
         {data.status !== 'connected' && (
-          <Alert banner type="warning" message={t('events.disconnectedWarning')} />
+          <Alert banner type="warning" title={t('events.disconnectedWarning')} />
         )}
         {queryError && (
           <Alert
             showIcon
             type="error"
-            message={t('events.loadFailed')}
+            title={t('events.loadFailed')}
             description={queryError}
             action={
               <Button

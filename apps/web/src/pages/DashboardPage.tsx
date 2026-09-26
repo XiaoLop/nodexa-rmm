@@ -632,7 +632,7 @@ export function DashboardPage() {
               <Alert
                 showIcon
                 type="warning"
-                message={t('dashboard.events.loadFailed')}
+                title={t('dashboard.events.loadFailed')}
                 description={eventsError}
               />
             )}
