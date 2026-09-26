@@ -281,8 +281,8 @@ proxy:
   routes:
     # POST /api/login 交给 Gateway 校验输入并重写 Cookie。
     login: gateway
-    # /api/control.ashx 控制 WebSocket 的目标。
-    control: gateway
+    # /api/control.ashx 控制 WebSocket 由 Nginx 直接转发到 MeshCentral。
+    control: meshcentral
     # /api/meshrelay.ashx 高带宽 Relay WebSocket 的目标。
     relay: meshcentral
     # /api/meshagents 安装包和安装脚本下载目标。

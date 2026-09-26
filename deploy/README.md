@@ -75,7 +75,7 @@ docker compose --env-file deploy/production.env -f deploy/compose.production.yam
 
 ## 请求逻辑流程
 
-生产环境由 Nginx 统一接收前端请求，并根据 `proxy.routes` 将请求转发到 Nest Gateway 或 MeshCentral。登录和控制通道先经过 Nest 完成认证、来源与会话检查，再由 Nest 访问 MeshCentral；中继、Agent 安装包和 Agent 长连接由 Nginx 直接转发到 MeshCentral。
+生产环境由 Nginx 统一接收前端请求，并根据 `proxy.routes` 将请求转发到 Nest Gateway 或 MeshCentral。只有登录请求进入 Nest Gateway，由 Gateway 向 MeshCentral 验证凭据并将会话 Cookie 返回前端；控制、中继和 Agent WebSocket 均由 Nginx 直接转发到 MeshCentral，并携带登录阶段获得的 Cookie 完成会话认证。
 
 ```mermaid
 flowchart LR
@@ -91,7 +91,7 @@ flowchart LR
 
   subgraph nest["Nest"]
     direction TB
-    gateway["Gateway<br/>认证、Origin 与会话检查"]
+    gateway["Gateway<br/>登录凭据验证与 Cookie 转发"]
   end
 
   subgraph meshcentralLayer["MeshCentral"]
@@ -100,16 +100,17 @@ flowchart LR
   end
 
   browser -->|"HTTPS / WSS"| nginx
-  nginx -->|"POST /api/login<br/>WSS /api/control.ashx"| gateway
-  gateway -->|"登录请求<br/>控制 WebSocket"| meshcentral
-  nginx -->|"WSS /api/meshrelay.ashx<br/>GET /api/meshagents<br/>WS(S) /agent.ashx"| meshcentral
-  meshcentral -.->|"响应 / WebSocket 数据"| gateway
-  gateway -.->|"响应 / WebSocket 数据"| nginx
-  meshcentral -.->|"响应 / WebSocket 数据"| nginx
-  nginx -.->|"响应 / WebSocket 数据"| browser
+  nginx -->|"POST /api/login"| gateway
+  gateway -->|"验证登录凭据"| meshcentral
+  meshcentral -.->|"会话 Cookie"| gateway
+  gateway -.->|"登录响应与 Cookie"| nginx
+  nginx ==>|"WSS /api/control.ashx<br/>控制通道直达，不经过 Gateway"| meshcentral
+  nginx -->|"WSS /api/meshrelay.ashx<br/>WS(S) /agent.ashx<br/>GET /api/meshagents"| meshcentral
+  meshcentral -.->|"HTTP 响应 / WebSocket 数据"| nginx
+  nginx -.->|"响应 / Cookie / WebSocket 数据"| browser
 ```
 
-图中的分流由 `config/production.example.yaml` 的 `proxy.routes` 定义：`login`、`control` 指向 `gateway`，`relay`、`meshagents`、`agent` 指向 `meshcentral`。
+图中的分流由 `config/production.example.yaml` 的 `proxy.routes` 定义：只有 `login` 指向 `gateway`，`control`、`relay`、`meshagents`、`agent` 均指向 `meshcentral`。Gateway 不承载长连接，只负责登录凭据验证和会话 Cookie 转发。
 
 ## 配置职责
 
