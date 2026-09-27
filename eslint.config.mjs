@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/.expo/**',
       '**/android/**',
       '**/ios/**',
+      // MeshCentral runtime-generated files
+      'apps/meshcentral/runtime/**',
     ],
   },
   eslint.configs.recommended,

@@ -22,10 +22,7 @@
             "backupPath": "/var/lib/meshcentral/backups"
         },
         "plugins": {
-            "enabled": true,
-            "list": [
-                "testplugin"
-            ]
+            "enabled": true
         }
     },
     "domains": {

@@ -1,0 +1,17 @@
+{
+  "name": "MeshCentral Test Plugin",
+  "shortName": "testplugin",
+  "version": "0.1.0",
+  "description": "Local TypeScript plugin used to verify the MeshCentral plugin build pipeline.",
+  "author": "MeshCentral Web",
+  "homepage": "https://github.com/example/meshcentral-web",
+  "changelogUrl": "https://github.com/example/meshcentral-web/releases",
+  "configUrl": "https://github.com/example/meshcentral-web/blob/main/packages/meshcentral-plugins/src/testplugin/config.json",
+  "downloadUrl": "https://github.com/example/meshcentral-web/archive/refs/heads/main.zip",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/meshcentral-web.git"
+  },
+  "meshCentralCompat": ">=1.1.54",
+  "hasAdminPanel": false
+}

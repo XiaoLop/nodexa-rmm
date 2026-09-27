@@ -1,0 +1,16 @@
+{
+  "name": "@meshcentral/plugins",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "lint": "eslint src scripts --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0",
+    "vitest": "^4.1.0"
+  }
+}
