@@ -22,10 +22,23 @@ that upstream runtime file during the Docker build before this launcher can star
 
 ## Docker
 
-Build and run this workspace application together with MongoDB:
+Manage the development containers from the repository root:
 
 ```text
-docker compose -f deploy/compose.meshcentral.yaml up -d --build
+pnpm dev:meshcentral:start
+pnpm dev:meshcentral:restart
+pnpm dev:meshcentral:stop
+pnpm dev:meshcentral:status
+pnpm dev:meshcentral:logs
+pnpm dev:meshcentral:down
+```
+
+`start` reuses the local development image. Build the image after changing the Dockerfile or server
+dependencies, or rebuild and start it in one command:
+
+```text
+pnpm dev:meshcentral:build
+pnpm dev:meshcentral:rebuild
 ```
 
 The default native MeshCentral configuration is
@@ -35,7 +48,7 @@ path:
 
 ```powershell
 $env:MESHCENTRAL_CONFIG_FILE = './config/meshcentral.local.json'
-docker compose -f deploy/compose.meshcentral.yaml up -d --build
+pnpm dev:meshcentral:start
 ```
 
 Compose mounts the selected file read-only at `/run/config/meshcentral.json` and starts the

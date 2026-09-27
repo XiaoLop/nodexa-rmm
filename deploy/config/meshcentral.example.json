@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
     "settings": {
-        "cert": "localhost",
+        "cert": "192.168.1.12",
         "port": 8443,
         "aliasPort": 443,
         "redirPort": 0,
@@ -20,14 +20,25 @@
             "backupIntervalHours": 24,
             "keepLastDaysBackup": 7,
             "backupPath": "/var/lib/meshcentral/backups"
+        },
+        "plugins": {
+            "enabled": true,
+            "list": [
+                "testplugin"
+            ]
         }
     },
     "domains": {
         "": {
             "title": "Mesh Console Dev",
             "title2": "Local development",
-            "newAccounts": true,
+            "newAccounts": false,
             "minify": false,
+            "allowedOrigin": [
+                "localhost",
+                "127.0.0.1",
+                "192.168.1.12"
+            ],
             "sessionRecording": {
                 "filepath": "/var/lib/meshcentral/recordings",
                 "protocols": []

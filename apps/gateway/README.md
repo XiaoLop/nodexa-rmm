@@ -17,9 +17,9 @@ During development the login request flow is:
 
 ```text
 Browser http://localhost:5173/api/*
-	-> Vite proxy http://localhost:3000/api/*
-	-> Gateway login endpoint
-	-> MeshCentral login endpoint
+ -> Vite proxy http://localhost:3000/api/*
+ -> Gateway login endpoint
+ -> MeshCentral login endpoint
 ```
 
 Configure the MeshCentral login endpoint in the Gateway `.env` through `MESH_CENTRAL_BASE_URL`.
@@ -30,11 +30,11 @@ Serve the built Web files and proxy the Gateway HTTP routes under the same publi
 
 ```nginx
 location /api/ {
-	proxy_pass http://gateway:3000;
-	proxy_http_version 1.1;
-	proxy_set_header Host $host;
-	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-	proxy_set_header X-Forwarded-Proto $scheme;
+ proxy_pass http://gateway:3000;
+ proxy_http_version 1.1;
+ proxy_set_header Host $host;
+ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 
