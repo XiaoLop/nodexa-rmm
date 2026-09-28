@@ -254,7 +254,10 @@ export function normalizeUserInfo(value: unknown): UserInfo | undefined {
       stringValue(raw.name) ??
       stringValue(raw.username) ??
       id.replace(/^user\/\/[^/]*\//, '').replace(/^user\/\//, ''),
+    image: stringValue(raw.image),
     email: stringValue(raw.email),
+    emailVerified:
+      typeof raw.emailVerified === 'boolean' ? raw.emailVerified : undefined,
     siteadmin: typeof raw.siteadmin === 'number' ? raw.siteadmin : undefined,
     removeRights:
       typeof raw.removeRights === 'number' && Number.isFinite(raw.removeRights)
@@ -265,6 +268,11 @@ export function normalizeUserInfo(value: unknown): UserInfo | undefined {
     lastLoginAt: timestampValue(raw.login),
     lastAccessAt: timestampValue(raw.access),
     previousLoginAt: timestampValue(raw.pastlogin),
+    passwordChangedAt: timestampValue(raw.passchange),
+    twoFactorEnabled:
+      typeof raw.otpsecret === 'number' || typeof raw.otpkeys === 'number'
+        ? Number(raw.otpsecret ?? 0) > 0 || Number(raw.otpkeys ?? 0) > 0
+        : undefined,
     language: stringValue(raw.llang),
     raw,
   };

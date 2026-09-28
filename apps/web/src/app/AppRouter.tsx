@@ -33,6 +33,9 @@ const DevicesPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
 );
+const ProfilePage = lazy(() =>
+  import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
+);
 const RealtimeEventsPage = lazy(() =>
   import('../pages/RealtimeEventsPage').then((module) => ({ default: module.RealtimeEventsPage })),
 );
@@ -93,6 +96,7 @@ export function AppRouter() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/devices" element={<DevicesPage />} />
           <Route path="/devices/groups" element={<DeviceGroupsPage />} />
           <Route path="/devices/:deviceId/workspace" element={<DeviceWorkspacePage />} />

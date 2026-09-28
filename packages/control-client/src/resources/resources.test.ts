@@ -521,6 +521,59 @@ describe('resources', () => {
       image: 'data:image/jpeg;base64,YXZhdGFy',
     });
 
+    const currentImage = users.updateCurrentImage(
+      'user//admin',
+      'data:image/png;base64,YXZhdGFy',
+    );
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'updateUserImage',
+      image: 'data:image/png;base64,YXZhdGFy',
+      userid: 'user//admin',
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        userid: 'user//admin',
+        accountImageChange: 1,
+      },
+    });
+    await expect(currentImage).resolves.toMatchObject({ accountImageChange: 1 });
+
+    const email = users.changeCurrentEmail('user//admin', ' admin@168.com ');
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({ action: 'changeemail', email: 'admin@168.com' });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        userid: 'user//admin',
+        account: { _id: 'user//admin', email: 'admin@168.com' },
+      },
+    });
+    await expect(email).resolves.toMatchObject({ action: 'accountchange' });
+
+    const password = users.changeCurrentPassword('user//admin', 'admin@123456', '123456');
+    await Promise.resolve();
+    expect(client.sent.at(-1)).toEqual({
+      action: 'changepassword',
+      oldpass: 'admin@123456',
+      newpass: '123456',
+    });
+    client.emit('message', {
+      action: 'event',
+      event: {
+        etype: 'user',
+        action: 'accountchange',
+        userid: 'user//admin',
+        account: { _id: 'user//admin', passchange: 1790558387 },
+      },
+    });
+    await expect(password).resolves.toMatchObject({ action: 'accountchange' });
+
     const lock = users.setLocked('user//new-user', true, 0x100);
     await Promise.resolve();
     expect(client.sent.at(-1)).toEqual({
@@ -633,6 +686,10 @@ describe('resources', () => {
     );
     expect(() => users.update('user//one', {})).toThrow(GatewayValidationError);
     expect(() => users.updateImage('user//one', 'https://example.com/avatar.jpg')).toThrow(
+      GatewayValidationError,
+    );
+    expect(() => users.changeCurrentEmail('user//one', 'invalid')).toThrow(GatewayValidationError);
+    expect(() => users.changeCurrentPassword('user//one', 'same', 'same')).toThrow(
       GatewayValidationError,
     );
     expect(() => users.remove(' ')).toThrow(GatewayValidationError);

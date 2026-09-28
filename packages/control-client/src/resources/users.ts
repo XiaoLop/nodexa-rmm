@@ -31,7 +31,13 @@ interface ResourceClient {
 }
 
 interface UserMutationOptions {
-  action: 'adduser' | 'edituser' | 'deleteuser';
+  action:
+    | 'adduser'
+    | 'edituser'
+    | 'deleteuser'
+    | 'updateUserImage'
+    | 'changeemail'
+    | 'changepassword';
   payload: Record<string, unknown>;
   matchesEvent: (event: Record<string, unknown>) => boolean;
   verify: () => Promise<unknown | undefined>;
@@ -48,6 +54,14 @@ function required(value: string, name: string): string {
 
 function optional(value: string | undefined): string | undefined {
   return value === undefined ? undefined : value.trim();
+}
+
+function requiredEmail(value: string): string {
+  const email = required(value, 'Email');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new GatewayValidationError('Email address is invalid.');
+  }
+  return email;
 }
 
 function userEvent(message: unknown): Record<string, unknown> | undefined {
@@ -154,6 +168,60 @@ export class UsersResource {
       throw new GatewayValidationError('User image must be a base64 image data URL.');
     }
     this.client.send({ action: 'updateUserImage', userid, image });
+  }
+
+  updateCurrentImage(userId: string, image: string): Promise<unknown> {
+    const userid = required(userId, 'User ID');
+    if (!/^data:image\/(?:jpeg|png|gif|webp);base64,[a-z\d+/]+=*$/i.test(image)) {
+      throw new GatewayValidationError('User image must be a base64 image data URL.');
+    }
+    return this.mutate({
+      action: 'updateUserImage',
+      payload: { action: 'updateUserImage', image, userid },
+      matchesEvent: (event) =>
+        event.action === 'accountchange' &&
+        matchesUserId(event, userid) &&
+        event.accountImageChange === 1,
+      verify: async () => undefined,
+    });
+  }
+
+  changeCurrentEmail(userId: string, email: string): Promise<unknown> {
+    const userid = required(userId, 'User ID');
+    const normalizedEmail = requiredEmail(email);
+    return this.mutate({
+      action: 'changeemail',
+      payload: { action: 'changeemail', email: normalizedEmail },
+      matchesEvent: (event) => {
+        const account = eventAccount(event);
+        return event.action === 'accountchange' &&
+          matchesUserId(event, userid) &&
+          account?.email === normalizedEmail;
+      },
+      verify: async () => undefined,
+    });
+  }
+
+  changeCurrentPassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<unknown> {
+    const userid = required(userId, 'User ID');
+    const oldpass = required(oldPassword, 'Current password');
+    const newpass = required(newPassword, 'New password');
+    if (oldpass === newpass) {
+      throw new GatewayValidationError('New password must differ from the current password.');
+    }
+    return this.mutate({
+      action: 'changepassword',
+      payload: { action: 'changepassword', oldpass, newpass },
+      matchesEvent: (event) =>
+        event.action === 'accountchange' &&
+        matchesUserId(event, userid) &&
+        Boolean(eventAccount(event)?.passchange),
+      verify: async () => undefined,
+    });
   }
 
   setLocked(userId: string, locked: boolean, currentSiteRights: number): Promise<unknown> {

@@ -103,7 +103,9 @@ export interface GatewayEvent {
 export interface UserInfo {
   id: string;
   name?: string;
+  image?: string;
   email?: string;
+  emailVerified?: boolean;
   siteadmin?: number;
   removeRights: number;
   links: Record<string, UserInfoLink>;
@@ -111,6 +113,8 @@ export interface UserInfo {
   lastLoginAt?: string;
   lastAccessAt?: string;
   previousLoginAt?: string;
+  passwordChangedAt?: string;
+  twoFactorEnabled?: boolean;
   language?: string;
   raw?: unknown;
 }

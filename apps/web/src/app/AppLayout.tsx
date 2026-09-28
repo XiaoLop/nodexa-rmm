@@ -120,6 +120,7 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
 
 const pageTitleKeys: Record<string, [string, string]> = {
   '/dashboard': ['navigation.dashboard', 'navigation.overview'],
+  '/profile': ['header.account', 'header.profile'],
   '/devices': ['navigation.deviceManagement', 'navigation.allDevices'],
   '/devices/groups': ['navigation.deviceManagement', 'navigation.deviceGroups'],
   '/monitoring/realtime': ['navigation.monitoringAndEvents', 'navigation.realtimeEvents'],
@@ -296,7 +297,7 @@ function AppLayoutContent() {
             <Dropdown
               menu={{
                 items: [
-                  { key: 'profile', label: t('header.profile'), disabled: true },
+                  { key: 'profile', label: t('header.profile'), onClick: () => navigate('/profile') },
                   { type: 'divider' },
                   { key: 'logout', label: t('header.logout'), danger: true, onClick: handleLogout },
                 ],
@@ -304,7 +305,10 @@ function AppLayoutContent() {
               trigger={['click']}
             >
               <button className="user-menu">
-                <UserAvatar username={userInfo?.name ?? userInfo?.id.replace(/^user\/\//, '')} />
+                <UserAvatar
+                  username={userInfo?.name ?? userInfo?.id.replace(/^user\/\//, '')}
+                  src={userInfo?.image}
+                />
                 <span>
                   <strong>{displayName}</strong>
                   <small>
