@@ -199,6 +199,38 @@ describe('GatewayClient', () => {
     client.destroy();
   });
 
+  it('matches and normalizes responseid-less previous login responses', async () => {
+    const { client, socket } = await connectedClient();
+    const logins = client.users.listPreviousLogins();
+    await vi.waitFor(() =>
+      expect(
+        socket.sent
+          .map((item) => JSON.parse(item))
+          .filter((item) => item.action === 'previousLogins'),
+      ).toHaveLength(1),
+    );
+    socket.message({
+      action: 'previousLogins',
+      events: [
+        {
+          t: '2026-09-28T01:10:09.575Z',
+          m: 107,
+          a: ['172.19.0.1', 'Edge/153.0.0.0', 'Windows'],
+        },
+      ],
+    });
+    await expect(logins).resolves.toEqual([
+      {
+        occurredAt: '2026-09-28T01:10:09.575Z',
+        messageId: 107,
+        ip: '172.19.0.1',
+        client: 'Edge/153.0.0.0',
+        platform: 'Windows',
+      },
+    ]);
+    client.destroy();
+  });
+
   it('isolates listener failures', async () => {
     const { client, socket } = await connectedClient();
     const diagnostics: string[] = [];

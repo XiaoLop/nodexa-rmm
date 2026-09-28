@@ -2,15 +2,22 @@ import {
   CameraOutlined,
   CheckCircleFilled,
   ClockCircleOutlined,
+  GlobalOutlined,
   KeyOutlined,
   LockOutlined,
   MailOutlined,
   LaptopOutlined,
   SafetyCertificateOutlined,
+  SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { isFullAdministrator, normalizeUserInfo, type UserInfo } from '@meshcentral/control-client';
-import { Alert, Button, Form, Input, Modal, Tag, Upload, message } from 'antd';
+import {
+  isFullAdministrator,
+  normalizeUserInfo,
+  type PreviousLogin,
+  type UserInfo,
+} from '@meshcentral/control-client';
+import { Alert, Button, Empty, Form, Input, Modal, Spin, Tag, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,12 +50,51 @@ export function ProfilePage() {
   const [emailSubmitting, setEmailSubmitting] = useState(false);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [previousLogins, setPreviousLogins] = useState<PreviousLogin[]>([]);
+  const [previousLoginsLoading, setPreviousLoginsLoading] = useState(false);
+  const [previousLoginsError, setPreviousLoginsError] = useState<string>();
   const [messageApi, messageContextHolder] = message.useMessage();
   const connected = status === 'connected';
 
   useEffect(() => {
     emailForm.setFieldValue('email', userInfo?.email ?? '');
   }, [emailForm, userInfo?.email]);
+
+  useEffect(() => {
+    if (!client || !connected || !userInfo) return;
+    let active = true;
+    setPreviousLoginsLoading(true);
+    setPreviousLoginsError(undefined);
+    void client.users
+      .listPreviousLogins()
+      .then(
+        (logins) => {
+          if (active) setPreviousLogins(logins);
+        },
+        (error) => {
+          if (active) setPreviousLoginsError(errorDetail(error));
+        },
+      )
+      .finally(() => {
+        if (active) setPreviousLoginsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, connected, userInfo?.id]);
+
+  const refreshPreviousLogins = async () => {
+    if (!client || !connected) return;
+    setPreviousLoginsLoading(true);
+    setPreviousLoginsError(undefined);
+    try {
+      setPreviousLogins(await client.users.listPreviousLogins());
+    } catch (error) {
+      setPreviousLoginsError(errorDetail(error));
+    } finally {
+      setPreviousLoginsLoading(false);
+    }
+  };
 
   const mergeAccountEvent = (result: unknown) => {
     const event = result as { account?: unknown };
@@ -92,7 +138,9 @@ export function ProfilePage() {
       setAvatarRefreshKey(Date.now());
       void messageApi.success(t('profile.messages.avatarUpdated'));
     } catch (error) {
-      void messageApi.error(t('profile.messages.avatarUpdateFailed', { detail: errorDetail(error) }));
+      void messageApi.error(
+        t('profile.messages.avatarUpdateFailed', { detail: errorDetail(error) }),
+      );
     } finally {
       setAvatarSubmitting(false);
     }
@@ -112,7 +160,9 @@ export function ProfilePage() {
       mergeAccountEvent(result);
       void messageApi.success(t('profile.messages.emailUpdated'));
     } catch (error) {
-      void messageApi.error(t('profile.messages.emailUpdateFailed', { detail: errorDetail(error) }));
+      void messageApi.error(
+        t('profile.messages.emailUpdateFailed', { detail: errorDetail(error) }),
+      );
     } finally {
       setEmailSubmitting(false);
     }
@@ -133,13 +183,15 @@ export function ProfilePage() {
       setPasswordOpen(false);
       void messageApi.success(t('profile.messages.passwordUpdated'));
     } catch (error) {
-      void messageApi.error(t('profile.messages.passwordUpdateFailed', { detail: errorDetail(error) }));
+      void messageApi.error(
+        t('profile.messages.passwordUpdateFailed', { detail: errorDetail(error) }),
+      );
     } finally {
       setPasswordSubmitting(false);
     }
   };
 
-  const formatDate = (value?: string) => value ? dateTime(value) : t('profile.notAvailable');
+  const formatDate = (value?: string) => (value ? dateTime(value) : t('profile.notAvailable'));
 
   return (
     <div className="profile-page page-stack">
@@ -154,7 +206,9 @@ export function ProfilePage() {
         </Tag>
       </div>
 
-      {!userInfo ? <Alert type="warning" showIcon message={t('profile.unavailable')} /> : (
+      {!userInfo ? (
+        <Alert type="warning" showIcon message={t('profile.unavailable')} />
+      ) : (
         <div className="profile-layout">
           <aside className="profile-identity console-card">
             <div className="profile-avatar-stage">
@@ -164,7 +218,9 @@ export function ProfilePage() {
                 refreshKey={avatarRefreshKey}
                 src={avatarPreview ?? userInfo.image}
               />
-              <span className="profile-avatar-badge"><CameraOutlined /></span>
+              <span className="profile-avatar-badge">
+                <CameraOutlined />
+              </span>
             </div>
             <h2>{userInfo.name ?? userInfo.id}</h2>
             <span className="profile-user-id">{userInfo.id}</span>
@@ -198,9 +254,20 @@ export function ProfilePage() {
 
           <main className="profile-main-column">
             <section className="console-card profile-section">
-              <header><span><UserOutlined /></span><div><h2>{t('profile.basic.title')}</h2><p>{t('profile.basic.description')}</p></div></header>
+              <header>
+                <span>
+                  <UserOutlined />
+                </span>
+                <div>
+                  <h2>{t('profile.basic.title')}</h2>
+                  <p>{t('profile.basic.description')}</p>
+                </div>
+              </header>
               <div className="profile-readonly-row">
-                <div><label>{t('profile.basic.username')}</label><strong>{userInfo.name ?? t('profile.notAvailable')}</strong></div>
+                <div>
+                  <label>{t('profile.basic.username')}</label>
+                  <strong>{userInfo.name ?? t('profile.notAvailable')}</strong>
+                </div>
                 <Tag>{t('profile.readOnly')}</Tag>
               </div>
               <Form form={emailForm} layout="vertical" className="profile-email-form">
@@ -226,36 +293,160 @@ export function ProfilePage() {
             </section>
 
             <section className="console-card profile-section">
-              <header><span><ClockCircleOutlined /></span><div><h2>{t('profile.account.title')}</h2><p>{t('profile.account.description')}</p></div></header>
+              <header>
+                <span>
+                  <ClockCircleOutlined />
+                </span>
+                <div>
+                  <h2>{t('profile.account.title')}</h2>
+                  <p>{t('profile.account.description')}</p>
+                </div>
+              </header>
               <dl className="profile-info-grid">
-                <div><dt>{t('profile.account.createdAt')}</dt><dd>{formatDate(userInfo.creationAt)}</dd></div>
-                <div><dt>{t('profile.account.lastLogin')}</dt><dd>{formatDate(userInfo.lastLoginAt)}</dd></div>
-                <div><dt>{t('profile.account.previousLogin')}</dt><dd>{formatDate(userInfo.previousLoginAt)}</dd></div>
-                <div><dt>{t('profile.account.lastAccess')}</dt><dd>{formatDate(userInfo.lastAccessAt)}</dd></div>
+                <div>
+                  <dt>{t('profile.account.createdAt')}</dt>
+                  <dd>{formatDate(userInfo.creationAt)}</dd>
+                </div>
+                <div>
+                  <dt>{t('profile.account.lastLogin')}</dt>
+                  <dd>{formatDate(userInfo.lastLoginAt)}</dd>
+                </div>
+                <div>
+                  <dt>{t('profile.account.previousLogin')}</dt>
+                  <dd>{formatDate(userInfo.previousLoginAt)}</dd>
+                </div>
+                <div>
+                  <dt>{t('profile.account.lastAccess')}</dt>
+                  <dd>{formatDate(userInfo.lastAccessAt)}</dd>
+                </div>
               </dl>
+            </section>
+
+            <section className="console-card profile-section profile-login-section">
+              <header>
+                <span>
+                  <GlobalOutlined />
+                </span>
+                <div>
+                  <h2>{t('profile.logins.title')}</h2>
+                  <p>{t('profile.logins.description')}</p>
+                </div>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<SyncOutlined spin={previousLoginsLoading} />}
+                  disabled={!connected || previousLoginsLoading}
+                  onClick={() => void refreshPreviousLogins()}
+                >
+                  {t('profile.logins.refresh')}
+                </Button>
+              </header>
+              {previousLoginsError ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={t('profile.logins.loadFailed')}
+                  description={previousLoginsError}
+                  action={
+                    <Button size="small" onClick={() => void refreshPreviousLogins()}>
+                      {t('profile.logins.retry')}
+                    </Button>
+                  }
+                />
+              ) : previousLoginsLoading && !previousLogins.length ? (
+                <div className="profile-login-loading">
+                  <Spin size="small" /> {t('profile.logins.loading')}
+                </div>
+              ) : previousLogins.length ? (
+                <div className="profile-login-list">
+                  {previousLogins.slice(0, 10).map((login, index) => (
+                    <article className="profile-login-row" key={`${login.occurredAt}-${index}`}>
+                      <span className="profile-login-marker" />
+                      <div className="profile-login-time">
+                        <strong>{dateTime(login.occurredAt)}</strong>
+                        <small>
+                          {t('profile.logins.messageCode', { code: login.messageId ?? '—' })}
+                        </small>
+                      </div>
+                      <div className="profile-login-client">
+                        <strong>{login.client ?? t('profile.notAvailable')}</strong>
+                        <small>{login.platform ?? t('profile.notAvailable')}</small>
+                      </div>
+                      <code>{login.ip ?? '—'}</code>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={t('profile.logins.empty')}
+                />
+              )}
             </section>
           </main>
 
           <aside className="profile-security console-card">
-            <header><span><SafetyCertificateOutlined /></span><div><h2>{t('profile.security.title')}</h2><p>{t('profile.security.description')}</p></div></header>
+            <header>
+              <span>
+                <SafetyCertificateOutlined />
+              </span>
+              <div>
+                <h2>{t('profile.security.title')}</h2>
+                <p>{t('profile.security.description')}</p>
+              </div>
+            </header>
             <div className="profile-security-item">
-              <span className="profile-security-icon"><KeyOutlined /></span>
-              <div><strong>{t('profile.security.password')}</strong><small>{formatDate(userInfo.passwordChangedAt)}</small></div>
-              <Button size="small" disabled={!connected} onClick={() => setPasswordOpen(true)}>{t('profile.security.change')}</Button>
+              <span className="profile-security-icon">
+                <KeyOutlined />
+              </span>
+              <div>
+                <strong>{t('profile.security.password')}</strong>
+                <small>{formatDate(userInfo.passwordChangedAt)}</small>
+              </div>
+              <Button size="small" disabled={!connected} onClick={() => setPasswordOpen(true)}>
+                {t('profile.security.change')}
+              </Button>
             </div>
             <div className="profile-security-item">
-              <span className="profile-security-icon"><CheckCircleFilled /></span>
-              <div><strong>{t('profile.security.emailVerification')}</strong><small>{userInfo.emailVerified ? t('profile.security.verified') : t('profile.security.unverified')}</small></div>
-              <Tag color={userInfo.emailVerified ? 'success' : 'warning'}>{userInfo.emailVerified ? t('profile.security.enabled') : t('profile.security.pending')}</Tag>
+              <span className="profile-security-icon">
+                <CheckCircleFilled />
+              </span>
+              <div>
+                <strong>{t('profile.security.emailVerification')}</strong>
+                <small>
+                  {userInfo.emailVerified
+                    ? t('profile.security.verified')
+                    : t('profile.security.unverified')}
+                </small>
+              </div>
+              <Tag color={userInfo.emailVerified ? 'success' : 'warning'}>
+                {userInfo.emailVerified
+                  ? t('profile.security.enabled')
+                  : t('profile.security.pending')}
+              </Tag>
             </div>
             <div className="profile-security-item is-static">
-              <span className="profile-security-icon"><LockOutlined /></span>
-              <div><strong>{t('profile.security.twoFactor')}</strong><small>{userInfo.twoFactorEnabled ? t('profile.security.configured') : t('profile.security.notConfigured')}</small></div>
+              <span className="profile-security-icon">
+                <LockOutlined />
+              </span>
+              <div>
+                <strong>{t('profile.security.twoFactor')}</strong>
+                <small>
+                  {userInfo.twoFactorEnabled
+                    ? t('profile.security.configured')
+                    : t('profile.security.notConfigured')}
+                </small>
+              </div>
               <Tag>{t('profile.security.displayOnly')}</Tag>
             </div>
             <div className="profile-security-item is-static">
-              <span className="profile-security-icon"><LaptopOutlined /></span>
-              <div><strong>{t('profile.security.sessions')}</strong><small>{t('profile.security.sessionsDescription')}</small></div>
+              <span className="profile-security-icon">
+                <LaptopOutlined />
+              </span>
+              <div>
+                <strong>{t('profile.security.sessions')}</strong>
+                <small>{t('profile.security.sessionsDescription')}</small>
+              </div>
               <Tag>{t('profile.security.displayOnly')}</Tag>
             </div>
             <Alert type="info" showIcon message={t('profile.security.staticNotice')} />
@@ -269,16 +460,27 @@ export function ProfilePage() {
         okText={t('profile.password.submit')}
         cancelText={t('common.actions.cancel')}
         confirmLoading={passwordSubmitting}
-        onCancel={() => { setPasswordOpen(false); passwordForm.resetFields(); }}
+        onCancel={() => {
+          setPasswordOpen(false);
+          passwordForm.resetFields();
+        }}
         onOk={() => void savePassword().catch(() => undefined)}
         destroyOnHidden
       >
         <Alert type="warning" showIcon message={t('profile.password.notice')} />
         <Form form={passwordForm} layout="vertical" className="profile-password-form">
-          <Form.Item name="currentPassword" label={t('profile.password.current')} rules={[{ required: true, message: t('profile.validation.currentPasswordRequired') }]}>
+          <Form.Item
+            name="currentPassword"
+            label={t('profile.password.current')}
+            rules={[{ required: true, message: t('profile.validation.currentPasswordRequired') }]}
+          >
             <Input.Password autoComplete="current-password" />
           </Form.Item>
-          <Form.Item name="newPassword" label={t('profile.password.new')} rules={[{ required: true, message: t('profile.validation.newPasswordRequired') }]}>
+          <Form.Item
+            name="newPassword"
+            label={t('profile.password.new')}
+            rules={[{ required: true, message: t('profile.validation.newPasswordRequired') }]}
+          >
             <Input.Password autoComplete="new-password" />
           </Form.Item>
           <Form.Item

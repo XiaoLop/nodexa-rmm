@@ -459,6 +459,28 @@ describe('resources', () => {
     client.responses.push({ action: 'wssessioncount', wssessions: { 'user//admin': 2 } });
     await expect(users.listSessionCounts()).resolves.toEqual({ 'user//admin': 2 });
 
+    client.responses.push({
+      action: 'previousLogins',
+      events: [
+        {
+          t: '2026-09-28T01:10:09.575Z',
+          m: 107,
+          a: ['172.19.0.1', 'Edge/153.0.0.0', 'Windows'],
+        },
+        { t: 'invalid', m: 110, a: [] },
+      ],
+    });
+    await expect(users.listPreviousLogins()).resolves.toEqual([
+      {
+        occurredAt: '2026-09-28T01:10:09.575Z',
+        messageId: 107,
+        ip: '172.19.0.1',
+        client: 'Edge/153.0.0.0',
+        platform: 'Windows',
+      },
+    ]);
+    expect(client.requests.at(-1)).toEqual({ action: 'previousLogins' });
+
     client.responses.push({ users: [] });
     const create = users.create({
       username: ' new-user ',

@@ -254,6 +254,14 @@ export interface UserUpdate {
 
 export type UserSessionCounts = Record<string, number>;
 
+export interface PreviousLogin {
+  occurredAt: string;
+  messageId?: number;
+  ip?: string;
+  client?: string;
+  platform?: string;
+}
+
 export interface GatewaySnapshot {
   devices: Device[];
   groups: DeviceGroup[];

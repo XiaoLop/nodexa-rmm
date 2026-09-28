@@ -16,6 +16,7 @@ import type {
   GatewayEventChannel,
   GatewayListener,
   ManagedUser,
+  PreviousLogin,
   UserCreateOptions,
   UserSessionCounts,
   UserUpdate,
@@ -74,6 +75,24 @@ function eventAccount(event: Record<string, unknown>): Record<string, unknown> |
   return isRecord(event.account) ? event.account : undefined;
 }
 
+function normalizePreviousLogins(value: unknown): PreviousLogin[] {
+  if (!isRecord(value) || !Array.isArray(value.events)) return [];
+  return value.events.flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.t !== 'string') return [];
+    const occurredAt = new Date(entry.t);
+    if (Number.isNaN(occurredAt.getTime())) return [];
+    const args = Array.isArray(entry.a) ? entry.a : [];
+    return [{
+      occurredAt: occurredAt.toISOString(),
+      messageId:
+        typeof entry.m === 'number' && Number.isInteger(entry.m) ? entry.m : undefined,
+      ip: typeof args[0] === 'string' ? args[0] : undefined,
+      client: typeof args[1] === 'string' ? args[1] : undefined,
+      platform: typeof args[2] === 'string' ? args[2] : undefined,
+    }];
+  });
+}
+
 function matchesUserId(event: Record<string, unknown>, userId: string): boolean {
   const account = eventAccount(event);
   return event.userid === userId || account?._id === userId || account?.id === userId;
@@ -103,6 +122,11 @@ export class UsersResource {
   async listSessionCounts(): Promise<UserSessionCounts> {
     const response = await this.client.request<unknown>({ action: 'wssessioncount' });
     return normalizeUserSessionCounts(response);
+  }
+
+  async listPreviousLogins(): Promise<PreviousLogin[]> {
+    const response = await this.client.request<unknown>({ action: 'previousLogins' });
+    return normalizePreviousLogins(response);
   }
 
   async create(options: UserCreateOptions): Promise<unknown> {

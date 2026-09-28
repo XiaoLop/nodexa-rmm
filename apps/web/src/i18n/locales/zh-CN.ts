@@ -677,6 +677,7 @@ export const zhCN = {
     "notAvailable": "暂无记录",
     "basic": { "title": "基本资料", "description": "用于账户识别和系统通知", "username": "用户名", "email": "邮箱地址", "saveEmail": "更新邮箱" },
     "account": { "title": "账号信息", "description": "账户生命周期与最近访问记录", "createdAt": "创建时间", "lastLogin": "最近登录", "previousLogin": "上次登录", "lastAccess": "最近访问" },
+    "logins": { "title": "最近登录", "description": "此账户最近的登录来源与客户端环境", "refresh": "刷新", "retry": "重试", "loading": "正在加载登录记录", "loadFailed": "登录记录加载失败", "empty": "暂无最近登录记录", "messageCode": "事件代码 {{code}}" },
     "security": { "title": "安全设置", "description": "登录凭据与身份验证状态", "password": "登录密码", "change": "更改", "emailVerification": "邮箱验证", "verified": "邮箱地址已验证", "unverified": "新邮箱尚未验证", "enabled": "已验证", "pending": "待验证", "twoFactor": "双因素认证", "configured": "已配置身份验证器或恢复代码", "notConfigured": "尚未配置", "sessions": "登录会话", "sessionsDescription": "当前会话管理功能暂未开放", "displayOnly": "仅展示", "staticNotice": "双因素认证与会话管理暂为状态展示，后续版本将开放操作。" },
     "password": { "title": "更改登录密码", "notice": "密码更新后，其他已登录会话可能需要重新验证。", "current": "当前密码", "new": "新密码", "confirm": "确认新密码", "submit": "更新密码" },
     "validation": { "emailRequired": "请输入邮箱地址", "emailInvalid": "请输入有效的邮箱地址", "currentPasswordRequired": "请输入当前密码", "newPasswordRequired": "请输入新密码", "confirmPasswordRequired": "请再次输入新密码", "passwordMismatch": "两次输入的新密码不一致" },
