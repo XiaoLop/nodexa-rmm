@@ -359,9 +359,13 @@ MeshCentral 插件元数据，定义：
 
 ## 5. HTTP 接口
 
-插件提供登录、二阶段验证和退出接口，根据 Domain 配置注册到不同路径。
+插件提供注册检查、登录、二阶段验证和退出接口，根据 Domain 配置注册到不同路径。
 
 ```http
+GET /api/auth/can-register
+GET /<domain>/api/auth/can-register
+POST /api/auth/register
+POST /<domain>/api/auth/register
 POST /api/auth/login
 POST /<domain>/api/auth/login
 POST /api/auth/login/verify-2fa
@@ -370,6 +374,34 @@ POST /api/auth/logout
 POST /<domain>/api/auth/logout
 Content-Type: application/json
 ```
+
+注册检查接口无需 Body，返回当前 Domain 是否允许创建本地账号：
+
+```json
+{
+  "allowed": true,
+  "isFirstUser": false,
+  "domain": "",
+  "userCount": 2,
+  "requiresToken": true,
+  "requiresCaptcha": false
+}
+```
+
+当前 Domain 没有用户时始终允许创建首个用户。已有用户时，仅当 Domain 配置 `newaccounts: true` 或 `newaccounts: 1` 才允许注册。维护模式、LDAP、SSPI、外部认证策略或全局 `nousers` 模式下返回 `allowed: false` 和 `reason`。
+
+注册接口接受 JSON 或 URL-encoded 表单，请求字段如下：
+
+```json
+{
+  "username": "alice",
+  "email": "alice@example.com",
+  "password": "secret",
+  "token": "optional-registration-token"
+}
+```
+
+接口复用 MeshCentral 用户名、邮箱、邮箱域白名单、密码策略和用户数量上限校验。密码使用与 MeshCentral 原生账号兼容的 PBKDF2-SHA384 参数生成 `salt` 和 `hash`。当前 Domain 的首个用户自动获得站点管理员权限；配置 CAPTCHA 的 Domain 暂不支持通过 JSON 注册接口创建账号。
 
 请求示例：
 

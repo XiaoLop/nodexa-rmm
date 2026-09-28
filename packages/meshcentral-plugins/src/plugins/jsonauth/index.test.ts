@@ -9,7 +9,13 @@ import type {
   MeshCentralWebServer,
 } from '../../types/meshcentral.types.js';
 import type { MeshCentralHttpHandler } from '../../types/meshcentral.types.js';
-import { createJsonAuthHandler, createJsonAuthHandlers, jsonauth } from './index.js';
+import {
+  createCanRegisterHandler,
+  createJsonAuthHandler,
+  createJsonAuthHandlers,
+  createRegisterHandler,
+  jsonauth,
+} from './index.js';
 
 const domain: MeshCentralDomain = { id: '', url: '/' };
 const now = Date.UTC(2026, 0, 1);
@@ -70,8 +76,16 @@ function createRuntime(
   };
   const meshServer: MeshCentralServer = {
     config: { settings: {}, domains: { '': domain } },
+    common: {
+      validateUsername: vi.fn((value) => /^[a-z0-9._-]{1,64}$/i.test(value)),
+      validateEmail: vi.fn((value) => /^[^@]+@[^@]+$/.test(value)),
+      checkPasswordRequirements: vi.fn(() => true),
+    },
     certificates: { CommonName: 'mesh.example.com' },
-    db: { SetUser: vi.fn() },
+    db: {
+      SetUser: vi.fn(),
+      isMaxType: vi.fn((_maximum, _type, _domainId, callback) => callback(false)),
+    },
     authLog: vi.fn(),
     DispatchEvent: vi.fn(),
   };
@@ -285,7 +299,10 @@ describe('jsonauth handler', () => {
 
   it('registers default and path-domain routes once', () => {
     const runtime = createRuntime();
-    runtime.webServer.bodyParser = { json: vi.fn(() => 'json-parser'), urlencoded: vi.fn() };
+    runtime.webServer.bodyParser = {
+      json: vi.fn(() => 'json-parser'),
+      urlencoded: vi.fn(() => 'urlencoded-parser'),
+    };
     runtime.meshServer.config = {
       settings: {},
       domains: {
@@ -298,7 +315,28 @@ describe('jsonauth handler', () => {
       runtime.webServer,
       runtime.meshServer,
     );
-    expect(runtime.webServer.app.post).toHaveBeenCalledTimes(6);
+    expect(runtime.webServer.app.post).toHaveBeenCalledTimes(8);
+    expect(runtime.webServer.app.get).toHaveBeenCalledTimes(2);
+    expect(runtime.webServer.app.get).toHaveBeenCalledWith(
+      '/api/auth/can-register',
+      expect.any(Function),
+    );
+    expect(runtime.webServer.app.get).toHaveBeenCalledWith(
+      '/tenant/api/auth/can-register',
+      expect.any(Function),
+    );
+    expect(runtime.webServer.app.post).toHaveBeenCalledWith(
+      '/api/auth/register',
+      'json-parser',
+      'urlencoded-parser',
+      expect.any(Function),
+    );
+    expect(runtime.webServer.app.post).toHaveBeenCalledWith(
+      '/tenant/api/auth/register',
+      'json-parser',
+      'urlencoded-parser',
+      expect.any(Function),
+    );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
       '/api/auth/login',
       'json-parser',
@@ -329,6 +367,186 @@ describe('jsonauth handler', () => {
       'json-parser',
       expect.any(Function),
     );
+  });
+
+  it('allows the first user to register without enabling new accounts', () => {
+    const runtime = createRuntime();
+    runtime.webServer.users = {};
+    const { response, state } = createResponse();
+
+    createCanRegisterHandler(runtime.webServer, runtime.meshServer, domain)(
+      createRequest(undefined),
+      response,
+    );
+
+    expect(state.body).toEqual({
+      allowed: true,
+      isFirstUser: true,
+      domain: '',
+      userCount: 0,
+      requiresToken: false,
+      requiresCaptcha: false,
+    });
+    expect(response.set).toHaveBeenCalledWith({ 'Cache-Control': 'no-store' });
+  });
+
+  it('uses domain registration settings after the first user exists', () => {
+    const registrationDomain: MeshCentralDomain = {
+      id: '',
+      url: '/',
+      newaccounts: 1,
+      newaccountspass: 'invite-only',
+      newaccountscaptcha: true,
+    };
+    const runtime = createRuntime();
+    const { response, state } = createResponse();
+
+    createCanRegisterHandler(
+      runtime.webServer,
+      runtime.meshServer,
+      registrationDomain,
+    )(createRequest(undefined), response);
+
+    expect(state.body).toEqual({
+      allowed: true,
+      isFirstUser: false,
+      domain: '',
+      userCount: 1,
+      requiresToken: true,
+      requiresCaptcha: true,
+    });
+  });
+
+  it('denies registration when new accounts are disabled', () => {
+    const runtime = createRuntime();
+    const { response, state } = createResponse();
+
+    createCanRegisterHandler(runtime.webServer, runtime.meshServer, domain)(
+      createRequest(undefined),
+      response,
+    );
+
+    expect(state.body).toMatchObject({
+      allowed: false,
+      isFirstUser: false,
+      userCount: 1,
+    });
+  });
+
+  it('denies registration during maintenance or external authentication', () => {
+    const maintenanceRuntime = createRuntime();
+    maintenanceRuntime.meshServer.config!.settings!.maintenancemode = true;
+    maintenanceRuntime.webServer.users = {};
+    const maintenanceResponse = createResponse();
+    createCanRegisterHandler(
+      maintenanceRuntime.webServer,
+      maintenanceRuntime.meshServer,
+      domain,
+    )(createRequest(undefined), maintenanceResponse.response);
+    expect(maintenanceResponse.state.body).toEqual({
+      allowed: false,
+      isFirstUser: false,
+      reason: 'Server is in maintenance mode.',
+    });
+
+    const ldapRuntime = createRuntime();
+    const ldapResponse = createResponse();
+    createCanRegisterHandler(
+      ldapRuntime.webServer,
+      ldapRuntime.meshServer,
+      { id: '', url: '/', auth: 'ldap' },
+    )(createRequest(undefined), ldapResponse.response);
+    expect(ldapResponse.state.body).toEqual({
+      allowed: false,
+      isFirstUser: false,
+      reason: 'External authentication is in use or local users are disabled.',
+    });
+  });
+
+  it('registers the first user as an administrator', () => {
+    const runtime = createRuntime();
+    runtime.webServer.users = {};
+    const { response, state } = createResponse();
+    const request = createRequest({
+      username: 'owner',
+      password: 'correct horse battery staple',
+      email: 'owner@example.com',
+    });
+
+    createRegisterHandler(runtime.webServer, runtime.meshServer, domain, {
+      hashPassword(_password, callback) { callback(null, 'test-salt', 'test-hash'); },
+      now() { return now; },
+    })(request, response);
+
+    expect(state).toMatchObject({
+      code: 201,
+      body: {
+        status: 'SUCCESS',
+        data: {
+          id: 'user//owner',
+          username: 'owner',
+          email: 'owner@example.com',
+          isAdmin: true,
+        },
+      },
+    });
+    expect(runtime.meshServer.db?.SetUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: 'user//owner',
+        siteadmin: 0xffffffff,
+        salt: 'test-salt',
+        hash: 'test-hash',
+      }),
+    );
+    expect(runtime.webServer.users?.['user//owner']).toBeDefined();
+    expect(runtime.meshServer.DispatchEvent).toHaveBeenCalledWith(
+      ['*', 'server-users'],
+      runtime.webServer,
+      expect.objectContaining({ action: 'accountcreate', userid: 'user//owner' }),
+    );
+  });
+
+  it('enforces registration settings, tokens and unique usernames', () => {
+    const closedRuntime = createRuntime();
+    const closedResponse = createResponse();
+    createRegisterHandler(closedRuntime.webServer, closedRuntime.meshServer, domain)(
+      createRequest({ username: 'bob', password: 'secret', email: 'bob@example.com' }),
+      closedResponse.response,
+    );
+    expect(closedResponse.state).toMatchObject({
+      code: 403,
+      body: { status: 'REGISTRATION_CLOSED' },
+    });
+
+    const tokenDomain: MeshCentralDomain = {
+      id: '', url: '/', newaccounts: true, newaccountspass: 'invite-only',
+    };
+    const tokenRuntime = createRuntime();
+    const tokenResponse = createResponse();
+    createRegisterHandler(tokenRuntime.webServer, tokenRuntime.meshServer, tokenDomain)(
+      createRequest({ username: 'bob', password: 'secret', email: 'bob@example.com' }),
+      tokenResponse.response,
+    );
+    expect(tokenResponse.state).toMatchObject({
+      code: 400,
+      body: { status: 'INVALID_REGISTRATION_TOKEN' },
+    });
+
+    const duplicateDomain: MeshCentralDomain = { id: '', url: '/', newaccounts: true };
+    const duplicateRuntime = createRuntime();
+    const duplicateResponse = createResponse();
+    createRegisterHandler(
+      duplicateRuntime.webServer,
+      duplicateRuntime.meshServer,
+      duplicateDomain,
+    )(
+      createRequest({ username: 'alice', password: 'secret', email: 'alice@example.com' }),
+      duplicateResponse.response,
+    );
+    expect(duplicateResponse.state).toMatchObject({
+      code: 409,
+      body: { status: 'USERNAME_EXISTS' },
+    });
   });
 
   it('invalidates the active session and returns JSON on logout', () => {

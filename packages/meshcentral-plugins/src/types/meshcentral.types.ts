@@ -40,6 +40,12 @@ export interface MeshCentralDomain {
   authstrategies?: Record<string, unknown>;
   loginkey?: string[];
   mailserver?: unknown;
+  newaccounts?: boolean | number;
+  newaccountsrights?: number;
+  newaccountemaildomains?: string[];
+  newaccountspass?: unknown;
+  newaccountscaptcha?: unknown;
+  limits?: { maxuseraccounts?: number };
   twofactorcookiedurationdays?: number;
   passwordrequirements?: {
     reset?: number;
@@ -87,6 +93,13 @@ export interface MeshCentralDatabase {
   Set?(document: Record<string, unknown>): void;
   Remove?(id: string, callback?: (error?: unknown) => void): void;
   SetUser?(user: MeshCentralUser): void;
+  isMaxType?(
+    maximum: number | undefined,
+    type: string,
+    domainId: string,
+    callback: (maximumExceeded: boolean) => void,
+  ): void;
+  changeStream?: unknown;
   [key: string]: unknown;
 }
 
@@ -97,6 +110,14 @@ export interface MeshCentralServer {
   };
   datapath?: string;
   db?: MeshCentralDatabase;
+  common?: {
+    validateUsername?(value: string, minimum: number, maximum: number): boolean;
+    validateEmail?(value: string, minimum: number, maximum: number): boolean;
+    checkPasswordRequirements?(
+      password: string,
+      requirements: MeshCentralDomain['passwordrequirements'],
+    ): boolean;
+  };
   loginCookieEncryptionKey?: unknown;
   certificates?: { CommonName?: string };
   smsserver?: unknown;
@@ -153,6 +174,7 @@ export interface MeshCentralWebServer {
   checkAllow2Fa?(request: MeshCentralHttpRequest): boolean;
   setbad2Fa?(request: MeshCentralHttpRequest): void;
   CloneSafeUser?(user: MeshCentralUser): Record<string, unknown>;
+  getLanguageCodes?(request: MeshCentralHttpRequest): string[];
   getUserAgentInfo?(request: MeshCentralHttpRequest): {
     browserStr?: string;
     osStr?: string;

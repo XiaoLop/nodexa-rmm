@@ -9,6 +9,8 @@ function buildGatewayEndpoint(path: string): string {
 export const MESH_AUTH_LOGIN_URL = `${API_PREFIX}/auth/login`;
 export const MESH_AUTH_VERIFY_TWO_FACTOR_URL = `${MESH_AUTH_LOGIN_URL}/verify-2fa`;
 export const MESH_AUTH_LOGOUT_URL = `${API_PREFIX}/auth/logout`;
+export const MESH_AUTH_CAN_REGISTER_URL = `${API_PREFIX}/auth/can-register`;
+export const MESH_AUTH_REGISTER_URL = `${API_PREFIX}/auth/register`;
 export const GATEWAY_CONTROL_URL = buildGatewayEndpoint('/control.ashx');
 export const GATEWAY_RELAY_URL = buildGatewayEndpoint('/meshrelay.ashx');
 

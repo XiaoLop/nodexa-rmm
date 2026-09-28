@@ -8,6 +8,7 @@ import {
   type ApplicationCapability,
 } from '../features/permissions/useUiCapabilities';
 import { AppBootScreen, LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
 
 const AppLayout = lazy(() =>
   import('./AppLayout').then((module) => ({ default: module.AppLayout })),
@@ -87,6 +88,7 @@ export function AppRouter() {
     <Suspense fallback={<AppBootScreen />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route
           element={
             <ProtectedRoute>

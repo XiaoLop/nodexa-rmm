@@ -4,11 +4,13 @@ import type {
 } from '../../types/meshcentral.types.js';
 import type { LoginService } from './services/login.service.js';
 import type { LogoutService } from './services/logout.service.js';
+import type { RegistrationService } from './services/registration.service.js';
 
 export class JsonAuthController {
   constructor(
     private readonly loginService: LoginService,
     private readonly logoutService: LogoutService,
+    private readonly registrationService: RegistrationService,
   ) {}
 
   register(
@@ -35,8 +37,28 @@ export class JsonAuthController {
       const loginPath = `${basePath}/login`;
       const verifyPath = `${basePath}/login/verify-2fa`;
       const logoutPath = `${basePath}/logout`;
+      const canRegisterPath = `${basePath}/can-register`;
+      const registerPath = `${basePath}/register`;
       if (registeredPaths.has(loginPath)) continue;
       registeredPaths.add(loginPath);
+      webServer.app.get(
+        canRegisterPath,
+        this.registrationService.createHandler(
+          webServer,
+          meshServer,
+          domain.dns == null ? domain : undefined,
+        ),
+      );
+      webServer.app.post(
+        registerPath,
+        webServer.bodyParser.json({ limit: '16kb' }),
+        webServer.bodyParser.urlencoded({ extended: false, limit: '16kb' }),
+        this.registrationService.createRegisterHandler(
+          webServer,
+          meshServer,
+          domain.dns == null ? domain : undefined,
+        ),
+      );
       webServer.app.post(
         loginPath,
         webServer.bodyParser.json({ limit: '16kb' }),

@@ -7,6 +7,7 @@ import { JsonAuthPlugin } from './jsonauth.plugin.js';
 import type { HandlerDependencies } from './jsonauth.types.js';
 import { LoginService } from './services/login.service.js';
 import { LogoutService } from './services/logout.service.js';
+import { RegistrationService } from './services/registration.service.js';
 import { SessionService } from './services/session.service.js';
 import { TwoFactorService } from './services/two-factor.service.js';
 
@@ -28,6 +29,7 @@ export const defaultDependencies: HandlerDependencies = {
 export interface JsonAuthModuleRef {
   loginService: LoginService;
   logoutService: LogoutService;
+  registrationService: RegistrationService;
   plugin: JsonAuthPlugin;
 }
 
@@ -50,10 +52,16 @@ export function createJsonAuthModule(
     dependencies,
   );
   const logoutService = new LogoutService();
-  const controller = new JsonAuthController(loginService, logoutService);
+  const registrationService = new RegistrationService();
+  const controller = new JsonAuthController(
+    loginService,
+    logoutService,
+    registrationService,
+  );
   return {
     loginService,
     logoutService,
+    registrationService,
     plugin: new JsonAuthPlugin(controller),
   };
 }
