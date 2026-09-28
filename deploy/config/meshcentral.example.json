@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
     "settings": {
-        "cert": "192.168.1.12",
+        "cert": "192.168.9.28",
         "port": 8443,
         "aliasPort": 443,
         "redirPort": 0,
