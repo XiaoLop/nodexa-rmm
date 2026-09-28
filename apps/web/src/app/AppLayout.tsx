@@ -308,6 +308,7 @@ function AppLayoutContent() {
                 <UserAvatar
                   username={userInfo?.name ?? userInfo?.id.replace(/^user\/\//, '')}
                   src={userInfo?.image}
+                  hasImage={Boolean(userInfo?.image || userInfo?.hasImage)}
                 />
                 <span>
                   <strong>{displayName}</strong>

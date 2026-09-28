@@ -255,6 +255,9 @@ export function normalizeUserInfo(value: unknown): UserInfo | undefined {
       stringValue(raw.username) ??
       id.replace(/^user\/\/[^/]*\//, '').replace(/^user\/\//, ''),
     image: stringValue(raw.image),
+    hasImage:
+      stringValue(raw.image) !== undefined ||
+      (typeof raw.flags === 'number' && (raw.flags & 1) !== 0),
     email: stringValue(raw.email),
     emailVerified:
       typeof raw.emailVerified === 'boolean' ? raw.emailVerified : undefined,

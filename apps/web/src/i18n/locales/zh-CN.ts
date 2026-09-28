@@ -637,7 +637,7 @@ export const zhCN = {
       "title": "编辑 {{name}}",
       "titleDefault": "编辑用户",
       "invalidImageType": "请选择 JPG、PNG、GIF 或 WebP 图片。",
-      "avatarTooLarge": "头像图片不能超过 2 MB。",
+      "avatarTooLarge": "头像图片不能超过 10 MB。",
       "readAvatarFailed": "读取头像图片失败。",
       "avatar": "头像",
       "selectImage": "选择图片",
@@ -713,16 +713,20 @@ export const zhCN = {
     "standardUser": "标准用户",
     "selectAvatar": "选择新头像",
     "saveAvatar": "保存头像",
-    "avatarHint": "支持 JPG、PNG、GIF 或 WebP，文件大小不超过 2 MB。",
+    "avatarHint": "支持 10 MB 以内的 JPG、PNG、GIF 或 WebP；图片会在浏览器内裁剪并压缩为 256 × 256。",
     "readOnly": "只读",
     "notAvailable": "暂无记录",
     "basic": { "title": "基本资料", "description": "用于账户识别和系统通知", "username": "用户名", "email": "邮箱地址", "saveEmail": "更新邮箱" },
     "account": { "title": "账号信息", "description": "账户生命周期与最近访问记录", "createdAt": "创建时间", "lastLogin": "最近登录", "previousLogin": "上次登录", "lastAccess": "最近访问" },
     "logins": { "title": "最近登录", "description": "此账户最近的登录来源与客户端环境", "refresh": "刷新", "retry": "重试", "loading": "正在加载登录记录", "loadFailed": "登录记录加载失败", "empty": "暂无最近登录记录", "messageCode": "事件代码 {{code}}" },
-    "security": { "title": "安全设置", "description": "登录凭据与身份验证状态", "password": "登录密码", "change": "更改", "emailVerification": "邮箱验证", "verified": "邮箱地址已验证", "unverified": "新邮箱尚未验证", "enabled": "已验证", "pending": "待验证", "twoFactor": "双因素认证", "configured": "已配置身份验证器或恢复代码", "notConfigured": "尚未配置", "sessions": "登录会话", "sessionsDescription": "当前会话管理功能暂未开放", "displayOnly": "仅展示", "staticNotice": "双因素认证与会话管理暂为状态展示，后续版本将开放操作。" },
+    "security": {
+      "title": "安全设置", "description": "登录凭据与身份验证状态", "password": "登录密码", "change": "更改", "emailVerification": "邮箱验证", "verified": "邮箱地址已验证", "unverified": "新邮箱尚未验证", "enabled": "已验证", "pending": "待验证", "twoFactor": "双因素认证", "twoFactorDescription": "当前账户可以使用的身份验证方式", "twoFactorForced": "服务器要求此账户启用双因素认证", "twoFactorLocked": "策略锁定", "twoFactorLoading": "正在查询可用的验证方式", "twoFactorLoadFailed": "无法查询双因素认证能力", "twoFactorUnavailable": "当前服务器或域未启用双因素认证", "retry": "重试", "canConfigure": "可设置", "requirementsMissing": "需补充资料", "unavailable": "未启用", "sessions": "登录会话", "sessionsDescription": "当前会话管理功能暂未开放", "displayOnly": "仅展示", "capabilitiesNotice": "此处展示服务器允许使用的验证方式；具体开启流程将在后续接入。",
+      "twoFactorMethods": { "totp": "验证器应用", "webauthn": "安全密钥", "email": "邮箱验证码", "sms": "短信验证码", "messaging": "即时消息", "duo": "Duo Security", "devicePush": "设备推送", "backupCodes": "备用恢复码" },
+      "management": { "enable": "开启", "disable": "关闭", "manage": "管理", "configured": "已开启", "operationFailed": "操作失败：{{detail}}", "totpTitle": "开启验证器应用", "totpInstructions": "使用验证器应用扫描二维码，或手动输入下方密钥，然后输入应用生成的 6 位验证码。", "totpCode": "验证码", "totpCodeRequired": "请输入验证码", "totpCodeInvalid": "请输入 6 位数字验证码", "confirmTotp": "验证并开启", "totpEnabled": "验证器应用已开启。", "totpDisabled": "验证器应用已关闭。", "disableTotpTitle": "关闭验证器应用？", "disableTotpDescription": "关闭后，登录时将不能再使用此验证方式。", "enableEmailTitle": "开启邮箱验证码？", "enableEmailDescription": "登录时可向已验证的邮箱发送一次性验证码。", "disableEmailTitle": "关闭邮箱验证码？", "disableEmailDescription": "关闭后，登录时将不能再使用邮箱验证码。", "emailEnabled": "邮箱验证码已开启。", "emailDisabled": "邮箱验证码已关闭。", "backupCodesTitle": "备用恢复码", "backupCodesNotice": "请将未使用的恢复码保存在安全位置。每个恢复码只能使用一次，重新生成会使旧恢复码失效。", "regenerate": "重新生成", "disableBackupCodesTitle": "关闭备用恢复码？", "disableBackupCodesDescription": "所有现有恢复码都将立即失效。", "backupCodesDisabled": "备用恢复码已关闭。" }
+    },
     "password": { "title": "更改登录密码", "notice": "密码更新后，其他已登录会话可能需要重新验证。", "current": "当前密码", "new": "新密码", "confirm": "确认新密码", "submit": "更新密码" },
     "validation": { "emailRequired": "请输入邮箱地址", "emailInvalid": "请输入有效的邮箱地址", "currentPasswordRequired": "请输入当前密码", "newPasswordRequired": "请输入新密码", "confirmPasswordRequired": "请再次输入新密码", "passwordMismatch": "两次输入的新密码不一致" },
-    "messages": { "invalidImageType": "请选择 JPG、PNG、GIF 或 WebP 图片。", "avatarTooLarge": "头像文件不能超过 2 MB。", "imageReadFailed": "无法读取头像文件。", "avatarUpdated": "头像已更新。", "avatarUpdateFailed": "头像更新失败：{{detail}}", "emailUnchanged": "邮箱地址没有变化。", "emailUpdated": "邮箱地址已更新，请按服务器要求完成验证。", "emailUpdateFailed": "邮箱更新失败：{{detail}}", "passwordUpdated": "登录密码已更新。", "passwordUpdateFailed": "密码更新失败：{{detail}}" }
+    "messages": { "invalidImageType": "请选择 JPG、PNG、GIF 或 WebP 图片。", "avatarTooLarge": "头像文件不能超过 10 MB。", "imageReadFailed": "无法读取头像文件。", "avatarUpdated": "头像已更新。", "avatarUpdateFailed": "头像更新失败：{{detail}}", "emailUnchanged": "邮箱地址没有变化。", "emailUpdated": "邮箱地址已更新，请按服务器要求完成验证。", "emailUpdateFailed": "邮箱更新失败：{{detail}}", "passwordUpdated": "登录密码已更新。", "passwordUpdateFailed": "密码更新失败：{{detail}}" }
   },
   "userDetails": {
     "drawerTitle": "用户详情：{{name}}",

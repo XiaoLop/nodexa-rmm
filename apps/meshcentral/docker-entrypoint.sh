@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-plugin_source=/opt/meshcentral-plugins/jsonauth
-plugin_target=/var/lib/meshcentral/data/plugins/jsonauth
+plugin_source=/opt/meshcentral-plugins
+plugin_target=/var/lib/meshcentral/data/plugins
 
 if [ "${MESHCENTRAL_SYNC_BUILTIN_PLUGINS:-true}" = "true" ] \
   && [ -d "$plugin_source" ]; then

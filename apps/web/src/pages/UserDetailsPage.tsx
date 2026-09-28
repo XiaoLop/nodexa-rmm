@@ -655,6 +655,8 @@ export function UserDetailsPage() {
               className={`user-detail-avatar ${user.locked ? 'is-locked' : online ? 'is-online' : 'is-offline'}`}
               username={user.name}
               refreshKey={avatarRefreshKey}
+              src={user.image}
+              hasImage={Boolean(user.image || user.hasImage)}
             />
             <span
               className={`user-detail-status-indicator ${user.locked ? 'status-locked' : online ? 'status-online' : 'status-offline'}`}

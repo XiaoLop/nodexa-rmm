@@ -38,7 +38,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 COPY --from=builder --chown=node:node /app /app
-COPY --from=builder --chown=node:node /workspace/apps/meshcentral/runtime/data/plugins/jsonauth /opt/meshcentral-plugins/jsonauth
+COPY --from=builder --chown=node:node /workspace/apps/meshcentral/runtime/data/plugins /opt/meshcentral-plugins
 COPY --chown=node:node apps/meshcentral/docker-entrypoint.sh /usr/local/bin/meshcentral-entrypoint
 
 RUN mkdir -p \

@@ -236,7 +236,12 @@ export function UsersPage() {
       width: 250,
       render: (_, user) => (
         <div className="user-identity">
-          <UserAvatar className="user-identity-icon" username={user.name} />
+          <UserAvatar
+            className="user-identity-icon"
+            username={user.name}
+            src={user.image}
+            hasImage={Boolean(user.image || user.hasImage)}
+          />
           <span>
             <strong>{user.name}</strong>
             <small>{user.realName || user.email || user.id}</small>

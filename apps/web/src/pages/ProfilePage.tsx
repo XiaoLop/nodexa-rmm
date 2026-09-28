@@ -1,12 +1,10 @@
 import {
   CameraOutlined,
-  CheckCircleFilled,
   ClockCircleOutlined,
   GlobalOutlined,
   KeyOutlined,
   LockOutlined,
   MailOutlined,
-  LaptopOutlined,
   SafetyCertificateOutlined,
   SyncOutlined,
   UserOutlined,
@@ -21,12 +19,33 @@ import { Alert, Button, Empty, Form, Input, Modal, Spin, Tag, Upload, message } 
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { QRCodeSVG } from 'qrcode.react';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import {
+  getTwoFactorCapabilities,
+  type TwoFactorCapabilities,
+} from '../features/profile/twoFactorCapabilities';
+import {
+  clearBackupCodes,
+  clearTotp,
+  confirmTotpSetup,
+  generateBackupCodes,
+  getBackupCodes,
+  requestTotpSetup,
+  setEmailTwoFactor,
+  type BackupCode,
+  type TotpSetup,
+} from '../features/profile/twoFactorManagement';
 import { useFormatters } from '../i18n/formatters';
+import {
+  AVATAR_MIME_TYPES,
+  MAX_AVATAR_FILE_SIZE,
+  prepareAvatarImage,
+} from '../utils/avatarImage';
 import '../assets/styles/profile.css';
 
-const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+const MANAGED_TWO_FACTOR_METHODS = ['totp', 'email', 'backupCodes'] as const;
 
 interface PasswordFormValues {
   currentPassword: string;
@@ -53,7 +72,18 @@ export function ProfilePage() {
   const [previousLogins, setPreviousLogins] = useState<PreviousLogin[]>([]);
   const [previousLoginsLoading, setPreviousLoginsLoading] = useState(false);
   const [previousLoginsError, setPreviousLoginsError] = useState<string>();
+  const [twoFactorCapabilities, setTwoFactorCapabilities] =
+    useState<TwoFactorCapabilities>();
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState<string>();
+  const [twoFactorSubmitting, setTwoFactorSubmitting] = useState<string>();
+  const [totpSetup, setTotpSetup] = useState<TotpSetup>();
+  const [totpOpen, setTotpOpen] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<BackupCode[]>([]);
+  const [backupCodesOpen, setBackupCodesOpen] = useState(false);
+  const [totpForm] = Form.useForm<{ token: string }>();
   const [messageApi, messageContextHolder] = message.useMessage();
+  const [modalApi, modalContextHolder] = Modal.useModal();
   const connected = status === 'connected';
 
   useEffect(() => {
@@ -83,6 +113,33 @@ export function ProfilePage() {
     };
   }, [client, connected, userInfo?.id]);
 
+  const loadTwoFactorCapabilities = async (signal?: AbortSignal) => {
+    if (!client || !connected || !userInfo) return;
+    setTwoFactorLoading(true);
+    setTwoFactorError(undefined);
+    try {
+      setTwoFactorCapabilities(await getTwoFactorCapabilities(client, { signal }));
+    } catch (error) {
+      if (signal?.aborted) return;
+      setTwoFactorCapabilities(undefined);
+      setTwoFactorError(errorDetail(error));
+    } finally {
+      if (!signal?.aborted) setTwoFactorLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!client || !connected || !userInfo) {
+      setTwoFactorCapabilities(undefined);
+      setTwoFactorError(undefined);
+      setTwoFactorLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    void loadTwoFactorCapabilities(controller.signal);
+    return () => controller.abort();
+  }, [client, connected, userInfo?.id]);
+
   const refreshPreviousLogins = async () => {
     if (!client || !connected) return;
     setPreviousLoginsLoading(true);
@@ -94,6 +151,130 @@ export function ProfilePage() {
     } finally {
       setPreviousLoginsLoading(false);
     }
+  };
+
+  const refreshTwoFactor = async () => {
+    await loadTwoFactorCapabilities();
+  };
+
+  const startTotpSetup = async () => {
+    if (!client) return;
+    setTwoFactorSubmitting('totp');
+    try {
+      setTotpSetup(await requestTotpSetup(client));
+      totpForm.resetFields();
+      setTotpOpen(true);
+    } catch (error) {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+    } finally {
+      setTwoFactorSubmitting(undefined);
+    }
+  };
+
+  const submitTotpSetup = async () => {
+    if (!client || !totpSetup) return;
+    const { token } = await totpForm.validateFields();
+    setTwoFactorSubmitting('totp');
+    try {
+      await confirmTotpSetup(client, totpSetup.secret, token);
+      setTotpOpen(false);
+      setTotpSetup(undefined);
+      totpForm.resetFields();
+      await refreshTwoFactor();
+      void messageApi.success(t('profile.security.management.totpEnabled'));
+    } catch (error) {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+    } finally {
+      setTwoFactorSubmitting(undefined);
+    }
+  };
+
+  const disableTotp = () => {
+    if (!client) return;
+    modalApi.confirm({
+      title: t('profile.security.management.disableTotpTitle'),
+      content: t('profile.security.management.disableTotpDescription'),
+      okText: t('profile.security.management.disable'),
+      okButtonProps: { danger: true },
+      cancelText: t('common.actions.cancel'),
+      async onOk() {
+        setTwoFactorSubmitting('totp');
+        try {
+          await clearTotp(client);
+          await refreshTwoFactor();
+          void messageApi.success(t('profile.security.management.totpDisabled'));
+        } catch (error) {
+          void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+          throw error;
+        } finally {
+          setTwoFactorSubmitting(undefined);
+        }
+      },
+    });
+  };
+
+  const toggleEmailTwoFactor = (enabled: boolean) => {
+    if (!client) return;
+    modalApi.confirm({
+      title: t(enabled ? 'profile.security.management.enableEmailTitle' : 'profile.security.management.disableEmailTitle'),
+      content: t(enabled ? 'profile.security.management.enableEmailDescription' : 'profile.security.management.disableEmailDescription'),
+      okText: t(enabled ? 'profile.security.management.enable' : 'profile.security.management.disable'),
+      okButtonProps: { danger: !enabled },
+      cancelText: t('common.actions.cancel'),
+      async onOk() {
+        setTwoFactorSubmitting('email');
+        try {
+          await setEmailTwoFactor(client, enabled);
+          await refreshTwoFactor();
+          void messageApi.success(t(enabled ? 'profile.security.management.emailEnabled' : 'profile.security.management.emailDisabled'));
+        } catch (error) {
+          void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+          throw error;
+        } finally {
+          setTwoFactorSubmitting(undefined);
+        }
+      },
+    });
+  };
+
+  const openBackupCodes = async (generate: boolean) => {
+    if (!client) return;
+    setTwoFactorSubmitting('backupCodes');
+    try {
+      setBackupCodes(generate ? await generateBackupCodes(client) : await getBackupCodes(client));
+      setBackupCodesOpen(true);
+      await refreshTwoFactor();
+    } catch (error) {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+    } finally {
+      setTwoFactorSubmitting(undefined);
+    }
+  };
+
+  const disableBackupCodes = () => {
+    if (!client) return;
+    modalApi.confirm({
+      title: t('profile.security.management.disableBackupCodesTitle'),
+      content: t('profile.security.management.disableBackupCodesDescription'),
+      okText: t('profile.security.management.disable'),
+      okButtonProps: { danger: true },
+      cancelText: t('common.actions.cancel'),
+      async onOk() {
+        setTwoFactorSubmitting('backupCodes');
+        try {
+          await clearBackupCodes(client);
+          setBackupCodes([]);
+          setBackupCodesOpen(false);
+          await refreshTwoFactor();
+          void messageApi.success(t('profile.security.management.backupCodesDisabled'));
+        } catch (error) {
+          void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+          throw error;
+        } finally {
+          setTwoFactorSubmitting(undefined);
+        }
+      },
+    });
   };
 
   const mergeAccountEvent = (result: unknown) => {
@@ -111,20 +292,17 @@ export function ProfilePage() {
   };
 
   const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
-    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+    if (!(AVATAR_MIME_TYPES as readonly string[]).includes(file.type)) {
       void messageApi.error(t('profile.messages.invalidImageType'));
       return Upload.LIST_IGNORE;
     }
-    if (file.size > MAX_AVATAR_SIZE) {
+    if (file.size > MAX_AVATAR_FILE_SIZE) {
       void messageApi.error(t('profile.messages.avatarTooLarge'));
       return Upload.LIST_IGNORE;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setAvatarPreview(reader.result);
-    };
-    reader.onerror = () => void messageApi.error(t('profile.messages.imageReadFailed'));
-    reader.readAsDataURL(file);
+    void prepareAvatarImage(file).then(setAvatarPreview, () => {
+      void messageApi.error(t('profile.messages.imageReadFailed'));
+    });
     return false;
   };
 
@@ -196,6 +374,7 @@ export function ProfilePage() {
   return (
     <div className="profile-page page-stack">
       {messageContextHolder}
+      {modalContextHolder}
       <div className="page-heading profile-heading">
         <div>
           <h1>{t('profile.title')}</h1>
@@ -217,6 +396,7 @@ export function ProfilePage() {
                 username={userInfo.name}
                 refreshKey={avatarRefreshKey}
                 src={avatarPreview ?? userInfo.image}
+                hasImage={Boolean(avatarPreview || userInfo.image || userInfo.hasImage)}
               />
               <span className="profile-avatar-badge">
                 <CameraOutlined />
@@ -407,52 +587,153 @@ export function ProfilePage() {
                 {t('profile.security.change')}
               </Button>
             </div>
-            <div className="profile-security-item">
-              <span className="profile-security-icon">
-                <CheckCircleFilled />
-              </span>
-              <div>
-                <strong>{t('profile.security.emailVerification')}</strong>
-                <small>
-                  {userInfo.emailVerified
-                    ? t('profile.security.verified')
-                    : t('profile.security.unverified')}
-                </small>
+            {twoFactorError ? (
+              <div className="profile-security-item">
+                <span className="profile-security-icon">
+                  <LockOutlined />
+                </span>
+                <div>
+                  <strong>{t('profile.security.twoFactor')}</strong>
+                  <small>{twoFactorError}</small>
+                </div>
+                <Button
+                  size="small"
+                  disabled={!connected || twoFactorLoading}
+                  onClick={() => void loadTwoFactorCapabilities()}
+                >
+                  {t('profile.security.retry')}
+                </Button>
               </div>
-              <Tag color={userInfo.emailVerified ? 'success' : 'warning'}>
-                {userInfo.emailVerified
-                  ? t('profile.security.enabled')
-                  : t('profile.security.pending')}
-              </Tag>
-            </div>
-            <div className="profile-security-item is-static">
-              <span className="profile-security-icon">
-                <LockOutlined />
-              </span>
-              <div>
-                <strong>{t('profile.security.twoFactor')}</strong>
-                <small>
-                  {userInfo.twoFactorEnabled
-                    ? t('profile.security.configured')
-                    : t('profile.security.notConfigured')}
-                </small>
+            ) : twoFactorLoading && !twoFactorCapabilities ? (
+              <div className="profile-security-item is-static">
+                <span className="profile-security-icon">
+                  <LockOutlined />
+                </span>
+                <div>
+                  <strong>{t('profile.security.twoFactor')}</strong>
+                  <small>{t('profile.security.twoFactorLoading')}</small>
+                </div>
+                <Spin size="small" />
               </div>
-              <Tag>{t('profile.security.displayOnly')}</Tag>
-            </div>
-            <div className="profile-security-item is-static">
-              <span className="profile-security-icon">
-                <LaptopOutlined />
-              </span>
-              <div>
-                <strong>{t('profile.security.sessions')}</strong>
-                <small>{t('profile.security.sessionsDescription')}</small>
-              </div>
-              <Tag>{t('profile.security.displayOnly')}</Tag>
-            </div>
-            <Alert type="info" showIcon message={t('profile.security.staticNotice')} />
+            ) : null}
+            {MANAGED_TWO_FACTOR_METHODS.filter(
+              (methodName) => twoFactorCapabilities?.methods[methodName].enabled === true,
+            ).map((methodName) => {
+                const method = twoFactorCapabilities?.methods[methodName];
+                return (
+                  <div className="profile-security-item" key={methodName}>
+                    <span className="profile-security-icon">
+                      <LockOutlined />
+                    </span>
+                    <div>
+                      <strong>{t(`profile.security.twoFactorMethods.${methodName}`)}</strong>
+                      <small>
+                        {method?.configured
+                          ? t('profile.security.management.configured')
+                          : twoFactorCapabilities?.forced
+                            ? t('profile.security.twoFactorForced')
+                            : method?.enabled
+                              ? t('profile.security.twoFactorDescription')
+                              : t('profile.security.twoFactorUnavailable')}
+                      </small>
+                    </div>
+                    {methodName === 'totp' ? (
+                      <Button
+                        size="small"
+                        danger={method?.configured}
+                        loading={twoFactorSubmitting === methodName}
+                        disabled={!method?.enabled || !method.canConfigure}
+                        onClick={() => method?.configured ? disableTotp() : void startTotpSetup()}
+                      >
+                        {t(method?.configured ? 'profile.security.management.disable' : 'profile.security.management.enable')}
+                      </Button>
+                    ) : methodName === 'email' ? (
+                      <Button
+                        size="small"
+                        danger={method?.configured}
+                        loading={twoFactorSubmitting === methodName}
+                        disabled={!method?.enabled || !method.canConfigure}
+                        onClick={() => toggleEmailTwoFactor(!method?.configured)}
+                      >
+                        {t(method?.configured ? 'profile.security.management.disable' : 'profile.security.management.enable')}
+                      </Button>
+                    ) : methodName === 'backupCodes' ? (
+                      <Button
+                        size="small"
+                        loading={twoFactorSubmitting === methodName}
+                        disabled={!method?.enabled || !method.canConfigure}
+                        onClick={() => void openBackupCodes(!method?.configured)}
+                      >
+                        {t(method?.configured ? 'profile.security.management.manage' : 'profile.security.management.enable')}
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              })}
           </aside>
         </div>
       )}
+
+      <Modal
+        title={t('profile.security.management.totpTitle')}
+        open={totpOpen}
+        okText={t('profile.security.management.confirmTotp')}
+        cancelText={t('common.actions.cancel')}
+        confirmLoading={twoFactorSubmitting === 'totp'}
+        onCancel={() => {
+          setTotpOpen(false);
+          setTotpSetup(undefined);
+          totpForm.resetFields();
+        }}
+        onOk={() => void submitTotpSetup().catch(() => undefined)}
+        destroyOnHidden
+      >
+        {totpSetup ? (
+          <div className="profile-totp-setup">
+            <QRCodeSVG value={totpSetup.url} size={184} level="M" />
+            <p>{t('profile.security.management.totpInstructions')}</p>
+            <code>{totpSetup.secret}</code>
+            <Form form={totpForm} layout="vertical">
+              <Form.Item
+                name="token"
+                label={t('profile.security.management.totpCode')}
+                rules={[
+                  { required: true, message: t('profile.security.management.totpCodeRequired') },
+                  { pattern: /^\d{6}$/, message: t('profile.security.management.totpCodeInvalid') },
+                ]}
+              >
+                <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
+              </Form.Item>
+            </Form>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title={t('profile.security.management.backupCodesTitle')}
+        open={backupCodesOpen}
+        onCancel={() => setBackupCodesOpen(false)}
+        footer={[
+          <Button key="regenerate" onClick={() => void openBackupCodes(true)} loading={twoFactorSubmitting === 'backupCodes'}>
+            {t('profile.security.management.regenerate')}
+          </Button>,
+          <Button key="disable" danger onClick={disableBackupCodes}>
+            {t('profile.security.management.disable')}
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setBackupCodesOpen(false)}>
+            {t('common.actions.close')}
+          </Button>,
+        ]}
+      >
+        <Alert type="warning" showIcon message={t('profile.security.management.backupCodesNotice')} />
+        <div className="profile-backup-codes">
+          {backupCodes.map((backupCode) => (
+            <code className={backupCode.unused ? undefined : 'is-used'} key={backupCode.code}>
+              {String(backupCode.code).padStart(8, '0')}
+            </code>
+          ))}
+        </div>
+      </Modal>
 
       <Modal
         title={t('profile.password.title')}

@@ -24,7 +24,8 @@
         "plugins": {
             "enabled": true,
             "list": [
-                "jsonauth"
+                "jsonauth",
+                "utils"
             ]
         }
     },

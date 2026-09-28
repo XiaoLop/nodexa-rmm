@@ -6,6 +6,7 @@ interface UserAvatarProps extends Omit<AvatarProps, 'icon' | 'src'> {
   username?: string;
   refreshKey?: string | number;
   src?: string;
+  hasImage?: boolean;
 }
 
 export function getUserAvatarUrl(username: string, refreshKey: string | number = Date.now()): string {
@@ -16,9 +17,9 @@ export function getUserAvatarUrl(username: string, refreshKey: string | number =
   return `/api/userimage.ashx?${query.toString()}`;
 }
 
-export function UserAvatar({ username, refreshKey, src, ...props }: UserAvatarProps) {
+export function UserAvatar({ username, refreshKey, src, hasImage = true, ...props }: UserAvatarProps) {
   const [generatedRefreshKey] = useState(() => Date.now());
-  const remoteSrc = username
+  const remoteSrc = username && hasImage
     ? getUserAvatarUrl(username, refreshKey ?? generatedRefreshKey)
     : undefined;
   const resolvedSrc = src ?? remoteSrc;
@@ -31,12 +32,21 @@ export function UserAvatar({ username, refreshKey, src, ...props }: UserAvatarPr
   return (
     <Avatar
       {...props}
-      src={loadFailed ? undefined : resolvedSrc}
+      src={
+        loadFailed || !resolvedSrc ? undefined : (
+          <img
+            src={resolvedSrc}
+            alt=""
+            width="100%"
+            height="100%"
+            loading="lazy"
+            decoding="async"
+            style={{ objectFit: 'cover' }}
+            onError={() => setLoadFailed(true)}
+          />
+        )
+      }
       icon={<UserOutlined />}
-      onError={() => {
-        setLoadFailed(true);
-        return false;
-      }}
     />
   );
 }

@@ -7,6 +7,8 @@ export type MeshCentralCommand = Record<string, unknown> & {
 
 export interface MeshCentralConnection {
   send(message: Record<string, unknown> | string): void;
+  user?: MeshCentralUser;
+  domain?: MeshCentralDomain;
 }
 
 export interface MeshCentralUser {
@@ -40,6 +42,11 @@ export interface MeshCentralDomain {
   authstrategies?: Record<string, unknown>;
   loginkey?: string[];
   mailserver?: unknown;
+  duo2factor?: {
+    integrationkey?: string;
+    secretkey?: string;
+    apihostname?: string;
+  };
   newaccounts?: boolean | number;
   newaccountsrights?: number;
   newaccountemaildomains?: string[];
@@ -50,11 +57,16 @@ export interface MeshCentralDomain {
   passwordrequirements?: {
     reset?: number;
     skip2factor?: string[];
+    lock2factor?: boolean;
+    force2factor?: boolean;
+    otp2factor?: boolean;
     email2factor?: boolean;
     sms2factor?: boolean;
     msg2factor?: boolean;
     push2factor?: boolean;
     duo2factor?: boolean;
+    backupcode2factor?: boolean;
+    maxfidokeys?: number;
   };
   [key: string]: unknown;
 }

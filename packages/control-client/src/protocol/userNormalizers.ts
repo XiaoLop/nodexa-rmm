@@ -59,6 +59,9 @@ export function normalizeManagedUser(value: unknown, fallbackId?: string): Manag
     id,
     name: stringValue(value.name) ?? stringValue(value.username) ?? userNameFromId(id),
     image: stringValue(value.image),
+    hasImage:
+      stringValue(value.image) !== undefined ||
+      (typeof value.flags === 'number' && (value.flags & 1) !== 0),
     realName: stringValue(value.realname),
     email: stringValue(value.email),
     phone: stringValue(value.phone),

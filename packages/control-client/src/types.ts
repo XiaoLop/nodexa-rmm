@@ -104,6 +104,7 @@ export interface UserInfo {
   id: string;
   name?: string;
   image?: string;
+  hasImage?: boolean;
   email?: string;
   emailVerified?: boolean;
   siteadmin?: number;
@@ -220,6 +221,7 @@ export interface ManagedUser {
   id: string;
   name: string;
   image?: string;
+  hasImage?: boolean;
   realName?: string;
   email?: string;
   phone?: string;

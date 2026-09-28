@@ -82,6 +82,7 @@ describe('protocol normalizers', () => {
           'user//domain/alice': {
             realname: 'Alice',
             email: 'alice@example.com',
+            flags: 1,
             siteadmin: -1,
             removeRights: 1536,
             creation: 1_710_000_000,
@@ -100,6 +101,7 @@ describe('protocol normalizers', () => {
       id: 'user//domain/alice',
       name: 'alice',
       realName: 'Alice',
+      hasImage: true,
       siteRights: 0xffffffff,
       removeRights: 1536,
       locked: false,

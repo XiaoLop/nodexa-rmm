@@ -4,6 +4,11 @@ import { Button, Drawer, Form, Input, Space, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  AVATAR_MIME_TYPES,
+  MAX_AVATAR_FILE_SIZE,
+  prepareAvatarImage,
+} from '../../utils/avatarImage';
 import { UserAvatar } from './UserAvatar';
 
 export interface UserEditSubmission {
@@ -17,8 +22,6 @@ interface UserEditDrawerProps {
   onClose: () => void;
   onSubmit: (submission: UserEditSubmission) => Promise<void>;
 }
-
-const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
 export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEditDrawerProps) {
   const { t } = useTranslation();
@@ -39,20 +42,17 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
   }, [form, user]);
 
   const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
-    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+    if (!(AVATAR_MIME_TYPES as readonly string[]).includes(file.type)) {
       void message.error(t('users.editDrawer.invalidImageType'));
       return Upload.LIST_IGNORE;
     }
-    if (file.size > MAX_AVATAR_SIZE) {
+    if (file.size > MAX_AVATAR_FILE_SIZE) {
       void message.error(t('users.editDrawer.avatarTooLarge'));
       return Upload.LIST_IGNORE;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setImage(reader.result);
-    };
-    reader.onerror = () => void message.error(t('users.editDrawer.readAvatarFailed'));
-    reader.readAsDataURL(file);
+    void prepareAvatarImage(file).then(setImage, () => {
+      void message.error(t('users.editDrawer.readAvatarFailed'));
+    });
     return false;
   };
 
@@ -92,7 +92,12 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
       <Form form={form} layout="vertical" preserve={false}>
         <Form.Item label={t('users.editDrawer.avatar')}>
           <div className="user-edit-avatar-field">
-            <UserAvatar size={72} username={user?.name} src={image} />
+            <UserAvatar
+              size={72}
+              username={user?.name}
+              src={image ?? user?.image}
+              hasImage={Boolean(image || user?.image || user?.hasImage)}
+            />
             <Space wrap>
               <Upload
                 accept="image/jpeg,image/png,image/gif,image/webp"
