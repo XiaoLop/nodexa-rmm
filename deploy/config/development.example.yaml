@@ -124,7 +124,7 @@ proxy:
     certificateFile: ./deploy/secrets/tls-certificate.pem
     privateKeyFile: ./deploy/secrets/tls-private-key.pem
   routes:
-    login: gateway
+    login: meshcentral
     control: meshcentral
     relay: meshcentral
     meshagents: meshcentral

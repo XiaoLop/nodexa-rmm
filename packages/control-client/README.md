@@ -86,7 +86,7 @@ client.disconnect();
 client.destroy();
 ```
 
-异常断线会按照默认间隔自动重连：1 秒、2 秒、5 秒、10 秒、30 秒、60 秒。可以覆盖 `heartbeatIntervalMs`、`connectionTimeoutMs`、`requestTimeoutMs` 和 `reconnectDelaysMs`。
+请求默认在 3 秒后超时。异常断线会按照默认间隔自动重连：1 秒、2 秒、5 秒、10 秒、30 秒、60 秒。可以覆盖 `heartbeatIntervalMs`、`connectionTimeoutMs`、`requestTimeoutMs` 和 `reconnectDelaysMs`。
 
 连接状态包括 `idle`、`connecting`、`authenticating`、`connected`、`reconnecting`、`disconnected`、`error` 和 `destroyed`。
 

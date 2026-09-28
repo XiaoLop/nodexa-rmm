@@ -23,6 +23,8 @@ MeshCentral 的管理能力主要不是标准 REST API，而是通过 WebSocket 
 - [07-nodejs-wrapper-design.md](07-nodejs-wrapper-design.md)：推荐 SDK 结构、请求关联、示例代码
 - [07-permissions.md](07-permissions.md)：权限获取接口、位掩码常量与 `control-client` 调用示例
 - [permissions.md](permissions.md)：权限继承、用户组、`removeRights` 与典型配置的完整技术手册
+- [plugins.md](plugins.md)：MeshCentral 原生插件机制、Hook 与通信方式
+- [plugin-development-standard.md](plugin-development-standard.md)：本仓库 TypeScript 插件的目录、分层、安全、测试与交付规范
 - [../packages/control-client/docs/permissions.md](../packages/control-client/docs/permissions.md)：客户端权限常量、能力判断与安全边界
 - [../packages/shared-state/README.md](../packages/shared-state/README.md)：前端共享状态与网关客户端 (@meshcentral/shared-state) 架构与使用说明
 

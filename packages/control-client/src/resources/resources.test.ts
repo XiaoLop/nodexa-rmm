@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GatewayValidationError } from '../errors';
+import { GatewayRequestTimeoutError, GatewayServerError, GatewayValidationError } from '../errors';
 import type { GatewayClientEvents, GatewayEventChannel, GatewayListener } from '../types';
 import addUserSuccessFixture from '../testing/fixtures/users/add-success.json';
 import deleteUserSuccessFixture from '../testing/fixtures/users/delete-success.json';
@@ -657,6 +657,19 @@ describe('resources', () => {
     expect(() => events.list({ limit: 0 })).toThrow(GatewayValidationError);
     expect(() => events.list({ limit: 201 })).toThrow(GatewayValidationError);
     expect(() => events.list({ limit: 1.5 })).toThrow(GatewayValidationError);
+  });
+
+  it('returns an empty event list on timeout without hiding other errors', async () => {
+    const client = new ControllableClient();
+    const events = new EventsResource(client);
+
+    const emptyResult = events.list({ limit: 60 });
+    client.pending.at(-1)?.reject(new GatewayRequestTimeoutError('No event response.'));
+    await expect(emptyResult).resolves.toEqual([]);
+
+    const failedResult = events.list({ limit: 60 });
+    client.pending.at(-1)?.reject(new GatewayServerError('Access denied.'));
+    await expect(failedResult).rejects.toThrow('Access denied.');
   });
 
   it('builds invite, batch power, and command requests', async () => {

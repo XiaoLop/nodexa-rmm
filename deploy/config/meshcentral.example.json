@@ -22,7 +22,10 @@
             "backupPath": "/var/lib/meshcentral/backups"
         },
         "plugins": {
-            "enabled": true
+            "enabled": true,
+            "list": [
+                "jsonauth"
+            ]
         }
     },
     "domains": {

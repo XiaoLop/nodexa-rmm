@@ -10,20 +10,30 @@
 
 ```mermaid
 flowchart LR
-  source["src/<shortName>/index.ts"] --> build["esbuild 打包"]
-  config["src/<shortName>/config.json"] --> publish["发布插件目录"]
+  source["src/plugins/<shortName>/index.ts"] --> build["esbuild 打包"]
+  config["src/plugins/<shortName>/config.json"] --> publish["发布插件目录"]
   build --> publish
   publish --> runtime["runtime/data/plugins/<shortName>"]
   runtime --> restart["重启 MeshCentral"]
   restart --> load["按 settings.plugins.list 加载"]
 ```
 
-构建脚本扫描 `src` 下的所有一级目录。每个一级目录都被视为一个独立插件，并要求包含：
+构建脚本扫描 `src/plugins` 下的所有一级目录。每个一级目录都被视为一个独立插件，并要求包含：
 
 ```text
-src/<shortName>/
+src/plugins/<shortName>/
   index.ts
   config.json
+```
+
+`src` 公共目录约定如下：
+
+```text
+src/
+  common/       # 公共方法与工厂
+  decorators/   # 公共装饰器，文件名使用 <功能>.drcorator.ts
+  types/        # 公共类型
+  plugins/      # 需要构建发布的插件
 ```
 
 构建结果发布到：
@@ -47,7 +57,7 @@ apps/meshcentral/runtime/data/plugins/<shortName>/
 
 | 位置 | 示例 |
 | --- | --- |
-| 源码目录 | `src/audit/` |
+| 源码目录 | `src/plugins/audit/` |
 | `config.json` 的 `shortName` | `audit` |
 | TypeScript 导出名称 | `export const audit` |
 | 构建文件名 | `audit.js` |
@@ -63,36 +73,71 @@ apps/meshcentral/runtime/data/plugins/<shortName>/
 ### 3.1 创建目录
 
 ```text
-packages/meshcentral-plugins/src/audit/
+packages/meshcentral-plugins/src/plugins/audit/
   index.ts
   config.json
 ```
 
-不要在 `src` 下创建与插件无关的目录。构建器会把每个一级目录都当作插件处理；共享代码应直接放在 `src` 根目录，或者放在插件目录内部。
+构建器只扫描 `src/plugins`。公共装饰器放在 `src/decorators`，公共方法放在 `src/common`，公共类型放在 `src/types`；插件私有代码保留在对应插件目录。
 
 ### 3.2 编写插件入口
 
+创建 `audit.plugin.ts`，使用公共装饰器声明 MeshCentral Hook：
+
 ```typescript
-import type { MeshCentralPluginFactory } from '../types.js';
+import { MeshPlugin, PluginHook } from '../../decorators/plugin.drcorator.js';
+import type {
+  MeshCentralCommand,
+  MeshCentralConnection,
+  MeshCentralServerActionContext,
+} from '../../types/meshcentral.types.js';
 
-export const audit: MeshCentralPluginFactory = (pluginHandler) => {
-  return {
-    exports: [],
-    server_startup() {
-      console.log('[audit] Plugin started');
-    },
-    serveraction(command, connection, user) {
-      if (command.subAction !== 'ping') return;
+@MeshPlugin()
+export class AuditPlugin {
+  @PluginHook('server_startup')
+  serverStartup(): void {
+    console.log('[audit] Plugin started');
+  }
 
-      connection.send({
-        action: 'plugin',
-        plugin: 'audit',
-        response: 'pong',
-        username: user.name,
-      });
-    },
-  };
-};
+  @PluginHook('serveraction')
+  serverAction(
+    command: MeshCentralCommand,
+    connection: MeshCentralConnection,
+    _server: MeshCentralServerActionContext,
+  ): void {
+    if (command.subAction !== 'ping') return;
+
+    connection.send({
+      action: 'plugin',
+      plugin: 'audit',
+      response: 'pong',
+    });
+  }
+}
+```
+
+创建 `audit.module.ts`，显式装配插件实例和依赖：
+
+```typescript
+import type { MeshCentralPluginHandler } from '../../types/meshcentral.types.js';
+import { AuditPlugin } from './audit.plugin.js';
+
+export function createAuditModule(_pluginHandler: MeshCentralPluginHandler) {
+  return { plugin: new AuditPlugin() };
+}
+```
+
+最后在 `index.ts` 中适配 MeshCentral 工厂协议：
+
+```typescript
+import { createPluginFactory } from '../../common/plugin-factory.js';
+import { createAuditModule } from './audit.module.js';
+import { AuditPlugin } from './audit.plugin.js';
+
+export const audit = createPluginFactory(
+  AuditPlugin,
+  (pluginHandler) => createAuditModule(pluginHandler).plugin,
+);
 ```
 
 入口必须使用具名导出，且导出名称必须等于 `shortName`。构建后的 CommonJS 模块需要满足：
@@ -115,7 +160,7 @@ pluginModule.audit(pluginHandler);
   "author": "Your Team",
   "homepage": "https://github.com/your-org/your-repository",
   "changelogUrl": "https://github.com/your-org/your-repository/releases",
-  "configUrl": "https://raw.githubusercontent.com/your-org/your-repository/main/packages/meshcentral-plugins/src/audit/config.json",
+  "configUrl": "https://raw.githubusercontent.com/your-org/your-repository/main/packages/meshcentral-plugins/src/plugins/audit/config.json",
   "downloadUrl": "https://github.com/your-org/your-repository/archive/refs/heads/main.zip",
   "repository": {
     "type": "git",
@@ -149,9 +194,54 @@ pluginModule.audit(pluginHandler);
 
 如果实际启动时通过环境变量 `MESHCENTRAL_CONFIG_FILE` 指定了其他配置文件，也必须在该文件中加入同样的白名单条目。
 
+### 3.5 轻量 Nest 风格组织
+
+业务较复杂的插件应按职责拆分，不要把路由注册、业务流程和 MeshCentral Hook 全部写在 `index.ts` 中。推荐结构如下：
+
+```text
+src/plugins/<shortName>/
+  index.ts
+  <shortName>.module.ts
+  <shortName>.plugin.ts
+  <shortName>.controller.ts
+  <shortName>.types.ts
+  services/
+    <feature>.service.ts
+  config.json
+```
+
+各文件职责如下：
+
+| 文件 | 职责 |
+| --- | --- |
+| `index.ts` | 保留与 MeshCentral 加载协议兼容的同名导出 |
+| `*.module.ts` | 显式创建并装配 Service、Controller 和 Plugin 实例 |
+| `*.plugin.ts` | 使用装饰器声明 MeshCentral Hook |
+| `*.controller.ts` | 注册 HTTP 路由并把请求交给 Service |
+| `services/*.service.ts` | 实现可独立测试的业务逻辑，所有 Service 统一放入 `services` 目录 |
+| `*.types.ts` | 保存插件内部输入输出和依赖类型 |
+
+`jsonauth` 提供了轻量装饰器适配示例：
+
+```typescript
+import { MeshPlugin, PluginHook } from '../../decorators/plugin.drcorator.js';
+
+@MeshPlugin()
+export class JsonAuthPlugin {
+  constructor(private readonly controller: JsonAuthController) {}
+
+  @PluginHook('hook_setupHttpHandlers')
+  setupHttpHandlers(webServer, meshServer): void {
+    this.controller.register(webServer, meshServer);
+  }
+}
+```
+
+装饰器只把类方法映射为 `MeshCentralPlugin` Hook。依赖由 `*.module.ts` 显式装配，不使用 `reflect-metadata`、构造函数类型反射或完整 NestJS 容器。这样可以保留 Nest 的分层习惯，同时维持 MeshCentral 同步工厂协议和较小的插件产物。
+
 ## 4. 插件类型
 
-共享类型定义位于 `src/types.ts`。
+共享类型定义位于 `src/types/meshcentral.types.ts`。
 
 ### `MeshCentralPluginFactory`
 
@@ -173,7 +263,7 @@ export type MeshCentralPluginFactory = (
 | `server_startup` | MeshCentral 启动完成后执行初始化逻辑 |
 | `serveraction` | 处理浏览器通过插件通道发送的消息 |
 
-MeshCentral 还支持更多 Hook。如果新插件需要新的 Hook，应先在 `src/types.ts` 中补充准确签名，再在插件中使用。不要通过 `any` 绕过尚未确认的参数结构。
+MeshCentral 还支持更多 Hook。如果新插件需要新的 Hook，应先在 `src/types/meshcentral.types.ts` 中补充准确签名，再在插件中使用。不要通过 `any` 绕过尚未确认的参数结构。
 
 ### `pluginHandler.parent`
 
@@ -232,7 +322,7 @@ export const audit: MeshCentralPluginFactory = () => {
 };
 ```
 
-当前共享类型尚未声明 `onWebUIStartupEnd`，实际使用前应先扩展 `MeshCentralPlugin`。
+共享类型已经声明 `onWebUIStartupEnd` 和 `onDeviceRefreshEnd`。使用其他浏览器 Hook 前，应先确认目标 MeshCentral 版本的真实签名，再扩展 `MeshCentralPlugin`。
 
 浏览器导出函数必须遵守以下限制：
 
@@ -244,7 +334,107 @@ export const audit: MeshCentralPluginFactory = () => {
 
 需要复杂前端逻辑时，应先验证 MeshCentral 的注入方式，再决定是否拆成纯函数或独立静态资源。
 
-## 7. 构建和加载
+## 7. JSON 登录插件
+
+`jsonauth` 插件为本地 MeshCentral 账号提供不重定向的 JSON 登录接口：
+
+```text
+POST /api/auth/login
+POST /<domain>/api/auth/login
+POST /api/auth/login/verify-2fa
+POST /<domain>/api/auth/login/verify-2fa
+```
+
+请求必须使用 `Content-Type: application/json`，浏览器调用必须保留 Cookie：
+
+```javascript
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    username,
+    password,
+  }),
+});
+
+const result = await response.json();
+```
+
+密码正确且需要 2FA 时，接口返回有效期 5 分钟的一次性 `transactionId`。第二步不再提交用户名和密码：
+
+```javascript
+await fetch('/api/auth/login/verify-2fa', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    transactionId,
+    type: 'totp',
+    code: token,
+    rememberToken: true,
+  }),
+});
+```
+
+所有响应均为以下结构：
+
+```json
+{
+  "code": 200,
+  "status": "SUCCESS",
+  "message": "登录成功",
+  "data": {}
+}
+```
+
+主要状态如下：
+
+| HTTP | `status` | 含义 |
+| --- | --- | --- |
+| 200 | `SUCCESS` | 登录成功并建立原生 MeshCentral Session |
+| 202 | `REQUIRE_2FA` | 密码正确，需要二阶段验证 |
+| 400 | `PARAM_ERROR` | 请求参数缺失或格式错误 |
+| 401 | `BAD_PASSWORD` | 用户名或密码错误 |
+| 401 | `INVALID_2FA_TOKEN` | 二阶段验证码错误 |
+| 401 | `INVALID_AUTH_TRANSACTION` | 临时认证事务无效或已使用 |
+| 401 | `AUTH_TRANSACTION_EXPIRED` | 临时认证事务已过期 |
+| 403 | `EMAIL_NOT_VERIFIED` | 邮箱尚未验证 |
+| 403 | `PASSWORD_EXPIRED` | 密码已过期或必须修改 |
+| 403 | `ACCESS_DENIED` | 当前域不允许 JSON 密码登录 |
+| 423 | `ACCOUNT_LOCKED` | 账号、IP 或 2FA 尝试被临时限制 |
+| 501 | `UNSUPPORTED_2FA_METHOD` | 账号仅配置了当前 JSON 流程不支持的 2FA |
+| 503 | `MAINTENANCE_MODE` | MeshCentral 正处于维护模式 |
+| 503 | `SERVER_UNAVAILABLE` | 认证运行时能力或用户数据不可用 |
+
+用户名不存在和密码错误始终返回相同状态，并保留 MeshCentral 原生的随机失败延迟与 IP 防爆破计数，避免账号枚举。
+
+### 2FA 支持范围
+
+当前版本支持：
+
+* TOTP 动态口令。
+* MeshCentral 备用恢复码。
+* 已存在且有效的可信二阶段验证 Cookie。
+* MeshCentral 配置的可信来源 IP 跳过规则。
+
+二阶段验证请求传入 `rememberToken: true` 时，会按照域的 `twoFactorCookieDurationDays` 配置写入 HTTP-only 的 MeshCentral 可信设备 Cookie；域将持续时间设为 `0` 时不会写入。
+
+邮箱、SMS、Messenger、WebAuthn、YubiKey、Duo 和设备 Push 需要额外的发送、challenge 或回调接口。账号仅配置这些方式时，接口返回 `UNSUPPORTED_2FA_METHOD`，不会绕过验证建立 Session。
+
+插件只面向本地用户名和密码账户，不包装 LDAP、SSPI、OIDC、SAML 等登录流程。接口默认按同源方式使用，不主动开放跨域 CORS。
+
+### 版本约束
+
+插件按照 MeshCentral `1.1.54` 的内部认证和 Session 行为实现。升级 MeshCentral 后必须重新运行插件测试并核对以下契约：
+
+* `authenticate`、`checkAllowLogin`、`setbadLogin`、`checkAllow2Fa` 和 `setbad2Fa`。
+* `req.session.userid`、`req.session.ip` 与 `req.session.x`。
+* 登录事件、密码过期条件和邮箱验证条件。
+
+不要通过修改 `node_modules/meshcentral/webserver.js` 暴露内部闭包函数。
+
+## 8. 构建和加载
 
 ### 类型检查
 
@@ -284,7 +474,7 @@ pnpm dev:meshcentral:restart
 
 单独运行 `docker compose restart meshcentral` 不会重新编译 TypeScript。修改插件源码后，应使用组合命令，或者先手动运行 `pnpm plugins:build`。
 
-## 8. 验证插件
+## 9. 验证插件
 
 ### 检查容器状态
 
@@ -316,12 +506,14 @@ docker compose -f deploy/compose.meshcentral.yaml exec -T meshcentral node -e "c
 [ 'audit' ]
 ```
 
-## 9. 使用依赖和共享代码
+## 10. 使用依赖和共享代码
 
-插件可以导入当前 workspace 或 npm 包中的服务端代码：
+插件可以导入插件私有模块、`src/common` 公共方法、`src/decorators` 公共装饰器、`src/types` 公共类型以及可打包的 workspace 或 npm 服务端模块：
 
 ```typescript
-import { someUtility } from './some-utility.js';
+import { createPluginFactory } from '../../common/plugin-factory.js';
+import { MeshPlugin } from '../../decorators/plugin.drcorator.js';
+import type { MeshCentralServer } from '../../types/meshcentral.types.js';
 ```
 
 esbuild 会把可打包依赖合并到插件输出中。开发时应注意：
@@ -329,10 +521,11 @@ esbuild 会把可打包依赖合并到插件输出中。开发时应注意：
 * 不要把浏览器专用包导入服务端入口。
 * 不要依赖安装脚本、原生二进制或运行时动态查找文件，除非已经验证容器环境。
 * 使用 `__dirname`、动态 `require()` 或文件模板时，要确认打包后路径仍然成立。
-* 多个插件共享代码时，可将共享模块放在 `src` 根目录，但不能放进新的一级目录。
+* 多个插件共享的方法、装饰器和类型必须分别放入 `src/common`、`src/decorators` 和 `src/types`，不要散放在 `src` 根目录。
+* 仅供单个插件使用的代码应保留在对应的 `src/plugins/<shortName>` 目录中。
 * 插件之间不要直接引用彼此的运行时输出，应抽取共享模块或通过 MeshCentral 事件通信。
 
-## 10. 当前构建边界
+## 11. 当前构建边界
 
 当前构建脚本只发布以下内容：
 
@@ -349,7 +542,7 @@ esbuild 会把可打包依赖合并到插件输出中。开发时应注意：
 
 需要这些能力时，应修改 `scripts/build.ts`，显式复制对应目录，并为缺失文件、目标路径和覆盖行为增加验证。不要手工把未受构建器管理的文件放进运行时插件目录，因为下一次构建会删除并替换整个插件输出目录。
 
-## 11. 安全要求
+## 12. 安全要求
 
 MeshCentral 插件运行在服务器进程内，可以访问数据库、会话、HTTP 路由和设备通信能力。插件代码应按服务器高权限代码审查。
 
@@ -363,7 +556,7 @@ MeshCentral 插件运行在服务器进程内，可以访问数据库、会话�
 * 不把密钥写入源码、`config.json`、日志或浏览器导出函数。
 * 升级 MeshCentral 版本后重新运行插件测试和人工验证。
 
-## 12. 常见问题
+## 13. 常见问题
 
 ### 重启后没有加载插件
 
@@ -378,7 +571,7 @@ MeshCentral 插件运行在服务器进程内，可以访问数据库、会话�
 
 ### 构建提示找不到 `index.ts`
 
-`src` 下存在不完整的一级目录。补齐该目录的 `index.ts` 和 `config.json`，或将非插件目录移出 `src` 一级目录。
+`src/plugins` 下存在不完整的一级目录。补齐该插件目录的 `index.ts` 和 `config.json`，或将非插件目录移出 `src/plugins`。
 
 ### 修改源码后行为没有变化
 
@@ -396,7 +589,7 @@ pnpm dev:meshcentral:restart-with-plugins
 
 该函数引用了服务端模块作用域或闭包变量。将依赖改为函数内部可获得的浏览器全局对象，或把所需值通过消息显式传递。
 
-## 13. 开发检查表
+## 14. 开发检查表
 
 新增或修改插件后至少确认：
 
@@ -405,6 +598,8 @@ pnpm dev:meshcentral:restart-with-plugins
 * 浏览器输入经过类型校验和权限检查。
 * `exports` 中的函数不依赖服务端闭包和 Node.js API。
 * 新使用的 MeshCentral Hook 已补充共享类型。
+* 公共方法、装饰器和类型分别位于 `src/common`、`src/decorators` 和 `src/types`。
+* 运行 `pnpm --filter @meshcentral/plugins test`。
 * 运行 `pnpm --filter @meshcentral/plugins lint`。
 * 运行 `pnpm plugins:typecheck`。
 * 运行 `pnpm plugins:build`。

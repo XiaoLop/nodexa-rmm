@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sourceRoot = path.join(packageRoot, 'src');
+const sourceRoot = path.join(packageRoot, 'src', 'plugins');
 const pluginsRoot = path.resolve(
   packageRoot,
   '../../apps/meshcentral/runtime/data/plugins',

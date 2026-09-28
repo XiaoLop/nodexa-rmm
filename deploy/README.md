@@ -75,7 +75,7 @@ docker compose --env-file deploy/production.env -f deploy/compose.production.yam
 
 ## 请求逻辑流程
 
-生产环境由 Nginx 统一接收前端请求，并根据 `proxy.routes` 将请求转发到 Nest Gateway 或 MeshCentral。只有登录请求进入 Nest Gateway，由 Gateway 向 MeshCentral 验证凭据并将会话 Cookie 返回前端；控制、中继和 Agent WebSocket 均由 Nginx 直接转发到 MeshCentral，并携带登录阶段获得的 Cookie 完成会话认证。
+生产环境由 Nginx 统一接收前端请求，并将登录、控制、中继和 Agent 流量直接转发到 MeshCentral。登录请求由 `jsonauth` 插件处理并返回 MeshCentral 原生会话 Cookie，后续控制和中继连接携带同一 Cookie 完成认证。
 
 ```mermaid
 flowchart LR
@@ -89,28 +89,44 @@ flowchart LR
     nginx["Nginx<br/>TLS 终止与请求分流"]
   end
 
-  subgraph nest["Nest"]
-    direction TB
-    gateway["Gateway<br/>登录凭据验证与 Cookie 转发"]
-  end
-
   subgraph meshcentralLayer["MeshCentral"]
     direction TB
     meshcentral["MeshCentral Server"]
   end
 
   browser -->|"HTTPS / WSS"| nginx
-  nginx -->|"POST /api/login"| gateway
-  gateway -->|"验证登录凭据"| meshcentral
-  meshcentral -.->|"会话 Cookie"| gateway
-  gateway -.->|"登录响应与 Cookie"| nginx
-  nginx ==>|"WSS /api/control.ashx<br/>控制通道直达，不经过 Gateway"| meshcentral
+  nginx -->|"POST /api/auth/login<br/>POST /api/auth/login/verify-2fa"| meshcentral
+  nginx ==>|"WSS /api/control.ashx"| meshcentral
   nginx -->|"WSS /api/meshrelay.ashx<br/>WS(S) /agent.ashx<br/>GET /api/meshagents"| meshcentral
   meshcentral -.->|"HTTP 响应 / WebSocket 数据"| nginx
   nginx -.->|"响应 / Cookie / WebSocket 数据"| browser
 ```
 
-图中的分流由 `config/production.example.yaml` 的 `proxy.routes` 定义：只有 `login` 指向 `gateway`，`control`、`relay`、`meshagents`、`agent` 均指向 `meshcentral`。Gateway 不承载长连接，只负责登录凭据验证和会话 Cookie 转发。
+图中的分流由 `config/production.example.yaml` 的 `proxy.routes` 定义。`login`、`control`、`relay`、`meshagents` 和 `agent` 均指向 `meshcentral`，Gateway 不再参与浏览器认证链路。
+
+## JSON 登录插件
+
+MeshCentral 镜像内置 `jsonauth` 插件，并在容器启动时将它同步到
+`/var/lib/meshcentral/data/plugins/jsonauth`。同步只更新该插件，不会删除数据卷中的其他插件。
+
+生成的 MeshCentral 配置必须启用插件系统并加载 `jsonauth`：
+
+```json
+{
+  "settings": {
+    "plugins": {
+      "enabled": true,
+      "list": ["jsonauth"]
+    }
+  }
+}
+```
+
+启动后可向 `/api/auth/login` 提交空 JSON。插件正确加载时会返回 JSON 格式的
+`PARAM_ERROR`；404 或 HTML 响应表示插件未加载或代理路由错误。
+
+Web 直接使用该插件完成本地账号密码认证，并支持 TOTP、备用恢复码和可信设备 Cookie。
+LDAP、SSPI、OIDC、SAML、WebAuthn、邮件和短信验证不属于当前 Web 登录流程。
 
 ## 配置职责
 

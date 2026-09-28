@@ -14,6 +14,30 @@ async function connectedClient() {
 }
 
 describe('GatewayClient', () => {
+  it('uses a 3 second default request timeout', async () => {
+    const socket = new FakeWebSocket();
+    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+
+    vi.useFakeTimers();
+    try {
+      const request = client.request({ action: 'test' });
+      const timedOut = expect(request).rejects.toMatchObject({
+        name: 'GatewayRequestTimeoutError',
+      });
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(vi.getTimerCount()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await timedOut;
+    } finally {
+      client.destroy();
+      vi.useRealTimers();
+    }
+  });
+
   it('waits for authentication and emits domain events', async () => {
     const socket = new FakeWebSocket();
     const events: string[] = [];

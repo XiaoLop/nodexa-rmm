@@ -37,6 +37,8 @@ services:
         MESHCENTRAL_VERSION: 1.1.54
     image: mesh-console-meshcentral:development
     restart: unless-stopped
+    environment:
+      MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'false'
     command:
       - --configfile
       - /run/config/meshcentral.json

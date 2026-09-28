@@ -14,13 +14,13 @@ async function bootstrap(): Promise<void> {
   });
   const config = app.get<GatewayConfig>(GATEWAY_CONFIG);
   app.set('trust proxy', config.trustProxy);
-  app.use('/api/login', express.urlencoded({ extended: false, limit: '16kb' }));
+  app.use('/api/login', express.json({ limit: '16kb' }));
   app.enableShutdownHooks();
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('MeshCentral 网关 API')
     .setDescription(
-      'MeshCentral Web 控制台网关接口，提供用户认证和服务健康检查。登录接口返回的成功结果仅表示已获得候选会话，最终认证状态需要由控制 WebSocket 验证。',
+      'MeshCentral Web 控制台网关接口，提供 jsonauth 用户认证和服务健康检查。接口支持用户名密码、TOTP 和备用恢复码；登录成功后仍由控制 WebSocket 验证原生 MeshCentral Session。',
     )
     .setVersion('0.1.0')
     .build();

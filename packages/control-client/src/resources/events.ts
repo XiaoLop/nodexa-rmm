@@ -1,12 +1,10 @@
-import { GatewayValidationError } from '../errors';
+import { GatewayRequestTimeoutError, GatewayValidationError } from '../errors';
 import { isRecord, normalizeEvent } from '../protocol/normalizers';
 import type { EventListOptions, GatewayEvent } from '../types';
 
 interface ResourceClient {
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
 }
-
-const HISTORY_REQUEST_TIMEOUT_MS = 30_000;
 
 export class EventsResource {
   constructor(private readonly client: ResourceClient) {}
@@ -29,10 +27,13 @@ export class EventsResource {
     return { limit, ...(options.filter ? { filter: options.filter } : {}) };
   }
   private async fetch(filter: Record<string, unknown>): Promise<GatewayEvent[]> {
-    const response = await this.client.request<unknown>(
-      { action: 'events', ...filter },
-      HISTORY_REQUEST_TIMEOUT_MS,
-    );
+    let response: unknown;
+    try {
+      response = await this.client.request<unknown>({ action: 'events', ...filter });
+    } catch (error) {
+      if (error instanceof GatewayRequestTimeoutError) return [];
+      throw error;
+    }
     const events = isRecord(response) && Array.isArray(response.events) ? response.events : [];
     return events.map(normalizeEvent).filter((event): event is GatewayEvent => Boolean(event));
   }

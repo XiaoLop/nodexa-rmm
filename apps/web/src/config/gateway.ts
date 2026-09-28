@@ -6,8 +6,9 @@ function buildGatewayEndpoint(path: string): string {
   return `${baseUrl.replace(/\/+$/, '')}${API_PREFIX}/${path.replace(/^\/+/, '')}`;
 }
 
-export const GATEWAY_LOGIN_URL = `${API_PREFIX}/login`;
-export const GATEWAY_LOGOUT_URL = `${API_PREFIX}/logout`;
+export const MESH_AUTH_LOGIN_URL = `${API_PREFIX}/auth/login`;
+export const MESH_AUTH_VERIFY_TWO_FACTOR_URL = `${MESH_AUTH_LOGIN_URL}/verify-2fa`;
+export const MESH_AUTH_LOGOUT_URL = `${API_PREFIX}/auth/logout`;
 export const GATEWAY_CONTROL_URL = buildGatewayEndpoint('/control.ashx');
 export const GATEWAY_RELAY_URL = buildGatewayEndpoint('/meshrelay.ashx');
 

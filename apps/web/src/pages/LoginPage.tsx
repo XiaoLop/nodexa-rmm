@@ -4,24 +4,33 @@ import {
   DesktopOutlined,
   DownOutlined,
   GlobalOutlined,
+  KeyOutlined,
   LockOutlined,
   SafetyCertificateFilled,
   SafetyCertificateOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Dropdown, Form, Input, Tooltip, Typography } from 'antd';
+import { Alert, Button, Checkbox, Dropdown, Form, Input, Segmented, Tooltip, Typography } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { BrandLogo } from '../components/BrandLogo';
-import { useGateway } from '../features/gateway/GatewayProvider';
+import {
+  GatewayLoginError,
+  useGateway,
+  type TwoFactorChallenge,
+} from '../features/gateway/GatewayProvider';
 import { resolveLanguage, type AppLanguage } from '../i18n';
 import '../assets/styles/login.css';
 
 interface LoginFormValue {
   username: string;
   password: string;
+}
+
+interface TwoFactorFormValue {
+  code: string;
 }
 
 interface FeatureProps {
@@ -40,6 +49,9 @@ export function LoginPage() {
   const location = useLocation();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const [challenge, setChallenge] = useState<TwoFactorChallenge>();
+  const [pendingUsername, setPendingUsername] = useState('');
+  const [twoFactorType, setTwoFactorType] = useState<'totp' | 'backup'>('totp');
   const language = resolveLanguage(i18n.resolvedLanguage);
 
   const [initialUsername] = useState(() => {
@@ -63,18 +75,58 @@ export function LoginPage() {
       } else {
         localStorage.removeItem(REMEMBERED_USER_KEY);
       }
-      await gateway.login(values.username.trim(), values.password);
+      const username = values.username.trim();
+      const nextChallenge = await gateway.login(username, values.password, rememberMe);
+      if (nextChallenge) {
+        const supportedMethods = nextChallenge.methods.filter(
+          (method): method is { type: 'totp' | 'backup'; supported: true } =>
+            method.supported && (method.type === 'totp' || method.type === 'backup'),
+        );
+        setPendingUsername(username);
+        setChallenge(nextChallenge);
+        if (supportedMethods[0]) setTwoFactorType(supportedMethods[0].type);
+        if (supportedMethods.length === 0) setError(t('login.twoFactorUnsupported'));
+        return;
+      }
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/dashboard', { replace: true });
     } catch (nextError) {
-      setError(
-        nextError instanceof Error && nextError.message !== 'authentication-failed'
-          ? nextError.message
-          : t('login.failed')
-      );
+      setError(getLoginErrorMessage(nextError, t));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTwoFactorSubmit = async (values: TwoFactorFormValue) => {
+    if (!challenge) return;
+    setError(undefined);
+    setLoading(true);
+    try {
+      await gateway.verifyTwoFactor(
+        challenge,
+        twoFactorType,
+        values.code.trim(),
+        rememberMe,
+        pendingUsername,
+      );
+      const state = location.state as { from?: string } | null;
+      navigate(state?.from || '/dashboard', { replace: true });
+    } catch (nextError) {
+      if (
+        nextError instanceof GatewayLoginError &&
+        ['AUTH_TRANSACTION_EXPIRED', 'INVALID_AUTH_TRANSACTION'].includes(nextError.status)
+      ) {
+        setChallenge(undefined);
+      }
+      setError(getLoginErrorMessage(nextError, t));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetChallenge = () => {
+    setChallenge(undefined);
+    setError(undefined);
   };
 
   const changeLanguage = (nextLanguage: AppLanguage) => {
@@ -194,10 +246,12 @@ export function LoginPage() {
               <BrandLogo compact />
             </div>
             <Typography.Title level={2} className="login-panel-title">
-              {t('login.title')}
+              {challenge ? t('login.twoFactorTitle') : t('login.title')}
             </Typography.Title>
             <Typography.Text type="secondary" className="login-panel-subtitle">
-              {t('login.subtitle')}
+              {challenge
+                ? t('login.twoFactorSubtitle', { seconds: challenge.expiresIn })
+                : t('login.subtitle')}
             </Typography.Text>
           </div>
 
@@ -212,13 +266,14 @@ export function LoginPage() {
             />
           )}
 
-          <Form<LoginFormValue>
-            layout="vertical"
-            initialValues={{ username: initialUsername, password: '' }}
-            onFinish={(values) => void handleSubmit(values)}
-            className="login-form"
-            requiredMark={false}
-          >
+          {!challenge ? (
+            <Form<LoginFormValue>
+              layout="vertical"
+              initialValues={{ username: initialUsername, password: '' }}
+              onFinish={(values) => void handleSubmit(values)}
+              className="login-form"
+              requiredMark={false}
+            >
             <Form.Item
               label={t('login.username')}
               name="username"
@@ -273,13 +328,26 @@ export function LoginPage() {
             >
               {t('login.submit')}
             </Button>
-          </Form>
+            </Form>
+          ) : (
+            <TwoFactorForm
+              challenge={challenge}
+              loading={loading}
+              rememberToken={rememberMe}
+              type={twoFactorType}
+              onTypeChange={setTwoFactorType}
+              onRememberTokenChange={setRememberMe}
+              onSubmit={handleTwoFactorSubmit}
+              onBack={resetChallenge}
+              t={t}
+            />
+          )}
 
-          <div className="login-divider">
+          {!challenge && <div className="login-divider">
             <span>{t('login.divider')}</span>
-          </div>
+          </div>}
 
-          <Tooltip title={t('login.ssoTooltip')}>
+          {!challenge && <Tooltip title={t('login.ssoTooltip')}>
             <Button
               size="large"
               block
@@ -289,7 +357,7 @@ export function LoginPage() {
             >
               {t('login.sso')}
             </Button>
-          </Tooltip>
+          </Tooltip>}
 
           <div className="login-secure-footer">
             <SafetyCertificateFilled className="login-secure-icon" />
@@ -299,6 +367,122 @@ export function LoginPage() {
       </section>
     </main>
   );
+}
+
+interface TwoFactorFormProps {
+  challenge: TwoFactorChallenge;
+  loading: boolean;
+  rememberToken: boolean;
+  type: 'totp' | 'backup';
+  onTypeChange: (type: 'totp' | 'backup') => void;
+  onRememberTokenChange: (value: boolean) => void;
+  onSubmit: (values: TwoFactorFormValue) => Promise<void>;
+  onBack: () => void;
+  t: ReturnType<typeof useTranslation>['t'];
+}
+
+function TwoFactorForm({
+  challenge,
+  loading,
+  rememberToken,
+  type,
+  onTypeChange,
+  onRememberTokenChange,
+  onSubmit,
+  onBack,
+  t,
+}: TwoFactorFormProps) {
+  const supportedMethods = challenge.methods
+    .filter((method) => method.supported && (method.type === 'totp' || method.type === 'backup'))
+    .map((method) => method.type as 'totp' | 'backup');
+
+  if (supportedMethods.length === 0) {
+    return (
+      <Button block size="large" onClick={onBack}>
+        {t('login.backToLogin')}
+      </Button>
+    );
+  }
+
+  return (
+    <Form<TwoFactorFormValue>
+      layout="vertical"
+      onFinish={(values) => void onSubmit(values)}
+      className="login-form login-two-factor-form"
+      requiredMark={false}
+    >
+      {supportedMethods.length > 1 && (
+        <Segmented
+          block
+          className="login-two-factor-methods"
+          value={type}
+          options={supportedMethods.map((method) => ({
+            value: method,
+            label: method === 'totp' ? t('login.totpMethod') : t('login.backupMethod'),
+          }))}
+          onChange={(value) => onTypeChange(value as 'totp' | 'backup')}
+        />
+      )}
+      <Form.Item
+        label={type === 'totp' ? t('login.totpCode') : t('login.backupCode')}
+        name="code"
+        rules={[{ required: true, message: t('login.twoFactorCodeRequired') }]}
+      >
+        <Input
+          size="large"
+          prefix={<KeyOutlined className="login-input-icon" />}
+          placeholder={
+            type === 'totp' ? t('login.totpCodePlaceholder') : t('login.backupCodePlaceholder')
+          }
+          autoComplete="one-time-code"
+          inputMode={type === 'totp' ? 'numeric' : 'text'}
+          maxLength={type === 'totp' ? 6 : 8}
+          className="login-input"
+        />
+      </Form.Item>
+      <Checkbox
+        checked={rememberToken}
+        onChange={(event) => onRememberTokenChange(event.target.checked)}
+        className="login-remember-checkbox login-trust-device"
+      >
+        {t('login.trustDevice')}
+      </Checkbox>
+      <Button
+        type="primary"
+        htmlType="submit"
+        size="large"
+        block
+        icon={<ArrowRightOutlined />}
+        loading={loading}
+        className="login-submit-btn"
+      >
+        {t('login.verifyTwoFactor')}
+      </Button>
+      <Button type="link" block className="login-back-btn" onClick={onBack}>
+        {t('login.backToLogin')}
+      </Button>
+    </Form>
+  );
+}
+
+function getLoginErrorMessage(
+  error: unknown,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  if (!(error instanceof GatewayLoginError)) return t('login.failed');
+  const keyByStatus: Record<string, string> = {
+    BAD_PASSWORD: 'login.badPassword',
+    ACCOUNT_LOCKED: 'login.accountLocked',
+    INVALID_2FA_TOKEN: 'login.invalidTwoFactor',
+    INVALID_AUTH_TRANSACTION: 'login.twoFactorExpired',
+    AUTH_TRANSACTION_EXPIRED: 'login.twoFactorExpired',
+    UNSUPPORTED_2FA_METHOD: 'login.twoFactorUnsupported',
+    EMAIL_NOT_VERIFIED: 'login.emailNotVerified',
+    PASSWORD_EXPIRED: 'login.passwordExpired',
+    MAINTENANCE_MODE: 'login.maintenanceMode',
+    SERVER_UNAVAILABLE: 'login.serviceUnavailable',
+  };
+  return t(keyByStatus[error.status] ?? 'login.failed');
 }
 
 function Feature({ icon, title, text, tag }: FeatureProps) {

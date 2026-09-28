@@ -64,7 +64,7 @@ export class GatewayClient {
     this.reconnectDelaysMs = options.reconnectDelaysMs ?? DEFAULT_RECONNECT_DELAYS;
     this.requestManager = new RequestManager(
       (payload) => this.send(payload),
-      options.requestTimeoutMs ?? 15_000,
+      options.requestTimeoutMs ?? 3_000,
       (diagnostic) => this.dispatcher.emit('diagnostic', diagnostic),
     );
     this.devices = new DevicesResource(this);

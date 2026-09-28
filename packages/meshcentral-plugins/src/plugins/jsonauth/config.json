@@ -1,17 +1,17 @@
 {
-  "name": "MeshCentral Test Plugin",
-  "shortName": "testplugin",
+  "name": "MeshCentral JSON Authentication",
+  "shortName": "jsonauth",
   "version": "0.1.0",
-  "description": "Local TypeScript plugin used to verify the MeshCentral plugin build pipeline.",
+  "description": "Provides a JSON login endpoint for local MeshCentral accounts.",
   "author": "MeshCentral Web",
   "homepage": "https://github.com/example/meshcentral-web",
   "changelogUrl": "https://github.com/example/meshcentral-web/releases",
-  "configUrl": "https://github.com/example/meshcentral-web/blob/main/packages/meshcentral-plugins/src/testplugin/config.json",
+  "configUrl": "https://github.com/example/meshcentral-web/blob/main/packages/meshcentral-plugins/src/plugins/jsonauth/config.json",
   "downloadUrl": "https://github.com/example/meshcentral-web/archive/refs/heads/main.zip",
   "repository": {
     "type": "git",
     "url": "https://github.com/example/meshcentral-web.git"
   },
-  "meshCentralCompat": ">=1.1.54",
+  "meshCentralCompat": ">=1.1.54 <1.1.55",
   "hasAdminPanel": false
 }

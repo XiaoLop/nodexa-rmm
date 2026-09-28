@@ -129,7 +129,7 @@ proxy:
     certificateFile: /run/secrets/tls-certificate
     privateKeyFile: /run/secrets/tls-private-key
   routes:
-    login: gateway
+    login: meshcentral
     control: meshcentral
     relay: meshcentral
     meshagents: meshcentral
