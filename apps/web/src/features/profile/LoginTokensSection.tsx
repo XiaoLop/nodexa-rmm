@@ -207,14 +207,21 @@ export function LoginTokensSection({
         <div className="profile-token-list">
           {tokens.map((token) => (
             <div className="profile-token-row" key={token.tokenUser}>
-              <div>
-                <strong>{token.name}</strong>
+              <div className="profile-token-main-info">
+                <div className="profile-token-name-row">
+                  <span className="profile-token-icon">
+                    <KeyOutlined />
+                  </span>
+                  <strong>{token.name}</strong>
+                </div>
                 <code>{token.tokenUser}</code>
               </div>
               <div className="profile-token-meta">
-                <span>{formatDateTime(token.created)}</span>
+                <span className="profile-token-time">{formatDateTime(token.created)}</span>
                 <div className="profile-token-actions">
-                  <Tag>{token.expire === 0 ? t('profile.loginTokens.neverExpires') : formatDateTime(token.expire)}</Tag>
+                  <Tag color={token.expire === 0 ? 'cyan' : 'default'} className="profile-token-expire-tag">
+                    {token.expire === 0 ? t('profile.loginTokens.neverExpires') : formatDateTime(token.expire)}
+                  </Tag>
                   <Button
                     type="text"
                     danger

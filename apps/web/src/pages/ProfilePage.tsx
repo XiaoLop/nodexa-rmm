@@ -1,8 +1,20 @@
 import {
+  AppstoreOutlined,
+  CalendarOutlined,
   CameraOutlined,
   ClockCircleOutlined,
+  CopyOutlined,
+  CrownOutlined,
   ExclamationCircleOutlined,
+  GlobalOutlined,
+  HistoryOutlined,
+  InfoCircleOutlined,
+  KeyOutlined,
+  LockOutlined,
+  LoginOutlined,
   MailOutlined,
+  SafetyCertificateOutlined,
+  ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
@@ -11,9 +23,9 @@ import {
   type PreviousLogin,
   type UserInfo,
 } from '@meshcentral/control-client';
-import { Alert, Button, Form, Input, Modal, Tag, Upload, message } from 'antd';
+import { Alert, Button, Form, Input, Modal, Tag, Tooltip, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
@@ -59,6 +71,15 @@ import {
 } from '../utils/avatarImage';
 import '../assets/styles/profile.css';
 
+type ProfileTab = 'overview' | 'security' | 'tokens' | 'activity';
+
+const PROFILE_TABS: Array<{ key: ProfileTab; labelKey: string; icon: ReactNode }> = [
+  { key: 'overview', labelKey: 'profile.tabs.overview', icon: <AppstoreOutlined /> },
+  { key: 'security', labelKey: 'profile.tabs.security', icon: <SafetyCertificateOutlined /> },
+  { key: 'tokens', labelKey: 'profile.tabs.tokens', icon: <KeyOutlined /> },
+  { key: 'activity', labelKey: 'profile.tabs.activity', icon: <GlobalOutlined /> },
+];
+
 function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -67,6 +88,7 @@ export function ProfilePage() {
   const { t } = useTranslation();
   const { dateTime } = useFormatters();
   const { client, status, userInfo, store } = useMeshCentralControlData();
+  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [emailForm] = Form.useForm<{ email: string }>();
   const [passwordForm] = Form.useForm<PasswordFormValues>();
   const [securityKeyForm] = Form.useForm<SecurityKeyFormValues>();
@@ -603,168 +625,395 @@ export function ProfilePage() {
 
   const formatDate = (value?: string) => (value ? dateTime(value) : t('profile.notAvailable'));
 
+  const handleCopyUserId = async () => {
+    if (!userInfo?.id) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(userInfo.id);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = userInfo.id;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      void messageApi.success(t('profile.idCopied'));
+    } catch {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: 'Copy failed' }));
+    }
+  };
+
+  const handleCancelAvatarPreview = () => {
+    setAvatarPreview(undefined);
+  };
+
+  const renderBasicProfile = () => (
+    <section className="console-card profile-section">
+      <header>
+        <span>
+          <UserOutlined />
+        </span>
+        <div>
+          <h2>{t('profile.basic.title')}</h2>
+          <p>{t('profile.basic.description')}</p>
+        </div>
+      </header>
+      <div className="profile-basic-fields">
+        <div className="profile-field-item">
+          <div className="profile-field-header">
+            <label>{t('profile.basic.username')}</label>
+            <Tag icon={<LockOutlined />}>{t('profile.readOnly')}</Tag>
+          </div>
+          <div className="profile-field-value">
+            <UserOutlined className="profile-field-icon" />
+            <strong>{userInfo?.name ?? t('profile.notAvailable')}</strong>
+          </div>
+        </div>
+
+        <div className="profile-field-item">
+          <div className="profile-field-header">
+            <label>{t('profile.basic.email')}</label>
+            {userInfo?.email ? (
+              <Tag color="success">{t('profile.security.verified')}</Tag>
+            ) : (
+              <Tag>{t('profile.security.unverified')}</Tag>
+            )}
+          </div>
+          <Form form={emailForm} layout="vertical" className="profile-email-form">
+            <Form.Item
+              name="email"
+              rules={[
+                { required: true, message: t('profile.validation.emailRequired') },
+                { type: 'email', message: t('profile.validation.emailInvalid') },
+              ]}
+            >
+              <Input prefix={<MailOutlined />} maxLength={256} />
+            </Form.Item>
+            <Button
+              type="primary"
+              loading={emailSubmitting}
+              disabled={!connected}
+              onClick={() => void saveEmail().catch(() => undefined)}
+            >
+              {t('profile.basic.saveEmail')}
+            </Button>
+          </Form>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderAccountDetails = () => (
+    <section className="console-card profile-section">
+      <header>
+        <span>
+          <ClockCircleOutlined />
+        </span>
+        <div>
+          <h2>{t('profile.account.title')}</h2>
+          <p>{t('profile.account.description')}</p>
+        </div>
+      </header>
+      <div className="profile-metrics-grid">
+        <div className="profile-metric-card">
+          <div className="profile-metric-icon-wrap is-created">
+            <CalendarOutlined />
+          </div>
+          <div className="profile-metric-content">
+            <span className="profile-metric-label">{t('profile.account.createdAt')}</span>
+            <strong className="profile-metric-value">{formatDate(userInfo?.creationAt)}</strong>
+          </div>
+        </div>
+
+        <div className="profile-metric-card">
+          <div className="profile-metric-icon-wrap is-last-login">
+            <LoginOutlined />
+          </div>
+          <div className="profile-metric-content">
+            <span className="profile-metric-label">{t('profile.account.lastLogin')}</span>
+            <strong className="profile-metric-value">{formatDate(userInfo?.lastLoginAt)}</strong>
+          </div>
+        </div>
+
+        <div className="profile-metric-card">
+          <div className="profile-metric-icon-wrap is-prev-login">
+            <HistoryOutlined />
+          </div>
+          <div className="profile-metric-content">
+            <span className="profile-metric-label">{t('profile.account.previousLogin')}</span>
+            <strong className="profile-metric-value">{formatDate(userInfo?.previousLoginAt)}</strong>
+          </div>
+        </div>
+
+        <div className="profile-metric-card">
+          <div className="profile-metric-icon-wrap is-last-access">
+            <ThunderboltOutlined />
+          </div>
+          <div className="profile-metric-content">
+            <span className="profile-metric-label">{t('profile.account.lastAccess')}</span>
+            <strong className="profile-metric-value">{formatDate(userInfo?.lastAccessAt)}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderSecurityPanel = () => (
+    <SecuritySettingsPanel
+      connected={connected}
+      passwordChangedAt={formatDate(userInfo?.passwordChangedAt)}
+      capabilities={twoFactorCapabilities}
+      loading={twoFactorLoading}
+      error={twoFactorError}
+      submitting={twoFactorSubmitting}
+      onChangePassword={() => setPasswordOpen(true)}
+      onDisableTotp={disableTotp}
+      onManageWebAuthn={() => void openSecurityKeys()}
+      onOpenBackupCodes={(generate) => void openBackupCodes(generate)}
+      onRetry={() => void loadTwoFactorCapabilities()}
+      onStartTotp={() => void startTotpSetup()}
+      onToggleEmail={toggleEmailTwoFactor}
+    />
+  );
+
+  const renderTokensSection = () => (
+    <LoginTokensSection
+      client={client}
+      connected={connected}
+      formatDateTime={dateTime}
+    />
+  );
+
+  const renderLoginsSection = () => (
+    <PreviousLoginsSection
+      connected={connected}
+      error={previousLoginsError}
+      loading={previousLoginsLoading}
+      logins={previousLogins}
+      formatDateTime={dateTime}
+      onRefresh={() => void refreshPreviousLogins()}
+    />
+  );
+
   return (
     <div className="profile-page page-stack">
       {messageContextHolder}
       {modalContextHolder}
       <div className="page-heading profile-heading">
-        <div>
+        <div className="profile-heading-title">
           <h1>{t('profile.title')}</h1>
           <p>{t('profile.subtitle')}</p>
         </div>
-        <Tag color={connected ? 'success' : 'warning'}>
-          {connected ? t('profile.connected') : t('profile.disconnected')}
-        </Tag>
       </div>
 
       {!userInfo ? (
         <Alert type="warning" showIcon message={t('profile.unavailable')} />
       ) : (
-        <div className="profile-layout">
-          <aside className="profile-identity console-card">
-            <div className="profile-avatar-stage">
-              <UserAvatar
-                size={112}
-                username={userInfo.name}
-                refreshKey={avatarRefreshKey}
-                src={avatarPreview ?? userInfo.image}
-                hasImage={Boolean(avatarPreview || userInfo.image || userInfo.hasImage)}
-              />
-              <span className="profile-avatar-badge">
-                <CameraOutlined />
-              </span>
-            </div>
-            <h2>{userInfo.name ?? userInfo.id}</h2>
-            <span className="profile-user-id">{userInfo.id}</span>
-            <Tag color={isFullAdministrator(userInfo.siteadmin ?? 0) ? 'blue' : 'default'}>
-              {isFullAdministrator(userInfo.siteadmin ?? 0)
-                ? t('profile.siteAdministrator')
-                : t('profile.standardUser')}
-            </Tag>
-            <div className="profile-avatar-actions">
-              <Upload
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                beforeUpload={beforeAvatarUpload}
-                maxCount={1}
-                showUploadList={false}
-              >
-                <Button icon={<CameraOutlined />}>{t('profile.selectAvatar')}</Button>
-              </Upload>
-              {avatarPreview ? (
-                <Button
-                  type="primary"
-                  loading={avatarSubmitting}
-                  disabled={!connected}
-                  onClick={() => void saveAvatar()}
-                >
-                  {t('profile.saveAvatar')}
-                </Button>
-              ) : null}
-            </div>
-            <p className="profile-avatar-hint">{t('profile.avatarHint')}</p>
-          </aside>
+        <div className="profile-body-stack">
+          {/* Full-width Profile Hero Card */}
+          <section className="profile-hero console-card">
+            <div className="profile-hero-cover" />
 
-          <main className="profile-main-column">
-            <section className="console-card profile-section">
-              <header>
-                <span>
-                  <UserOutlined />
-                </span>
-                <div>
-                  <h2>{t('profile.basic.title')}</h2>
-                  <p>{t('profile.basic.description')}</p>
+            <div className="profile-hero-main">
+              <div className="profile-hero-avatar-area">
+                <div className="profile-avatar-stage">
+                  <UserAvatar
+                    size={84}
+                    username={userInfo.name}
+                    refreshKey={avatarRefreshKey}
+                    src={avatarPreview ?? userInfo.image}
+                    hasImage={Boolean(avatarPreview || userInfo.image || userInfo.hasImage)}
+                  />
+                  <Upload
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    beforeUpload={beforeAvatarUpload}
+                    maxCount={1}
+                    showUploadList={false}
+                  >
+                    <button
+                      type="button"
+                      className="profile-avatar-badge-btn"
+                      title={t('profile.selectAvatar')}
+                      aria-label={t('profile.selectAvatar')}
+                    >
+                      <CameraOutlined />
+                    </button>
+                  </Upload>
                 </div>
-              </header>
-              <div className="profile-readonly-row">
-                <div>
-                  <label>{t('profile.basic.username')}</label>
-                  <strong>{userInfo.name ?? t('profile.notAvailable')}</strong>
-                </div>
-                <Tag>{t('profile.readOnly')}</Tag>
               </div>
-              <Form form={emailForm} layout="vertical" className="profile-email-form">
-                <Form.Item
-                  name="email"
-                  label={t('profile.basic.email')}
-                  rules={[
-                    { required: true, message: t('profile.validation.emailRequired') },
-                    { type: 'email', message: t('profile.validation.emailInvalid') },
-                  ]}
-                >
-                  <Input prefix={<MailOutlined />} maxLength={256} />
-                </Form.Item>
+
+              <div className="profile-hero-details">
+                <div className="profile-hero-primary-row">
+                  <h2 className="profile-hero-name">{userInfo.name ?? userInfo.id}</h2>
+                  <Tag
+                    className="profile-role-tag"
+                    color={isFullAdministrator(userInfo.siteadmin ?? 0) ? 'gold' : 'blue'}
+                    icon={
+                      isFullAdministrator(userInfo.siteadmin ?? 0) ? (
+                        <CrownOutlined />
+                      ) : (
+                        <UserOutlined />
+                      )
+                    }
+                  >
+                    {isFullAdministrator(userInfo.siteadmin ?? 0)
+                      ? t('profile.siteAdministrator')
+                      : t('profile.standardUser')}
+                  </Tag>
+                  <Tag
+                    color={connected ? 'success' : 'warning'}
+                    className="profile-connection-tag"
+                  >
+                    <span className={`profile-status-dot ${connected ? 'is-connected' : 'is-disconnected'}`} />
+                    {connected ? t('profile.connected') : t('profile.disconnected')}
+                  </Tag>
+                </div>
+
+                <div className="profile-hero-meta-row">
+                  <div className="profile-user-id-bar">
+                    <span className="profile-user-id-prefix">{t('profile.basic.userId')}:</span>
+                    <code>{userInfo.id}</code>
+                    <Tooltip title={t('profile.copyId')}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={() => void handleCopyUserId()}
+                        aria-label={t('profile.copyId')}
+                      />
+                    </Tooltip>
+                  </div>
+                  {userInfo.email && (
+                    <div className="profile-hero-email-pill">
+                      <MailOutlined />
+                      <span>{userInfo.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="profile-hero-stats">
+                <div className="profile-hero-stat-cell">
+                  <span className="profile-hero-stat-label">
+                    <CalendarOutlined /> {t('profile.account.createdAt')}
+                  </span>
+                  <strong className="profile-hero-stat-val">{formatDate(userInfo.creationAt)}</strong>
+                </div>
+                <div className="profile-hero-stat-cell">
+                  <span className="profile-hero-stat-label">
+                    <LoginOutlined /> {t('profile.account.lastLogin')}
+                  </span>
+                  <strong className="profile-hero-stat-val">{formatDate(userInfo.lastLoginAt)}</strong>
+                </div>
+                <div className="profile-hero-stat-cell">
+                  <span className="profile-hero-stat-label">
+                    <ThunderboltOutlined /> {t('profile.account.lastAccess')}
+                  </span>
+                  <strong className="profile-hero-stat-val">{formatDate(userInfo.lastAccessAt)}</strong>
+                </div>
+              </div>
+
+              <div className="profile-hero-actions">
                 <Button
                   type="primary"
-                  loading={emailSubmitting}
+                  icon={<KeyOutlined />}
                   disabled={!connected}
-                  onClick={() => void saveEmail().catch(() => undefined)}
+                  onClick={() => setPasswordOpen(true)}
                 >
-                  {t('profile.basic.saveEmail')}
+                  {t('profile.password.title')}
                 </Button>
-              </Form>
-            </section>
+                <Upload
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  beforeUpload={beforeAvatarUpload}
+                  maxCount={1}
+                  showUploadList={false}
+                >
+                  <Button icon={<CameraOutlined />}>{t('profile.selectAvatar')}</Button>
+                </Upload>
+              </div>
+            </div>
 
-            <section className="console-card profile-section">
-              <header>
-                <span>
-                  <ClockCircleOutlined />
-                </span>
-                <div>
-                  <h2>{t('profile.account.title')}</h2>
-                  <p>{t('profile.account.description')}</p>
+            {avatarPreview && (
+              <div className="profile-avatar-preview-banner">
+                <div className="profile-avatar-preview-text">
+                  <CameraOutlined />
+                  <span>{t('profile.previewAvatar')}</span>
                 </div>
-              </header>
-              <dl className="profile-info-grid">
-                <div>
-                  <dt>{t('profile.account.createdAt')}</dt>
-                  <dd>{formatDate(userInfo.creationAt)}</dd>
+                <div className="profile-avatar-preview-btns">
+                  <Button
+                    type="primary"
+                    size="small"
+                    loading={avatarSubmitting}
+                    disabled={!connected}
+                    onClick={() => void saveAvatar()}
+                  >
+                    {t('profile.saveAvatar')}
+                  </Button>
+                  <Button size="small" onClick={handleCancelAvatarPreview}>
+                    {t('profile.cancelAvatar')}
+                  </Button>
                 </div>
-                <div>
-                  <dt>{t('profile.account.lastLogin')}</dt>
-                  <dd>{formatDate(userInfo.lastLoginAt)}</dd>
-                </div>
-                <div>
-                  <dt>{t('profile.account.previousLogin')}</dt>
-                  <dd>{formatDate(userInfo.previousLoginAt)}</dd>
-                </div>
-                <div>
-                  <dt>{t('profile.account.lastAccess')}</dt>
-                  <dd>{formatDate(userInfo.lastAccessAt)}</dd>
-                </div>
-              </dl>
-            </section>
+              </div>
+            )}
+          </section>
 
-            <PreviousLoginsSection
-              connected={connected}
-              error={previousLoginsError}
-              loading={previousLoginsLoading}
-              logins={previousLogins}
-              formatDateTime={dateTime}
-              onRefresh={() => void refreshPreviousLogins()}
-            />
+          {/* Navigation Tabs */}
+          <nav className="profile-tabs" role="tablist">
+            {PROFILE_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                className={`profile-tab-btn ${activeTab === tab.key ? 'is-active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.icon}
+                <span>{t(tab.labelKey)}</span>
+              </button>
+            ))}
+          </nav>
 
-            <LoginTokensSection
-              client={client}
-              connected={connected}
-              formatDateTime={dateTime}
-            />
-          </main>
+          {/* Tab Panes */}
+          <div className="profile-tab-content">
+            {activeTab === 'overview' && (
+              <div className="profile-balanced-grid">
+                <div className="profile-grid-column">
+                  {renderBasicProfile()}
+                  {renderSecurityPanel()}
+                </div>
+                <div className="profile-grid-column">
+                  {renderTokensSection()}
+                  {renderLoginsSection()}
+                </div>
+              </div>
+            )}
 
-          <SecuritySettingsPanel
-            connected={connected}
-            passwordChangedAt={formatDate(userInfo.passwordChangedAt)}
-            capabilities={twoFactorCapabilities}
-            loading={twoFactorLoading}
-            error={twoFactorError}
-            submitting={twoFactorSubmitting}
-            onChangePassword={() => setPasswordOpen(true)}
-            onDisableTotp={disableTotp}
-            onManageWebAuthn={() => void openSecurityKeys()}
-            onOpenBackupCodes={(generate) => void openBackupCodes(generate)}
-            onRetry={() => void loadTwoFactorCapabilities()}
-            onStartTotp={() => void startTotpSetup()}
-            onToggleEmail={toggleEmailTwoFactor}
-          />
+            {activeTab === 'security' && (
+              <div className="profile-balanced-grid">
+                <div className="profile-grid-column">
+                  {renderBasicProfile()}
+                  {renderAccountDetails()}
+                </div>
+                <div className="profile-grid-column">
+                  {renderSecurityPanel()}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'tokens' && (
+              <div className="profile-single-column">
+                {renderTokensSection()}
+              </div>
+            )}
+
+            {activeTab === 'activity' && (
+              <div className="profile-single-column">
+                {renderLoginsSection()}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

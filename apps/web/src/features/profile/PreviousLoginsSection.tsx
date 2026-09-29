@@ -1,6 +1,13 @@
-import { GlobalOutlined, SyncOutlined } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  DesktopOutlined,
+  GlobalOutlined,
+  LaptopOutlined,
+  MobileOutlined,
+  SyncOutlined,
+} from '@ant-design/icons';
 import type { PreviousLogin } from '@meshcentral/control-client';
-import { Alert, Button, Empty, Spin } from 'antd';
+import { Alert, Button, Empty, Spin, Tooltip, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 
 interface PreviousLoginsSectionProps {
@@ -12,6 +19,17 @@ interface PreviousLoginsSectionProps {
   onRefresh: () => void;
 }
 
+function getClientIcon(platform?: string, client?: string) {
+  const text = `${platform ?? ''} ${client ?? ''}`.toLowerCase();
+  if (text.includes('mobile') || text.includes('android') || text.includes('ios') || text.includes('iphone')) {
+    return <MobileOutlined />;
+  }
+  if (text.includes('win') || text.includes('mac') || text.includes('linux')) {
+    return <LaptopOutlined />;
+  }
+  return <DesktopOutlined />;
+}
+
 export function PreviousLoginsSection({
   connected,
   error,
@@ -21,9 +39,30 @@ export function PreviousLoginsSection({
   onRefresh,
 }: PreviousLoginsSectionProps) {
   const { t } = useTranslation();
+  const [messageApi, messageContextHolder] = message.useMessage();
+
+  const handleCopyIp = async (ip?: string) => {
+    if (!ip) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(ip);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = ip;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      void messageApi.success(t('profile.ipCopied'));
+    } catch {
+      void messageApi.error('Copy failed');
+    }
+  };
 
   return (
     <section className="console-card profile-section profile-login-section">
+      {messageContextHolder}
       <header>
         <span>
           <GlobalOutlined />
@@ -62,7 +101,12 @@ export function PreviousLoginsSection({
         <div className="profile-login-list">
           {logins.slice(0, 10).map((login, index) => (
             <article className="profile-login-row" key={`${login.occurredAt}-${index}`}>
-              <span className="profile-login-marker" />
+              <div className="profile-login-indicator">
+                <span className="profile-login-marker" />
+                <span className="profile-login-device-icon">
+                  {getClientIcon(login.platform, login.client)}
+                </span>
+              </div>
               <div className="profile-login-time">
                 <strong>{formatDateTime(login.occurredAt)}</strong>
                 <small>
@@ -73,7 +117,21 @@ export function PreviousLoginsSection({
                 <strong>{login.client ?? t('profile.notAvailable')}</strong>
                 <small>{login.platform ?? t('profile.notAvailable')}</small>
               </div>
-              <code>{login.ip ?? '—'}</code>
+              <div className="profile-login-ip-wrap">
+                <code>{login.ip ?? '—'}</code>
+                {login.ip && (
+                  <Tooltip title={t('profile.copyIp')}>
+                    <button
+                      type="button"
+                      className="profile-login-copy-btn"
+                      onClick={() => void handleCopyIp(login.ip)}
+                      aria-label={t('profile.copyIp')}
+                    >
+                      <CopyOutlined />
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
             </article>
           ))}
         </div>
