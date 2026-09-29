@@ -116,13 +116,21 @@ export function TrendChart({
   offline,
   labels,
   loading = false,
+  error = false,
+  unavailable = false,
+  onRetry,
 }: {
   online: number[];
   offline: number[];
   labels?: string[];
   loading?: boolean;
+  error?: boolean;
+  unavailable?: boolean;
+  onRetry?: () => void;
 }) {
   const { t } = useTranslation();
+  const hasTrend = online.length > 1 && offline.length > 1;
+  const hasSample = online.length === 1 && offline.length === 1;
   const chartLabels = labels?.length
     ? labels
     : ['00:00', '06:00', '12:00', '18:00', t('common.status.now')];
@@ -134,7 +142,7 @@ export function TrendChart({
   const onlineRate = total > 0 ? ((latestOnline / total) * 100).toFixed(1) : '100.0';
 
   useEffect(() => {
-    if (!chartRef.current) return;
+    if (!chartRef.current || !hasTrend) return;
     const chart = echarts.init(chartRef.current);
     const option: EChartsOption = {
       animation: true,
@@ -319,30 +327,60 @@ export function TrendChart({
       resizeObserver.disconnect();
       chart.dispose();
     };
-  }, [chartLabels, offline, online, t]);
+  }, [chartLabels, hasTrend, offline, online, t]);
 
   return (
     <div className="trend-chart">
-      <div className="trend-summary-bar chart-legend">
-        <div className="trend-stat-pill online">
-          <span className="indicator-dot" />
-          <span className="pill-label">{t('common.status.online')}</span>
-          <strong>{latestOnline}</strong>
-          <span className="rate-badge">{onlineRate}%</span>
+      {(hasTrend || hasSample) && (
+        <div className="trend-summary-bar chart-legend">
+          <div className="trend-stat-pill online">
+            <span className="indicator-dot" />
+            <span className="pill-label">{t('common.status.online')}</span>
+            <strong>{latestOnline}</strong>
+            <span className="rate-badge">{onlineRate}%</span>
+          </div>
+          <div className="trend-stat-pill offline">
+            <span className="indicator-dot" />
+            <span className="pill-label">{t('common.status.offline')}</span>
+            <strong>{latestOffline}</strong>
+          </div>
         </div>
-        <div className="trend-stat-pill offline">
-          <span className="indicator-dot" />
-          <span className="pill-label">{t('common.status.offline')}</span>
-          <strong>{latestOffline}</strong>
-        </div>
-      </div>
+      )}
       <div className="trend-plot">
-        <div
-          ref={chartRef}
-          className="trend-echarts"
-          role="img"
-          aria-label={t('dashboard.trend.ariaDeviceTrend')}
-        />
+        {hasTrend ? (
+          <div
+            ref={chartRef}
+            className="trend-echarts"
+            role="img"
+            aria-label={t('dashboard.trend.ariaDeviceTrend')}
+          />
+        ) : !loading ? (
+          <div className="trend-state" role="status">
+            <strong>
+              {error
+                ? t('dashboard.trend.loadFailed')
+                : unavailable
+                  ? t('dashboard.trend.unavailable')
+                : hasSample
+                  ? t('dashboard.trend.singleSample')
+                  : t('dashboard.trend.noData')}
+            </strong>
+            <span>
+              {error
+                ? t('dashboard.trend.loadFailedDescription')
+                : unavailable
+                  ? t('dashboard.trend.unavailableDescription')
+                : hasSample
+                  ? t('dashboard.trend.singleSampleDescription')
+                  : t('dashboard.trend.noDataDescription')}
+            </span>
+            {error && onRetry ? (
+              <button type="button" onClick={onRetry}>
+                {t('common.actions.retry')}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {loading && (
           <div className="trend-loading" role="status" aria-live="polite">
             <span className="trend-loading-spinner" />

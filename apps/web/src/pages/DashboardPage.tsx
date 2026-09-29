@@ -152,6 +152,8 @@ export function DashboardPage() {
   const [timelineHours, setTimelineHours] = useState<24 | 168 | 720>(24);
   const [timelineStats, setTimelineStats] = useState<ServerTimelineStats[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState(false);
+  const [timelineRequestVersion, setTimelineRequestVersion] = useState(0);
 
   const online = data.devices.filter((device) => device.online).length;
   const offline = data.devices.length - online;
@@ -344,10 +346,12 @@ export function DashboardPage() {
     if (!data.client || data.status !== 'connected') {
       setTimelineStats([]);
       setTimelineLoading(false);
+      setTimelineError(false);
       return;
     }
     let active = true;
     setTimelineLoading(true);
+    setTimelineError(false);
     setTimelineStats([]);
     void data.client.server
       .getTimelineStats(timelineHours)
@@ -355,7 +359,10 @@ export function DashboardPage() {
         if (active) setTimelineStats(stats);
       })
       .catch(() => {
-        if (active) setTimelineStats([]);
+        if (active) {
+          setTimelineStats([]);
+          setTimelineError(true);
+        }
       })
       .finally(() => {
         if (active) setTimelineLoading(false);
@@ -363,7 +370,7 @@ export function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [data.client, data.status, timelineHours]);
+  }, [data.client, data.status, timelineHours, timelineRequestVersion]);
 
   useEffect(() => {
     if (!data.client || data.status !== 'connected') return;
@@ -477,10 +484,13 @@ export function DashboardPage() {
             </div>
           </div>
           <TrendChart
-            online={timeline.online.length > 1 ? timeline.online : [online, online]}
-            offline={timeline.offline.length > 1 ? timeline.offline : [offline, offline]}
-            labels={timeline.labels.length > 1 ? timeline.labels : undefined}
+            online={timeline.online}
+            offline={timeline.offline}
+            labels={timeline.labels}
             loading={timelineLoading}
+            error={timelineError}
+            unavailable={data.status !== 'connected'}
+            onRetry={() => setTimelineRequestVersion((version) => version + 1)}
           />
         </section>
 

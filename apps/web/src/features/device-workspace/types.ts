@@ -12,12 +12,6 @@ export type WorkspaceTab =
   | 'monitoring'
   | 'security';
 
-export interface SessionEvent {
-  id: string;
-  time: string;
-  message: string;
-}
-
 export interface StorageVolume {
   letter: string;
   name?: string;
@@ -94,7 +88,6 @@ export interface DeviceWorkspaceModel {
   networkSummary?: string;
   securitySummary?: string;
   hardware: DeviceHardwareInfo;
-  events: SessionEvent[];
   sessionStartedAt?: string;
   terminalAllowed?: boolean;
   filesAllowed?: boolean;

@@ -1,7 +1,6 @@
 import type { DeviceDetails } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { canUseDeviceFiles, canUseTerminal, getDesktopAccess } from '../users/meshPermissions';
-import { workspaceEvents } from './mockWorkspaceData';
 import type {
   DeviceHardwareInfo,
   DeviceWorkspaceModel,
@@ -373,7 +372,6 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     groupName: groupName ?? resolvedDevice.groupName,
     tags: [],
     ...hardware,
-    events: workspaceEvents,
     sessionStartedAt: '—',
     terminalAllowed: terminalPermission(resolvedDevice),
     filesAllowed: filesPermission(resolvedDevice),
