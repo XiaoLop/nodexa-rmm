@@ -6,7 +6,7 @@ import zhCN from 'antd/locale/zh_CN';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './app/AppRouter';
-import { GatewayProvider } from './features/gateway/GatewayProvider';
+import { MeshCentralControlProvider } from './features/gateway/MeshCentralControlProvider';
 import { resolveLanguage } from './i18n';
 import 'antd/dist/reset.css';
 import './assets/styles/index.css';
@@ -52,11 +52,11 @@ function ApplicationProviders() {
       }}
     >
       <AntApp>
-        <GatewayProvider>
+        <MeshCentralControlProvider>
           <BrowserRouter>
             <AppRouter />
           </BrowserRouter>
-        </GatewayProvider>
+        </MeshCentralControlProvider>
       </AntApp>
     </ConfigProvider>
   );

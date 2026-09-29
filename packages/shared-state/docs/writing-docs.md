@@ -57,8 +57,8 @@
 文档应优先描述包使用者能导入的内容：
 
 - `src/index.ts` 导出的函数、类型和常量；
-- `GatewayStore` 的公开状态与 action；
-- `GatewayClient` 的公开资源方法；
+- `MeshCentralControlStore` 的公开状态与 action；
+- `MeshCentralClient` 的公开资源方法；
 - 实际可观察的同步和事件行为。
 
 不要把内部辅助函数写成公共能力，也不要仅根据服务端协议猜测尚未实现的功能。
@@ -109,9 +109,9 @@
 
 新增或修改事件时，应同步检查：
 
-- `@meshcentral/control-client` 的 `GatewayEventType`；
+- `@meshcentral/control-client` 的 `MeshCentralEventType`；
 - `normalizeEvent()` 的 action 到领域事件映射；
-- `bindGatewayClient` 的 Store 更新规则；
+- `bindMeshCentralClient` 的 Store 更新规则；
 - `appendEvent` 是否保存、忽略或增强该事件；
 - `src/types/events.type.ts` 是否提供对应原始 payload 类型；
 - `docs/events.md` 的事件表格和示例。
@@ -127,7 +127,7 @@
 - 参数限制和默认值；
 - 返回类型；
 - 是否等待事件确认或执行二次验证；
-- 返回结果是否自动进入 `GatewayStore`；
+- 返回结果是否自动进入 `MeshCentralControlStore`；
 - 推荐的 UI 使用场景。
 
 优先记录资源方法，而不是鼓励调用方直接使用 `client.send()`。

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import { getTwoFactorCapabilities } from './twoFactorCapabilities';
 import type { TwoFactorCapabilitiesError } from './twoFactorCapabilities';
 
@@ -13,7 +13,7 @@ function createClient() {
       return unsubscribe;
     }),
     send,
-  } as unknown as GatewayClient;
+  } as unknown as MeshCentralClient;
   return {
     client,
     send,

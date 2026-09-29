@@ -1,12 +1,12 @@
-import { GatewayValidationError } from '../errors';
+import { MeshCentralValidationError } from '../errors';
 import type {
   CommandExecuteOptions,
   CommandExecutionHandle,
   CommandRunOptions,
   CommandSubmission,
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
 } from '../types';
 import { CommandExecution } from './CommandExecution';
 
@@ -14,23 +14,23 @@ interface ResourceClient {
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
   readonly connectionStatus?: string;
   send?(payload: unknown): void;
-  on?<K extends GatewayEventChannel>(
+  on?<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
 interface TrackedExecutionClient {
   readonly connectionStatus: string;
   send(payload: unknown): void;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
 const required = (value: string, name: string) => {
-  if (!value.trim()) throw new GatewayValidationError(`${name} is required.`);
+  if (!value.trim()) throw new MeshCentralValidationError(`${name} is required.`);
 };
 
 export class CommandsResource {
@@ -44,12 +44,12 @@ export class CommandsResource {
     options: CommandExecuteOptions = {},
   ): CommandExecutionHandle {
     if (!deviceIds.length || deviceIds.some((id) => !id.trim()))
-      throw new GatewayValidationError('At least one valid device ID is required.');
+      throw new MeshCentralValidationError('At least one valid device ID is required.');
     required(command, 'Command');
     const sourceSend = this.client.send;
     const sourceOn = this.client.on;
     if (!sourceSend || !sourceOn)
-      throw new GatewayValidationError('This client does not support tracked command execution.');
+      throw new MeshCentralValidationError('This client does not support tracked command execution.');
     const source = this.client;
     const send = sourceSend.bind(source);
     const on = sourceOn.bind(source);
@@ -72,7 +72,7 @@ export class CommandsResource {
     options: CommandRunOptions = {},
   ): Promise<CommandSubmission> {
     if (!deviceIds.length || deviceIds.some((id) => !id.trim()))
-      throw new GatewayValidationError('At least one valid device ID is required.');
+      throw new MeshCentralValidationError('At least one valid device ID is required.');
     required(command, 'Command');
     const requestId = `command-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const raw = await this.client.request({

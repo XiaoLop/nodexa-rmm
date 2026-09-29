@@ -37,10 +37,11 @@ web:
 
 # Expo App 的构建期公开配置；已安装的 App 不会直接读取服务器上的 YAML。
 app:
-  # App 连接控制 WebSocket 的公网地址，通常指向 Nginx 暴露的 Gateway 路由。
+  # App 连接 MeshCentral 控制 WebSocket 的公网地址，由 Nginx 同源转发。
   gatewayUrl: wss://console.example.com/api/control.ashx
 
 # NestJS Gateway 的监听、MeshCentral 上游和代理安全策略。
+# Gateway 预留为未来业务聚合层，当前不承担浏览器登录、控制或 Relay 主链路。
 gateway:
   # Gateway 容器内 HTTP 监听配置。
   listen:
@@ -279,8 +280,8 @@ proxy:
 
   # 公网请求转发目标；允许值应由项目配置 Schema 限定。
   routes:
-    # POST /api/login 交给 Gateway 校验输入并重写 Cookie。
-    login: gateway
+    # /api/auth/* 直接交给 MeshCentral 内的 jsonauth 插件建立原生 Session。
+    login: meshcentral
     # /api/control.ashx 控制 WebSocket 由 Nginx 直接转发到 MeshCentral。
     control: meshcentral
     # /api/meshrelay.ashx 高带宽 Relay WebSocket 的目标。

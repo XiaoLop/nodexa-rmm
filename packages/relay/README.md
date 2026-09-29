@@ -32,7 +32,7 @@ import { RelayClient, RELAY_PROTOCOLS } from '@meshcentral/relay';
 
 const relayClient = new RelayClient({
   baseUrl: 'https://mesh.example.com/domain',
-  control: gatewayClient,
+  control: meshCentralClient,
 });
 
 const relaySession = await relayClient.createSession({
@@ -47,7 +47,7 @@ const relaySession = await relayClient.createSession({
 - `request(payload, timeoutMs)`：发送请求并等待控制通道响应。
 - `send(payload)`：发送无需等待响应的控制消息。
 
-现有 `GatewayClient` 可直接满足该接口，中继包不会访问其内部控制 WebSocket。Agent tunnel 通知会等待带 `responseid` 的结果；目标服务端返回 `OK` 后才创建 Relay WebSocket，`Unable to route` 会抛出可重试的 `RelayAgentRouteError`。
+现有 `MeshCentralClient` 可直接满足该接口，中继包不会访问其内部控制 WebSocket。Agent tunnel 通知会等待带 `responseid` 的结果；目标服务端返回 `OK` 后才创建 Relay WebSocket，`Unable to route` 会抛出可重试的 `RelayAgentRouteError`。
 
 中继收到 MeshCentral 的 `c` 或 `cr` 握手后，默认自动发送当前协议号，例如文件协议发送文本 `5`。需要在协议号前发送配置的协议可以提供 `createStartupMessages`，启动帧全部发送后连接才进入 `ready`。
 

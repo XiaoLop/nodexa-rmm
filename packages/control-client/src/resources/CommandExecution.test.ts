@@ -1,24 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GatewayClientEvents, GatewayEventChannel, GatewayListener } from '../types';
+import type { MeshCentralClientEvents, MeshCentralEventChannel, MeshCentralListener } from '../types';
 import { CommandExecution } from './CommandExecution';
 
 class FakeExecutionClient {
   connectionStatus = 'connected';
   sent: unknown[] = [];
-  listeners = new Map<GatewayEventChannel, Set<GatewayListener<never>>>();
+  listeners = new Map<MeshCentralEventChannel, Set<MeshCentralListener<never>>>();
 
   send(payload: unknown) {
     this.sent.push(payload);
   }
 
-  on<K extends GatewayEventChannel>(channel: K, listener: GatewayListener<GatewayClientEvents[K]>) {
+  on<K extends MeshCentralEventChannel>(channel: K, listener: MeshCentralListener<MeshCentralClientEvents[K]>) {
     const listeners = this.listeners.get(channel) ?? new Set();
-    listeners.add(listener as GatewayListener<never>);
+    listeners.add(listener as MeshCentralListener<never>);
     this.listeners.set(channel, listeners);
-    return () => listeners.delete(listener as GatewayListener<never>);
+    return () => listeners.delete(listener as MeshCentralListener<never>);
   }
 
-  emit<K extends GatewayEventChannel>(channel: K, value: GatewayClientEvents[K]) {
+  emit<K extends MeshCentralEventChannel>(channel: K, value: MeshCentralClientEvents[K]) {
     for (const listener of this.listeners.get(channel) ?? []) listener(value as never);
   }
 }

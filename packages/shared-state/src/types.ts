@@ -1,7 +1,7 @@
 import type {
   Device,
   DeviceGroup,
-  GatewayEvent,
+  MeshCentralEvent,
   ServerInfo,
   UserInfo,
 } from '@meshcentral/control-client';
@@ -9,9 +9,9 @@ import type {
 export type {
   Device,
   DeviceGroup,
-  GatewayEvent,
-  GatewayEventType,
-  GatewaySnapshot,
+  MeshCentralEvent,
+  MeshCentralEventType,
+  MeshCentralSnapshot,
   ServerInfo,
   UserInfo,
 } from '@meshcentral/control-client';
@@ -19,11 +19,11 @@ export type {
 export type ConnectionStatus =
   'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
 
-export interface GatewayState {
+export interface MeshCentralControlState {
   status: ConnectionStatus;
   devices: Record<string, Device>;
   groups: Record<string, DeviceGroup>;
-  events: GatewayEvent[];
+  events: MeshCentralEvent[];
   userInfo?: UserInfo;
   serverInfo?: ServerInfo;
   reconnectAttempt: number;
@@ -37,7 +37,7 @@ export interface GatewayState {
   replaceGroups: (groups: DeviceGroup[]) => void;
   upsertDevice: (device: Device) => void;
   removeDevice: (deviceId: string) => void;
-  appendEvent: (event: GatewayEvent) => void;
+  appendEvent: (event: MeshCentralEvent) => void;
   setUserInfo: (userInfo?: UserInfo) => void;
   setServerInfo: (serverInfo?: ServerInfo) => void;
   clearAuthorizationSnapshot: () => void;

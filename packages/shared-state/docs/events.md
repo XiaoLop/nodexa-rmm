@@ -7,24 +7,24 @@
 事件相关数据分为三个层次：
 
 1. 服务端原始消息，例如 `{ action: 'event', event: { action: 'nodeconnect' } }`；
-2. `@meshcentral/control-client` 归一化后的 `GatewayEvent`；
-3. `bindGatewayClient` 对 `GatewayStore` 的更新。
+2. `@meshcentral/control-client` 归一化后的 `MeshCentralEvent`；
+3. `bindMeshCentralClient` 对 `MeshCentralControlStore` 的更新。
 
-UI 应优先使用第二和第三层。只有需要读取服务端特有字段时，才访问 `GatewayEvent.raw` 或使用原始事件类型。
+UI 应优先使用第二和第三层。只有需要读取服务端特有字段时，才访问 `MeshCentralEvent.raw` 或使用原始事件类型。
 
 ## 客户端通道
 
-`bindGatewayClient` 注册五个 `GatewayClient` 通道：
+`bindMeshCentralClient` 注册五个 `MeshCentralClient` 通道：
 
 | 通道 | 数据 | 在 shared-state 中的用途 |
 | --- | --- | --- |
 | `connection` | 连接状态变化 | 更新 `status`、`error`、`reconnectAttempt`，连接成功后同步快照 |
 | `message` | 任意已解析服务端消息 | 更新 `lastMessageAt` |
-| `event` | `GatewayEvent` | 增量更新设备并维护事件列表 |
+| `event` | `MeshCentralEvent` | 增量更新设备并维护事件列表 |
 | `userInfo` | `UserInfo` | 更新当前用户信息 |
 | `error` | `Error` | 更新 `error` 文本 |
 
-`GatewayClient` 还提供 `diagnostic` 通道，但 shared-state 不订阅它。协议诊断适合日志和遥测，应直接在客户端上监听：
+`MeshCentralClient` 还提供 `diagnostic` 通道，但 shared-state 不订阅它。协议诊断适合日志和遥测，应直接在客户端上监听：
 
 ```ts
 const unsubscribe = client.on('diagnostic', (diagnostic) => {
@@ -32,12 +32,12 @@ const unsubscribe = client.on('diagnostic', (diagnostic) => {
 });
 ```
 
-## GatewayEvent 结构
+## MeshCentralEvent 结构
 
 ```ts
-interface GatewayEvent {
+interface MeshCentralEvent {
   id: string;
-  type: GatewayEventType;
+  type: MeshCentralEventType;
   action?: string;
   deviceId?: string;
   deviceName?: string;
@@ -57,7 +57,7 @@ interface GatewayEvent {
 
 ## 领域事件类型
 
-| `GatewayEventType` | 常见原始 action | 含义 | Store 行为 | 典型用途 |
+| `MeshCentralEventType` | 常见原始 action | 含义 | Store 行为 | 典型用途 |
 | --- | --- | --- | --- | --- |
 | `deviceOnline` | `nodeconnect`、`connect`、`connected` | 设备在线或恢复连接 | 更新设备在线状态并记录事件 | 在线徽标、通知、设备计数 |
 | `deviceOffline` | `nodedisconnect`、`disconnect`、`disconnected`，或 `nodeconnect` 且连接值不大于 0 | 设备离线 | 更新在线状态和最后在线时间并记录事件 | 离线告警、资产状态 |
@@ -91,7 +91,7 @@ unsubscribe();
 
 ## 原始 MeshCentral 事件类型
 
-shared-state 从 `src/types/events.type.ts` 导出一组服务端原始事件类型。这些类型描述原始 payload，不等同于 `GatewayEvent`。
+shared-state 从 `src/types/events.type.ts` 导出一组服务端原始事件类型。这些类型描述原始 payload，不等同于 `MeshCentralEvent`。
 
 | 原始 action | 导出类型 | 用途 |
 | --- | --- | --- |
@@ -129,7 +129,7 @@ function readRelayLog(message: MeshCentralEventMessage<RelayLogEventPayload>) {
 
 ## 读取 raw 字段
 
-`GatewayEvent.raw` 的类型是 `unknown`，使用时必须先缩小类型：
+`MeshCentralEvent.raw` 的类型是 `unknown`，使用时必须先缩小类型：
 
 ```ts
 import { EventAction, type RelayLogEventPayload } from '@meshcentral/shared-state';
@@ -163,4 +163,4 @@ const deviceHistory = await client.events.listByDevice(deviceId, {
 });
 ```
 
-历史查询结果不会自动写入 `GatewayStore.events`，页面应单独保存和分页展示。
+历史查询结果不会自动写入 `MeshCentralControlStore.events`，页面应单独保存和分页展示。

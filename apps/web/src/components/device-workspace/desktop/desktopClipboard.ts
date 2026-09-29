@@ -1,4 +1,4 @@
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 
 const CLIPBOARD_TIMEOUT_MS = 10_000;
 
@@ -23,12 +23,12 @@ function clipboardMessage(value: unknown): Record<string, unknown> | undefined {
   return candidates.find((candidate) => candidate?.type === 'getclip');
 }
 
-export function setRemoteClipboard(client: GatewayClient, deviceId: string, text: string): void {
+export function setRemoteClipboard(client: MeshCentralClient, deviceId: string, text: string): void {
   client.send({ action: 'msg', type: 'setclip', nodeid: deviceId, data: text });
 }
 
 export function getRemoteClipboard(
-  client: GatewayClient,
+  client: MeshCentralClient,
   deviceId: string,
   timeoutMs = CLIPBOARD_TIMEOUT_MS,
 ): Promise<string> {

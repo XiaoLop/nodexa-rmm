@@ -1,4 +1,4 @@
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -56,7 +56,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
 }
 
 function request<T>(
-  client: GatewayClient,
+  client: MeshCentralClient,
   payload: Record<string, unknown>,
   responseAction: string,
   parse: (response: Record<string, unknown>) => T,
@@ -121,7 +121,7 @@ function parseBackupCodes(response: Record<string, unknown>): BackupCode[] {
   });
 }
 
-export function requestTotpSetup(client: GatewayClient): Promise<TotpSetup> {
+export function requestTotpSetup(client: MeshCentralClient): Promise<TotpSetup> {
   return request(client, { action: 'otpauth-request' }, 'otpauth-request', (response) => {
     if (response.err != null) {
       throw new TwoFactorManagementError(`error_${String(response.err)}`);
@@ -134,7 +134,7 @@ export function requestTotpSetup(client: GatewayClient): Promise<TotpSetup> {
 }
 
 export function confirmTotpSetup(
-  client: GatewayClient,
+  client: MeshCentralClient,
   secret: string,
   token: string,
 ): Promise<void> {
@@ -146,11 +146,11 @@ export function confirmTotpSetup(
   );
 }
 
-export function clearTotp(client: GatewayClient): Promise<void> {
+export function clearTotp(client: MeshCentralClient): Promise<void> {
   return request(client, { action: 'otpauth-clear' }, 'otpauth-clear', requireSuccess);
 }
 
-export function setEmailTwoFactor(client: GatewayClient, enabled: boolean): Promise<void> {
+export function setEmailTwoFactor(client: MeshCentralClient, enabled: boolean): Promise<void> {
   return request(
     client,
     { action: 'otpemail', enabled },
@@ -164,7 +164,7 @@ export function setEmailTwoFactor(client: GatewayClient, enabled: boolean): Prom
   );
 }
 
-export function getBackupCodes(client: GatewayClient): Promise<BackupCode[]> {
+export function getBackupCodes(client: MeshCentralClient): Promise<BackupCode[]> {
   return request(
     client,
     { action: 'otpauth-getpasswords' },
@@ -173,7 +173,7 @@ export function getBackupCodes(client: GatewayClient): Promise<BackupCode[]> {
   );
 }
 
-export function generateBackupCodes(client: GatewayClient): Promise<BackupCode[]> {
+export function generateBackupCodes(client: MeshCentralClient): Promise<BackupCode[]> {
   return request(
     client,
     { action: 'otpauth-getpasswords', subaction: 1 },
@@ -182,7 +182,7 @@ export function generateBackupCodes(client: GatewayClient): Promise<BackupCode[]
   );
 }
 
-export function clearBackupCodes(client: GatewayClient): Promise<void> {
+export function clearBackupCodes(client: MeshCentralClient): Promise<void> {
   return request(
     client,
     { action: 'otpauth-getpasswords', subaction: 2 },
@@ -228,12 +228,12 @@ function arrayBufferToBase64(value: ArrayBuffer): string {
   return btoa(binary);
 }
 
-export function getSecurityKeys(client: GatewayClient): Promise<SecurityKey[]> {
+export function getSecurityKeys(client: MeshCentralClient): Promise<SecurityKey[]> {
   return request(client, { action: 'otp-hkey-get' }, 'otp-hkey-get', parseSecurityKeys);
 }
 
 export function requestWebAuthnRegistration(
-  client: GatewayClient,
+  client: MeshCentralClient,
   name: string,
 ): Promise<WebAuthnRegistrationChallenge> {
   return request(
@@ -298,7 +298,7 @@ export async function createWebAuthnCredential(
 }
 
 export function completeWebAuthnRegistration(
-  client: GatewayClient,
+  client: MeshCentralClient,
   response: WebAuthnRegistrationResponse,
 ): Promise<{ name: string; index: number }> {
   return request(
@@ -320,7 +320,7 @@ export function completeWebAuthnRegistration(
 }
 
 export function removeSecurityKey(
-  client: GatewayClient,
+  client: MeshCentralClient,
   index: number,
 ): Promise<SecurityKey[]> {
   client.send({ action: 'otp-hkey-remove', index });

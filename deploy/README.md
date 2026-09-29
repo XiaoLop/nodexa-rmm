@@ -2,8 +2,8 @@
 
 本目录统一管理本地基础设施和生产部署输入。项目使用同一套全局 YAML 配置契约，但开发和生产采用不同运行方式：
 
-- 开发：MongoDB 运行在 Docker 中，Web、Gateway、MeshCentral 和 Expo App 在宿主机运行源码，以获得热更新。
-- 生产：配置初始化器读取全局 YAML 和 Docker secrets，生成各服务配置；Nginx、Gateway、MeshCentral 和 MongoDB 全部运行在 Compose 中。
+- 开发：MongoDB 运行在 Docker 中，Web、MeshCentral 和 Expo App 在宿主机运行源码，以获得热更新；Gateway 仅在开发未来业务聚合 API 时按需启动。
+- 生产：配置初始化器读取全局 YAML 和 Docker secrets，生成各服务配置；Nginx、MeshCentral 和 MongoDB 构成当前主链路，Gateway 作为未来业务聚合层按需启用。
 
 ## 目录结构
 
@@ -49,11 +49,12 @@ pnpm config generate --config deploy/config/development.yaml --output deploy/gen
 1. 启动源码应用：
 
 ```text
-pnpm dev:gateway
 pnpm --filter @meshcentral/server dev -- --configfile ../../deploy/generated/development/meshcentral.json
 pnpm dev:web
 pnpm dev:app
 ```
+
+开发未来业务聚合 API 时再单独运行 `pnpm dev:gateway`。
 
 当前仓库尚未实现 `config` CLI。完成生成器前，Gateway 仍使用 `apps/gateway/.env`，MeshCentral 需要手工提供原生 `config.json`。`compose.infra.yaml` 已经可以单独启动 MongoDB。
 
@@ -61,7 +62,7 @@ pnpm dev:app
 
 生产环境不应在镜像构建阶段复制真实配置或 Secret。推荐流程：
 
-1. 构建并发布固定版本的配置初始化器、Web/Nginx、Gateway 和 MeshCentral 镜像。
+1. 构建并发布固定版本的配置初始化器、Web/Nginx 和 MeshCentral 镜像；需要部署未来业务聚合 API 时再发布 Gateway 镜像。
 2. 将 `production.example.yaml` 复制为不提交 Git 的 `production.yaml`。
 3. 通过 Docker secrets 或受控文件准备所有密钥。
 4. 设置镜像地址和 `APP_CONFIG_FILE`。
@@ -72,6 +73,12 @@ docker compose --env-file deploy/production.env -f deploy/compose.production.yam
 ```
 
 `compose.production.yaml` 是生产编排契约。由于当前仓库还没有 Dockerfile 和配置生成器镜像，在这些镜像产出前它不能直接完成部署。
+
+Gateway 位于可选的 `aggregation` profile，默认启动不会运行它。未来业务聚合 API 接入后，可显式启用：
+
+```text
+docker compose --profile aggregation --env-file deploy/production.env -f deploy/compose.production.yaml up -d
+```
 
 ## 请求逻辑流程
 
@@ -102,7 +109,7 @@ flowchart LR
   nginx -.->|"响应 / Cookie / WebSocket 数据"| browser
 ```
 
-图中的分流由 `config/production.example.yaml` 的 `proxy.routes` 定义。`login`、`control`、`relay`、`meshagents` 和 `agent` 均指向 `meshcentral`，Gateway 不再参与浏览器认证链路。
+图中的分流由 `config/production.example.yaml` 的 `proxy.routes` 定义。`login`、`control`、`relay`、`meshagents` 和 `agent` 均指向 `meshcentral`。Gateway 是未来业务聚合层，不参与当前浏览器认证、控制或 Relay 链路。
 
 ## JSON 登录插件
 
@@ -134,7 +141,7 @@ LDAP、SSPI、OIDC、SAML、WebAuthn、邮件和短信验证不属于当前 Web 
 
 - `project`、`public`：环境标识和公网地址。
 - `web`、`app`：公开运行时或构建期配置。
-- `gateway`：Gateway 监听、上游和超时。
+- `gateway`：未来业务聚合层的监听、上游和超时；不控制当前浏览器主链路。
 - `meshcentral`：生成 MeshCentral 原生 `config.json` 所需的项目级配置。
 - `proxy`：生成 Nginx 配置所需的路由、TLS 和超时。
 - `health`：Compose 健康检查默认值。
@@ -153,7 +160,7 @@ LDAP、SSPI、OIDC、SAML、WebAuthn、邮件和短信验证不属于当前 Web 
 
 ## 配置变更
 
-- Gateway 配置变更：重新生成并重启 Gateway。
+- Gateway 配置变更：仅在启用 `aggregation` profile 时重新生成并重启 Gateway。
 - MeshCentral 配置变更：重新生成并重启 MeshCentral。
 - Nginx 路由或 TLS 变更：重新生成后 reload 或重启 Nginx。
 - Web 运行时配置变更：重新生成后刷新浏览器。

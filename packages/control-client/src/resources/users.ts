@@ -1,8 +1,8 @@
 import {
-  GatewayConnectionClosedError,
-  GatewayRequestTimeoutError,
-  GatewayServerError,
-  GatewayValidationError,
+  MeshCentralConnectionClosedError,
+  MeshCentralRequestTimeoutError,
+  MeshCentralServerError,
+  MeshCentralValidationError,
 } from '../errors';
 import { isRecord } from '../protocol/normalizers';
 import {
@@ -12,9 +12,9 @@ import {
 } from '../protocol/userNormalizers';
 import type {
   ConnectionStateChange,
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
   ManagedUser,
   PreviousLogin,
   UserCreateOptions,
@@ -25,9 +25,9 @@ import type {
 interface ResourceClient {
   send(payload: unknown): void;
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
@@ -49,7 +49,7 @@ const USER_MUTATION_CONFIRMATION_TIMEOUT_MS = 5_000;
 
 function required(value: string, name: string): string {
   const normalized = value.trim();
-  if (!normalized) throw new GatewayValidationError(`${name} is required.`);
+  if (!normalized) throw new MeshCentralValidationError(`${name} is required.`);
   return normalized;
 }
 
@@ -60,7 +60,7 @@ function optional(value: string | undefined): string | undefined {
 function requiredEmail(value: string): string {
   const email = required(value, 'Email');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new GatewayValidationError('Email address is invalid.');
+    throw new MeshCentralValidationError('Email address is invalid.');
   }
   return email;
 }
@@ -136,7 +136,7 @@ export class UsersResource {
     const existing = (await this.list()).some(
       (user) => user.name.toLowerCase() === username.toLowerCase(),
     );
-    if (existing) throw new GatewayValidationError(`User ${username} already exists.`);
+    if (existing) throw new MeshCentralValidationError(`User ${username} already exists.`);
     return this.mutate({
       action: 'adduser',
       payload: {
@@ -168,7 +168,7 @@ export class UsersResource {
       phone: optional(updates.phone),
     };
     if (Object.values(payload).every((value) => value === undefined)) {
-      throw new GatewayValidationError('At least one user update is required.');
+      throw new MeshCentralValidationError('At least one user update is required.');
     }
     return this.mutate({
       action: 'edituser',
@@ -189,7 +189,7 @@ export class UsersResource {
   updateImage(userId: string, image: string): void {
     const userid = required(userId, 'User ID');
     if (!/^data:image\/(?:jpeg|png|gif|webp);base64,[a-z\d+/]+=*$/i.test(image)) {
-      throw new GatewayValidationError('User image must be a base64 image data URL.');
+      throw new MeshCentralValidationError('User image must be a base64 image data URL.');
     }
     this.client.send({ action: 'updateUserImage', userid, image });
   }
@@ -197,7 +197,7 @@ export class UsersResource {
   updateCurrentImage(userId: string, image: string): Promise<unknown> {
     const userid = required(userId, 'User ID');
     if (!/^data:image\/(?:jpeg|png|gif|webp);base64,[a-z\d+/]+=*$/i.test(image)) {
-      throw new GatewayValidationError('User image must be a base64 image data URL.');
+      throw new MeshCentralValidationError('User image must be a base64 image data URL.');
     }
     return this.mutate({
       action: 'updateUserImage',
@@ -235,7 +235,7 @@ export class UsersResource {
     const oldpass = required(oldPassword, 'Current password');
     const newpass = required(newPassword, 'New password');
     if (oldpass === newpass) {
-      throw new GatewayValidationError('New password must differ from the current password.');
+      throw new MeshCentralValidationError('New password must differ from the current password.');
     }
     return this.mutate({
       action: 'changepassword',
@@ -268,7 +268,7 @@ export class UsersResource {
   setSiteRights(userId: string, siteRights: number): Promise<unknown> {
     const id = required(userId, 'User ID');
     if (!Number.isInteger(siteRights) || siteRights < 0 || siteRights > 0xffffffff) {
-      throw new GatewayValidationError('Site rights must be an unsigned 32-bit integer.');
+      throw new MeshCentralValidationError('Site rights must be an unsigned 32-bit integer.');
     }
     return this.mutate({
       action: 'edituser',
@@ -284,7 +284,7 @@ export class UsersResource {
   setRemoveRights(userId: string, removeRights: number): Promise<unknown> {
     const id = required(userId, 'User ID');
     if (!Number.isInteger(removeRights) || removeRights < 0 || removeRights > 0xffffffff) {
-      throw new GatewayValidationError('Remove rights must be an unsigned 32-bit integer.');
+      throw new MeshCentralValidationError('Remove rights must be an unsigned 32-bit integer.');
     }
     const normalizedRemoveRights = removeRights >>> 0;
     return this.mutate({
@@ -346,7 +346,7 @@ export class UsersResource {
       const unsubscribeMessage = this.client.on('message', (message) => {
         const error = mutationError(message, options.action);
         if (error) {
-          finish(() => reject(new GatewayServerError(error, { action: options.action })));
+          finish(() => reject(new MeshCentralServerError(error, { action: options.action })));
           return;
         }
         const event = userEvent(message);
@@ -358,8 +358,8 @@ export class UsersResource {
           if (change.current === 'disconnected' || change.current === 'error') {
             finish(() =>
               reject(
-                new GatewayConnectionClosedError(
-                  'Gateway connection closed during user operation.',
+                new MeshCentralConnectionClosedError(
+                  'MeshCentral control connection closed during user operation.',
                   {
                     action: options.action,
                     retryable: true,
@@ -377,7 +377,7 @@ export class UsersResource {
             else
               finish(() =>
                 reject(
-                  new GatewayRequestTimeoutError(
+                  new MeshCentralRequestTimeoutError(
                     `User operation was not confirmed: ${options.action}`,
                     { action: options.action, retryable: true },
                   ),

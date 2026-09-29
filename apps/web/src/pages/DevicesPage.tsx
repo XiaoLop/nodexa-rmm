@@ -21,7 +21,7 @@ import {
   DeleteOutlined,
   EditOutlined,
 } from '@ant-design/icons';
-import { gatewaySelectors, useGatewayStore, type Device } from '@meshcentral/shared-state';
+import { meshCentralControlSelectors, useMeshCentralControlStore, type Device } from '@meshcentral/shared-state';
 import {
   Button,
   Dropdown,
@@ -48,7 +48,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGateway } from '../features/gateway/GatewayProvider';
+import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
 import {
   getDeviceCapabilities,
   useApplicationUiCapabilities,
@@ -61,7 +61,7 @@ import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsM
 import { CommandExecutionModal } from '../components/CommandExecutionModal';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
-import { GATEWAY_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
+import { MESH_CENTRAL_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
 import '../assets/styles/commands.css';
 import '../assets/styles/device-details.css';
 import '../assets/styles/devices.css';
@@ -125,12 +125,12 @@ export function DevicesPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const { token } = theme.useToken();
-  const gateway = useGateway();
-  const devices = useGatewayStore(gateway.store, gatewaySelectors.devices);
-  const groups = useGatewayStore(gateway.store, gatewaySelectors.groups);
-  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
-  const serverInfo = useGatewayStore(gateway.store, gatewaySelectors.serverInfo);
-  const status = useGatewayStore(gateway.store, gatewaySelectors.status);
+  const gateway = useMeshCentralControl();
+  const devices = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.devices);
+  const groups = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.groups);
+  const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
+  const serverInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.serverInfo);
+  const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
   const deferredDevices = useDeferredValue(devices, []);
   const { client, refreshSnapshot } = gateway;
   const applicationCapabilities = useApplicationUiCapabilities();
@@ -945,8 +945,8 @@ export function DevicesPage() {
         <BatchFileUploadModal
           open
           devices={batchDevices}
-          gatewayClient={client}
-          baseUrl={GATEWAY_RELAY_URL}
+          meshCentralClient={client}
+          baseUrl={MESH_CENTRAL_RELAY_URL}
           connected={status === 'connected'}
           manager={batchUploadManager}
           onClose={() => setBatchUploadOpen(false)}

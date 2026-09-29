@@ -26,7 +26,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import {
   getDeviceGroupUiCapabilities,
@@ -65,7 +65,7 @@ export function DeviceGroupsPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const { token } = theme.useToken();
-  const { groups, devices, client, status, userInfo, serverInfo, refreshSnapshot } = useGatewayData();
+  const { groups, devices, client, status, userInfo, serverInfo, refreshSnapshot } = useMeshCentralControlData();
   const applicationCapabilities = useApplicationUiCapabilities();
   const navigate = useNavigate();
   const [messageApi, messageContextHolder] = message.useMessage();

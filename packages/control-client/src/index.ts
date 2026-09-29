@@ -1,4 +1,4 @@
-export { GatewayClient } from './client/GatewayClient';
+export { MeshCentralClient } from './client/MeshCentralClient';
 export * from './errors';
 export * from './types';
 export * from './permissions/assignableRights';

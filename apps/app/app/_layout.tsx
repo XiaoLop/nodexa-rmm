@@ -1,7 +1,7 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { GatewayProvider } from '../src/features/gateway/GatewayProvider';
+import { MeshCentralControlProvider } from '../src/features/gateway/MeshCentralControlProvider';
 import { colors } from '../src/theme';
 
 const appTheme = {
@@ -18,13 +18,13 @@ const appTheme = {
 
 export default function RootLayout() {
   return (
-    <GatewayProvider>
+    <MeshCentralControlProvider>
       <ThemeProvider value={appTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>
-    </GatewayProvider>
+    </MeshCentralControlProvider>
   );
 }

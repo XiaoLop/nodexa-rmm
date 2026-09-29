@@ -1,7 +1,7 @@
 import { useStore } from 'zustand';
-import type { GatewayStore } from './store';
-import type { GatewayState } from './types';
+import type { MeshCentralControlStore } from './store';
+import type { MeshCentralControlState } from './types';
 
-export function useGatewayStore<T>(store: GatewayStore, selector: (state: GatewayState) => T): T {
+export function useMeshCentralControlStore<T>(store: MeshCentralControlStore, selector: (state: MeshCentralControlState) => T): T {
   return useStore(store, selector);
 }

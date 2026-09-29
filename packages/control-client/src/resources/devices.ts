@@ -1,8 +1,8 @@
 import {
-  GatewayConnectionClosedError,
-  GatewayRequestTimeoutError,
-  GatewayServerError,
-  GatewayValidationError,
+  MeshCentralConnectionClosedError,
+  MeshCentralRequestTimeoutError,
+  MeshCentralServerError,
+  MeshCentralValidationError,
 } from '../errors';
 import {
   isRecord,
@@ -27,23 +27,23 @@ import type {
   DeviceDetails,
   DeviceUpdate,
   ConnectionStateChange,
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
   PowerAction,
 } from '../types';
 
 interface ResourceClient {
   send(payload: unknown): void;
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 const DEVICE_USER_GROUP_CONFIRMATION_TIMEOUT_MS = 5_000;
 const required = (value: string, name: string) => {
-  if (!value.trim()) throw new GatewayValidationError(`${name} is required.`);
+  if (!value.trim()) throw new MeshCentralValidationError(`${name} is required.`);
 };
 
 async function runWithConcurrency<T>(items: T[], task: (item: T) => Promise<void>, limit = 4) {
@@ -60,12 +60,12 @@ async function runWithConcurrency<T>(items: T[], task: (item: T) => Promise<void
 
 function normalizeBatchTargets(targets: Array<string | BatchDeviceTarget>): BatchDeviceTarget[] {
   if (!targets.length)
-    throw new GatewayValidationError('At least one valid device ID is required.');
+    throw new MeshCentralValidationError('At least one valid device ID is required.');
   const seen = new Set<string>();
   const normalized: BatchDeviceTarget[] = [];
   for (const target of targets) {
     const id = typeof target === 'string' ? target : target.id;
-    if (!id?.trim()) throw new GatewayValidationError('At least one valid device ID is required.');
+    if (!id?.trim()) throw new MeshCentralValidationError('At least one valid device ID is required.');
     if (!seen.has(id)) {
       seen.add(id);
       normalized.push({ id, name: typeof target === 'string' ? undefined : target.name });
@@ -169,7 +169,7 @@ export class DevicesResource {
   async update(deviceId: string, updates: DeviceUpdate): Promise<unknown> {
     required(deviceId, 'Device ID');
     if (!updates.name && !updates.desc && !updates.groupId && !updates.tags)
-      throw new GatewayValidationError('At least one device update is required.');
+      throw new MeshCentralValidationError('At least one device update is required.');
     return this.client.request({
       action: 'changedevice',
       nodeid: deviceId,
@@ -189,10 +189,10 @@ export class DevicesResource {
     required(deviceId, 'Device ID');
     required(username, 'Username');
     if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
-      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+      throw new MeshCentralValidationError('Rights must be an unsigned 32-bit integer.');
     }
     if (!hasOnlyAssignableRights(rights, DEVICE_USER_ASSIGNABLE_RIGHTS_MASK)) {
-      throw new GatewayValidationError(
+      throw new MeshCentralValidationError(
         'Device user rights contain permissions that are not valid for a single device.',
       );
     }
@@ -226,13 +226,13 @@ export class DevicesResource {
     required(deviceName, 'Device name');
     required(userGroupId, 'User group ID');
     if (!userGroupId.startsWith('ugrp//')) {
-      throw new GatewayValidationError('User group ID must start with ugrp//.');
+      throw new MeshCentralValidationError('User group ID must start with ugrp//.');
     }
     if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
-      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+      throw new MeshCentralValidationError('Rights must be an unsigned 32-bit integer.');
     }
     if (!hasOnlyAssignableRights(rights, DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK)) {
-      throw new GatewayValidationError(
+      throw new MeshCentralValidationError(
         'Device user group rights contain permissions that are not valid for a single device.',
       );
     }
@@ -250,7 +250,7 @@ export class DevicesResource {
     required(deviceId, 'Device ID');
     required(userGroupId, 'User group ID');
     if (!userGroupId.startsWith('ugrp//')) {
-      throw new GatewayValidationError('User group ID must start with ugrp//.');
+      throw new MeshCentralValidationError('User group ID must start with ugrp//.');
     }
     return this.mutateUserGroupRights(
       {
@@ -285,14 +285,14 @@ export class DevicesResource {
           const error = message.error ?? message.err;
           const result = message.result;
           if (typeof error === 'string' && error) {
-            finish(() => reject(new GatewayServerError(error, { action })));
+            finish(() => reject(new MeshCentralServerError(error, { action })));
             return;
           }
           if (
             typeof result === 'string' &&
             !['ok', 'success'].includes(result.toLowerCase())
           ) {
-            finish(() => reject(new GatewayServerError(result, { action })));
+            finish(() => reject(new MeshCentralServerError(result, { action })));
             return;
           }
         }
@@ -311,7 +311,7 @@ export class DevicesResource {
           if (change.current === 'disconnected' || change.current === 'error') {
             finish(() =>
               reject(
-                new GatewayConnectionClosedError(
+                new MeshCentralConnectionClosedError(
                   'Connection closed during device user group permission update.',
                   { action, retryable: true },
                 ),
@@ -324,7 +324,7 @@ export class DevicesResource {
         () =>
           finish(() =>
             reject(
-              new GatewayRequestTimeoutError(`Timed out waiting for ${action} confirmation.`, {
+              new MeshCentralRequestTimeoutError(`Timed out waiting for ${action} confirmation.`, {
                 action,
                 retryable: true,
               }),
@@ -384,7 +384,7 @@ export class DevicesResource {
     action: PowerAction,
   ): Promise<BatchOperationResult> {
     if (!['wake', 'reset', 'poweroff', 'sleep'].includes(action))
-      throw new GatewayValidationError('A valid power action is required.');
+      throw new MeshCentralValidationError('A valid power action is required.');
     const targets = normalizeBatchTargets(deviceIds);
     if (action === 'wake') {
       const startedAt = Date.now();
@@ -415,7 +415,7 @@ export class DevicesResource {
   async inviteByEmail(options: AgentEmailInviteOptions): Promise<AgentInviteResult> {
     required(options.groupId, 'Group ID');
     if (!/^\S+@\S+\.\S+$/.test(options.email))
-      throw new GatewayValidationError('A valid email address is required.');
+      throw new MeshCentralValidationError('A valid email address is required.');
     const raw = await this.client.request({
       action: 'inviteAgent',
       meshid: options.groupId,
@@ -431,7 +431,7 @@ export class DevicesResource {
     required(options.groupId, 'Group ID');
     const expire = options.expireHours ?? 24;
     if (!Number.isInteger(expire) || expire < 0)
-      throw new GatewayValidationError('Expiration must be a non-negative number of hours.');
+      throw new MeshCentralValidationError('Expiration must be a non-negative number of hours.');
     const raw = await this.client.request<Record<string, unknown>>({
       action: 'createInviteLink',
       meshid: options.groupId,

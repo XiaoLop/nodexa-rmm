@@ -1,4 +1,4 @@
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -99,7 +99,7 @@ function parseCapabilities(value: unknown): TwoFactorCapabilities | undefined {
 }
 
 export function getTwoFactorCapabilities(
-  client: GatewayClient,
+  client: MeshCentralClient,
   options: { timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<TwoFactorCapabilities> {
   const requestId = `profile-2fa-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

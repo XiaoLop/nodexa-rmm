@@ -1,4 +1,4 @@
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import { batchUploadBandwidthConfig, calculateBatchUploadChunkSize } from './bandwidth';
 import type {
   BatchUploadConfig,
@@ -93,7 +93,7 @@ export class BatchUploadManager {
   private readonly listeners = new Set<Listener>();
   private readonly workers: WorkerSlot[] = [];
   private queue: string[] = [];
-  private gatewayClient?: GatewayClient;
+  private meshCentralClient?: MeshCentralClient;
   private baseUrl?: string;
   private disposed = false;
   private cancellingAll = false;
@@ -133,16 +133,16 @@ export class BatchUploadManager {
   reset(): void {
     if (this.snapshot.status === 'running' || this.snapshot.status === 'cancelling') return;
     this.queue = [];
-    this.gatewayClient = undefined;
+    this.meshCentralClient = undefined;
     this.baseUrl = undefined;
     this.cancellingAll = false;
     this.snapshot = { status: 'configuring', tasks: [] };
     this.emit();
   }
 
-  start(config: BatchUploadConfig, gatewayClient: GatewayClient, baseUrl: string): void {
+  start(config: BatchUploadConfig, meshCentralClient: MeshCentralClient, baseUrl: string): void {
     if (this.disposed || !this.snapshot.id || this.snapshot.status !== 'configuring') return;
-    this.gatewayClient = gatewayClient;
+    this.meshCentralClient = meshCentralClient;
     this.baseUrl = baseUrl;
     this.cancellingAll = false;
     const now = Date.now();
@@ -220,7 +220,7 @@ export class BatchUploadManager {
 
   retryFailed(): void {
     const config = this.snapshot.config;
-    if (!config || !this.gatewayClient || !this.baseUrl) return;
+    if (!config || !this.meshCentralClient || !this.baseUrl) return;
     const failed = this.snapshot.tasks.filter((task) => task.status === 'failed');
     if (!failed.length) return;
     const failedIds = new Set(failed.map((task) => task.id));
@@ -378,7 +378,7 @@ export class BatchUploadManager {
     slot: WorkerSlot,
     message: WorkerControlRequest,
   ): Promise<void> {
-    if (!this.gatewayClient || !slot.taskId) {
+    if (!this.meshCentralClient || !slot.taskId) {
       slot.worker.postMessage({
         type: 'rpc-error',
         requestId: message.requestId,
@@ -387,7 +387,7 @@ export class BatchUploadManager {
       return;
     }
     try {
-      const result = await this.gatewayClient.request(message.payload, message.timeoutMs);
+      const result = await this.meshCentralClient.request(message.payload, message.timeoutMs);
       if (slot.taskId)
         slot.worker.postMessage({ type: 'rpc-result', requestId: message.requestId, result });
     } catch (error) {
@@ -403,8 +403,8 @@ export class BatchUploadManager {
 
   private handleControlSend(slot: WorkerSlot, message: WorkerControlSend): void {
     try {
-      if (!this.gatewayClient || !slot.taskId) throw new Error('gateway-unavailable');
-      this.gatewayClient.send(message.payload);
+      if (!this.meshCentralClient || !slot.taskId) throw new Error('gateway-unavailable');
+      this.meshCentralClient.send(message.payload);
       slot.worker.postMessage({
         type: 'rpc-result',
         requestId: message.requestId,

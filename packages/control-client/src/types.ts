@@ -74,7 +74,7 @@ export interface UserGroupUpdate {
   description?: string;
 }
 
-export type GatewayEventType =
+export type MeshCentralEventType =
   | 'deviceOnline'
   | 'deviceOffline'
   | 'deviceChanged'
@@ -87,9 +87,9 @@ export type GatewayEventType =
   | 'userSessionCount'
   | 'unknown';
 
-export interface GatewayEvent {
+export interface MeshCentralEvent {
   id: string;
-  type: GatewayEventType;
+  type: MeshCentralEventType;
   action?: string;
   deviceId?: string;
   deviceName?: string;
@@ -264,7 +264,7 @@ export interface PreviousLogin {
   platform?: string;
 }
 
-export interface GatewaySnapshot {
+export interface MeshCentralSnapshot {
   devices: Device[];
   groups: DeviceGroup[];
 }
@@ -294,26 +294,26 @@ export interface ConnectionStateChange {
   error?: Error;
 }
 
-export interface GatewayDiagnostic {
+export interface MeshCentralDiagnostic {
   type: 'invalid-message' | 'unmatched-response' | 'listener-error' | 'unknown-message';
   message: string;
   payload?: unknown;
   error?: Error;
 }
 
-export interface GatewayClientEvents {
+export interface MeshCentralClientEvents {
   connection: ConnectionStateChange;
-  event: GatewayEvent;
+  event: MeshCentralEvent;
   userInfo: UserInfo;
   serverInfo: ServerInfo;
   serverStats: ServerStats;
   message: unknown;
   error: Error;
-  diagnostic: GatewayDiagnostic;
+  diagnostic: MeshCentralDiagnostic;
 }
 
-export type GatewayListener<T> = (value: T) => void;
-export type GatewayEventChannel = keyof GatewayClientEvents;
+export type MeshCentralListener<T> = (value: T) => void;
+export type MeshCentralEventChannel = keyof MeshCentralClientEvents;
 export type PowerAction = 'wake' | 'reset' | 'poweroff' | 'sleep';
 
 export interface DeviceUpdate {
@@ -457,7 +457,7 @@ export interface EventListOptions {
   filter?: HistoricalEventFilter;
 }
 
-export interface GatewayClientOptions {
+export interface MeshCentralClientOptions {
   url: string;
   webSocketFactory?: WebSocketFactory;
   getAccessToken?: () => string | undefined | Promise<string | undefined>;
@@ -465,8 +465,8 @@ export interface GatewayClientOptions {
   connectionTimeoutMs?: number;
   reconnectDelaysMs?: number[];
   requestTimeoutMs?: number;
-  onConnectionChange?: GatewayListener<ConnectionStateChange>;
-  onEvent?: GatewayListener<GatewayEvent>;
-  onError?: GatewayListener<Error>;
-  onDiagnostic?: GatewayListener<GatewayDiagnostic>;
+  onConnectionChange?: MeshCentralListener<ConnectionStateChange>;
+  onEvent?: MeshCentralListener<MeshCentralEvent>;
+  onError?: MeshCentralListener<Error>;
+  onDiagnostic?: MeshCentralListener<MeshCentralDiagnostic>;
 }

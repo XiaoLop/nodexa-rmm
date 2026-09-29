@@ -1,4 +1,4 @@
-import type { Device, DeviceGroup, GatewayEvent } from './types';
+import type { Device, DeviceGroup, MeshCentralEvent } from './types';
 
 /**
  * 判断字符串是否看起来像 Node/Mesh/User 的 ID
@@ -16,7 +16,7 @@ export function isIdString(str?: string): boolean {
  * 若解析出的名称为 ID，则返回 undefined（绝不泄漏 ID）。
  */
 export function getEventTargetName(
-  event: GatewayEvent,
+  event: MeshCentralEvent,
   devices?: Device[] | Record<string, Device>,
 ): string | undefined {
   if (event.deviceName && !isIdString(event.deviceName)) {
@@ -44,7 +44,7 @@ export function getEventTargetName(
  * 4. 替换消息中的 user//... 为用户名
  */
 export function formatEventMessage(
-  event: GatewayEvent,
+  event: MeshCentralEvent,
   devices?: Device[] | Record<string, Device>,
   groups?: DeviceGroup[] | Record<string, DeviceGroup>,
 ): string {

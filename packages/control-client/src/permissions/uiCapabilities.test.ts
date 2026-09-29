@@ -8,7 +8,7 @@ import {
 } from './uiCapabilities';
 
 const onlineRuntime = {
-  gatewayConnected: true,
+  controlConnected: true,
   agentOnline: true,
   amtOnline: false,
   agentCapabilities: 1 | 2 | 4 | 8,

@@ -3,7 +3,7 @@ import {
 } from '@ant-design/icons';
 import type {
   BatchDeviceResult,
-  GatewayClient,
+  MeshCentralClient,
   ServerInfo,
   UserInfo,
 } from '@meshcentral/control-client';
@@ -20,7 +20,7 @@ interface BatchDeviceOperationsModalProps {
   open: boolean;
   devices: Device[];
   groups: DeviceGroup[];
-  client?: GatewayClient;
+  client?: MeshCentralClient;
   connected: boolean;
   userInfo?: UserInfo;
   serverInfo?: ServerInfo;

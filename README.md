@@ -2,12 +2,12 @@
 
 本项目以 [MeshCentral](https://github.com/Ylianst/MeshCentral) 为基础进行二次开发，目标是在保留其远程设备管理能力的基础上，重新设计客户端界面，并逐步完善适合实际业务场景的管理与远程控制功能。
 
-目前项目仍处于早期开发阶段，仅实现了基于 MeshCentral 网关的 Web 管理页面重设计，现有页面和功能尚未完善。React Native 移动端、共享状态包及相关 SDK 目前主要作为后续开发的工程骨架，不代表已经具备完整可用的业务能力。
+目前项目仍处于早期开发阶段，已基于 MeshCentral 原生控制通道实现 Web 管理页面重设计，现有页面和功能尚未完善。React Native 移动端、共享状态包及相关 SDK 目前主要作为后续开发的工程骨架，不代表已经具备完整可用的业务能力。
 
 ## 当前进度
 
 - 已搭建 Web、React Native 和共享包的 Monorepo 工程结构
-- 已接入 MeshCentral 网关，并开始重新设计 Web 管理页面
+- 已接入 MeshCentral 原生认证、控制和 Relay 通道，并开始重新设计 Web 管理页面
 - Web 页面及业务功能仍在持续完善
 - 移动端、远程会话及其他扩展能力尚处于规划或基础建设阶段
 
@@ -48,14 +48,14 @@ pnpm test
 pnpm format
 ```
 
-## 配置业务网关
+## 配置 MeshCentral 连接
 
 复制相应环境变量示例：
 
 - Web：复制 `apps/web/.env.example` 为 `apps/web/.env.local`
 - APP：复制 `apps/app/.env.example` 为 `apps/app/.env.local`
 
-Web 使用同源反向代理接口 `/api/login` 登录。该接口接收 `application/x-www-form-urlencoded` 格式的 `action=login`、`username` 和 `password`，并通过 `Set-Cookie` 建立会话；Web 随后通过 `VITE_GATEWAY_WS_URL` 或同源 `/api/control.ashx` 建立控制连接，由浏览器在 WebSocket 握手中自动携带 Cookie。APP 使用 `EXPO_PUBLIC_GATEWAY_WS_URL`。Android 模拟器访问宿主机时通常使用 `10.0.2.2`，真机需要使用开发机的局域网地址。
+Web 使用同源 `/api/auth/*` 接口登录，由 MeshCentral 内的 `jsonauth` 插件建立原生 Session Cookie；随后通过同源 `/api/control.ashx` 连接 MeshCentral 控制 WebSocket，浏览器会在握手中自动携带 Cookie。现有 `VITE_GATEWAY_WS_URL` 和 `EXPO_PUBLIC_GATEWAY_WS_URL` 名称仅作为历史兼容配置。Android 模拟器访问宿主机时通常使用 `10.0.2.2`，真机需要使用开发机的局域网地址。
 
 Cookie 会话应由服务端设置 `HttpOnly`、`Secure` 和适当的 `SameSite` 属性。浏览器端不会把用户名、密码或认证 Cookie 写入 Web Storage，也不会把认证信息拼接到 WebSocket URL。
 
@@ -67,9 +67,9 @@ Cookie 会话应由服务端设置 `HttpOnly`、`Secure` 和适当的 `SameSite`
 
 ## 安全边界
 
-客户端连接的是安全业务网关，而不是携带管理账号直接连接 MeshCentral。不要在 Vite 或 Expo 公共环境变量中放置 MeshCentral 用户名、密码、登录密钥或长期管理令牌。
+客户端通过同源 Nginx 入口连接 MeshCentral 的 `jsonauth`、控制和 Relay 路径，依赖原生 HttpOnly Session Cookie，不携带管理账号或长期管理凭据。不要在 Vite 或 Expo 公共环境变量中放置 MeshCentral 用户名、密码、登录密钥或长期管理令牌。
 
-[docs/](docs/) 中的 MeshCentral 文档用于实现未来的服务端代理或 SDK，不表示客户端应直接使用这些管理接口。
+Nest Gateway 保留为未来业务聚合层，当前不参与浏览器认证、控制或 Relay 主链路。[docs/](docs/) 中的 MeshCentral 文档用于 SDK、协议验证和未来服务端聚合能力，不表示客户端应直接使用管理接口或长期令牌。
 
 ## Expo Monorepo
 

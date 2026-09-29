@@ -9,7 +9,7 @@ import {
   hasMeshRight,
   resolveEffectiveDeviceRights,
   type Device,
-  type GatewayEvent,
+  type MeshCentralEvent,
 } from '@meshcentral/control-client';
 import { Alert, Button, Empty, message } from 'antd';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -33,7 +33,7 @@ import {
 import type { RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
 import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel.ts';
 import type { WorkspaceTab } from '../features/device-workspace/types';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { getDeviceCapabilities } from '../features/permissions/useUiCapabilities';
 import '../assets/styles/user-details.css';
 import '../assets/styles/device-workspace.css';
@@ -72,7 +72,7 @@ function workspaceTab(value: string | null): WorkspaceTab {
 
 export function DeviceWorkspacePage() {
   const { t } = useTranslation();
-  const data = useGatewayData();
+  const data = useMeshCentralControlData();
   const navigate = useNavigate();
   const { deviceId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -84,7 +84,7 @@ export function DeviceWorkspacePage() {
   const [deviceDetails, setDeviceDetails] =
     useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
   const [fetchedDevice, setFetchedDevice] = useState<Device>();
-  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+  const [historyEvents, setHistoryEvents] = useState<MeshCentralEvent[]>([]);
   const [loadedDeviceId, setLoadedDeviceId] = useState<string>();
   const [failedDeviceId, setFailedDeviceId] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
@@ -383,7 +383,7 @@ export function DeviceWorkspacePage() {
             model={model}
             events={data.events}
             historyEvents={historyEvents}
-            gatewayConnected={data.status === 'connected'}
+            controlConnected={data.status === 'connected'}
             onNavigate={setActiveTab}
           />
         ) : activeTab === 'desktop' ? (
@@ -392,8 +392,8 @@ export function DeviceWorkspacePage() {
               ref={desktopPanelRef}
               model={model}
               device={model.device}
-              gatewayClient={data.client}
-              gatewayConnected={data.status === 'connected'}
+              meshCentralClient={data.client}
+              controlConnected={data.status === 'connected'}
               desktopAccess={model.desktopAccess}
               keyboardEnabled={settings.keyboard}
               mouseEnabled={settings.mouse}
@@ -419,37 +419,37 @@ export function DeviceWorkspacePage() {
         ) : activeTab === 'terminal' ? (
           <TerminalPanel
             device={model.device}
-            gatewayClient={data.client}
-            gatewayConnected={data.status === 'connected'}
+            meshCentralClient={data.client}
+            controlConnected={data.status === 'connected'}
             terminalAllowed={model.terminalAllowed}
           />
         ) : activeTab === 'files' ? (
           <DeviceFilesPanel
             device={model.device}
-            gatewayClient={data.client}
-            gatewayConnected={data.status === 'connected'}
+            meshCentralClient={data.client}
+            controlConnected={data.status === 'connected'}
             filesAllowed={model.filesAllowed}
           />
         ) : activeTab === 'processes' ? (
           <DeviceProcessesPanel
             device={model.device}
-            gatewayClient={data.client}
-            gatewayConnected={data.status === 'connected'}
+            meshCentralClient={data.client}
+            controlConnected={data.status === 'connected'}
             deviceOnline={model.device.online}
           />
         ) : activeTab === 'services' ? (
           <DeviceServicesPanel
             device={model.device}
-            gatewayClient={data.client}
-            gatewayConnected={data.status === 'connected'}
+            meshCentralClient={data.client}
+            controlConnected={data.status === 'connected'}
             deviceOnline={model.device.online}
           />
         ) : activeTab === 'logs' ? (
           <DeviceLogsPanel
             device={model.device}
             events={data.events}
-            gatewayClient={data.client}
-            gatewayConnected={data.status === 'connected'}
+            meshCentralClient={data.client}
+            controlConnected={data.status === 'connected'}
           />
         ) : (
           <section className="console-card workspace-tab-empty">

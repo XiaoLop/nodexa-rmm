@@ -1,9 +1,9 @@
-import { GatewayValidationError } from '../errors';
+import { MeshCentralValidationError } from '../errors';
 import { isRecord, normalizeServerTimelineStats } from '../protocol/normalizers';
 import type {
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
   ServerStats,
   ServerTimelineStats,
 } from '../types';
@@ -11,9 +11,9 @@ import type {
 interface ResourceClient {
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
   send(payload: unknown): void;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
@@ -22,7 +22,7 @@ export class ServerResource {
 
   async getTimelineStats(hours: number): Promise<ServerTimelineStats[]> {
     if (!Number.isInteger(hours) || hours < 0 || hours > 720) {
-      throw new GatewayValidationError('Server timeline stats hours must be an integer from 0 to 720.');
+      throw new MeshCentralValidationError('Server timeline stats hours must be an integer from 0 to 720.');
     }
     const response = await this.client.request<unknown>({
       action: 'servertimelinestats',
@@ -34,9 +34,9 @@ export class ServerResource {
       .filter((event): event is ServerTimelineStats => Boolean(event));
   }
 
-  subscribeStats(listener: GatewayListener<ServerStats>, intervalMs = 10_000): () => void {
+  subscribeStats(listener: MeshCentralListener<ServerStats>, intervalMs = 10_000): () => void {
     if (!Number.isInteger(intervalMs) || intervalMs < 1) {
-      throw new GatewayValidationError('Server stats interval must be a positive integer.');
+      throw new MeshCentralValidationError('Server stats interval must be a positive integer.');
     }
     const unsubscribe = this.client.on('serverStats', listener);
     try {

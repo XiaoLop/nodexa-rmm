@@ -1,5 +1,5 @@
 import { CameraOutlined, CompressOutlined, CopyOutlined, DisconnectOutlined, FullscreenExitOutlined, FullscreenOutlined, SnippetsOutlined } from '@ant-design/icons';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import {
   DesktopSession,
   RELAY_PROTOCOLS,
@@ -12,7 +12,7 @@ import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Select, Space, Tag, message } from 'antd';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GATEWAY_RELAY_URL } from '../../config/gateway';
+import { MESH_CENTRAL_RELAY_URL } from '../../config/gateway';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
 import { DesktopCanvas, type DesktopCanvasHandle } from './desktop/DesktopCanvas';
 import { getRemoteClipboard, RemoteClipboardError, setRemoteClipboard } from './desktop/desktopClipboard';
@@ -53,8 +53,8 @@ type DesktopAccess = 'denied' | 'view-only' | 'limited-input' | 'control';
 interface RemoteDesktopPanelProps {
   model: DeviceWorkspaceModel;
   device: Device;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   desktopAccess?: DesktopAccess;
   keyboardEnabled: boolean;
   mouseEnabled: boolean;
@@ -83,8 +83,8 @@ function clipboardErrorMessage(error: unknown, t: (key: string) => string): stri
 export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDesktopPanelProps>(function RemoteDesktopPanel({
   model,
   device,
-  gatewayClient,
-  gatewayConnected,
+  meshCentralClient,
+  controlConnected,
   desktopAccess,
   keyboardEnabled,
   mouseEnabled,
@@ -131,13 +131,13 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     setStatus('idle');
     setScreen(undefined);
     setError(undefined);
-  }, [device.id, gatewayClient]);
+  }, [device.id, meshCentralClient]);
   useEffect(() => {
-    if (!gatewayConnected && (sessionRef.current || abortRef.current)) {
-      disconnect('Gateway connection was lost.');
+    if (!controlConnected && (sessionRef.current || abortRef.current)) {
+      disconnect('MeshCentral control connection was lost.');
       setError(t('deviceWorkspace.remoteDesktop.gatewayDisconnected'));
     }
-  }, [gatewayConnected]);
+  }, [controlConnected]);
   useEffect(() => {
     const handleFullscreenChange = () => setFullscreen(document.fullscreenElement === shellRef.current);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -160,7 +160,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
 
   const connect = async () => {
     if (CONNECTING_STATES.has(status) || status === 'connected') return;
-    if (!device.online || !gatewayConnected || !gatewayClient || desktopAccess === 'denied') {
+    if (!device.online || !controlConnected || !meshCentralClient || desktopAccess === 'denied') {
       setError(
         desktopAccess === 'denied'
           ? t('deviceWorkspace.remoteDesktop.permissionDenied')
@@ -180,7 +180,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     canvasRef.current?.clear();
 
     try {
-      const relay = await new RelayClient({ baseUrl: GATEWAY_RELAY_URL, control: gatewayClient }).createSession({
+      const relay = await new RelayClient({ baseUrl: MESH_CENTRAL_RELAY_URL, control: meshCentralClient }).createSession({
         deviceId: device.id,
         protocol: RELAY_PROTOCOLS.desktop,
         usage: 2,
@@ -248,7 +248,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   };
 
   const pasteLocalClipboardToRemote = async () => {
-    if (!gatewayClient || !desktopSession) return;
+    if (!meshCentralClient || !desktopSession) return;
     try {
       const text = await navigator.clipboard.readText();
       if (!text) {
@@ -265,11 +265,11 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   };
 
   const submitClipboardToRemote = async () => {
-    if (!gatewayClient || !desktopSession || !pasteText) return;
+    if (!meshCentralClient || !desktopSession || !pasteText) return;
     setPasteSubmitting(true);
     try {
       if (sessionRef.current !== desktopSession) throw new Error(t('deviceWorkspace.remoteDesktop.sessionClosed'));
-      setRemoteClipboard(gatewayClient, device.id, pasteText);
+      setRemoteClipboard(meshCentralClient, device.id, pasteText);
       await new Promise((resolve) => window.setTimeout(resolve, 150));
       if (sessionRef.current !== desktopSession) throw new Error(t('deviceWorkspace.remoteDesktop.sessionClosed'));
       desktopSession.sendKey(17, 'down');
@@ -287,7 +287,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   };
 
   const copyRemoteClipboardToLocal = async () => {
-    if (!gatewayClient || !desktopSession) return;
+    if (!meshCentralClient || !desktopSession) return;
     try {
       if (desktopAccess !== 'denied' && desktopAccess !== 'view-only') {
         desktopSession.sendKey(17, 'down');
@@ -296,7 +296,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         desktopSession.sendKey(17, 'up');
         await new Promise((resolve) => window.setTimeout(resolve, 200));
       }
-      const text = await getRemoteClipboard(gatewayClient, device.id);
+      const text = await getRemoteClipboard(meshCentralClient, device.id);
       await navigator.clipboard.writeText(text);
       void messageApi.success(t('deviceWorkspace.remoteDesktop.clipboardCopied', { count: text.length }));
     } catch (clipboardError) {
@@ -304,7 +304,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     }
   };
 
-  const unavailable = !device.online || !gatewayConnected || desktopAccess === 'denied';
+  const unavailable = !device.online || !controlConnected || desktopAccess === 'denied';
   const canDisconnect = Boolean(sessionRef.current) || CONNECTING_STATES.has(status);
 
   return (
@@ -324,10 +324,10 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
           <Button size="small" icon={<CompressOutlined />} onClick={() => desktopSession?.sendCad()} disabled={!desktopSession || desktopAccess === 'denied' || desktopAccess === 'view-only'}>
             Ctrl+Alt+Del
           </Button>
-          <Button size="small" icon={<SnippetsOutlined />} onClick={() => void pasteLocalClipboardToRemote()} disabled={!desktopSession || !gatewayClient || desktopAccess === 'denied' || desktopAccess === 'view-only'}>
+          <Button size="small" icon={<SnippetsOutlined />} onClick={() => void pasteLocalClipboardToRemote()} disabled={!desktopSession || !meshCentralClient || desktopAccess === 'denied' || desktopAccess === 'view-only'}>
             {t('deviceWorkspace.remoteDesktop.pasteRemote')}
           </Button>
-          <Button size="small" icon={<CopyOutlined />} onClick={() => void copyRemoteClipboardToLocal()} disabled={!desktopSession || !gatewayClient}>
+          <Button size="small" icon={<CopyOutlined />} onClick={() => void copyRemoteClipboardToLocal()} disabled={!desktopSession || !meshCentralClient}>
             {t('deviceWorkspace.remoteDesktop.copyLocal')}
           </Button>
           <Space size={6}>

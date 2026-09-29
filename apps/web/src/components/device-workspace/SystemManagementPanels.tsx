@@ -4,7 +4,7 @@ import {
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Input, Select, Space, Statistic, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -28,15 +28,15 @@ function errorMessage(error: unknown, code: SystemListError['code']): SystemList
 
 function useDeviceSystemList<T>({
   deviceId,
-  gatewayClient,
-  gatewayConnected,
+  meshCentralClient,
+  controlConnected,
   deviceOnline,
   type,
   parse,
 }: {
   deviceId: string;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   deviceOnline: boolean;
   type: 'ps' | 'services';
   parse: (message: unknown, deviceId: string) => T[] | undefined;
@@ -48,7 +48,7 @@ function useDeviceSystemList<T>({
   const requestNumber = useRef(0);
 
   const load = useCallback(() => {
-    if (!gatewayClient || !gatewayConnected || !deviceOnline) return;
+    if (!meshCentralClient || !controlConnected || !deviceOnline) return;
     const request = ++requestNumber.current;
     setLoading(true);
     setError(undefined);
@@ -67,7 +67,7 @@ function useDeviceSystemList<T>({
       setError(message);
       setLoading(false);
     };
-    const unsubscribeMessage = gatewayClient.on('message', (message) => {
+    const unsubscribeMessage = meshCentralClient.on('message', (message) => {
       try {
         const result = parse(message, deviceId);
         if (!result) return;
@@ -80,7 +80,7 @@ function useDeviceSystemList<T>({
         fail(errorMessage(caught, 'parse'));
       }
     });
-    const unsubscribeConnection = gatewayClient.on('connection', (change) => {
+    const unsubscribeConnection = meshCentralClient.on('connection', (change) => {
       if (change.current === 'disconnected' || change.current === 'error') {
         fail({ code: 'disconnected' });
       }
@@ -88,32 +88,32 @@ function useDeviceSystemList<T>({
     const timeout = setTimeout(() => fail({ code: 'timeout' }), requestTimeoutMs);
 
     try {
-      gatewayClient.send({ action: 'msg', type, nodeid: deviceId });
+      meshCentralClient.send({ action: 'msg', type, nodeid: deviceId });
     } catch (caught) {
       fail(errorMessage(caught, 'send'));
     }
-  }, [deviceId, deviceOnline, gatewayClient, gatewayConnected, parse, type]);
+  }, [deviceId, deviceOnline, meshCentralClient, controlConnected, parse, type]);
 
   useEffect(() => {
     setItems([]);
     setUpdatedAt(undefined);
     setError(undefined);
-    if (gatewayConnected && deviceOnline) load();
+    if (controlConnected && deviceOnline) load();
     return () => {
       requestNumber.current += 1;
     };
-  }, [deviceId, deviceOnline, gatewayConnected, load]);
+  }, [deviceId, deviceOnline, controlConnected, load]);
 
   return { items, loading, error, updatedAt, load };
 }
 
 function PanelAlerts({
-  gatewayConnected,
+  controlConnected,
   deviceOnline,
   error,
   onRetry,
 }: {
-  gatewayConnected: boolean;
+  controlConnected: boolean;
   deviceOnline: boolean;
   error?: SystemListError;
   onRetry: () => void;
@@ -124,10 +124,10 @@ function PanelAlerts({
     <>
       {!deviceOnline ? (
         <Alert banner type="warning" title={t('deviceWorkspace.systemManagement.deviceOffline')} />
-      ) : !gatewayConnected ? (
+      ) : !controlConnected ? (
         <Alert banner type="warning" title={t('deviceWorkspace.systemManagement.gatewayDisconnected')} />
       ) : null}
-      {error && gatewayConnected && deviceOnline && (
+      {error && controlConnected && deviceOnline && (
         <Alert
           showIcon
           type="error"
@@ -142,13 +142,13 @@ function PanelAlerts({
 
 export function DeviceProcessesPanel({
   device,
-  gatewayClient,
-  gatewayConnected,
+  meshCentralClient,
+  controlConnected,
   deviceOnline,
 }: {
   device: Device;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   deviceOnline: boolean;
 }) {
   const { t } = useTranslation();
@@ -156,8 +156,8 @@ export function DeviceProcessesPanel({
   const [searchText, setSearchText] = useState('');
   const { items, loading, error, updatedAt, load } = useDeviceSystemList({
     deviceId: device.id,
-    gatewayClient,
-    gatewayConnected,
+    meshCentralClient,
+    controlConnected,
     deviceOnline,
     type: 'ps',
     parse: parseProcessMessage,
@@ -195,7 +195,7 @@ export function DeviceProcessesPanel({
           <Button
             icon={<ReloadOutlined />}
             loading={loading}
-            disabled={!gatewayClient || !gatewayConnected || !deviceOnline}
+            disabled={!meshCentralClient || !controlConnected || !deviceOnline}
             onClick={load}
           >
             {t('common.actions.refresh')}
@@ -209,7 +209,7 @@ export function DeviceProcessesPanel({
         <div><span>{t('deviceWorkspace.systemManagement.lastUpdated')}</span><strong>{updatedAt ? time(updatedAt) : t('deviceWorkspace.systemManagement.notUpdated')}</strong></div>
       </div>
       <PanelAlerts
-        gatewayConnected={gatewayConnected}
+        controlConnected={controlConnected}
         deviceOnline={deviceOnline}
         error={error}
         onRetry={load}
@@ -222,7 +222,7 @@ export function DeviceProcessesPanel({
         loading={loading && items.length === 0}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, pageSizeOptions: [25, 50, 100] }}
         scroll={{ x: 760 }}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!deviceOnline ? t('deviceWorkspace.systemManagement.emptyOffline') : gatewayConnected ? t('deviceWorkspace.systemManagement.emptyProcesses') : t('deviceWorkspace.systemManagement.waitingGateway')} /> }}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!deviceOnline ? t('deviceWorkspace.systemManagement.emptyOffline') : controlConnected ? t('deviceWorkspace.systemManagement.emptyProcesses') : t('deviceWorkspace.systemManagement.waitingGateway')} /> }}
       />
     </section>
   );
@@ -238,13 +238,13 @@ function serviceStateColor(state: string) {
 
 export function DeviceServicesPanel({
   device,
-  gatewayClient,
-  gatewayConnected,
+  meshCentralClient,
+  controlConnected,
   deviceOnline,
 }: {
   device: Device;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   deviceOnline: boolean;
 }) {
   const { t } = useTranslation();
@@ -253,8 +253,8 @@ export function DeviceServicesPanel({
   const [stateFilter, setStateFilter] = useState('all');
   const { items, loading, error, updatedAt, load } = useDeviceSystemList({
     deviceId: device.id,
-    gatewayClient,
-    gatewayConnected,
+    meshCentralClient,
+    controlConnected,
     deviceOnline,
     type: 'services',
     parse: parseServicesMessage,
@@ -314,7 +314,7 @@ export function DeviceServicesPanel({
           <Button
             icon={<ReloadOutlined />}
             loading={loading}
-            disabled={!gatewayClient || !gatewayConnected || !deviceOnline}
+            disabled={!meshCentralClient || !controlConnected || !deviceOnline}
             onClick={load}
           >
             {t('common.actions.refresh')}
@@ -328,7 +328,7 @@ export function DeviceServicesPanel({
         <div><span>{t('deviceWorkspace.systemManagement.lastUpdated')}</span><strong>{updatedAt ? time(updatedAt) : t('deviceWorkspace.systemManagement.notUpdated')}</strong></div>
       </div>
       <PanelAlerts
-        gatewayConnected={gatewayConnected}
+        controlConnected={controlConnected}
         deviceOnline={deviceOnline}
         error={error}
         onRetry={load}
@@ -341,7 +341,7 @@ export function DeviceServicesPanel({
         loading={loading && items.length === 0}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, pageSizeOptions: [25, 50, 100] }}
         scroll={{ x: 900 }}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!deviceOnline ? t('deviceWorkspace.systemManagement.emptyOffline') : gatewayConnected ? t('deviceWorkspace.systemManagement.emptyServices') : t('deviceWorkspace.systemManagement.waitingGateway')} /> }}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!deviceOnline ? t('deviceWorkspace.systemManagement.emptyOffline') : controlConnected ? t('deviceWorkspace.systemManagement.emptyServices') : t('deviceWorkspace.systemManagement.waitingGateway')} /> }}
       />
     </section>
   );

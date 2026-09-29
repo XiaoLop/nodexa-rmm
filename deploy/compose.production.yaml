@@ -59,6 +59,7 @@ services:
         condition: service_healthy
 
   gateway:
+    profiles: [aggregation]
     image: ${GATEWAY_IMAGE:?Set GATEWAY_IMAGE}:${IMAGE_TAG:?Set IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -86,8 +87,6 @@ services:
     depends_on:
       config-init:
         condition: service_completed_successfully
-      gateway:
-        condition: service_started
       meshcentral:
         condition: service_started
 

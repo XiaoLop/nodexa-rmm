@@ -16,14 +16,14 @@ import {
   UserOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
-import type { GatewayEvent, ServerStats, ServerTimelineStats } from '@meshcentral/control-client';
+import type { MeshCentralEvent, ServerStats, ServerTimelineStats } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName, getUserDisplayName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Progress, Spin, Tag, Tooltip } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { useFormatters } from '../i18n';
 import '../assets/styles/dashboard.css';
@@ -143,9 +143,9 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const navigate = useNavigate();
-  const data = useGatewayData();
+  const data = useMeshCentralControlData();
   const applicationCapabilities = useApplicationUiCapabilities();
-  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+  const [historyEvents, setHistoryEvents] = useState<MeshCentralEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string>();
   const [serverStats, setServerStats] = useState<ServerStats>();

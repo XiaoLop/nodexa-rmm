@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { LoginForm, RegisterForm } from '../components/auth';
 import { BrandLogo } from '../components/BrandLogo';
-import { useGateway } from '../features/gateway/GatewayProvider';
+import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
 import {
   requestRegistrationAvailability,
   type RegistrationAvailability,
@@ -34,7 +34,7 @@ export interface LoginPageProps {
 
 export function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const { t, i18n } = useTranslation();
-  const gateway = useGateway();
+  const gateway = useMeshCentralControl();
   const location = useLocation();
 
   const [mode, setMode] = useState<'login' | 'register'>(() => {

@@ -26,7 +26,7 @@ import { RelayClient, RELAY_PROTOCOLS } from '@meshcentral/relay';
 
 const client = new RelayClient({
   baseUrl: 'https://mesh.example.com/domain',
-  control: gatewayClient,
+  control: meshCentralClient,
   authorizationTimeoutMs: 15_000,
   notificationTimeoutMs: 15_000,
   connectionTimeoutMs: 15_000,

@@ -1,13 +1,13 @@
 import {
   normalizeDevice,
   type ConnectionStatus as ClientConnectionStatus,
-  type GatewayClient,
-  type GatewayEvent,
+  type MeshCentralClient,
+  type MeshCentralEvent,
 } from '@meshcentral/control-client';
-import type { GatewayStore } from './store';
+import type { MeshCentralControlStore } from './store';
 import type { ConnectionStatus } from './types';
 
-export interface GatewayClientBinding {
+export interface MeshCentralClientBinding {
   sync(): Promise<void>;
   dispose(): void;
 }
@@ -18,7 +18,7 @@ function stateStatus(status: ClientConnectionStatus): ConnectionStatus {
   return status;
 }
 
-function applyEvent(store: GatewayStore, event: GatewayEvent): void {
+function applyEvent(store: MeshCentralControlStore, event: MeshCentralEvent): void {
   const state = store.getState();
   if (event.type === 'deviceRemoved' && event.deviceId) {
     state.removeDevice(event.deviceId);
@@ -56,10 +56,10 @@ function applyEvent(store: GatewayStore, event: GatewayEvent): void {
   state.appendEvent(event);
 }
 
-export function bindGatewayClient(
-  store: GatewayStore,
-  client: GatewayClient,
-): GatewayClientBinding {
+export function bindMeshCentralClient(
+  store: MeshCentralControlStore,
+  client: MeshCentralClient,
+): MeshCentralClientBinding {
   let active = true;
   let syncGeneration = 0;
 

@@ -5,7 +5,7 @@ import {
   StopOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import {
   Alert,
   Button,
@@ -39,7 +39,7 @@ import {
 interface BatchFileUploadModalProps {
   open: boolean;
   devices: BatchUploadDeviceSnapshot[];
-  gatewayClient?: GatewayClient;
+  meshCentralClient?: MeshCentralClient;
   baseUrl?: string;
   connected: boolean;
   manager: BatchUploadManager;
@@ -110,7 +110,7 @@ export function BatchFileUploadModal({
 
   open,
   devices,
-  gatewayClient,
+  meshCentralClient,
   baseUrl,
   connected,
   manager,
@@ -148,7 +148,7 @@ export function BatchFileUploadModal({
   }, [form, snapshot.id]);
 
   const startUpload = async () => {
-    if (!selectedFiles.length || !gatewayClient || !baseUrl || !connected) {
+    if (!selectedFiles.length || !meshCentralClient || !baseUrl || !connected) {
       void messageApi.error(!selectedFiles.length ? t('batchUpload.messages.selectFilesFirst') : t('batchUpload.messages.gatewayUnavailable'));
       return;
     }
@@ -174,7 +174,7 @@ export function BatchFileUploadModal({
         overwritePolicy: values.overwritePolicy,
         concurrency: values.concurrency,
       };
-      manager.start(config, gatewayClient, baseUrl);
+      manager.start(config, meshCentralClient, baseUrl);
     } catch {
       // Ant Design form displays validation details.
     }

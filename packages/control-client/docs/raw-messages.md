@@ -81,7 +81,7 @@ client.send({
 });
 ```
 
-`send()` 只在客户端已连接时可用，否则抛出 `GatewayConnectionError`。调用成功只表示数据已交给 WebSocket，不表示服务端接受，也不表示设备执行完成。
+`send()` 只在客户端已连接时可用，否则抛出 `MeshCentralConnectionError`。调用成功只表示数据已交给 WebSocket，不表示服务端接受，也不表示设备执行完成。
 
 如果操作通过事件确认，应在发送前注册监听器，避免快速响应先于监听器到达。`groups` 和 `users` 资源已经实现了这种模式，并处理了超时与断线，类似功能应优先扩展资源层而不是在页面中重复实现。
 
@@ -130,11 +130,11 @@ const unsubscribe = client.on('message', (message) => {
 
 | 错误 | 原因 | 处理建议 |
 | --- | --- | --- |
-| `GatewayConnectionError` | 尚未连接或 WebSocket 失败 | 等待 `connect()`，根据 `retryable` 决定是否重试 |
-| `GatewayConnectionClosedError` | 等待响应期间断线 | 重连后重新同步状态，再决定是否重放幂等请求 |
-| `GatewayRequestTimeoutError` | 超时内没有可匹配响应 | 检查 action、服务端版本、并发和响应标识 |
-| `GatewayServerError` | 响应包含 `error` 或 `err` | 展示安全提示，记录脱敏上下文 |
-| `GatewayValidationError` | 参数不满足资源方法要求 | 在调用前修正输入，不应自动重试 |
-| `GatewayProtocolError` | 收到无效 JSON 等协议问题 | 记录版本和诊断，检查网关代理或协议兼容性 |
+| `MeshCentralConnectionError` | 尚未连接或 WebSocket 失败 | 等待 `connect()`，根据 `retryable` 决定是否重试 |
+| `MeshCentralConnectionClosedError` | 等待响应期间断线 | 重连后重新同步状态，再决定是否重放幂等请求 |
+| `MeshCentralRequestTimeoutError` | 超时内没有可匹配响应 | 检查 action、服务端版本、并发和响应标识 |
+| `MeshCentralServerError` | 响应包含 `error` 或 `err` | 展示安全提示，记录脱敏上下文 |
+| `MeshCentralValidationError` | 参数不满足资源方法要求 | 在调用前修正输入，不应自动重试 |
+| `MeshCentralProtocolError` | 收到无效 JSON 等协议问题 | 记录版本和诊断，检查网关代理或协议兼容性 |
 
 重试修改操作前要先判断幂等性。断线可能发生在服务端已经执行、客户端尚未收到确认的时刻，盲目重试可能重复创建或重复执行。

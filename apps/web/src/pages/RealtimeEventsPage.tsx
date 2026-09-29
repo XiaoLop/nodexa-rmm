@@ -1,6 +1,6 @@
 import type {
-  GatewayEvent,
-  GatewayEventType,
+  MeshCentralEvent,
+  MeshCentralEventType,
   HistoricalEventFilter,
 } from '@meshcentral/control-client';
 import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
@@ -19,13 +19,13 @@ import {
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useFormatters } from '../i18n';
 import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
 
-function filterMatches(event: GatewayEvent, filter?: HistoricalEventFilter) {
+function filterMatches(event: MeshCentralEvent, filter?: HistoricalEventFilter) {
   if (!filter) return true;
   const action = event.action;
   if (filter === 'removenode') return action === 'removenode' || action === 'deletenode';
@@ -45,7 +45,7 @@ function sanitizeRaw(value: unknown): unknown {
   );
 }
 
-function rawValue(event: GatewayEvent, field: string) {
+function rawValue(event: MeshCentralEvent, field: string) {
   const raw = event.raw;
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
   const value = (raw as Record<string, unknown>)[field];
@@ -57,9 +57,9 @@ function EventDetailsDrawer({
   onClose,
   devices,
 }: {
-  event?: GatewayEvent;
+  event?: MeshCentralEvent;
   onClose: () => void;
-  devices: ReturnType<typeof useGatewayData>['devices'];
+  devices: ReturnType<typeof useMeshCentralControlData>['devices'];
 }) {
   const { t } = useTranslation();
   const formatters = useFormatters();
@@ -171,13 +171,13 @@ function EventDetailsDrawer({
 export function RealtimeEventsPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
-  const data = useGatewayData();
-  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+  const data = useMeshCentralControlData();
+  const [historyEvents, setHistoryEvents] = useState<MeshCentralEvent[]>([]);
   const [eventFilter, setEventFilter] = useState<HistoricalEventFilter | undefined>();
   const [historyLimit, setHistoryLimit] = useState(60);
   const [loading, setLoading] = useState(false);
   const [queryError, setQueryError] = useState<string>();
-  const [selectedEvent, setSelectedEvent] = useState<GatewayEvent>();
+  const [selectedEvent, setSelectedEvent] = useState<MeshCentralEvent>();
   const requestNumber = useRef(0);
 
   const eventFilters = useMemo(
@@ -249,12 +249,12 @@ export function RealtimeEventsPage() {
       title: t('events.columns.type'),
       dataIndex: 'type',
       width: 112,
-      render: (type: GatewayEventType) => <Tag>{t(`events.types.${type}`)}</Tag>,
+      render: (type: MeshCentralEventType) => <Tag>{t(`events.types.${type}`)}</Tag>,
     },
     {
       title: t('events.columns.device'),
       width: 150,
-      render: (_: unknown, event: GatewayEvent) => {
+      render: (_: unknown, event: MeshCentralEvent) => {
         const deviceName = getEventTargetName(event, data.devices);
         if (!deviceName) return event.deviceId || t('common.status.systemEvent');
 
@@ -267,14 +267,14 @@ export function RealtimeEventsPage() {
     { title: t('events.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
       title: t('events.columns.content'),
-      render: (_: unknown, event: GatewayEvent) =>
+      render: (_: unknown, event: MeshCentralEvent) =>
         formatEventMessage(event, data.devices, data.groups),
     },
     {
       title: t('events.columns.actions'),
       width: 88,
       fixed: 'right' as const,
-      render: (_: unknown, event: GatewayEvent) => (
+      render: (_: unknown, event: MeshCentralEvent) => (
         <Button type="link" onClick={() => setSelectedEvent(event)}>
           {t('common.actions.details')}
         </Button>
@@ -350,7 +350,7 @@ export function RealtimeEventsPage() {
             }
           />
         )}
-        <Table<GatewayEvent>
+        <Table<MeshCentralEvent>
           rowKey="id"
           className="realtime-events-table"
           columns={columns}

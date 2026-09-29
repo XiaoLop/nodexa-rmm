@@ -35,7 +35,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { createCollator } from '../i18n';
 import { useFormatters } from '../i18n/formatters';
 import '../assets/styles/users.css';
@@ -61,7 +61,7 @@ export function UserGroupsPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const navigate = useNavigate();
-  const { client, status, userInfo } = useGatewayData();
+  const { client, status, userInfo } = useMeshCentralControlData();
   const [form] = Form.useForm<EditorValues>();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [groups, setGroups] = useState<UserGroup[]>([]);

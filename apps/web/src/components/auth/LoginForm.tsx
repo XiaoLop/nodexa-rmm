@@ -11,10 +11,10 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BrandLogo } from '../BrandLogo';
 import {
-  GatewayLoginError,
-  useGateway,
+  MeshCentralLoginError,
+  useMeshCentralControl,
   type TwoFactorChallenge,
-} from '../../features/gateway/GatewayProvider';
+} from '../../features/gateway/MeshCentralControlProvider';
 
 interface LoginFormValue {
   username: string;
@@ -48,7 +48,7 @@ export function LoginForm({
   onClearRegistrationSuccess,
 }: LoginFormProps) {
   const { t } = useTranslation();
-  const gateway = useGateway();
+  const gateway = useMeshCentralControl();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -122,7 +122,7 @@ export function LoginForm({
       navigate(state?.from || '/dashboard', { replace: true });
     } catch (nextError) {
       if (
-        nextError instanceof GatewayLoginError &&
+        nextError instanceof MeshCentralLoginError &&
         ['AUTH_TRANSACTION_EXPIRED', 'INVALID_AUTH_TRANSACTION'].includes(nextError.status)
       ) {
         setChallenge(undefined);
@@ -369,7 +369,7 @@ function getLoginErrorMessage(
   error: unknown,
   t: ReturnType<typeof useTranslation>['t'],
 ): string {
-  if (!(error instanceof GatewayLoginError)) return t('login.failed');
+  if (!(error instanceof MeshCentralLoginError)) return t('login.failed');
   const keyByStatus: Record<string, string> = {
     BAD_PASSWORD: 'login.badPassword',
     ACCOUNT_LOCKED: 'login.accountLocked',

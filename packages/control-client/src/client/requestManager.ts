@@ -1,9 +1,9 @@
 import {
-  GatewayConnectionClosedError,
-  GatewayRequestTimeoutError,
-  GatewayServerError,
+  MeshCentralConnectionClosedError,
+  MeshCentralRequestTimeoutError,
+  MeshCentralServerError,
 } from '../errors';
-import type { GatewayDiagnostic } from '../types';
+import type { MeshCentralDiagnostic } from '../types';
 import { isRecord } from '../protocol/normalizers';
 
 interface PendingRequest {
@@ -43,7 +43,7 @@ export class RequestManager {
   constructor(
     private readonly send: (payload: unknown) => void,
     private readonly defaultTimeoutMs: number,
-    private readonly diagnostic: (value: GatewayDiagnostic) => void,
+    private readonly diagnostic: (value: MeshCentralDiagnostic) => void,
   ) {}
 
   request<T>(payload: Record<string, unknown>, timeoutMs = this.defaultTimeoutMs): Promise<T> {
@@ -111,7 +111,7 @@ export class RequestManager {
     const error = explicitError ?? resultError;
     if (typeof error === 'string' && error)
       match.reject(
-        new GatewayServerError(error, {
+        new MeshCentralServerError(error, {
           action: match.action,
           requestId: match.id,
           deviceId: match.deviceId,
@@ -122,11 +122,11 @@ export class RequestManager {
     return true;
   }
 
-  rejectAll(reason = 'Gateway connection closed.'): void {
+  rejectAll(reason = 'MeshCentral control connection closed.'): void {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(
-        new GatewayConnectionClosedError(reason, {
+        new MeshCentralConnectionClosedError(reason, {
           action: pending.action,
           requestId: pending.id,
           deviceId: pending.deviceId,
@@ -160,7 +160,7 @@ export class RequestManager {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(
-          new GatewayRequestTimeoutError(
+          new MeshCentralRequestTimeoutError(
             `Gateway request timed out: ${String(payload.action ?? id)}`,
             {
               action: typeof payload.action === 'string' ? payload.action : undefined,

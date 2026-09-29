@@ -1,4 +1,4 @@
-import { GatewayValidationError } from '../errors';
+import { MeshCentralValidationError } from '../errors';
 import { normalizeCommandMessage } from '../protocol/commandMessages';
 import type {
   CommandBatchSnapshot,
@@ -7,17 +7,17 @@ import type {
   CommandExecutionHandle,
   CommandExecutionStatus,
   ConnectionStateChange,
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
 } from '../types';
 
 interface ExecutionClient {
   readonly connectionStatus: string;
   send(payload: unknown): void;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
@@ -63,7 +63,7 @@ export class CommandExecution implements CommandExecutionHandle {
     this.activeDevices = activeDevicesByClient.get(client) ?? new Set<string>();
     const duplicateDevice = deviceIds.find((deviceId) => this.activeDevices.has(deviceId));
     if (duplicateDevice)
-      throw new GatewayValidationError(
+      throw new MeshCentralValidationError(
         `Device ${duplicateDevice} already has an active tracked command.`,
       );
     for (const deviceId of deviceIds) this.activeDevices.add(deviceId);
@@ -138,7 +138,7 @@ export class CommandExecution implements CommandExecutionHandle {
 
   cancelRemote(): Promise<void> {
     return Promise.reject(
-      new GatewayValidationError(
+      new MeshCentralValidationError(
         'The gateway protocol does not support remote command cancellation.',
       ),
     );

@@ -1,6 +1,6 @@
 # Store 与客户端绑定
 
-本文说明 `GatewayStore` 的状态结构、`bindGatewayClient` 的同步规则，以及在应用中如何管理二者的生命周期。
+本文说明 `MeshCentralControlStore` 的状态结构、`bindMeshCentralClient` 的同步规则，以及在应用中如何管理二者的生命周期。
 
 ## 架构关系
 
@@ -13,24 +13,24 @@ MeshCentral Server
         |
         | connection / message / event / userInfo / error
         v
-bindGatewayClient
+bindMeshCentralClient
         |
         | Zustand actions
         v
-GatewayStore -> Web / React Native UI
+MeshCentralControlStore -> Web / React Native UI
 ```
 
-`GatewayClient` 是协议和连接层，`GatewayStore` 是 UI 状态层，`bindGatewayClient` 是两者之间的适配器。
+`MeshCentralClient` 是协议和连接层，`MeshCentralControlStore` 是 UI 状态层，`bindMeshCentralClient` 是两者之间的适配器。
 
 ## 创建 Store
 
 ```ts
-import { createGatewayStore } from '@meshcentral/shared-state';
+import { createMeshCentralControlStore } from '@meshcentral/shared-state';
 
-export const gatewayStore = createGatewayStore();
+export const gatewayStore = createMeshCentralControlStore();
 ```
 
-`createGatewayStore()` 每次都会返回独立实例。多服务器、多账号或测试场景可以创建多个 Store；普通应用通常只创建一个。
+`createMeshCentralControlStore()` 每次都会返回独立实例。多服务器、多账号或测试场景可以创建多个 Store；普通应用通常只创建一个。
 
 ## 状态字段
 
@@ -51,15 +51,15 @@ export const gatewayStore = createGatewayStore();
 ## 创建绑定
 
 ```ts
-import { GatewayClient } from '@meshcentral/control-client';
-import { bindGatewayClient, createGatewayStore } from '@meshcentral/shared-state';
+import { MeshCentralClient } from '@meshcentral/control-client';
+import { bindMeshCentralClient, createMeshCentralControlStore } from '@meshcentral/shared-state';
 
-const store = createGatewayStore();
-const client = new GatewayClient({
+const store = createMeshCentralControlStore();
+const client = new MeshCentralClient({
   url: 'wss://gateway.example.com/control',
   getAccessToken: async () => loadAccessToken(),
 });
-const binding = bindGatewayClient(store, client);
+const binding = bindMeshCentralClient(store, client);
 
 await client.connect();
 ```
@@ -121,12 +121,12 @@ try {
 ## Selectors
 
 ```ts
-import { gatewaySelectors } from '@meshcentral/shared-state';
+import { meshCentralControlSelectors } from '@meshcentral/shared-state';
 
 const state = store.getState();
-const devices = gatewaySelectors.devices(state);
-const groups = gatewaySelectors.groups(state);
-const onlineCount = gatewaySelectors.onlineDeviceCount(state);
+const devices = meshCentralControlSelectors.devices(state);
+const groups = meshCentralControlSelectors.groups(state);
+const onlineCount = meshCentralControlSelectors.onlineDeviceCount(state);
 ```
 
 可用 selector：
@@ -148,11 +148,11 @@ const onlineCount = gatewaySelectors.onlineDeviceCount(state);
 ## React 使用
 
 ```tsx
-import { gatewaySelectors, useGatewayStore } from '@meshcentral/shared-state';
+import { meshCentralControlSelectors, useMeshCentralControlStore } from '@meshcentral/shared-state';
 
 export function ConnectionBadge() {
-  const status = useGatewayStore(gatewayStore, gatewaySelectors.status);
-  const error = useGatewayStore(gatewayStore, gatewaySelectors.error);
+  const status = useMeshCentralControlStore(gatewayStore, meshCentralControlSelectors.status);
+  const error = useMeshCentralControlStore(gatewayStore, meshCentralControlSelectors.error);
 
   return <span title={error}>{status}</span>;
 }
@@ -206,4 +206,4 @@ const unsubscribe = client.on('event', (event) => {
 unsubscribe();
 ```
 
-扩展时要保持与 `GatewayClientBinding` 相同的清理纪律，避免重复监听和卸载后写状态。
+扩展时要保持与 `MeshCentralClientBinding` 相同的清理纪律，避免重复监听和卸载后写状态。

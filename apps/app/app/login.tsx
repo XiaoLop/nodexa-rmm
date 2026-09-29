@@ -3,11 +3,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PrimaryButton } from '../src/components/AppUi';
-import { useGateway } from '../src/features/gateway/GatewayProvider';
+import { useMeshCentralControl } from '../src/features/gateway/MeshCentralControlProvider';
 import { colors } from '../src/theme';
 
 export default function LoginScreen() {
-  const { login } = useGateway();
+  const { login } = useMeshCentralControl();
   const [secure, setSecure] = useState(true); // 密码是否可见
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

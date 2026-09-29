@@ -1,4 +1,4 @@
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import {
   FileOperationError,
   FilesSession,
@@ -15,7 +15,7 @@ import {
 } from '@meshcentral/relay';
 import type { Device } from '@meshcentral/shared-state';
 import { useEffect, useRef, useState } from 'react';
-import { GATEWAY_RELAY_URL } from '../../../config/gateway';
+import { MESH_CENTRAL_RELAY_URL } from '../../../config/gateway';
 import {
   batchUploadBandwidthConfig,
   calculateBatchUploadChunkSize,
@@ -47,15 +47,15 @@ export interface FileSessionError {
 
 interface UseDeviceFilesSessionOptions {
   device: Device;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   filesAllowed?: boolean;
 }
 
 export function useDeviceFilesSession({
   device,
-  gatewayClient,
-  gatewayConnected,
+  meshCentralClient,
+  controlConnected,
   filesAllowed,
 }: UseDeviceFilesSessionOptions) {
   const [status, setStatus] = useState<FileWorkspaceStatus>('connecting');
@@ -150,7 +150,7 @@ export function useDeviceFilesSession({
       setStatus('offline');
       return;
     }
-    if (!gatewayConnected || !gatewayClient || !GATEWAY_RELAY_URL) {
+    if (!controlConnected || !meshCentralClient || !MESH_CENTRAL_RELAY_URL) {
       setStatus('disconnected');
       return;
     }
@@ -163,8 +163,8 @@ export function useDeviceFilesSession({
     void (async () => {
       try {
         const relay = await new RelayClient({
-          baseUrl: GATEWAY_RELAY_URL,
-          control: gatewayClient,
+          baseUrl: MESH_CENTRAL_RELAY_URL,
+          control: meshCentralClient,
         }).createSession({
           deviceId: device.id,
           protocol: RELAY_PROTOCOLS.files,
@@ -208,7 +208,7 @@ export function useDeviceFilesSession({
     })();
 
     return disconnect;
-  }, [device.id, device.online, filesAllowed, gatewayClient, gatewayConnected, reconnectVersion]);
+  }, [device.id, device.online, filesAllowed, meshCentralClient, controlConnected, reconnectVersion]);
 
   const selectedEntries = (listing?.entries ?? []).filter((entry) =>
     selectedPaths.includes(entry.path),

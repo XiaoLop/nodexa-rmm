@@ -1,4 +1,4 @@
-import { GatewayClient } from '@meshcentral/control-client';
+import { MeshCentralClient } from '@meshcentral/control-client';
 import {
   RELAY_PROTOCOLS,
   RelayClient,
@@ -12,7 +12,7 @@ import {
   createGatewayWebSocketFactory,
   createRelayWebSocketFactory,
   environmentNumber,
-  gatewayUrl,
+  controlUrl,
   resemblesRelayLog,
   requiredEnvironment,
   sanitize,
@@ -36,8 +36,8 @@ manual('manual terminal protocol capture', () => {
       const controller = new AbortController();
       let routeFailure: string | undefined;
       const acceptedTunnelResponses = new Set<string>();
-      const gateway = new GatewayClient({
-        url: gatewayUrl(),
+      const gateway = new MeshCentralClient({
+        url: controlUrl(),
         getAccessToken: () => process.env.GATEWAY_ACCESS_TOKEN?.trim() || undefined,
         webSocketFactory: createGatewayWebSocketFactory(recorder),
         connectionTimeoutMs: environmentNumber('MANUAL_CONNECTION_TIMEOUT_MS', 15_000),

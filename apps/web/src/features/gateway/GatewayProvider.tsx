@@ -1,9 +1,9 @@
-import { GatewayAuthenticationError, GatewayClient } from '@meshcentral/control-client';
+import { MeshCentralAuthenticationError, MeshCentralClient } from '@meshcentral/control-client';
 import {
-  bindGatewayClient,
-  createGatewayStore,
-  type GatewayClientBinding,
-  type GatewayStore,
+  bindMeshCentralClient,
+  createMeshCentralControlStore,
+  type MeshCentralClientBinding,
+  type MeshCentralControlStore,
 } from '@meshcentral/shared-state';
 import {
   createContext,
@@ -16,13 +16,13 @@ import {
   type PropsWithChildren,
 } from 'react';
 import {
-  GATEWAY_CONTROL_URL,
+  MESH_CENTRAL_CONTROL_URL,
   MESH_AUTH_LOGIN_URL,
   MESH_AUTH_VERIFY_TWO_FACTOR_URL,
 } from '../../config/gateway';
 import { requestMeshLogout } from './logout';
 
-interface GatewaySession {
+interface MeshCentralSession {
   username?: string;
 }
 
@@ -50,21 +50,21 @@ interface AuthenticationResponse {
   };
 }
 
-export class GatewayLoginError extends Error {
+export class MeshCentralLoginError extends Error {
   constructor(readonly status: string, message: string) {
     super(message);
-    this.name = 'GatewayLoginError';
+    this.name = 'MeshCentralLoginError';
   }
 }
 
-interface GatewayContextValue {
-  store: GatewayStore;
-  client?: GatewayClient;
+interface MeshCentralControlContextValue {
+  store: MeshCentralControlStore;
+  client?: MeshCentralClient;
   configured: boolean;
   authenticated: boolean;
   initializing: boolean;
   username?: string;
-  gatewayUrl?: string;
+  controlUrl?: string;
   login: (
     username: string,
     password: string,
@@ -82,17 +82,17 @@ interface GatewayContextValue {
   refreshSnapshot: () => Promise<void>;
 }
 
-const GatewayContext = createContext<GatewayContextValue | null>(null);
+const MeshCentralControlContext = createContext<MeshCentralControlContextValue | null>(null);
 
-export function GatewayProvider({ children }: PropsWithChildren) {
-  const store = useMemo(() => createGatewayStore(), []);
-  const clientRef = useRef<GatewayClient | undefined>(undefined);
-  const bindingRef = useRef<GatewayClientBinding | undefined>(undefined);
-  const sessionRef = useRef<GatewaySession | undefined>(undefined);
-  const [client, setClient] = useState<GatewayClient | undefined>();
-  const [session, setSession] = useState<GatewaySession | undefined>();
+export function MeshCentralControlProvider({ children }: PropsWithChildren) {
+  const store = useMemo(() => createMeshCentralControlStore(), []);
+  const clientRef = useRef<MeshCentralClient | undefined>(undefined);
+  const bindingRef = useRef<MeshCentralClientBinding | undefined>(undefined);
+  const sessionRef = useRef<MeshCentralSession | undefined>(undefined);
+  const [client, setClient] = useState<MeshCentralClient | undefined>();
+  const [session, setSession] = useState<MeshCentralSession | undefined>();
   const [initializing, setInitializing] = useState(true);
-  const gatewayUrl = GATEWAY_CONTROL_URL;
+  const controlUrl = MESH_CENTRAL_CONTROL_URL;
 
   const destroyClient = useCallback(() => {
     bindingRef.current?.dispose();
@@ -103,16 +103,16 @@ export function GatewayProvider({ children }: PropsWithChildren) {
   }, []);
 
   const connectClient = useCallback(
-    async (nextSession: GatewaySession = {}) => {
+    async (nextSession: MeshCentralSession = {}) => {
       destroyClient();
       store.getState().reset();
 
-      const nextClient = new GatewayClient({
-        url: gatewayUrl,
+      const nextClient = new MeshCentralClient({
+        url: controlUrl,
       });
-      const binding = bindGatewayClient(store, nextClient);
+      const binding = bindMeshCentralClient(store, nextClient);
       const unsubscribeAuthenticationError = nextClient.on('error', (error) => {
-        if (!(error instanceof GatewayAuthenticationError)) return;
+        if (!(error instanceof MeshCentralAuthenticationError)) return;
         sessionRef.current = undefined;
         setSession(undefined);
       });
@@ -130,7 +130,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
       sessionRef.current = nextSession;
       setSession(nextSession);
     },
-    [destroyClient, gatewayUrl, store],
+    [destroyClient, controlUrl, store],
   );
 
   const authenticate = useCallback(async (url: string, body: Record<string, unknown>) => {
@@ -144,10 +144,10 @@ export function GatewayProvider({ children }: PropsWithChildren) {
     try {
       result = (await response.json()) as AuthenticationResponse;
     } catch {
-      throw new GatewayLoginError('SERVER_UNAVAILABLE', 'authentication-service-unavailable');
+      throw new MeshCentralLoginError('SERVER_UNAVAILABLE', 'authentication-service-unavailable');
     }
     if (typeof result.status !== 'string' || typeof result.message !== 'string') {
-      throw new GatewayLoginError('SERVER_UNAVAILABLE', 'authentication-service-unavailable');
+      throw new MeshCentralLoginError('SERVER_UNAVAILABLE', 'authentication-service-unavailable');
     }
     return result;
   }, []);
@@ -168,11 +168,11 @@ export function GatewayProvider({ children }: PropsWithChildren) {
           typeof expiresIn !== 'number' ||
           !Array.isArray(methods)
         ) {
-          throw new GatewayLoginError('SERVER_UNAVAILABLE', 'authentication-service-unavailable');
+          throw new MeshCentralLoginError('SERVER_UNAVAILABLE', 'authentication-service-unavailable');
         }
         return { status: 'REQUIRE_2FA' as const, transactionId, expiresIn, methods };
       }
-      if (result.status !== 'SUCCESS') throw new GatewayLoginError(result.status, result.message);
+      if (result.status !== 'SUCCESS') throw new MeshCentralLoginError(result.status, result.message);
 
       try {
         await connectClient({ username: result.data?.username ?? username });
@@ -198,7 +198,7 @@ export function GatewayProvider({ children }: PropsWithChildren) {
         code,
         rememberToken,
       });
-      if (result.status !== 'SUCCESS') throw new GatewayLoginError(result.status, result.message);
+      if (result.status !== 'SUCCESS') throw new MeshCentralLoginError(result.status, result.message);
       try {
         await connectClient({ username: result.data?.username ?? username });
       } catch (error) {
@@ -266,15 +266,15 @@ useEffect(() => {
     return () => window.removeEventListener('online', handleOnline);
   }, [store]);
 
-  const value = useMemo<GatewayContextValue>(
+  const value = useMemo<MeshCentralControlContextValue>(
     () => ({
       store,
       client,
-      configured: Boolean(gatewayUrl),
+      configured: Boolean(controlUrl),
       authenticated: Boolean(session),
       initializing,
       username: session?.username,
-      gatewayUrl,
+      controlUrl,
       login,
       verifyTwoFactor,
       logout,
@@ -284,7 +284,7 @@ useEffect(() => {
     [
       store,
       client,
-      gatewayUrl,
+      controlUrl,
       session,
       initializing,
       login,
@@ -295,11 +295,11 @@ useEffect(() => {
     ],
   );
 
-  return <GatewayContext.Provider value={value}>{children}</GatewayContext.Provider>;
+  return <MeshCentralControlContext.Provider value={value}>{children}</MeshCentralControlContext.Provider>;
 }
 
-export function useGateway() {
-  const value = useContext(GatewayContext);
-  if (!value) throw new Error('useGateway must be used inside GatewayProvider.');
+export function useMeshCentralControl() {
+  const value = useContext(MeshCentralControlContext);
+  if (!value) throw new Error('useMeshCentralControl must be used inside MeshCentralControlProvider.');
   return value;
 }

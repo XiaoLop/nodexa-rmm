@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GatewayServerError } from '../errors';
+import type { MeshCentralServerError } from '../errors';
 import { RequestManager } from './requestManager';
 
 describe('RequestManager', () => {
@@ -16,9 +16,9 @@ describe('RequestManager', () => {
     manager.consume({ action: 'adddeviceuser', responseid, result: 'Invalid rights' });
 
     await expect(request).rejects.toMatchObject({
-      name: 'GatewayServerError',
+      name: 'MeshCentralServerError',
       message: 'Invalid rights',
-    } satisfies Partial<GatewayServerError>);
+    } satisfies Partial<MeshCentralServerError>);
   });
 
   it('accepts ok and success result responses', async () => {

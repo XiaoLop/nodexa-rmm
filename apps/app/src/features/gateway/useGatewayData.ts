@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
-import { gatewaySelectors, useGatewayStore } from '@meshcentral/shared-state';
-import { useGateway } from './GatewayProvider';
+import { meshCentralControlSelectors, useMeshCentralControlStore } from '@meshcentral/shared-state';
+import { useMeshCentralControl } from './MeshCentralControlProvider';
 
-export function useGatewayData() {
-  const gateway = useGateway();
-  const devices = useGatewayStore(gateway.store, gatewaySelectors.devices);
-  const events = useGatewayStore(gateway.store, gatewaySelectors.events);
-  const status = useGatewayStore(gateway.store, gatewaySelectors.status);
-  const error = useGatewayStore(gateway.store, gatewaySelectors.error);
-  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
+export function useMeshCentralControlData() {
+  const gateway = useMeshCentralControl();
+  const devices = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.devices);
+  const events = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.events);
+  const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
+  const error = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.error);
+  const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
 
   const refreshDevices = useCallback(() => {
     if (gateway.client) {

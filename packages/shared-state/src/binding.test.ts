@@ -1,15 +1,15 @@
-import { GatewayClient } from '@meshcentral/control-client';
+import { MeshCentralClient } from '@meshcentral/control-client';
 import { describe, expect, it, vi } from 'vitest';
 import { FakeWebSocket } from '../../control-client/src/testing/FakeWebSocket';
-import { bindGatewayClient } from './binding';
-import { createGatewayStore } from './store';
+import { bindMeshCentralClient } from './binding';
+import { createMeshCentralControlStore } from './store';
 
-describe('bindGatewayClient', () => {
+describe('bindMeshCentralClient', () => {
   it('synchronizes snapshots and applies realtime events', async () => {
     const socket = new FakeWebSocket();
-    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
-    const store = createGatewayStore();
-    const binding = bindGatewayClient(store, client);
+    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const store = createMeshCentralControlStore();
+    const binding = bindMeshCentralClient(store, client);
     const connecting = client.connect();
     socket.open();
     socket.message({ type: 'authenticated' });
@@ -55,9 +55,9 @@ describe('bindGatewayClient', () => {
 
   it('does not write after disposal', async () => {
     const socket = new FakeWebSocket();
-    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
-    const store = createGatewayStore();
-    const binding = bindGatewayClient(store, client);
+    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const store = createMeshCentralControlStore();
+    const binding = bindMeshCentralClient(store, client);
     binding.dispose();
     const connecting = client.connect();
     socket.open();

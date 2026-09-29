@@ -1,4 +1,4 @@
-import type { GatewayClient, ServerInfo, UserInfo } from '@meshcentral/control-client';
+import type { MeshCentralClient, ServerInfo, UserInfo } from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { Form, Input, Modal, Select, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,7 +11,7 @@ import {
 interface DeviceEditModalProps {
   device: Device | null;
   groups: DeviceGroup[];
-  client?: GatewayClient;
+  client?: MeshCentralClient;
   userInfo?: UserInfo;
   serverInfo?: ServerInfo;
   onClose: () => void;

@@ -3,9 +3,9 @@
 这里用于编写跨 `packages` 的集成测试。测试代码可以直接通过包名导入 workspace 包：
 
 ```ts
-import { GatewayClient } from '@meshcentral/control-client';
+import { MeshCentralClient } from '@meshcentral/control-client';
 import { RelayClient } from '@meshcentral/relay';
-import { createGatewayStore } from '@meshcentral/shared-state';
+import { createMeshCentralControlStore } from '@meshcentral/shared-state';
 ```
 
 在仓库根目录运行：

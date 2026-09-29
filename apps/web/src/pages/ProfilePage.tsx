@@ -16,7 +16,7 @@ import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserAvatar } from '../components/users/UserAvatar';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { BackupCodesModal } from '../features/profile/BackupCodesModal';
 import {
   PasswordChangeModal,
@@ -65,7 +65,7 @@ function errorDetail(error: unknown): string {
 export function ProfilePage() {
   const { t } = useTranslation();
   const { dateTime } = useFormatters();
-  const { client, status, userInfo, store } = useGatewayData();
+  const { client, status, userInfo, store } = useMeshCentralControlData();
   const [emailForm] = Form.useForm<{ email: string }>();
   const [passwordForm] = Form.useForm<PasswordFormValues>();
   const [securityKeyForm] = Form.useForm<SecurityKeyFormValues>();

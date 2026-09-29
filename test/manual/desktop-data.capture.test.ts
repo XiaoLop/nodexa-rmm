@@ -1,10 +1,10 @@
-import { GatewayClient } from '@meshcentral/control-client';
+import { MeshCentralClient } from '@meshcentral/control-client';
 import { RELAY_PROTOCOLS, RelayClient, type RelaySession } from '@meshcentral/relay';
 import { describe, expect, it } from 'vitest';
 import { DesktopProtocolParser, parseScreenSize, parseTile } from '../desktop/protocolParser';
 import {
   environmentNumber,
-  gatewayUrl,
+  controlUrl,
   requiredEnvironment,
   wait,
 } from './captureHelpers';
@@ -43,8 +43,8 @@ manual('manual desktop protocol capture', () => {
     let screenKnown = false;
     let tileCount = 0;
     let relay: RelaySession | undefined;
-    const gateway = new GatewayClient({
-      url: gatewayUrl(),
+    const gateway = new MeshCentralClient({
+      url: controlUrl(),
       getAccessToken: () => process.env.GATEWAY_ACCESS_TOKEN?.trim() || undefined,
       webSocketFactory: createDesktopGatewayWebSocketFactory(recorder),
       connectionTimeoutMs: environmentNumber('MANUAL_CONNECTION_TIMEOUT_MS', 15_000),

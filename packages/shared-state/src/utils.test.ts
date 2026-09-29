@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Device, DeviceGroup, GatewayEvent } from './types';
+import type { Device, DeviceGroup, MeshCentralEvent } from './types';
 import { formatEventMessage, getEventTargetName, isIdString } from './utils';
 
 describe('utils: event formatting and ID masking', () => {
@@ -18,7 +18,7 @@ describe('utils: event formatting and ID masking', () => {
       { id: 'node//222', name: 'node//222', online: false },
     ];
 
-    const eventWithName: GatewayEvent = {
+    const eventWithName: MeshCentralEvent = {
       id: 'e1',
       type: 'deviceOnline',
       deviceId: 'node//111',
@@ -26,7 +26,7 @@ describe('utils: event formatting and ID masking', () => {
       occurredAt: new Date().toISOString(),
     };
 
-    const eventWithRawIdName: GatewayEvent = {
+    const eventWithRawIdName: MeshCentralEvent = {
       id: 'e2',
       type: 'deviceOffline',
       deviceId: 'node//111',
@@ -34,7 +34,7 @@ describe('utils: event formatting and ID masking', () => {
       occurredAt: new Date().toISOString(),
     };
 
-    const eventUnknownDev: GatewayEvent = {
+    const eventUnknownDev: MeshCentralEvent = {
       id: 'e3',
       type: 'deviceOffline',
       deviceId: 'node//999',
@@ -50,7 +50,7 @@ describe('utils: event formatting and ID masking', () => {
     const devices: Device[] = [{ id: 'node//111', name: 'Web Server A', online: true }];
     const groups: DeviceGroup[] = [{ id: 'mesh//100', name: '华东服务器组' }];
 
-    const event1: GatewayEvent = {
+    const event1: MeshCentralEvent = {
       id: 'e1',
       type: 'deviceOnline',
       deviceId: 'node//111',
@@ -58,7 +58,7 @@ describe('utils: event formatting and ID masking', () => {
       occurredAt: new Date().toISOString(),
     };
 
-    const event2: GatewayEvent = {
+    const event2: MeshCentralEvent = {
       id: 'e2',
       type: 'unknown',
       deviceId: 'node//999',
@@ -66,13 +66,13 @@ describe('utils: event formatting and ID masking', () => {
       occurredAt: new Date().toISOString(),
     };
 
-    const eventEmpty: GatewayEvent = {
+    const eventEmpty: MeshCentralEvent = {
       id: 'e3',
       type: 'deviceOnline',
       occurredAt: new Date().toISOString(),
     };
 
-    const eventStarted: GatewayEvent = {
+    const eventStarted: MeshCentralEvent = {
       id: 'e4',
       type: 'relayLog',
       deviceId: 'node//111',
@@ -80,7 +80,7 @@ describe('utils: event formatting and ID masking', () => {
       occurredAt: new Date().toISOString(),
     };
 
-    const eventStartedWithoutPrompt: GatewayEvent = {
+    const eventStartedWithoutPrompt: MeshCentralEvent = {
       id: 'e5',
       type: 'relayLog',
       deviceId: 'node//111',

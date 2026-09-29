@@ -32,9 +32,9 @@
 ## 快速开始
 
 ```ts
-import { GatewayClient } from '@meshcentral/control-client';
+import { MeshCentralClient } from '@meshcentral/control-client';
 
-const client = new GatewayClient({
+const client = new MeshCentralClient({
   url: 'wss://gateway.example.com/control',
   getAccessToken: async () => loadShortLivedToken(),
 });
@@ -64,7 +64,7 @@ try {
 
 ```ts
 const authParam = encodeURIComponent('encoded-credentials');
-const client = new GatewayClient({
+const client = new MeshCentralClient({
   url: `wss://gateway.example.com/control?x-meshauth=${authParam}`,
 });
 ```
@@ -234,26 +234,26 @@ client.send({ action: 'msg', type: 'console', nodeid: 'node//device-id' });
 
 ```ts
 import {
-  GatewayAuthenticationError,
-  GatewayRequestTimeoutError,
-  GatewayServerError,
+  MeshCentralAuthenticationError,
+  MeshCentralRequestTimeoutError,
+  MeshCentralServerError,
 } from '@meshcentral/control-client';
 
 try {
   await client.connect();
   await client.devices.list();
 } catch (error) {
-  if (error instanceof GatewayAuthenticationError) {
+  if (error instanceof MeshCentralAuthenticationError) {
     // 清除无效凭据并返回登录页。
-  } else if (error instanceof GatewayRequestTimeoutError) {
+  } else if (error instanceof MeshCentralRequestTimeoutError) {
     console.warn('请求超时，可以重试。');
-  } else if (error instanceof GatewayServerError) {
+  } else if (error instanceof MeshCentralServerError) {
     console.warn('服务端拒绝了请求。');
   }
 }
 ```
 
-公开错误类型包括 `GatewayAuthenticationError`、`GatewayConnectionError`、`GatewayConnectionClosedError`、`GatewayRequestTimeoutError`、`GatewayProtocolError`、`GatewayServerError`、`GatewayValidationError` 和 `GatewayClientDestroyedError`。
+公开错误类型包括 `MeshCentralAuthenticationError`、`MeshCentralConnectionError`、`MeshCentralConnectionClosedError`、`MeshCentralRequestTimeoutError`、`MeshCentralProtocolError`、`MeshCentralServerError`、`MeshCentralValidationError` 和 `MeshCentralClientDestroyedError`。
 
 错误的 `context` 可能包含 action、请求 ID、设备 ID、是否可重试和原始响应。
 
@@ -262,12 +262,12 @@ try {
 控制客户端本身不缓存设备、分组和事件。React 或 React Native 应用可以使用 `@meshcentral/shared-state`：
 
 ```ts
-import { GatewayClient } from '@meshcentral/control-client';
-import { bindGatewayClient, createGatewayStore } from '@meshcentral/shared-state';
+import { MeshCentralClient } from '@meshcentral/control-client';
+import { bindMeshCentralClient, createMeshCentralControlStore } from '@meshcentral/shared-state';
 
-const store = createGatewayStore();
-const client = new GatewayClient({ url });
-const binding = bindGatewayClient(store, client);
+const store = createMeshCentralControlStore();
+const client = new MeshCentralClient({ url });
+const binding = bindMeshCentralClient(store, client);
 
 await client.connect();
 

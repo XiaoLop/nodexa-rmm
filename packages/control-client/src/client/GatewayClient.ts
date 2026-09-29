@@ -1,9 +1,9 @@
 import { EventDispatcher } from '../events/dispatcher';
 import {
-  GatewayAuthenticationError,
-  GatewayClientDestroyedError,
-  GatewayConnectionError,
-  GatewayProtocolError,
+  MeshCentralAuthenticationError,
+  MeshCentralClientDestroyedError,
+  MeshCentralConnectionError,
+  MeshCentralProtocolError,
 } from '../errors';
 import {
   createAuthenticationMessage,
@@ -21,10 +21,10 @@ import { UserGroupsResource } from '../resources/userGroups';
 import { UsersResource } from '../resources/users';
 import type {
   ConnectionStatus,
-  GatewayClientEvents,
-  GatewayClientOptions,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralClientOptions,
+  MeshCentralEventChannel,
+  MeshCentralListener,
   PowerAction,
   WebSocketLike,
 } from '../types';
@@ -33,7 +33,7 @@ import { RequestManager } from './requestManager';
 const OPEN = 1;
 const DEFAULT_RECONNECT_DELAYS = [1_000, 2_000, 5_000, 10_000, 30_000, 60_000];
 
-export class GatewayClient {
+export class MeshCentralClient {
   readonly devices: DevicesResource;
   readonly commands: CommandsResource;
   readonly groups: GroupsResource;
@@ -51,12 +51,12 @@ export class GatewayClient {
   private status: ConnectionStatus = 'idle';
   private readonly dispatcher = new EventDispatcher();
   private readonly requestManager: RequestManager;
-  private readonly webSocketFactory: NonNullable<GatewayClientOptions['webSocketFactory']>;
+  private readonly webSocketFactory: NonNullable<MeshCentralClientOptions['webSocketFactory']>;
   private readonly heartbeatIntervalMs: number;
   private readonly connectionTimeoutMs: number;
   private readonly reconnectDelaysMs: number[];
 
-  constructor(private readonly options: GatewayClientOptions) {
+  constructor(private readonly options: MeshCentralClientOptions) {
     this.webSocketFactory =
       options.webSocketFactory ?? ((url) => new WebSocket(url) as unknown as WebSocketLike);
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 27_500;
@@ -87,18 +87,18 @@ export class GatewayClient {
     return this.reconnectAttempt;
   }
 
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void {
     return this.dispatcher.on(channel, listener);
   }
 
   connect(): Promise<void> {
     if (this.destroyed)
-      return Promise.reject(new GatewayClientDestroyedError('Gateway client has been destroyed.'));
+      return Promise.reject(new MeshCentralClientDestroyedError('Gateway client has been destroyed.'));
     if (!this.options.url)
-      return Promise.reject(new GatewayConnectionError('Gateway WebSocket URL is not configured.'));
+      return Promise.reject(new MeshCentralConnectionError('Gateway WebSocket URL is not configured.'));
     if (this.connectPromise) return this.connectPromise;
     if (this.socket?.readyState === OPEN && this.status === 'connected') return Promise.resolve();
     this.manuallyClosed = false;
@@ -131,9 +131,9 @@ export class GatewayClient {
   }
 
   send(payload: unknown): void {
-    if (this.destroyed) throw new GatewayClientDestroyedError('Gateway client has been destroyed.');
+    if (this.destroyed) throw new MeshCentralClientDestroyedError('Gateway client has been destroyed.');
     if (!this.socket || this.socket.readyState !== OPEN)
-      throw new GatewayConnectionError('Gateway WebSocket is not connected.', { retryable: true });
+      throw new MeshCentralConnectionError('Gateway WebSocket is not connected.', { retryable: true });
     this.socket.send(JSON.stringify(payload));
   }
   request<T = unknown>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T> {
@@ -170,7 +170,7 @@ export class GatewayClient {
       const timer = setTimeout(
         () =>
           fail(
-            new GatewayConnectionError('Timed out while waiting for gateway authentication.', {
+            new MeshCentralConnectionError('Timed out while waiting for gateway authentication.', {
               retryable: true,
             }),
             4002,
@@ -206,7 +206,7 @@ export class GatewayClient {
             fail(
               error instanceof Error
                 ? error
-                : new GatewayConnectionError('Gateway initialization failed.'),
+                : new MeshCentralConnectionError('Gateway initialization failed.'),
               4000,
               'Initialization failed',
             ),
@@ -217,7 +217,7 @@ export class GatewayClient {
         try {
           payload = JSON.parse(typeof event.data === 'string' ? event.data : String(event.data));
         } catch (error) {
-          const protocolError = new GatewayProtocolError('Received an invalid gateway message.');
+          const protocolError = new MeshCentralProtocolError('Received an invalid gateway message.');
           this.dispatcher.emit('diagnostic', {
             type: 'invalid-message',
             message: protocolError.message,
@@ -233,7 +233,7 @@ export class GatewayClient {
         if (!settled) {
           if (inspection.status === 'rejected') {
             authenticationRejected = true;
-            fail(new GatewayAuthenticationError(inspection.error), 4001, 'Authentication failed');
+            fail(new MeshCentralAuthenticationError(inspection.error), 4001, 'Authentication failed');
             return;
           }
           if (inspection.status === 'accepted') finish();
@@ -243,7 +243,7 @@ export class GatewayClient {
           }
         } else if (inspection.status === 'rejected') {
           authenticationRejected = true;
-          const error = new GatewayAuthenticationError(inspection.error);
+          const error = new MeshCentralAuthenticationError(inspection.error);
           this.setStatus('error', error);
           this.emitError(error);
           socket.close(4001, 'Authentication failed');
@@ -262,7 +262,7 @@ export class GatewayClient {
           });
       };
       socket.onerror = () => {
-        const error = new GatewayConnectionError('WebSocket connection error.', {
+        const error = new MeshCentralConnectionError('WebSocket connection error.', {
           retryable: true,
         });
         this.setStatus('error', error);
@@ -276,12 +276,12 @@ export class GatewayClient {
       socket.onclose = (event) => {
         clearTimeout(timer);
         this.stopHeartbeat();
-        this.requestManager.rejectAll(event.reason || 'Gateway connection closed.');
+        this.requestManager.rejectAll(event.reason || 'MeshCentral control connection closed.');
         if (this.socket === socket) this.socket = undefined;
         if (!settled) {
           settled = true;
           reject(
-            new GatewayConnectionError(event.reason || 'WebSocket closed before connecting.', {
+            new MeshCentralConnectionError(event.reason || 'WebSocket closed before connecting.', {
               retryable: !authenticationRejected,
             }),
           );
@@ -293,7 +293,7 @@ export class GatewayClient {
         if (authenticationRejected) return;
         this.setStatus(
           'reconnecting',
-          new GatewayConnectionError(event.reason || 'Connection lost.', { retryable: true }),
+          new MeshCentralConnectionError(event.reason || 'Connection lost.', { retryable: true }),
         );
         this.scheduleReconnect();
       };

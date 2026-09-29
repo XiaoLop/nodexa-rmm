@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import {
   clearBackupCodes,
   clearTotp,
@@ -24,7 +24,7 @@ function createClient() {
       return unsubscribe;
     }),
     send,
-  } as unknown as GatewayClient;
+  } as unknown as MeshCentralClient;
   return { client, send, unsubscribe, emit: (message: unknown) => listener?.(message) };
 }
 

@@ -1,4 +1,4 @@
-import type { GatewayEvent, ServerInfo, ServerStats, UserInfo } from '../types';
+import type { MeshCentralEvent, ServerInfo, ServerStats, UserInfo } from '../types';
 import {
   isRecord,
   normalizeEvent,
@@ -14,7 +14,7 @@ export type ConnectionInspection =
   | { status: 'rejected'; error: string };
 
 export interface DecodedPush {
-  event?: GatewayEvent;
+  event?: MeshCentralEvent;
   userInfo?: UserInfo;
   serverInfo?: ServerInfo;
   serverStats?: ServerStats;

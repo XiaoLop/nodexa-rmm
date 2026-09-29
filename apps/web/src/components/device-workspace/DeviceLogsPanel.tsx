@@ -3,9 +3,9 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import type {
-  GatewayClient,
-  GatewayEvent,
-  GatewayEventType,
+  MeshCentralClient,
+  MeshCentralEvent,
+  MeshCentralEventType,
   HistoricalEventFilter,
 } from '@meshcentral/control-client';
 import { formatEventMessage, type Device } from '@meshcentral/shared-state';
@@ -43,7 +43,7 @@ const eventFilters: Array<{
   { labelKey: 'deviceWorkspace.logs.filters.removenode', value: 'removenode' },
 ];
 
-const typeLabelKeys: Record<GatewayEventType, string> = {
+const typeLabelKeys: Record<MeshCentralEventType, string> = {
   deviceOnline: 'deviceWorkspace.logs.types.deviceOnline',
   deviceOffline: 'deviceWorkspace.logs.types.deviceOffline',
   deviceChanged: 'deviceWorkspace.logs.types.deviceChanged',
@@ -57,7 +57,7 @@ const typeLabelKeys: Record<GatewayEventType, string> = {
   unknown: 'deviceWorkspace.logs.types.unknown',
 };
 
-function filterMatches(event: GatewayEvent, filter?: HistoricalEventFilter) {
+function filterMatches(event: MeshCentralEvent, filter?: HistoricalEventFilter) {
   if (!filter) return true;
   if (filter === 'removenode') return event.action === 'removenode' || event.action === 'deletenode';
   return event.action === filter;
@@ -79,32 +79,32 @@ function sanitizeRaw(value: unknown): unknown {
 export function DeviceLogsPanel({
   device,
   events,
-  gatewayClient,
-  gatewayConnected,
+  meshCentralClient,
+  controlConnected,
 }: {
   device: Device;
-  events: GatewayEvent[];
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  events: MeshCentralEvent[];
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
 }) {
   const { t } = useTranslation();
   const { dateTime, compare } = useFormatters();
-  const [historyEvents, setHistoryEvents] = useState<GatewayEvent[]>([]);
+  const [historyEvents, setHistoryEvents] = useState<MeshCentralEvent[]>([]);
   const [eventFilter, setEventFilter] = useState<HistoricalEventFilter>();
   const [historyLimit, setHistoryLimit] = useState(100);
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
   const [queryError, setQueryError] = useState<string>();
-  const [selectedEvent, setSelectedEvent] = useState<GatewayEvent>();
+  const [selectedEvent, setSelectedEvent] = useState<MeshCentralEvent>();
   const requestNumber = useRef(0);
 
   const loadHistory = useCallback(async () => {
-    if (!gatewayClient || !gatewayConnected) return;
+    if (!meshCentralClient || !controlConnected) return;
     const request = ++requestNumber.current;
     setLoading(true);
     setQueryError(undefined);
     try {
-      const result = await gatewayClient.events.listByDevice(device.id, {
+      const result = await meshCentralClient.events.listByDevice(device.id, {
         limit: historyLimit,
         filter: eventFilter,
       });
@@ -116,7 +116,7 @@ export function DeviceLogsPanel({
     } finally {
       if (request === requestNumber.current) setLoading(false);
     }
-  }, [device.id, eventFilter, gatewayClient, gatewayConnected, historyLimit]);
+  }, [device.id, eventFilter, meshCentralClient, controlConnected, historyLimit]);
 
   useEffect(() => {
     void loadHistory();
@@ -154,25 +154,25 @@ export function DeviceLogsPanel({
       title: t('deviceWorkspace.logs.columns.type'),
       dataIndex: 'type',
       width: 116,
-      render: (type: GatewayEventType) => <Tag>{t(typeLabelKeys[type])}</Tag>,
+      render: (type: MeshCentralEventType) => <Tag>{t(typeLabelKeys[type])}</Tag>,
     },
     { title: t('deviceWorkspace.logs.columns.user'), dataIndex: 'user', width: 120, render: (value?: string) => value || t('common.status.systemEvent') },
     { title: t('deviceWorkspace.logs.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
       title: t('deviceWorkspace.logs.columns.content'),
-      render: (_: unknown, event: GatewayEvent) => formatEventMessage(event, deviceList, []),
+      render: (_: unknown, event: MeshCentralEvent) => formatEventMessage(event, deviceList, []),
     },
     {
       title: t('deviceWorkspace.logs.columns.actions'),
       width: 76,
       fixed: 'right' as const,
-      render: (_: unknown, event: GatewayEvent) => (
+      render: (_: unknown, event: MeshCentralEvent) => (
         <Button type="link" onClick={() => setSelectedEvent(event)}>{t('common.actions.details')}</Button>
       ),
     },
   ];
 
-  const waitingForConnection = !gatewayClient || !gatewayConnected;
+  const waitingForConnection = !meshCentralClient || !controlConnected;
 
   return (
     <section className="console-card workspace-logs-panel">
@@ -182,8 +182,8 @@ export function DeviceLogsPanel({
           <span>{t('deviceWorkspace.logs.description')}</span>
         </div>
         <Space wrap>
-          <Tag color={gatewayConnected ? 'success' : 'warning'}>
-            {gatewayConnected ? t('deviceWorkspace.logs.live') : t('common.status.disconnected')}
+          <Tag color={controlConnected ? 'success' : 'warning'}>
+            {controlConnected ? t('deviceWorkspace.logs.live') : t('common.status.disconnected')}
           </Tag>
           <Input.Search
             allowClear
@@ -218,7 +218,7 @@ export function DeviceLogsPanel({
         </Space>
       </div>
 
-      {!gatewayConnected && (
+      {!controlConnected && (
         <Alert banner type="warning" title={t('deviceWorkspace.logs.disconnectedNotice')} />
       )}
       {queryError && (
@@ -231,7 +231,7 @@ export function DeviceLogsPanel({
         />
       )}
 
-      <Table<GatewayEvent>
+      <Table<MeshCentralEvent>
         rowKey="id"
         className="workspace-logs-table"
         columns={columns}

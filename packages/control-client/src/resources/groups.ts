@@ -1,16 +1,16 @@
 import {
-  GatewayConnectionClosedError,
-  GatewayRequestTimeoutError,
-  GatewayServerError,
-  GatewayValidationError,
+  MeshCentralConnectionClosedError,
+  MeshCentralRequestTimeoutError,
+  MeshCentralServerError,
+  MeshCentralValidationError,
 } from '../errors';
 import { isRecord, normalizeGroups } from '../protocol/normalizers';
 import type {
   ConnectionStateChange,
   DeviceGroup,
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
   GroupCreateOptions,
   GroupUpdate,
 } from '../types';
@@ -18,16 +18,16 @@ import type {
 interface ResourceClient {
   send(payload: unknown): void;
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
 const GROUP_MEMBERSHIP_CONFIRMATION_TIMEOUT_MS = 5_000;
 
 const required = (value: string, name: string) => {
-  if (!value.trim()) throw new GatewayValidationError(`${name} is required.`);
+  if (!value.trim()) throw new MeshCentralValidationError(`${name} is required.`);
 };
 
 function membershipError(message: unknown, action: string): string | undefined {
@@ -78,7 +78,7 @@ export class GroupsResource {
   update(groupId: string, updates: GroupUpdate): Promise<unknown> {
     required(groupId, 'Group ID');
     if (!updates.name && updates.description === undefined)
-      throw new GatewayValidationError('At least one group update is required.');
+      throw new MeshCentralValidationError('At least one group update is required.');
     return this.client.request({
       action: 'editmesh',
       meshid: groupId,
@@ -96,7 +96,7 @@ export class GroupsResource {
     required(groupName, 'Group name');
     required(userId, 'User ID');
     if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
-      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+      throw new MeshCentralValidationError('Rights must be an unsigned 32-bit integer.');
     }
     return this.mutateMembership(
       {
@@ -130,10 +130,10 @@ export class GroupsResource {
     required(groupName, 'Group name');
     required(userGroupId, 'User group ID');
     if (!userGroupId.startsWith('ugrp//')) {
-      throw new GatewayValidationError('User group ID must start with ugrp//.');
+      throw new MeshCentralValidationError('User group ID must start with ugrp//.');
     }
     if (!Number.isInteger(rights) || rights < 0 || rights > 0xffffffff) {
-      throw new GatewayValidationError('Rights must be an unsigned 32-bit integer.');
+      throw new MeshCentralValidationError('Rights must be an unsigned 32-bit integer.');
     }
     return this.mutateMembership(
       {
@@ -152,7 +152,7 @@ export class GroupsResource {
     required(groupId, 'Group ID');
     required(userGroupId, 'User group ID');
     if (!userGroupId.startsWith('ugrp//')) {
-      throw new GatewayValidationError('User group ID must start with ugrp//.');
+      throw new MeshCentralValidationError('User group ID must start with ugrp//.');
     }
     return this.mutateMembership(
       { action: 'removemeshuser', meshid: groupId, userid: userGroupId },
@@ -178,7 +178,7 @@ export class GroupsResource {
       const unsubscribeMessage = this.client.on('message', (message) => {
         const error = membershipError(message, action);
         if (error) {
-          finish(() => reject(new GatewayServerError(error, { action })));
+          finish(() => reject(new MeshCentralServerError(error, { action })));
           return;
         }
         const event = membershipEvent(message);
@@ -189,7 +189,7 @@ export class GroupsResource {
         (change: ConnectionStateChange) => {
           if (change.current === 'disconnected' || change.current === 'error') {
             finish(() =>
-              reject(new GatewayConnectionClosedError('Connection closed during membership update.')),
+              reject(new MeshCentralConnectionClosedError('Connection closed during membership update.')),
             );
           }
         },
@@ -198,7 +198,7 @@ export class GroupsResource {
         () =>
           finish(() =>
             reject(
-              new GatewayRequestTimeoutError(`Timed out waiting for ${action} confirmation.`, {
+              new MeshCentralRequestTimeoutError(`Timed out waiting for ${action} confirmation.`, {
                 action,
               }),
             ),

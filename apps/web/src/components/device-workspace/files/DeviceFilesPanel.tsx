@@ -14,7 +14,7 @@ import {
   SendOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import { joinFilePath, parentFilePath, type FileEntry } from '@meshcentral/relay';
 import type { Device } from '@meshcentral/shared-state';
 import {
@@ -38,8 +38,8 @@ import { useDeviceFilesSession } from './useDeviceFilesSession';
 
 interface DeviceFilesPanelProps {
   device: Device;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   filesAllowed?: boolean;
 }
 

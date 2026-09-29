@@ -1,16 +1,16 @@
-export { bindGatewayClient, type GatewayClientBinding } from './binding';
-export { useGatewayStore } from './react';
-export { createGatewayStore, gatewaySelectors, type GatewayStore } from './store';
+export { bindMeshCentralClient, type MeshCentralClientBinding } from './binding';
+export { useMeshCentralControlStore } from './react';
+export { createMeshCentralControlStore, meshCentralControlSelectors, type MeshCentralControlStore } from './store';
 export { getGreetingTime, getUserDisplayName } from './userHelpers';
 export * from './utils';
 export type {
   ConnectionStatus,
   Device,
   DeviceGroup,
-  GatewayEvent,
-  GatewayEventType,
-  GatewaySnapshot,
-  GatewayState,
+  MeshCentralEvent,
+  MeshCentralEventType,
+  MeshCentralSnapshot,
+  MeshCentralControlState,
   UserInfo,
 } from './types';
 export * from './types/events.type';

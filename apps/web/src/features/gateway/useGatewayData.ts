@@ -1,5 +1,5 @@
-import { gatewaySelectors, useGatewayStore } from '@meshcentral/shared-state';
-import { useGateway } from './GatewayProvider';
+import { meshCentralControlSelectors, useMeshCentralControlStore } from '@meshcentral/shared-state';
+import { useMeshCentralControl } from './MeshCentralControlProvider';
 
 const statusMap = {
   idle: { color: 'default' },
@@ -11,25 +11,25 @@ const statusMap = {
 } as const;
 
 export function useConnectionSummary() {
-  const { store, configured } = useGateway();
-  const status = useGatewayStore(store, gatewaySelectors.status);
+  const { store, configured } = useMeshCentralControl();
+  const status = useMeshCentralControlStore(store, meshCentralControlSelectors.status);
   return configured
     ? { status, color: statusMap[status].color }
     : { status: 'notConfigured' as const, color: 'warning' as const };
 }
 
-export function useGatewayData() {
-  const gateway = useGateway();
-  const devices = useGatewayStore(gateway.store, gatewaySelectors.devices);
-  const groups = useGatewayStore(gateway.store, gatewaySelectors.groups);
-  const events = useGatewayStore(gateway.store, gatewaySelectors.events);
-  const status = useGatewayStore(gateway.store, gatewaySelectors.status);
-  const error = useGatewayStore(gateway.store, gatewaySelectors.error);
-  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
-  const serverInfo = useGatewayStore(gateway.store, gatewaySelectors.serverInfo);
-  const reconnectAttempt = useGatewayStore(gateway.store, gatewaySelectors.reconnectAttempt);
-  const lastConnectedAt = useGatewayStore(gateway.store, (state) => state.lastConnectedAt);
-  const lastMessageAt = useGatewayStore(gateway.store, (state) => state.lastMessageAt);
+export function useMeshCentralControlData() {
+  const gateway = useMeshCentralControl();
+  const devices = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.devices);
+  const groups = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.groups);
+  const events = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.events);
+  const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
+  const error = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.error);
+  const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
+  const serverInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.serverInfo);
+  const reconnectAttempt = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.reconnectAttempt);
+  const lastConnectedAt = useMeshCentralControlStore(gateway.store, (state) => state.lastConnectedAt);
+  const lastMessageAt = useMeshCentralControlStore(gateway.store, (state) => state.lastMessageAt);
   return {
     ...gateway,
     devices,

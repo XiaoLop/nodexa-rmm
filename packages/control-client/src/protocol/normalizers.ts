@@ -1,7 +1,7 @@
 import type {
   Device,
   DeviceGroup,
-  GatewayEvent,
+  MeshCentralEvent,
   PrincipalGrant,
   ServerInfo,
   ServerStateStats,
@@ -205,14 +205,14 @@ function eventId(raw: UnknownRecord, action: string, deviceId?: string): string 
   return `event-${(hash >>> 0).toString(36)}`;
 }
 
-export function normalizeEvent(value: unknown): GatewayEvent | undefined {
+export function normalizeEvent(value: unknown): MeshCentralEvent | undefined {
   if (!isRecord(value)) return undefined;
   const raw = isRecord(value.event) ? value.event : value;
   const action = stringValue(raw.action) ?? 'unknown';
   const deviceId = stringValue(raw.deviceId) ?? stringValue(raw.nodeid);
   const node = isRecord(raw.node) ? raw.node : undefined;
   const conn = typeof raw.conn === 'number' ? raw.conn : undefined;
-  let type: GatewayEvent['type'] = 'unknown';
+  let type: MeshCentralEvent['type'] = 'unknown';
   if (action === 'nodeconnect' || action === 'connect' || action === 'connected')
     type = conn !== undefined && (conn & 1) === 0 ? 'deviceOffline' : 'deviceOnline';
   else if (action === 'nodedisconnect' || action === 'disconnect' || action === 'disconnected')

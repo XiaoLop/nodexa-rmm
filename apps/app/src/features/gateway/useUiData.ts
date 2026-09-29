@@ -1,14 +1,14 @@
 import {
-  gatewaySelectors,
+  meshCentralControlSelectors,
   getGreetingTime,
   getUserDisplayName,
-  useGatewayStore,
+  useMeshCentralControlStore,
 } from '@meshcentral/shared-state';
-import { useGatewayData } from './useGatewayData';
+import { useMeshCentralControlData } from './useMeshCentralControlData';
 
 export function useUiData() {
-  const gateway = useGatewayData();
-  const liveGroups = useGatewayStore(gateway.store, gatewaySelectors.groups);
+  const gateway = useMeshCentralControlData();
+  const liveGroups = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.groups);
 
   const displayName = getUserDisplayName(gateway.userInfo, gateway.username);
   const avatarText = displayName ? displayName.charAt(0).toUpperCase() : '用';

@@ -4,7 +4,7 @@ import {
   getEventTargetName,
   type Device,
   type DeviceGroup,
-  type GatewayEvent,
+  type MeshCentralEvent,
 } from '@meshcentral/shared-state';
 import { router } from 'expo-router';
 import type { PropsWithChildren, ReactNode } from 'react';
@@ -21,7 +21,7 @@ export function platformIcon(platform?: string) {
   return 'desktop-outline' as const;
 }
 
-export function eventPresentation(event: GatewayEvent | string) {
+export function eventPresentation(event: MeshCentralEvent | string) {
   const type = typeof event === 'string' ? event : event.type;
   const msg = typeof event === 'string' ? '' : (event.message ?? '');
 
@@ -168,7 +168,7 @@ export function CompactEventRow({
   devices: devicesProp,
   groups: groupsProp,
 }: {
-  event: GatewayEvent;
+  event: MeshCentralEvent;
   isLast?: boolean;
   devices?: Device[] | Record<string, Device>;
   groups?: DeviceGroup[] | Record<string, DeviceGroup>;

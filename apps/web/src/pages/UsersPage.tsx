@@ -32,7 +32,7 @@ import { UserCreateModal } from '../components/users/UserCreateModal';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useFormatters } from '../i18n';
 import '../assets/styles/users.css';
 
@@ -40,7 +40,7 @@ export function UsersPage() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const navigate = useNavigate();
-  const { client, status, userInfo } = useGatewayData();
+  const { client, status, userInfo } = useMeshCentralControlData();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const [users, setUsers] = useState<ManagedUser[]>([]);

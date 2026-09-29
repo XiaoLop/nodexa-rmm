@@ -2,7 +2,7 @@ import { Result } from 'antd';
 import { lazy, Suspense, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useGateway } from '../features/gateway/GatewayProvider';
+import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
 import {
   useApplicationUiCapabilities,
   type ApplicationCapability,
@@ -56,7 +56,7 @@ const UsersPage = lazy(() =>
 );
 
 function ProtectedRoute({ children }: PropsWithChildren) {
-  const gateway = useGateway();
+  const gateway = useMeshCentralControl();
   const location = useLocation();
   if (gateway.initializing) return <AppBootScreen />;
   if (!gateway.authenticated) {

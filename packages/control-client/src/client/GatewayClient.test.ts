@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GatewayAuthenticationError } from '../errors';
+import { MeshCentralAuthenticationError } from '../errors';
 import { FakeWebSocket } from '../testing/FakeWebSocket';
-import { GatewayClient } from './GatewayClient';
+import { MeshCentralClient } from './MeshCentralClient';
 
 async function connectedClient() {
   const socket = new FakeWebSocket();
-  const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+  const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
   const connecting = client.connect();
   socket.open();
   socket.message({ type: 'authenticated' });
@@ -13,10 +13,10 @@ async function connectedClient() {
   return { client, socket };
 }
 
-describe('GatewayClient', () => {
+describe('MeshCentralClient', () => {
   it('uses a 3 second default request timeout', async () => {
     const socket = new FakeWebSocket();
-    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
     const connecting = client.connect();
     socket.open();
     socket.message({ type: 'authenticated' });
@@ -26,7 +26,7 @@ describe('GatewayClient', () => {
     try {
       const request = client.request({ action: 'test' });
       const timedOut = expect(request).rejects.toMatchObject({
-        name: 'GatewayRequestTimeoutError',
+        name: 'MeshCentralRequestTimeoutError',
       });
       await vi.advanceTimersByTimeAsync(2_999);
       expect(vi.getTimerCount()).toBe(1);
@@ -41,7 +41,7 @@ describe('GatewayClient', () => {
   it('waits for authentication and emits domain events', async () => {
     const socket = new FakeWebSocket();
     const events: string[] = [];
-    const client = new GatewayClient({
+    const client = new MeshCentralClient({
       url: 'ws://gateway.test',
       webSocketFactory: () => socket,
       onEvent: (event) => events.push(event.type),
@@ -62,7 +62,7 @@ describe('GatewayClient', () => {
 
   it('emits normalized server information', async () => {
     const socket = new FakeWebSocket();
-    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
     const serverInfo = vi.fn();
     client.on('serverInfo', serverInfo);
     const connecting = client.connect();
@@ -107,11 +107,11 @@ describe('GatewayClient', () => {
 
   it('rejects authentication failures', async () => {
     const socket = new FakeWebSocket();
-    const client = new GatewayClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
     const connecting = client.connect();
     socket.open();
     socket.message({ action: 'close', cause: 'noauth', msg: 'tokenrequired' });
-    await expect(connecting).rejects.toBeInstanceOf(GatewayAuthenticationError);
+    await expect(connecting).rejects.toBeInstanceOf(MeshCentralAuthenticationError);
   });
 
   it('matches concurrent responseid-less system information by device id', async () => {

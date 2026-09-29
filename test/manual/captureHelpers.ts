@@ -142,7 +142,7 @@ export class CaptureRecorder {
   }
 }
 
-export function gatewayUrl(): string {
+export function controlUrl(): string {
   const base = requiredEnvironment('GATEWAY_WS_URL');
   const meshAuth = process.env.GATEWAY_MESHAUTH?.trim();
   if (!meshAuth) return base;

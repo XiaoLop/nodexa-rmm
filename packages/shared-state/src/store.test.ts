@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createGatewayStore, gatewaySelectors } from './store';
+import { createMeshCentralControlStore, meshCentralControlSelectors } from './store';
 
 describe('gateway store', () => {
   it('applies snapshots and device events', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().replaceDevices([{ id: 'node-1', name: 'Server 1', online: false }]);
     store.getState().replaceGroups([{ id: 'group-1', name: 'Servers' }]);
 
@@ -23,7 +23,7 @@ describe('gateway store', () => {
   });
 
   it('replaces normalized devices', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().replaceDevices([
       {
         id: 'node/domain/device1',
@@ -39,7 +39,7 @@ describe('gateway store', () => {
         lastSeenAt: '2024-03-09T16:00:00.000Z',
       },
     ]);
-    const devices = gatewaySelectors.devices(store.getState());
+    const devices = meshCentralControlSelectors.devices(store.getState());
     expect(devices).toHaveLength(2);
     expect(devices[0]).toMatchObject({
       id: 'node/domain/device1',
@@ -57,7 +57,7 @@ describe('gateway store', () => {
   });
 
   it('preserves last-seen values when replacing devices', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().replaceDevices([
       { id: 'node/domain/device1', name: 'Web Server', online: true },
       { id: 'node/domain/device2', name: 'DB Server', online: false },
@@ -89,13 +89,13 @@ describe('gateway store', () => {
   });
 
   it('replaces normalized groups', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store
       .getState()
       .replaceGroups([
         { id: 'mesh/domain/group1', name: 'Production', description: 'Prod Servers' },
       ]);
-    const groups = gatewaySelectors.groups(store.getState());
+    const groups = meshCentralControlSelectors.groups(store.getState());
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({
       id: 'mesh/domain/group1',
@@ -105,7 +105,7 @@ describe('gateway store', () => {
   });
 
   it('stores normalized user information', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().setUserInfo({
       id: 'user//admin',
       name: '系统管理员',
@@ -119,7 +119,7 @@ describe('gateway store', () => {
       previousLoginAt: '2024-02-27T02:13:20.000Z',
       language: 'zh-cn',
     });
-    const userInfo = gatewaySelectors.userInfo(store.getState());
+    const userInfo = meshCentralControlSelectors.userInfo(store.getState());
     expect(userInfo).toMatchObject({
       id: 'user//admin',
       name: '系统管理员',
@@ -134,7 +134,7 @@ describe('gateway store', () => {
   });
 
   it('clears authorization snapshots between sessions', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().replaceDevices([{ id: 'node-1', name: 'One', online: true }]);
     store.getState().replaceGroups([{ id: 'mesh-1', name: 'One' }]);
     store.getState().setUserInfo({ id: 'user-1', removeRights: 0, links: {} });
@@ -149,14 +149,14 @@ describe('gateway store', () => {
   });
 
   it('removes devices', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().upsertDevice({ id: 'node-2', name: 'Server 2', online: true });
     store.getState().removeDevice('node-2');
     expect(store.getState().devices['node-2']).toBeUndefined();
   });
 
   it('ignores unknown events and does not store them in state', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
 
     store.getState().appendEvent({
       id: 'evt-1',
@@ -168,7 +168,7 @@ describe('gateway store', () => {
   });
 
   it('updates device data on changenode event without changing online status if not provided', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().upsertDevice({ id: 'node/1', name: 'Old Name', online: true });
 
     store
@@ -191,7 +191,7 @@ describe('gateway store', () => {
   });
 
   it('stores device, relay and agent events', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().upsertDevice({ id: 'node-1', name: 'Server 1', online: true });
 
     store.getState().upsertDevice({
@@ -230,7 +230,7 @@ describe('gateway store', () => {
   });
 
   it('transitions offline devices to online', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     store.getState().upsertDevice({ id: 'node-offline', name: 'Offline Server', online: false });
 
     store.getState().upsertDevice({ id: 'node-offline', name: 'Offline Server', online: true });
@@ -246,20 +246,20 @@ describe('gateway store', () => {
   });
 
   it('returns stable collection selector snapshots until their records change', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     const initialState = store.getState();
 
-    expect(gatewaySelectors.devices(initialState)).toBe(gatewaySelectors.devices(initialState));
-    expect(gatewaySelectors.groups(initialState)).toBe(gatewaySelectors.groups(initialState));
+    expect(meshCentralControlSelectors.devices(initialState)).toBe(meshCentralControlSelectors.devices(initialState));
+    expect(meshCentralControlSelectors.groups(initialState)).toBe(meshCentralControlSelectors.groups(initialState));
 
-    const initialDevices = gatewaySelectors.devices(initialState);
+    const initialDevices = meshCentralControlSelectors.devices(initialState);
     store.getState().upsertDevice({ id: 'node-3', name: 'Server 3', online: true });
 
-    expect(gatewaySelectors.devices(store.getState())).not.toBe(initialDevices);
+    expect(meshCentralControlSelectors.devices(store.getState())).not.toBe(initialDevices);
   });
 
   it('keeps the newest 100 realtime events in newest-first order', () => {
-    const store = createGatewayStore();
+    const store = createMeshCentralControlStore();
     for (let index = 0; index < 101; index += 1) {
       store.getState().appendEvent({
         id: `event-${index}`,

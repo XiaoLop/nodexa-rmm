@@ -2,8 +2,8 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type {
   Device,
   DeviceGroup,
-  GatewayEvent,
-  GatewayState,
+  MeshCentralEvent,
+  MeshCentralControlState,
   ServerInfo,
   UserInfo,
 } from './types';
@@ -41,10 +41,10 @@ const initialData = {
   reconnectAttempt: 0,
 };
 
-export type GatewayStore = StoreApi<GatewayState>;
+export type MeshCentralControlStore = StoreApi<MeshCentralControlState>;
 
-export function createGatewayStore(): GatewayStore {
-  return createStore<GatewayState>()((set) => ({
+export function createMeshCentralControlStore(): MeshCentralControlStore {
+  return createStore<MeshCentralControlState>()((set) => ({
     ...initialData,
     setConnectionStatus: (status, error) =>
       set({
@@ -124,16 +124,16 @@ export function createGatewayStore(): GatewayStore {
   }));
 }
 
-export const gatewaySelectors = {
-  status: (state: GatewayState) => state.status,
-  error: (state: GatewayState) => state.error,
-  reconnectAttempt: (state: GatewayState) => state.reconnectAttempt,
-  devices: (state: GatewayState): Device[] => selectDevices(state.devices),
-  groups: (state: GatewayState): DeviceGroup[] => selectGroups(state.groups),
-  events: (state: GatewayState): GatewayEvent[] => state.events,
-  userInfo: (state: GatewayState): UserInfo | undefined => state.userInfo,
-  serverInfo: (state: GatewayState): ServerInfo | undefined => state.serverInfo,
-  deviceCount: (state: GatewayState) => Object.keys(state.devices).length,
-  onlineDeviceCount: (state: GatewayState) =>
+export const meshCentralControlSelectors = {
+  status: (state: MeshCentralControlState) => state.status,
+  error: (state: MeshCentralControlState) => state.error,
+  reconnectAttempt: (state: MeshCentralControlState) => state.reconnectAttempt,
+  devices: (state: MeshCentralControlState): Device[] => selectDevices(state.devices),
+  groups: (state: MeshCentralControlState): DeviceGroup[] => selectGroups(state.groups),
+  events: (state: MeshCentralControlState): MeshCentralEvent[] => state.events,
+  userInfo: (state: MeshCentralControlState): UserInfo | undefined => state.userInfo,
+  serverInfo: (state: MeshCentralControlState): ServerInfo | undefined => state.serverInfo,
+  deviceCount: (state: MeshCentralControlState) => Object.keys(state.devices).length,
+  onlineDeviceCount: (state: MeshCentralControlState) =>
     Object.values(state.devices).filter((device) => device.online).length,
 };

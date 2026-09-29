@@ -32,13 +32,13 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock Gateway
-vi.mock('../../features/gateway/GatewayProvider', () => ({
-  useGateway: () => ({
+vi.mock('../../features/gateway/MeshCentralControlProvider', () => ({
+  useMeshCentralControl: () => ({
     authenticated: false,
     initializing: false,
     login: vi.fn(),
   }),
-  GatewayLoginError: class extends Error {
+  MeshCentralLoginError: class extends Error {
     constructor(readonly status: string, message: string) {
       super(message);
     }

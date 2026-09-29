@@ -1,6 +1,6 @@
 # 消息与资源 API
 
-shared-state 不直接发送 WebSocket 协议消息。发送请求时应使用 `@meshcentral/control-client` 的资源 API，再通过 `GatewayStore` 展示连接和实时状态。
+shared-state 不直接发送 WebSocket 协议消息。发送请求时应使用 `@meshcentral/control-client` 的资源 API，再通过 `MeshCentralControlStore` 展示连接和实时状态。
 
 本文中的“消息”指资源方法在内部发送的 MeshCentral action。调用方通常不需要手写这些 payload。
 
@@ -62,7 +62,7 @@ await binding.sync();
 
 成员权限操作会等待服务端 `accountchange` 确认，连接关闭、服务端报错或超时会拒绝 Promise。
 
-设备组写操作后可调用 `binding.sync()` 更新 `GatewayStore.groups`。
+设备组写操作后可调用 `binding.sync()` 更新 `MeshCentralControlStore.groups`。
 
 ## 历史事件资源
 
@@ -70,9 +70,9 @@ await binding.sync();
 
 | 方法 | 内部 action | 获得什么 | 可以用来做什么 |
 | --- | --- | --- | --- |
-| `list(options)` | `events` | `GatewayEvent[]` | 全局审计和最近活动 |
-| `listByDevice(deviceId, options)` | `events` | 指定设备的 `GatewayEvent[]` | 设备时间线和故障排查 |
-| `listByUser(userId, options)` | `events` | 指定用户的 `GatewayEvent[]` | 用户操作审计 |
+| `list(options)` | `events` | `MeshCentralEvent[]` | 全局审计和最近活动 |
+| `listByDevice(deviceId, options)` | `events` | 指定设备的 `MeshCentralEvent[]` | 设备时间线和故障排查 |
+| `listByUser(userId, options)` | `events` | 指定用户的 `MeshCentralEvent[]` | 用户操作审计 |
 
 `limit` 必须是 1 到 200 的整数，默认 100。可用 `filter`：
 
@@ -133,7 +133,7 @@ console.log(submission.requestId);
 
 `run()` 内部发送 `runcommands`，返回 `CommandSubmission`，适合只关心提交成功或由其他事件流处理结果的场景。
 
-命令结果不保存在 `GatewayStore` 中，应由命令功能自己的状态管理。
+命令结果不保存在 `MeshCentralControlStore` 中，应由命令功能自己的状态管理。
 
 ## 用户资源
 
@@ -150,7 +150,7 @@ console.log(submission.requestId);
 
 用户写操作会串行执行，并等待服务端账户事件；如果事件未及时到达，客户端会重新查询用户列表验证结果。
 
-用户列表不会自动进入 `GatewayStore.userInfo`。`userInfo` 只代表当前登录用户。
+用户列表不会自动进入 `MeshCentralControlStore.userInfo`。`userInfo` 只代表当前登录用户。
 
 ## 用户组资源
 
@@ -160,7 +160,7 @@ console.log(submission.requestId);
 | --- | --- | --- | --- |
 | `list()` | `usergroups` | `UserGroup[]` | 用户组筛选、权限配置和成员管理页面 |
 
-用户组列表不保存在当前 `GatewayStore` 中。
+用户组列表不保存在当前 `MeshCentralControlStore` 中。
 
 ## 连接与通用消息
 
@@ -181,7 +181,7 @@ console.log(submission.requestId);
 
 | 数据 | 推荐状态位置 |
 | --- | --- |
-| 设备、设备组、当前用户、实时事件、连接状态 | `GatewayStore` |
+| 设备、设备组、当前用户、实时事件、连接状态 | `MeshCentralControlStore` |
 | 历史事件查询 | 事件页面的查询状态 |
 | 命令输出与进度 | 命令执行功能状态 |
 | 用户和用户组列表 | 用户管理功能状态 |

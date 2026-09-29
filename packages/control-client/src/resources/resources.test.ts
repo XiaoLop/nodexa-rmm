@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GatewayRequestTimeoutError, GatewayServerError, GatewayValidationError } from '../errors';
-import type { GatewayClientEvents, GatewayEventChannel, GatewayListener } from '../types';
+import { MeshCentralRequestTimeoutError, MeshCentralServerError, MeshCentralValidationError } from '../errors';
+import type { MeshCentralClientEvents, MeshCentralEventChannel, MeshCentralListener } from '../types';
 import addUserSuccessFixture from '../testing/fixtures/users/add-success.json';
 import deleteUserSuccessFixture from '../testing/fixtures/users/delete-success.json';
 import editUserSuccessFixture from '../testing/fixtures/users/edit-success.json';
@@ -16,7 +16,7 @@ class FakeClient {
   readonly requests: Record<string, unknown>[] = [];
   readonly sent: unknown[] = [];
   responses: unknown[] = [];
-  private readonly listeners = new Map<GatewayEventChannel, Set<GatewayListener<never>>>();
+  private readonly listeners = new Map<MeshCentralEventChannel, Set<MeshCentralListener<never>>>();
 
   async request<T>(payload: Record<string, unknown>): Promise<T> {
     this.requests.push(payload);
@@ -27,17 +27,17 @@ class FakeClient {
     this.sent.push(payload);
   }
 
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void {
-    const listeners = this.listeners.get(channel) ?? new Set<GatewayListener<never>>();
-    listeners.add(listener as GatewayListener<never>);
+    const listeners = this.listeners.get(channel) ?? new Set<MeshCentralListener<never>>();
+    listeners.add(listener as MeshCentralListener<never>);
     this.listeners.set(channel, listeners);
-    return () => listeners.delete(listener as GatewayListener<never>);
+    return () => listeners.delete(listener as MeshCentralListener<never>);
   }
 
-  emit<K extends GatewayEventChannel>(channel: K, value: GatewayClientEvents[K]): void {
+  emit<K extends MeshCentralEventChannel>(channel: K, value: MeshCentralClientEvents[K]): void {
     for (const listener of this.listeners.get(channel) ?? []) listener(value as never);
   }
 }
@@ -86,9 +86,9 @@ describe('resources', () => {
       action: 'servertimelinestats',
       hours: 24,
     });
-    await expect(server.getTimelineStats(-1)).rejects.toThrow(GatewayValidationError);
-    await expect(server.getTimelineStats(721)).rejects.toThrow(GatewayValidationError);
-    await expect(server.getTimelineStats(1.5)).rejects.toThrow(GatewayValidationError);
+    await expect(server.getTimelineStats(-1)).rejects.toThrow(MeshCentralValidationError);
+    await expect(server.getTimelineStats(721)).rejects.toThrow(MeshCentralValidationError);
+    await expect(server.getTimelineStats(1.5)).rejects.toThrow(MeshCentralValidationError);
   });
 
   it('subscribes to server statistics pushes', () => {
@@ -98,7 +98,7 @@ describe('resources', () => {
     const unsubscribe = server.subscribeStats(listener);
     expect(client.sent).toEqual([{ action: 'serverstats', interval: 10_000 }]);
 
-    const stats: GatewayClientEvents['serverStats'] = {
+    const stats: MeshCentralClientEvents['serverStats'] = {
       totalMemory: 100,
       freeMemory: 40,
       availableMemory: 50,
@@ -111,7 +111,7 @@ describe('resources', () => {
     unsubscribe();
     client.emit('serverStats', stats);
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(() => server.subscribeStats(listener, 0)).toThrow(GatewayValidationError);
+    expect(() => server.subscribeStats(listener, 0)).toThrow(MeshCentralValidationError);
   });
 
   it('builds and normalizes device requests', async () => {
@@ -424,13 +424,13 @@ describe('resources', () => {
 
   it('rejects invalid user group mutations', () => {
     const userGroups = new UserGroupsResource(new FakeClient());
-    expect(() => userGroups.create({ name: ' ' })).toThrow(GatewayValidationError);
+    expect(() => userGroups.create({ name: ' ' })).toThrow(MeshCentralValidationError);
     expect(() => userGroups.create({ name: 'copy', cloneUserGroupId: 'invalid' })).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
-    expect(() => userGroups.update('invalid', { name: 'test' })).toThrow(GatewayValidationError);
-    expect(() => userGroups.addUsers('ugrp//test', [])).toThrow(GatewayValidationError);
-    expect(() => userGroups.removeUser('ugrp//test', 'root')).toThrow(GatewayValidationError);
+    expect(() => userGroups.update('invalid', { name: 'test' })).toThrow(MeshCentralValidationError);
+    expect(() => userGroups.addUsers('ugrp//test', [])).toThrow(MeshCentralValidationError);
+    expect(() => userGroups.removeUser('ugrp//test', 'root')).toThrow(MeshCentralValidationError);
   });
 
   it('builds and normalizes user requests', async () => {
@@ -668,53 +668,53 @@ describe('resources', () => {
   it('rejects invalid group membership mutations', () => {
     const groups = new GroupsResource(new FakeClient());
     expect(() => groups.setUserRights(' ', 'Servers', 'user//test', 3)).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
     expect(() => groups.setUserRights('mesh//servers', 'Servers', 'user//test', -1)).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
     expect(() =>
       groups.setUserRights('mesh//servers', 'Servers', 'user//test', 0x100000000),
-    ).toThrow(GatewayValidationError);
-    expect(() => groups.removeUser('mesh//servers', ' ')).toThrow(GatewayValidationError);
+    ).toThrow(MeshCentralValidationError);
+    expect(() => groups.removeUser('mesh//servers', ' ')).toThrow(MeshCentralValidationError);
   });
 
   it('rejects invalid device permission mutations', () => {
     const devices = new DevicesResource(new FakeClient());
-    expect(() => devices.setUserRights(' ', 'operator', 8)).toThrow(GatewayValidationError);
-    expect(() => devices.setUserRights('node//one', ' ', 8)).toThrow(GatewayValidationError);
+    expect(() => devices.setUserRights(' ', 'operator', 8)).toThrow(MeshCentralValidationError);
+    expect(() => devices.setUserRights('node//one', ' ', 8)).toThrow(MeshCentralValidationError);
     expect(() => devices.setUserRights('node//one', 'operator', -1)).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
     expect(() => devices.setUserRights('node//one', 'operator', 0x100000000)).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
     expect(() => devices.setUserRights('node//one', 'operator', 0xffffffff)).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
     expect(() => devices.setUserRights('node//one', 'operator', 0x00000004)).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
-    expect(() => devices.removeUser('node//one', ' ')).toThrow(GatewayValidationError);
+    expect(() => devices.removeUser('node//one', ' ')).toThrow(MeshCentralValidationError);
   });
 
   it('rejects invalid user mutations', async () => {
     const users = new UsersResource(new FakeClient());
     await expect(users.create({ username: ' ', password: 'secret' })).rejects.toBeInstanceOf(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
     await expect(users.create({ username: 'user', password: ' ' })).rejects.toBeInstanceOf(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
-    expect(() => users.update('user//one', {})).toThrow(GatewayValidationError);
+    expect(() => users.update('user//one', {})).toThrow(MeshCentralValidationError);
     expect(() => users.updateImage('user//one', 'https://example.com/avatar.jpg')).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
-    expect(() => users.changeCurrentEmail('user//one', 'invalid')).toThrow(GatewayValidationError);
+    expect(() => users.changeCurrentEmail('user//one', 'invalid')).toThrow(MeshCentralValidationError);
     expect(() => users.changeCurrentPassword('user//one', 'same', 'same')).toThrow(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
-    expect(() => users.remove(' ')).toThrow(GatewayValidationError);
+    expect(() => users.remove(' ')).toThrow(MeshCentralValidationError);
   });
 
   it('rejects user mutations when the gateway reports an error', async () => {
@@ -733,9 +733,9 @@ describe('resources', () => {
     await events.list({ limit: 60, filter: 'relaylog' });
     expect(client.requests.at(-1)).toEqual({ action: 'events', limit: 60, filter: 'relaylog' });
 
-    expect(() => events.list({ limit: 0 })).toThrow(GatewayValidationError);
-    expect(() => events.list({ limit: 201 })).toThrow(GatewayValidationError);
-    expect(() => events.list({ limit: 1.5 })).toThrow(GatewayValidationError);
+    expect(() => events.list({ limit: 0 })).toThrow(MeshCentralValidationError);
+    expect(() => events.list({ limit: 201 })).toThrow(MeshCentralValidationError);
+    expect(() => events.list({ limit: 1.5 })).toThrow(MeshCentralValidationError);
   });
 
   it('returns an empty event list on timeout without hiding other errors', async () => {
@@ -743,11 +743,11 @@ describe('resources', () => {
     const events = new EventsResource(client);
 
     const emptyResult = events.list({ limit: 60 });
-    client.pending.at(-1)?.reject(new GatewayRequestTimeoutError('No event response.'));
+    client.pending.at(-1)?.reject(new MeshCentralRequestTimeoutError('No event response.'));
     await expect(emptyResult).resolves.toEqual([]);
 
     const failedResult = events.list({ limit: 60 });
-    client.pending.at(-1)?.reject(new GatewayServerError('Access denied.'));
+    client.pending.at(-1)?.reject(new MeshCentralServerError('Access denied.'));
     await expect(failedResult).rejects.toThrow('Access denied.');
   });
 
@@ -860,9 +860,9 @@ describe('resources', () => {
 
   it('rejects invalid batch input and power actions', async () => {
     const devices = new DevicesResource(new FakeClient());
-    await expect(devices.powerMany([], 'wake')).rejects.toBeInstanceOf(GatewayValidationError);
+    await expect(devices.powerMany([], 'wake')).rejects.toBeInstanceOf(MeshCentralValidationError);
     await expect(devices.powerMany(['one'], 'invalid' as never)).rejects.toBeInstanceOf(
-      GatewayValidationError,
+      MeshCentralValidationError,
     );
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodePush, inspectConnectionMessage, requiredConnectionSignals } from './codec';
 
-describe('gateway connection inspection', () => {
+describe('MeshCentral control connection inspection', () => {
   it('treats serverinfo and userinfo as the required legacy connection signals', () => {
     expect(requiredConnectionSignals).toEqual(['serverinfo', 'userinfo']);
     expect(inspectConnectionMessage({ action: 'serverinfo' })).toEqual({

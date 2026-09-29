@@ -23,7 +23,7 @@ import {
   isFullAdministrator,
   type Device,
   type DeviceGroup,
-  type GatewayEvent,
+  type MeshCentralEvent,
   type ManagedUser,
   type UserGroup,
   type UserLink,
@@ -42,7 +42,7 @@ import {
   UserEditDrawer,
   type UserEditSubmission,
 } from '../components/users/UserEditDrawer';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useFormatters } from '../i18n/formatters';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
 import { preserveLatestAccountLock, summarizeSiteRights } from '../features/users/sitePermissions';
@@ -70,7 +70,7 @@ const tabs: Array<{ key: DetailTab; labelKey: string; icon: ReactNode }> = [
   { key: 'logs', labelKey: 'userDetails.tabs.logs', icon: <AuditOutlined /> },
 ];
 
-const eventTypeKeys: Record<GatewayEvent['type'], string> = {
+const eventTypeKeys: Record<MeshCentralEvent['type'], string> = {
   deviceOnline: 'userDetails.events.types.deviceOnline',
   deviceOffline: 'userDetails.events.types.deviceOffline',
   deviceChanged: 'userDetails.events.types.deviceChanged',
@@ -182,7 +182,7 @@ function AccessCard({
   );
 }
 
-function EventTable({ events, devices, groups }: { events: GatewayEvent[]; devices: Device[]; groups: DeviceGroup[] }) {
+function EventTable({ events, devices, groups }: { events: MeshCentralEvent[]; devices: Device[]; groups: DeviceGroup[] }) {
   const { t } = useTranslation();
   const { dateTime } = useFormatters();
   return (
@@ -211,12 +211,12 @@ export function UserDetailsPage() {
   const { dateTime } = useFormatters();
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
-  const { client, status, devices, groups: gatewayGroups, userInfo } = useGatewayData();
+  const { client, status, devices, groups: gatewayGroups, userInfo } = useMeshCentralControlData();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [user, setUser] = useState<ManagedUser>();
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(() => Date.now());
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
-  const [events, setEvents] = useState<GatewayEvent[]>([]);
+  const [events, setEvents] = useState<MeshCentralEvent[]>([]);
   const [sessionCount, setSessionCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string>();

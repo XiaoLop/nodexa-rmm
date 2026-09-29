@@ -49,7 +49,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
-import { useGatewayData } from '../features/gateway/useGatewayData';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
 import '../assets/styles/user-details.css';
 
@@ -70,7 +70,7 @@ export function UserGroupDetailsPage() {
   const navigate = useNavigate();
   const { userGroupId } = useParams();
   const decodedId = userGroupId ? decodeURIComponent(userGroupId) : '';
-  const { client, status, userInfo, groups, devices } = useGatewayData();
+  const { client, status, userInfo, groups, devices } = useMeshCentralControlData();
   const [editForm] = Form.useForm<EditValues>();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [group, setGroup] = useState<UserGroup>();

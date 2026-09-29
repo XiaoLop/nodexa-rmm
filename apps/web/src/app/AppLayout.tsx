@@ -29,10 +29,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isFullAdministrator } from '@meshcentral/control-client';
-import { gatewaySelectors, getUserDisplayName, useGatewayStore } from '@meshcentral/shared-state';
+import { meshCentralControlSelectors, getUserDisplayName, useMeshCentralControlStore } from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/BrandLogo';
 import { UserAvatar } from '../components/users/UserAvatar';
-import { useGateway } from '../features/gateway/GatewayProvider';
+import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
 import {
   useApplicationUiCapabilities,
   type ApplicationCapability,
@@ -167,9 +167,9 @@ function AppLayoutContent() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const gateway = useGateway();
-  const status = useGatewayStore(gateway.store, gatewaySelectors.status);
-  const userInfo = useGatewayStore(gateway.store, gatewaySelectors.userInfo);
+  const gateway = useMeshCentralControl();
+  const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
+  const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
   const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
   const capabilities = useApplicationUiCapabilities();
@@ -259,7 +259,7 @@ function AppLayoutContent() {
               className="global-search"
             />
             <Tooltip
-              title={connected ? t('header.gatewayConnected') : t('header.gatewayDisconnected')}
+              title={connected ? t('header.controlConnected') : t('header.gatewayDisconnected')}
             >
               <span className={`header-connection ${connected ? 'is-connected' : ''}`}>
                 <i />

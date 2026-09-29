@@ -21,7 +21,7 @@ export interface ServerRuntimeCapabilities {
 }
 
 export interface DeviceRuntimeCapabilities {
-  gatewayConnected: boolean;
+  controlConnected: boolean;
   agentOnline: boolean;
   amtOnline: boolean;
   amtReady?: boolean;
@@ -77,9 +77,9 @@ function available(
   };
 }
 
-function gatewayPermission(permitted: boolean, gatewayConnected: boolean): UiPermission {
+function gatewayPermission(permitted: boolean, controlConnected: boolean): UiPermission {
   if (!permitted) return hidden();
-  return available(gatewayConnected, 'gateway-disconnected', '控制通道未连接');
+  return available(controlConnected, 'gateway-disconnected', '控制通道未连接');
 }
 
 function runtimePermission(
@@ -89,7 +89,7 @@ function runtimePermission(
   supported = true,
 ): UiPermission {
   if (!permitted) return hidden();
-  if (!runtime.gatewayConnected)
+  if (!runtime.controlConnected)
     return available(false, 'gateway-disconnected', '控制通道未连接');
   if (!online) return available(false, 'device-offline', '设备当前离线');
   if (!supported) return available(false, 'agent-unsupported', '设备 Agent 不支持此功能');
@@ -187,14 +187,14 @@ export function getDeviceUiCapabilities(
     ),
     wake: gatewayPermission(
       administrator || hasMeshRight(normalized, MeshRight.WakeDevice),
-      runtime.gatewayConnected,
+      runtime.controlConnected,
     ),
     guestShare:
       server.guestDeviceSharing === false
         ? available(false, 'feature-disabled', '服务器未启用访客分享')
         : gatewayPermission(
             administrator || hasMeshRight(normalized, MeshRight.GuestSharing),
-            runtime.gatewayConnected,
+            runtime.controlConnected,
           ),
     uninstall: runtimePermission(
       administrator || hasMeshRight(normalized, MeshRight.Uninstall),
@@ -203,14 +203,14 @@ export function getDeviceUiCapabilities(
     ),
     edit: gatewayPermission(
       administrator || hasMeshRight(normalized, MeshRight.ManageComputers),
-      runtime.gatewayConnected,
+      runtime.controlConnected,
     ),
   };
 }
 
 export function getDeviceGroupUiCapabilities(
   rights: number | undefined,
-  gatewayConnected: boolean,
+  controlConnected: boolean,
 ): DeviceGroupUiCapabilities {
   if (rights === undefined) {
     const unknown = available(false, 'permission-unknown', '正在确认设备组权限');
@@ -227,19 +227,19 @@ export function getDeviceGroupUiCapabilities(
   return {
     edit: gatewayPermission(
       administrator || hasMeshRight(normalized, MeshRight.EditMesh),
-      gatewayConnected,
+      controlConnected,
     ),
     remove: gatewayPermission(
       administrator || hasMeshRight(normalized, MeshRight.EditMesh),
-      gatewayConnected,
+      controlConnected,
     ),
     manageUsers: gatewayPermission(
       administrator || hasMeshRight(normalized, MeshRight.ManageUsers),
-      gatewayConnected,
+      controlConnected,
     ),
     manageComputers: gatewayPermission(
       administrator || hasMeshRight(normalized, MeshRight.ManageComputers),
-      gatewayConnected,
+      controlConnected,
     ),
   };
 }

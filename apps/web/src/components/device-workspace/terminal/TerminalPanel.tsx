@@ -7,7 +7,7 @@ import {
   LinkOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import type { GatewayClient } from '@meshcentral/control-client';
+import type { MeshCentralClient } from '@meshcentral/control-client';
 import {
   RELAY_PROTOCOLS,
   RelayAgentRouteError,
@@ -22,7 +22,7 @@ import type { Device } from '@meshcentral/shared-state';
 import { Alert, Button, Input, Modal, Space, Tag, Tooltip, message } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GATEWAY_RELAY_URL } from '../../../config/gateway';
+import { MESH_CENTRAL_RELAY_URL } from '../../../config/gateway';
 import { XtermTerminal, type XtermTerminalHandle } from './XtermTerminal';
 
 type TerminalConnectionState =
@@ -55,8 +55,8 @@ const STATUS_KEYS: Record<TerminalConnectionState, string> = {
 
 interface TerminalPanelProps {
   device: Device;
-  gatewayClient?: GatewayClient;
-  gatewayConnected: boolean;
+  meshCentralClient?: MeshCentralClient;
+  controlConnected: boolean;
   terminalAllowed?: boolean;
 }
 
@@ -83,7 +83,7 @@ function connectionErrorMessage(error: unknown): { code?: 'agentRoute' | 'cancel
   return error instanceof Error ? { raw: error.message } : { code: 'relay' };
 }
 
-export function TerminalPanel({ device, gatewayClient, gatewayConnected, terminalAllowed }: TerminalPanelProps) {
+export function TerminalPanel({ device, meshCentralClient, controlConnected, terminalAllowed }: TerminalPanelProps) {
   const { t } = useTranslation();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [status, setStatus] = useState<TerminalConnectionState>('idle');
@@ -124,12 +124,12 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
     disconnect('Terminal device changed.');
     setStatus('idle');
     setError(undefined);
-  }, [device.id, gatewayClient]);
+  }, [device.id, meshCentralClient]);
   useEffect(() => {
-    if (gatewayConnected || (!sessionRef.current && !abortRef.current)) return;
-    disconnect('Gateway connection was lost.');
+    if (controlConnected || (!sessionRef.current && !abortRef.current)) return;
+    disconnect('MeshCentral control connection was lost.');
     setError(t('deviceWorkspace.terminal.gatewayDisconnected'));
-  }, [gatewayConnected]);
+  }, [controlConnected]);
   useEffect(() => {
     if (!startedAt || status !== 'ready') return;
     const update = () => setDuration(Math.floor((Date.now() - startedAt) / 1000));
@@ -140,7 +140,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
 
   const connect = async () => {
     if (CONNECTING_STATES.has(status) || status === 'ready') return;
-    if (!device.online || !gatewayConnected || !gatewayClient || terminalAllowed === false) {
+    if (!device.online || !controlConnected || !meshCentralClient || terminalAllowed === false) {
       setError(
         terminalAllowed === false
           ? t('deviceWorkspace.terminal.permissionDenied')
@@ -159,7 +159,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
     setError(undefined);
     setRecorded(false);
     try {
-      const relayClient = new RelayClient({ baseUrl: GATEWAY_RELAY_URL, control: gatewayClient });
+      const relayClient = new RelayClient({ baseUrl: MESH_CENTRAL_RELAY_URL, control: meshCentralClient });
       const relay = await relayClient.createSession({
         deviceId: device.id,
         protocol: RELAY_PROTOCOLS.terminal,
@@ -252,7 +252,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
   };
 
   const durationText = `${String(Math.floor(duration / 60)).padStart(2, '0')}:${String(duration % 60).padStart(2, '0')}`;
-  const unavailable = !device.online || !gatewayConnected || terminalAllowed === false;
+  const unavailable = !device.online || !controlConnected || terminalAllowed === false;
   const connecting = CONNECTING_STATES.has(status);
 
   return (
@@ -312,7 +312,7 @@ export function TerminalPanel({ device, gatewayClient, gatewayConnected, termina
         {status !== 'ready' ? (
           <div className="terminal-overlay">
             <strong>{connecting ? t(`deviceWorkspace.terminal.status.${STATUS_KEYS[status]}`) : unavailable ? t('deviceWorkspace.terminal.unavailable') : t(`deviceWorkspace.terminal.status.${STATUS_KEYS[status]}`)}</strong>
-            <span>{terminalAllowed === false ? t('deviceWorkspace.terminal.noPermission') : !device.online ? t('deviceWorkspace.terminal.deviceOfflineShort') : !gatewayConnected ? t('deviceWorkspace.terminal.gatewayDisconnectedShort') : connecting ? t('deviceWorkspace.terminal.cancelHint') : t('deviceWorkspace.terminal.interactiveHint')}</span>
+            <span>{terminalAllowed === false ? t('deviceWorkspace.terminal.noPermission') : !device.online ? t('deviceWorkspace.terminal.deviceOfflineShort') : !controlConnected ? t('deviceWorkspace.terminal.gatewayDisconnectedShort') : connecting ? t('deviceWorkspace.terminal.cancelHint') : t('deviceWorkspace.terminal.interactiveHint')}</span>
           </div>
         ) : null}
       </div>

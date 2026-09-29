@@ -4,7 +4,7 @@
 
 ## 返回值约定
 
-- `Device[]`、`DeviceGroup[]`、`ManagedUser[]`、`GatewayEvent[]` 等是客户端标准化结构。
+- `Device[]`、`DeviceGroup[]`、`ManagedUser[]`、`MeshCentralEvent[]` 等是客户端标准化结构。
 - `Promise<unknown>` 表示操作已收到一个匹配响应，但服务端字段尚未形成稳定公开契约。
 - 带 `raw` 的结果同时提供便于消费的字段和原始响应。
 - `submitted` 表示请求已提交，不保证设备已经执行完成。
@@ -77,7 +77,7 @@ for (const item of result.results) {
 - `subscribe(listener)`：订阅快照，注册后会立即收到一次当前值。
 - `completed`：所有目标进入终态或跟踪结束时完成。
 - `stopTracking()`：停止本地跟踪，未完成设备标记为 `unknown`。
-- `cancelRemote()`：当前协议不支持，会拒绝并抛出 `GatewayValidationError`。
+- `cancelRemote()`：当前协议不支持，会拒绝并抛出 `MeshCentralValidationError`。
 
 ```ts
 const execution = client.commands.execute(['node//a'], 'Get-Service', {
@@ -109,15 +109,15 @@ unsubscribe();
 | `setUserRights(groupId, groupName, userId, rights)` | 单向发送 `addmeshuser`    | 等待对应 `accountchange` 事件 | 设置用户对设备组的 32 位权限掩码 |
 | `removeUser(groupId, userId)`                       | 单向发送 `removemeshuser` | 等待对应 `accountchange` 事件 | 移除用户与设备组的关联           |
 
-成员关系变更最多等待 5 秒确认。期间断线会失败；收到服务端错误时抛出 `GatewayServerError`。
+成员关系变更最多等待 5 秒确认。期间断线会失败；收到服务端错误时抛出 `MeshCentralServerError`。
 
 ## 历史事件 `client.events`
 
 | 方法                        | 发送消息                         | 返回             | 用途               |
 | --------------------------- | -------------------------------- | ---------------- | ------------------ |
-| `list(options)`             | `events`, `limit`, 可选 `filter` | `GatewayEvent[]` | 全局活动或审计列表 |
-| `listByDevice(id, options)` | 增加 `nodeid`                    | `GatewayEvent[]` | 设备时间线         |
-| `listByUser(id, options)`   | 增加 `userid`                    | `GatewayEvent[]` | 用户操作记录       |
+| `list(options)`             | `events`, `limit`, 可选 `filter` | `MeshCentralEvent[]` | 全局活动或审计列表 |
+| `listByDevice(id, options)` | 增加 `nodeid`                    | `MeshCentralEvent[]` | 设备时间线         |
+| `listByUser(id, options)`   | 增加 `userid`                    | `MeshCentralEvent[]` | 用户操作记录       |
 
 `limit` 默认 100，范围 1 到 200。历史请求超时为 30 秒。过滤器见 [events.md](events.md)。
 

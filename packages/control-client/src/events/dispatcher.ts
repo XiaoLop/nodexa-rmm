@@ -1,20 +1,20 @@
-import type { GatewayClientEvents, GatewayEventChannel, GatewayListener } from '../types';
+import type { MeshCentralClientEvents, MeshCentralEventChannel, MeshCentralListener } from '../types';
 
 export class EventDispatcher {
-  private readonly listeners = new Map<GatewayEventChannel, Set<GatewayListener<never>>>();
+  private readonly listeners = new Map<MeshCentralEventChannel, Set<MeshCentralListener<never>>>();
   private reportingListenerError = false;
 
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void {
-    const listeners = this.listeners.get(channel) ?? new Set<GatewayListener<never>>();
-    listeners.add(listener as GatewayListener<never>);
+    const listeners = this.listeners.get(channel) ?? new Set<MeshCentralListener<never>>();
+    listeners.add(listener as MeshCentralListener<never>);
     this.listeners.set(channel, listeners);
-    return () => listeners.delete(listener as GatewayListener<never>);
+    return () => listeners.delete(listener as MeshCentralListener<never>);
   }
 
-  emit<K extends GatewayEventChannel>(channel: K, value: GatewayClientEvents[K]): void {
+  emit<K extends MeshCentralEventChannel>(channel: K, value: MeshCentralClientEvents[K]): void {
     for (const listener of [...(this.listeners.get(channel) ?? [])]) {
       try {
         listener(value as never);

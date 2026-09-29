@@ -1,8 +1,8 @@
 import {
-  GatewayConnectionClosedError,
-  GatewayRequestTimeoutError,
-  GatewayServerError,
-  GatewayValidationError,
+  MeshCentralConnectionClosedError,
+  MeshCentralRequestTimeoutError,
+  MeshCentralServerError,
+  MeshCentralValidationError,
 } from '../errors';
 import { isRecord, stringValue } from '../protocol/normalizers';
 import {
@@ -12,9 +12,9 @@ import {
 } from '../permissions/userGroupRights';
 import type {
   ConnectionStateChange,
-  GatewayClientEvents,
-  GatewayEventChannel,
-  GatewayListener,
+  MeshCentralClientEvents,
+  MeshCentralEventChannel,
+  MeshCentralListener,
   UserGroup,
   UserGroupCreateOptions,
   UserGroupLink,
@@ -25,9 +25,9 @@ import type {
 interface ResourceClient {
   send(payload: unknown): void;
   request<T>(payload: Record<string, unknown>, timeoutMs?: number): Promise<T>;
-  on<K extends GatewayEventChannel>(
+  on<K extends MeshCentralEventChannel>(
     channel: K,
-    listener: GatewayListener<GatewayClientEvents[K]>,
+    listener: MeshCentralListener<MeshCentralClientEvents[K]>,
   ): () => void;
 }
 
@@ -48,14 +48,14 @@ const USER_GROUP_CONFIRMATION_TIMEOUT_MS = 5_000;
 
 function required(value: string, name: string): string {
   const normalized = value.trim();
-  if (!normalized) throw new GatewayValidationError(`${name} is required.`);
+  if (!normalized) throw new MeshCentralValidationError(`${name} is required.`);
   return normalized;
 }
 
 function requiredId(value: string, prefix: string, name: string): string {
   const normalized = required(value, name);
   if (!normalized.startsWith(prefix)) {
-    throw new GatewayValidationError(`${name} must start with ${prefix}.`);
+    throw new MeshCentralValidationError(`${name} must start with ${prefix}.`);
   }
   return normalized;
 }
@@ -225,7 +225,7 @@ export class UserGroupsResource {
     const ugrpid = requiredId(userGroupId, 'ugrp//', 'User group ID');
     const normalizedUsernames = [...new Set(usernames.map((name) => name.trim()).filter(Boolean))];
     if (normalizedUsernames.length === 0) {
-      throw new GatewayValidationError('At least one username is required.');
+      throw new MeshCentralValidationError('At least one username is required.');
     }
     return this.mutate({
       action: 'addusertousergroup',
@@ -300,7 +300,7 @@ export class UserGroupsResource {
       const unsubscribeMessage = this.client.on('message', (message) => {
         const error = mutationError(message, options.action);
         if (error) {
-          finish(() => reject(new GatewayServerError(error, { action: options.action })));
+          finish(() => reject(new MeshCentralServerError(error, { action: options.action })));
           return;
         }
         const record = messageRecord(message);
@@ -312,8 +312,8 @@ export class UserGroupsResource {
           if (change.current === 'disconnected' || change.current === 'error') {
             finish(() =>
               reject(
-                new GatewayConnectionClosedError(
-                  'Gateway connection closed during user group operation.',
+                new MeshCentralConnectionClosedError(
+                  'MeshCentral control connection closed during user group operation.',
                   { action: options.action, retryable: true },
                 ),
               ),
@@ -328,7 +328,7 @@ export class UserGroupsResource {
             else
               finish(() =>
                 reject(
-                  new GatewayRequestTimeoutError(
+                  new MeshCentralRequestTimeoutError(
                     `User group operation was not confirmed: ${options.action}`,
                     { action: options.action, retryable: true },
                   ),

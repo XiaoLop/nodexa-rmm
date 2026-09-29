@@ -12,7 +12,7 @@ import type {
   CommandExecutionHandle,
   CommandExecutionStatus,
   CommandShell,
-  GatewayClient,
+  MeshCentralClient,
 } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import {
@@ -47,7 +47,7 @@ import {
 interface CommandExecutionModalProps {
   open: boolean;
   devices: Device[];
-  client?: GatewayClient;
+  client?: MeshCentralClient;
   connected: boolean;
   onClose: () => void;
 }

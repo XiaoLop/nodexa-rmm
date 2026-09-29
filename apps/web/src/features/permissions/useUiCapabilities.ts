@@ -9,18 +9,18 @@ import {
   type ServerInfo,
   type UserInfo,
 } from '@meshcentral/control-client';
-import { useGatewayData } from '../gateway/useGatewayData';
+import { useMeshCentralControlData } from '../gateway/useMeshCentralControlData';
 
 export type ApplicationCapability = keyof ApplicationUiCapabilities;
 
 export function useApplicationUiCapabilities(): ApplicationUiCapabilities {
-  const { userInfo } = useGatewayData();
+  const { userInfo } = useMeshCentralControlData();
   return getApplicationUiCapabilities(userInfo?.siteadmin);
 }
 
 export function getDeviceCapabilities(
   device: Device,
-  gatewayConnected: boolean,
+  controlConnected: boolean,
   context?: { group?: DeviceGroup; userInfo?: UserInfo; serverInfo?: ServerInfo },
 ): DeviceUiCapabilities {
   const connectionFlags = device.connectionFlags ?? (device.online ? 1 : 0);
@@ -28,7 +28,7 @@ export function getDeviceCapabilities(
   return getDeviceUiCapabilities(
     rights,
     {
-      gatewayConnected,
+      controlConnected,
       agentOnline: (connectionFlags & 1) !== 0,
       amtOnline: (connectionFlags & 6) !== 0,
       amtReady: device.amtState === undefined || device.amtState === 2,

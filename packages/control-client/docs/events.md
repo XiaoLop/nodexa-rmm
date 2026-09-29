@@ -1,6 +1,6 @@
 # 事件、订阅通道与诊断
 
-`GatewayClient.on(channel, listener)` 用于订阅连接生命周期、领域事件、原始消息、错误和诊断。它返回一个取消订阅函数；监听器之间相互隔离，一个监听器抛错不会阻止其他监听器执行。
+`MeshCentralClient.on(channel, listener)` 用于订阅连接生命周期、领域事件、原始消息、错误和诊断。它返回一个取消订阅函数；监听器之间相互隔离，一个监听器抛错不会阻止其他监听器执行。
 
 ## 基本用法
 
@@ -34,7 +34,7 @@ interface ConnectionStateChange {
 
 ### `event`
 
-载荷类型为标准化的 `GatewayEvent`，适合业务逻辑消费。它只包含当前已识别的领域事件；无法识别的消息进入 `diagnostic` 的 `unknown-message`，不会以 `type: 'unknown'` 的形式发布到该通道。
+载荷类型为标准化的 `MeshCentralEvent`，适合业务逻辑消费。它只包含当前已识别的领域事件；无法识别的消息进入 `diagnostic` 的 `unknown-message`，不会以 `type: 'unknown'` 的形式发布到该通道。
 
 ### `userInfo`
 
@@ -58,7 +58,7 @@ interface ConnectionStateChange {
 
 ### `diagnostic`
 
-载荷类型为 `GatewayDiagnostic`，用于报告非致命协议问题：
+载荷类型为 `MeshCentralDiagnostic`，用于报告非致命协议问题：
 
 | 类型 | 含义 | 建议处理 |
 | --- | --- | --- |
@@ -69,12 +69,12 @@ interface ConnectionStateChange {
 
 诊断回调本身抛错时不会递归产生新的 `listener-error`。
 
-## GatewayEvent 字段
+## MeshCentralEvent 字段
 
 ```ts
-interface GatewayEvent {
+interface MeshCentralEvent {
   id: string;
-  type: GatewayEventType;
+  type: MeshCentralEventType;
   action?: string;
   deviceId?: string;
   deviceName?: string;
@@ -107,11 +107,11 @@ interface GatewayEvent {
 | `batchUpload` | `batchupload` | 批量上传相关事件 | 构建批量任务记录或审计视图 |
 | `userSessionCount` | `wssessioncount` | 用户 WebSocket 会话数变化 | 更新在线用户/会话计数 |
 
-公开类型还保留 `unknown`，便于直接调用 `normalizeEvent()` 的消费者表达未知结果；`GatewayClient` 不会把未知结果发布到 `event` 通道。
+公开类型还保留 `unknown`，便于直接调用 `normalizeEvent()` 的消费者表达未知结果；`MeshCentralClient` 不会把未知结果发布到 `event` 通道。
 
 ## 历史事件与实时事件
 
-`client.events.list()`、`listByDevice()` 和 `listByUser()` 返回的历史记录与实时 `event` 通道都使用 `GatewayEvent`。这使活动时间线可以先加载历史数据，再合并实时数据。
+`client.events.list()`、`listByDevice()` 和 `listByUser()` 返回的历史记录与实时 `event` 通道都使用 `MeshCentralEvent`。这使活动时间线可以先加载历史数据，再合并实时数据。
 
 ```ts
 const history = await client.events.listByDevice(deviceId, { limit: 100 });

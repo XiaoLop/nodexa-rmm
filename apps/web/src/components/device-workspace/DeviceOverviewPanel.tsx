@@ -15,7 +15,7 @@ import {
   UserOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import type { GatewayEvent } from '@meshcentral/control-client';
+import type { MeshCentralEvent } from '@meshcentral/control-client';
 import { formatEventMessage } from '@meshcentral/shared-state';
 import { Button, Empty, Progress, Tag } from 'antd';
 import { useMemo } from 'react';
@@ -44,13 +44,13 @@ export function DeviceOverviewPanel({
   model,
   events,
   historyEvents,
-  gatewayConnected,
+  controlConnected,
   onNavigate,
 }: {
   model: DeviceWorkspaceModel;
-  events: GatewayEvent[];
-  historyEvents: GatewayEvent[];
-  gatewayConnected: boolean;
+  events: MeshCentralEvent[];
+  historyEvents: MeshCentralEvent[];
+  controlConnected: boolean;
   onNavigate: (tab: WorkspaceTab) => void;
 }) {
   const { t } = useTranslation();
@@ -173,10 +173,10 @@ export function DeviceOverviewPanel({
                 <span>{t('deviceWorkspace.overview.deviceSignal')}<strong>{model.device.online ? t('deviceWorkspace.overview.connected') : t('common.status.disconnected')}</strong></span>
                 {model.device.online ? <CheckCircleFilled /> : <CloseCircleFilled />}
               </div>
-              <div className={gatewayConnected ? 'is-healthy' : 'is-danger'}>
+              <div className={controlConnected ? 'is-healthy' : 'is-danger'}>
                 <CloudServerOutlined />
-                <span>{t('deviceWorkspace.overview.gateway')}<strong>{gatewayConnected ? t('deviceWorkspace.overview.connected') : t('deviceWorkspace.overview.gatewayOffline')}</strong></span>
-                {gatewayConnected ? <CheckCircleFilled /> : <CloseCircleFilled />}
+                <span>{t('deviceWorkspace.overview.gateway')}<strong>{controlConnected ? t('deviceWorkspace.overview.connected') : t('deviceWorkspace.overview.gatewayOffline')}</strong></span>
+                {controlConnected ? <CheckCircleFilled /> : <CloseCircleFilled />}
               </div>
               {sec?.antiVirus && (
                 <div className={avStatus.className}>
