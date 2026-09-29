@@ -3,7 +3,7 @@ import { Button, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { TwoFactorCapabilities } from './twoFactorCapabilities';
 
-const MANAGED_TWO_FACTOR_METHODS = ['totp', 'email', 'backupCodes'] as const;
+const MANAGED_TWO_FACTOR_METHODS = ['totp', 'webauthn', 'email', 'backupCodes'] as const;
 
 interface SecuritySettingsPanelProps {
   connected: boolean;
@@ -14,6 +14,7 @@ interface SecuritySettingsPanelProps {
   submitting?: string;
   onChangePassword: () => void;
   onDisableTotp: () => void;
+  onManageWebAuthn: () => void;
   onOpenBackupCodes: (generate: boolean) => void;
   onRetry: () => void;
   onStartTotp: () => void;
@@ -29,6 +30,7 @@ export function SecuritySettingsPanel({
   submitting,
   onChangePassword,
   onDisableTotp,
+  onManageWebAuthn,
   onOpenBackupCodes,
   onRetry,
   onStartTotp,
@@ -118,6 +120,19 @@ export function SecuritySettingsPanel({
                 {t(
                   method?.configured
                     ? 'profile.security.management.disable'
+                    : 'profile.security.management.enable',
+                )}
+              </Button>
+            ) : methodName === 'webauthn' ? (
+              <Button
+                size="small"
+                loading={submitting === methodName}
+                disabled={!method?.enabled || !method.canConfigure}
+                onClick={onManageWebAuthn}
+              >
+                {t(
+                  method?.configured
+                    ? 'profile.security.management.manage'
                     : 'profile.security.management.enable',
                 )}
               </Button>

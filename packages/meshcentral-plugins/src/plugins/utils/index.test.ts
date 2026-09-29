@@ -126,6 +126,29 @@ describe('utils two-factor capabilities', () => {
     ).toBe(true);
   });
 
+  it('keeps configured WebAuthn keys manageable at the hardware-key limit', () => {
+    const send = query({
+      user: {
+        ...user,
+        otphkeys: [
+          { type: 2, keyId: 'yubikey' },
+          { type: 3, keyId: 'webauthn' },
+        ],
+      },
+    });
+
+    const response = send.mock.calls[0]?.[0] as {
+      capabilities: {
+        methods: { webauthn: { canConfigure: boolean; configured: boolean } };
+      };
+    };
+    expect(response.capabilities.methods.webauthn).toEqual({
+      enabled: true,
+      canConfigure: true,
+      configured: true,
+    });
+  });
+
   it('disables all methods when 2FA is globally disabled', () => {
     const send = query({}, { config: { settings: { no2factorauth: true } } });
 

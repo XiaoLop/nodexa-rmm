@@ -24,6 +24,10 @@ import {
 } from '../features/profile/PasswordChangeModal';
 import { PreviousLoginsSection } from '../features/profile/PreviousLoginsSection';
 import { SecuritySettingsPanel } from '../features/profile/SecuritySettingsPanel';
+import {
+  SecurityKeysModal,
+  type SecurityKeyFormValues,
+} from '../features/profile/SecurityKeysModal';
 import { TotpSetupModal } from '../features/profile/TotpSetupModal';
 import {
   getTwoFactorCapabilities,
@@ -32,12 +36,18 @@ import {
 import {
   clearBackupCodes,
   clearTotp,
+  completeWebAuthnRegistration,
   confirmTotpSetup,
+  createWebAuthnCredential,
   generateBackupCodes,
   getBackupCodes,
+  getSecurityKeys,
+  removeSecurityKey,
   requestTotpSetup,
+  requestWebAuthnRegistration,
   setEmailTwoFactor,
   type BackupCode,
+  type SecurityKey,
   type TotpSetup,
 } from '../features/profile/twoFactorManagement';
 import { useFormatters } from '../i18n/formatters';
@@ -58,6 +68,7 @@ export function ProfilePage() {
   const { client, status, userInfo, store } = useGatewayData();
   const [emailForm] = Form.useForm<{ email: string }>();
   const [passwordForm] = Form.useForm<PasswordFormValues>();
+  const [securityKeyForm] = Form.useForm<SecurityKeyFormValues>();
   const [avatarPreview, setAvatarPreview] = useState<string>();
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(() => Date.now());
   const [avatarSubmitting, setAvatarSubmitting] = useState(false);
@@ -76,6 +87,10 @@ export function ProfilePage() {
   const [totpOpen, setTotpOpen] = useState(false);
   const [backupCodes, setBackupCodes] = useState<BackupCode[]>([]);
   const [backupCodesOpen, setBackupCodesOpen] = useState(false);
+  const [securityKeys, setSecurityKeys] = useState<SecurityKey[]>([]);
+  const [securityKeysOpen, setSecurityKeysOpen] = useState(false);
+  const [securityKeysLoading, setSecurityKeysLoading] = useState(false);
+  const [removingSecurityKeyIndex, setRemovingSecurityKeyIndex] = useState<number | null>(null);
   const [allBackupCodesCopied, setAllBackupCodesCopied] = useState(false);
   const [copiedBackupCodeIndex, setCopiedBackupCodeIndex] = useState<number | null>(null);
   const [totpForm] = Form.useForm<{ token: string }>();
@@ -265,6 +280,87 @@ export function ProfilePage() {
           throw error;
         } finally {
           setTwoFactorSubmitting(undefined);
+        }
+      },
+    });
+  };
+
+  const loadSecurityKeys = async () => {
+    if (!client) return;
+    setSecurityKeysLoading(true);
+    try {
+      setSecurityKeys(await getSecurityKeys(client));
+    } finally {
+      setSecurityKeysLoading(false);
+    }
+  };
+
+  const openSecurityKeys = async () => {
+    setSecurityKeysOpen(true);
+    try {
+      await loadSecurityKeys();
+    } catch (error) {
+      setSecurityKeysOpen(false);
+      void messageApi.error(
+        t('profile.security.management.operationFailed', { detail: errorDetail(error) }),
+      );
+    }
+  };
+
+  const addSecurityKey = async () => {
+    if (!client) return;
+    const { name } = await securityKeyForm.validateFields();
+    setTwoFactorSubmitting('webauthn');
+    try {
+      const challenge = await requestWebAuthnRegistration(client, name.trim());
+      const credential = await createWebAuthnCredential(challenge);
+      await completeWebAuthnRegistration(client, credential);
+      securityKeyForm.resetFields();
+      await loadSecurityKeys();
+      await refreshTwoFactor();
+      void messageApi.success(t('profile.securityKeys.added'));
+    } catch (error) {
+      const detail =
+        error instanceof DOMException && error.name === 'NotAllowedError'
+          ? t('profile.securityKeys.registrationCancelled')
+          : errorDetail(error);
+      void messageApi.error(
+        t('profile.security.management.operationFailed', { detail }),
+      );
+    } finally {
+      setTwoFactorSubmitting(undefined);
+    }
+  };
+
+  const confirmRemoveSecurityKey = (securityKey: SecurityKey) => {
+    if (!client) return;
+    modalApi.confirm({
+      title: t('profile.securityKeys.removeTitle'),
+      content: t('profile.securityKeys.removeDescription', {
+        name: securityKey.name,
+      }),
+      okText: t('profile.securityKeys.remove'),
+      okButtonProps: { danger: true },
+      cancelText: t('common.actions.cancel'),
+      async onOk() {
+        setTwoFactorSubmitting('webauthn');
+        setRemovingSecurityKeyIndex(securityKey.index);
+        try {
+          const keys = await removeSecurityKey(client, securityKey.index);
+          if (keys.some((key) => key.index === securityKey.index)) {
+            throw new Error(t('profile.securityKeys.removalNotConfirmed'));
+          }
+          setSecurityKeys(keys);
+          await refreshTwoFactor();
+          void messageApi.success(t('profile.securityKeys.removed'));
+        } catch (error) {
+          void messageApi.error(
+            t('profile.security.management.operationFailed', { detail: errorDetail(error) }),
+          );
+          throw error;
+        } finally {
+          setTwoFactorSubmitting(undefined);
+          setRemovingSecurityKeyIndex(null);
         }
       },
     });
@@ -656,6 +752,7 @@ export function ProfilePage() {
             submitting={twoFactorSubmitting}
             onChangePassword={() => setPasswordOpen(true)}
             onDisableTotp={disableTotp}
+            onManageWebAuthn={() => void openSecurityKeys()}
             onOpenBackupCodes={(generate) => void openBackupCodes(generate)}
             onRetry={() => void loadTwoFactorCapabilities()}
             onStartTotp={() => void startTotpSetup()}
@@ -678,6 +775,27 @@ export function ProfilePage() {
         }}
         onCopySecret={(secret) => void handleCopySecret(secret)}
         onSubmit={() => void submitTotpSetup().catch(() => undefined)}
+      />
+
+      <SecurityKeysModal
+        form={securityKeyForm}
+        open={securityKeysOpen}
+        keys={securityKeys}
+        loading={securityKeysLoading}
+        registering={twoFactorSubmitting === 'webauthn' && removingSecurityKeyIndex == null}
+        removingIndex={removingSecurityKeyIndex}
+        canAdd={
+          twoFactorCapabilities?.methods.webauthn.canConfigure === true &&
+          (twoFactorCapabilities.maxFidoKeys == null ||
+            securityKeys.length < twoFactorCapabilities.maxFidoKeys)
+        }
+        maxKeys={twoFactorCapabilities?.maxFidoKeys ?? null}
+        onAdd={() => void addSecurityKey().catch(() => undefined)}
+        onCancel={() => {
+          setSecurityKeysOpen(false);
+          securityKeyForm.resetFields();
+        }}
+        onRemove={confirmRemoveSecurityKey}
       />
 
       <BackupCodesModal

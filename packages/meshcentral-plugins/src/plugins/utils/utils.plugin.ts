@@ -114,6 +114,8 @@ export class UtilsPlugin {
     const messagingProviders = this.meshServer.msgserver?.providers ?? 0;
     const maxFidoKeys = requirements.maxfidokeys ?? null;
     const fidoKeyCount = user.otphkeys?.length ?? 0;
+    const webAuthnKeyCount =
+      user.otphkeys?.filter((key) => key.type === 3).length ?? 0;
     const emailEnabled =
       supported &&
       domain.mailserver != null &&
@@ -153,7 +155,8 @@ export class UtilsPlugin {
         webauthn: methodCapability(
           supported,
           mutable,
-          maxFidoKeys == null || fidoKeyCount < maxFidoKeys,
+          webAuthnKeyCount > 0 || maxFidoKeys == null || fidoKeyCount < maxFidoKeys,
+          webAuthnKeyCount > 0,
         ),
         email: methodCapability(
           emailEnabled,
