@@ -29,6 +29,10 @@ export default defineConfig(() => {
           changeOrigin: true,
           ws: true,
         },
+        '/meshagents': {
+          target: meshcentralTarget,
+          changeOrigin: true
+        }
       },
     },
   };

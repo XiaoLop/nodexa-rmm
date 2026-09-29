@@ -4,6 +4,7 @@
         "cert": "192.168.9.28",
         "port": 8443,
         "aliasPort": 443,
+        "agentAliasPort": 5173,
         "redirPort": 0,
         "dataPath": "/var/lib/meshcentral/data",
         "filesPath": "/var/lib/meshcentral/files",
