@@ -2,9 +2,8 @@
     "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
     "settings": {
         "cert": "192.168.9.28",
-        "port": 8443,
-        "aliasPort": 443,
-        "agentAliasPort": 5173,
+        "port": 443,
+        "aliasPort": 8443,
         "redirPort": 0,
         "dataPath": "/var/lib/meshcentral/data",
         "filesPath": "/var/lib/meshcentral/files",
@@ -39,7 +38,8 @@
             "allowedOrigin": [
                 "localhost",
                 "127.0.0.1",
-                "192.168.1.12"
+                "192.168.1.12",
+                "192.168.9.28"
             ],
             "sessionRecording": {
                 "filepath": "/var/lib/meshcentral/recordings",
