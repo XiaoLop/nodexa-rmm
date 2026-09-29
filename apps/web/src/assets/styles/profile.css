@@ -234,6 +234,88 @@
   border-radius: 4px;
   font-size: 10px;
 }
+.profile-token-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #1c2c40;
+}
+.profile-token-form .ant-form-item {
+  margin: 0;
+}
+.profile-token-section > .ant-alert,
+.profile-token-section > .ant-empty {
+  margin: 16px;
+}
+.profile-token-loading {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #8295ac;
+  font-size: 12px;
+}
+.profile-token-list {
+  display: grid;
+}
+.profile-token-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 18px;
+  border-bottom: 1px solid #1c2c40;
+}
+.profile-token-row:last-child {
+  border-bottom: 0;
+}
+.profile-token-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.profile-token-row strong {
+  color: #dce7f4;
+  font-size: 12px;
+}
+.profile-token-row code {
+  color: #8295ac;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-token-meta {
+  justify-items: end;
+  flex: 0 0 auto;
+}
+.profile-token-meta span {
+  color: #71849b;
+  font-size: 10px;
+}
+.profile-token-meta .ant-tag {
+  margin: 0;
+}
+.profile-token-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.profile-token-actions .ant-btn {
+  width: 28px;
+  height: 28px;
+}
+.profile-token-credentials {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+.profile-token-credentials label {
+  margin-top: 5px;
+  color: #8294aa;
+  font-size: 11px;
+}
 .profile-security {
   padding-bottom: 16px;
 }
@@ -678,6 +760,9 @@
   .profile-email-form {
     grid-template-columns: 1fr;
   }
+  .profile-token-form {
+    grid-template-columns: 1fr;
+  }
   .profile-login-row {
     grid-template-columns: 8px minmax(0, 1fr) auto;
   }
@@ -698,6 +783,16 @@
   }
   .profile-info-grid div:nth-last-child(2) {
     border-bottom: 1px solid #1c2c40;
+  }
+  .profile-token-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .profile-token-meta {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: start;
   }
   .profile-security-item {
     grid-template-columns: 34px minmax(0, 1fr);

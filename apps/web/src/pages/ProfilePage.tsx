@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { BackupCodesModal } from '../features/profile/BackupCodesModal';
+import { LoginTokensSection } from '../features/profile/LoginTokensSection';
 import {
   PasswordChangeModal,
   type PasswordFormValues,
@@ -740,6 +741,12 @@ export function ProfilePage() {
               logins={previousLogins}
               formatDateTime={dateTime}
               onRefresh={() => void refreshPreviousLogins()}
+            />
+
+            <LoginTokensSection
+              client={client}
+              connected={connected}
+              formatDateTime={dateTime}
             />
           </main>
 
