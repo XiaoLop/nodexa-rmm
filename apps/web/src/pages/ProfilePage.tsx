@@ -1,12 +1,8 @@
 import {
   CameraOutlined,
   ClockCircleOutlined,
-  GlobalOutlined,
-  KeyOutlined,
-  LockOutlined,
+  ExclamationCircleOutlined,
   MailOutlined,
-  SafetyCertificateOutlined,
-  SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
@@ -15,13 +11,20 @@ import {
   type PreviousLogin,
   type UserInfo,
 } from '@meshcentral/control-client';
-import { Alert, Button, Empty, Form, Input, Modal, Spin, Tag, Upload, message } from 'antd';
+import { Alert, Button, Form, Input, Modal, Tag, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { QRCodeSVG } from 'qrcode.react';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useGatewayData } from '../features/gateway/useGatewayData';
+import { BackupCodesModal } from '../features/profile/BackupCodesModal';
+import {
+  PasswordChangeModal,
+  type PasswordFormValues,
+} from '../features/profile/PasswordChangeModal';
+import { PreviousLoginsSection } from '../features/profile/PreviousLoginsSection';
+import { SecuritySettingsPanel } from '../features/profile/SecuritySettingsPanel';
+import { TotpSetupModal } from '../features/profile/TotpSetupModal';
 import {
   getTwoFactorCapabilities,
   type TwoFactorCapabilities,
@@ -44,14 +47,6 @@ import {
   prepareAvatarImage,
 } from '../utils/avatarImage';
 import '../assets/styles/profile.css';
-
-const MANAGED_TWO_FACTOR_METHODS = ['totp', 'email', 'backupCodes'] as const;
-
-interface PasswordFormValues {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
 
 function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -81,7 +76,10 @@ export function ProfilePage() {
   const [totpOpen, setTotpOpen] = useState(false);
   const [backupCodes, setBackupCodes] = useState<BackupCode[]>([]);
   const [backupCodesOpen, setBackupCodesOpen] = useState(false);
+  const [allBackupCodesCopied, setAllBackupCodesCopied] = useState(false);
+  const [copiedBackupCodeIndex, setCopiedBackupCodeIndex] = useState<number | null>(null);
   const [totpForm] = Form.useForm<{ token: string }>();
+  const [secretCopied, setSecretCopied] = useState(false);
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modalApi, modalContextHolder] = Modal.useModal();
   const connected = status === 'connected';
@@ -157,11 +155,33 @@ export function ProfilePage() {
     await loadTwoFactorCapabilities();
   };
 
+  const handleCopySecret = async (secret?: string) => {
+    if (!secret) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(secret);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = secret;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setSecretCopied(true);
+      void messageApi.success(t('profile.security.management.totpCopiedSecret'));
+      setTimeout(() => setSecretCopied(false), 2500);
+    } catch {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: 'Copy failed' }));
+    }
+  };
+
   const startTotpSetup = async () => {
     if (!client) return;
     setTwoFactorSubmitting('totp');
     try {
       setTotpSetup(await requestTotpSetup(client));
+      setSecretCopied(false);
       totpForm.resetFields();
       setTotpOpen(true);
     } catch (error) {
@@ -182,8 +202,21 @@ export function ProfilePage() {
       totpForm.resetFields();
       await refreshTwoFactor();
       void messageApi.success(t('profile.security.management.totpEnabled'));
-    } catch (error) {
-      void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
+    } catch {
+      void messageApi.error(t('profile.security.management.totpVerificationFailed'));
+      try {
+        setTotpSetup(await requestTotpSetup(client));
+        setSecretCopied(false);
+        totpForm.resetFields();
+      } catch (refreshError) {
+        setTotpOpen(false);
+        setTotpSetup(undefined);
+        void messageApi.error(
+          t('profile.security.management.operationFailed', {
+            detail: errorDetail(refreshError),
+          }),
+        );
+      }
     } finally {
       setTwoFactorSubmitting(undefined);
     }
@@ -238,10 +271,12 @@ export function ProfilePage() {
   };
 
   const openBackupCodes = async (generate: boolean) => {
-    if (!client) return;
+    if (!client || !twoFactorCapabilities?.methods.totp.configured) return;
     setTwoFactorSubmitting('backupCodes');
     try {
       setBackupCodes(generate ? await generateBackupCodes(client) : await getBackupCodes(client));
+      setAllBackupCodesCopied(false);
+      setCopiedBackupCodeIndex(null);
       setBackupCodesOpen(true);
       await refreshTwoFactor();
     } catch (error) {
@@ -249,6 +284,106 @@ export function ProfilePage() {
     } finally {
       setTwoFactorSubmitting(undefined);
     }
+  };
+
+  const handleCopyAllBackupCodes = async () => {
+    const unusedCodes = backupCodes
+      .filter((bc) => bc.unused)
+      .map((bc) => String(bc.code).padStart(8, '0'));
+    if (!unusedCodes.length) {
+      void messageApi.warning(t('profile.security.management.noUnusedCodesToCopy'));
+      return;
+    }
+    const text = unusedCodes.join('\n');
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setAllBackupCodesCopied(true);
+      void messageApi.success(t('profile.security.management.copiedAllCodes'));
+      setTimeout(() => setAllBackupCodesCopied(false), 2500);
+    } catch {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: 'Copy failed' }));
+    }
+  };
+
+  const handleCopySingleBackupCode = async (code: number, index: number) => {
+    const rawCode = String(code).padStart(8, '0');
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(rawCode);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = rawCode;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedBackupCodeIndex(index);
+      void messageApi.success(
+        t('profile.security.management.copiedSingleCode', {
+          code: `${rawCode.slice(0, 4)} ${rawCode.slice(4)}`,
+        }),
+      );
+      setTimeout(() => setCopiedBackupCodeIndex(null), 2000);
+    } catch {
+      void messageApi.error(t('profile.security.management.operationFailed', { detail: 'Copy failed' }));
+    }
+  };
+
+  const handleDownloadBackupCodes = () => {
+    if (!backupCodes.length) return;
+    const content = [
+      'MeshCentral Recovery Codes',
+      '========================',
+      `Account: ${userInfo?.name ?? userInfo?.id ?? 'User'} (${userInfo?.id ?? ''})`,
+      `Exported: ${new Date().toISOString()}`,
+      '',
+      'Keep these backup recovery codes in a safe place (e.g. your password manager).',
+      'Each code can only be used once to access your account if your authenticator app is lost.',
+      '',
+      'Recovery Codes:',
+      ...backupCodes.map((bc, idx) => {
+        const codeStr = String(bc.code).padStart(8, '0');
+        const formatted = `${codeStr.slice(0, 4)} ${codeStr.slice(4)}`;
+        return `  ${String(idx + 1).padStart(2, '0')}. ${formatted}  ${bc.unused ? '[Available]' : '[Used]'}`;
+      }),
+      '',
+      '* Notice: Regenerating codes will immediately invalidate all previous codes.',
+    ].join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `meshcentral-recovery-codes-${userInfo?.name ?? 'account'}.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    void messageApi.success(t('profile.security.management.downloadedCodes'));
+  };
+
+  const confirmRegenerateBackupCodes = () => {
+    modalApi.confirm({
+      title: t('profile.security.management.confirmRegenerateTitle'),
+      icon: <ExclamationCircleOutlined style={{ color: '#faad14' }} />,
+      content: t('profile.security.management.confirmRegenerateDescription'),
+      okText: t('profile.security.management.regenerate'),
+      okButtonProps: { danger: true },
+      cancelText: t('common.actions.cancel'),
+      async onOk() {
+        await openBackupCodes(true);
+      },
+    });
   };
 
   const disableBackupCodes = () => {
@@ -502,287 +637,73 @@ export function ProfilePage() {
               </dl>
             </section>
 
-            <section className="console-card profile-section profile-login-section">
-              <header>
-                <span>
-                  <GlobalOutlined />
-                </span>
-                <div>
-                  <h2>{t('profile.logins.title')}</h2>
-                  <p>{t('profile.logins.description')}</p>
-                </div>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<SyncOutlined spin={previousLoginsLoading} />}
-                  disabled={!connected || previousLoginsLoading}
-                  onClick={() => void refreshPreviousLogins()}
-                >
-                  {t('profile.logins.refresh')}
-                </Button>
-              </header>
-              {previousLoginsError ? (
-                <Alert
-                  type="error"
-                  showIcon
-                  message={t('profile.logins.loadFailed')}
-                  description={previousLoginsError}
-                  action={
-                    <Button size="small" onClick={() => void refreshPreviousLogins()}>
-                      {t('profile.logins.retry')}
-                    </Button>
-                  }
-                />
-              ) : previousLoginsLoading && !previousLogins.length ? (
-                <div className="profile-login-loading">
-                  <Spin size="small" /> {t('profile.logins.loading')}
-                </div>
-              ) : previousLogins.length ? (
-                <div className="profile-login-list">
-                  {previousLogins.slice(0, 10).map((login, index) => (
-                    <article className="profile-login-row" key={`${login.occurredAt}-${index}`}>
-                      <span className="profile-login-marker" />
-                      <div className="profile-login-time">
-                        <strong>{dateTime(login.occurredAt)}</strong>
-                        <small>
-                          {t('profile.logins.messageCode', { code: login.messageId ?? '—' })}
-                        </small>
-                      </div>
-                      <div className="profile-login-client">
-                        <strong>{login.client ?? t('profile.notAvailable')}</strong>
-                        <small>{login.platform ?? t('profile.notAvailable')}</small>
-                      </div>
-                      <code>{login.ip ?? '—'}</code>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={t('profile.logins.empty')}
-                />
-              )}
-            </section>
+            <PreviousLoginsSection
+              connected={connected}
+              error={previousLoginsError}
+              loading={previousLoginsLoading}
+              logins={previousLogins}
+              formatDateTime={dateTime}
+              onRefresh={() => void refreshPreviousLogins()}
+            />
           </main>
 
-          <aside className="profile-security console-card">
-            <header>
-              <span>
-                <SafetyCertificateOutlined />
-              </span>
-              <div>
-                <h2>{t('profile.security.title')}</h2>
-                <p>{t('profile.security.description')}</p>
-              </div>
-            </header>
-            <div className="profile-security-item">
-              <span className="profile-security-icon">
-                <KeyOutlined />
-              </span>
-              <div>
-                <strong>{t('profile.security.password')}</strong>
-                <small>{formatDate(userInfo.passwordChangedAt)}</small>
-              </div>
-              <Button size="small" disabled={!connected} onClick={() => setPasswordOpen(true)}>
-                {t('profile.security.change')}
-              </Button>
-            </div>
-            {twoFactorError ? (
-              <div className="profile-security-item">
-                <span className="profile-security-icon">
-                  <LockOutlined />
-                </span>
-                <div>
-                  <strong>{t('profile.security.twoFactor')}</strong>
-                  <small>{twoFactorError}</small>
-                </div>
-                <Button
-                  size="small"
-                  disabled={!connected || twoFactorLoading}
-                  onClick={() => void loadTwoFactorCapabilities()}
-                >
-                  {t('profile.security.retry')}
-                </Button>
-              </div>
-            ) : twoFactorLoading && !twoFactorCapabilities ? (
-              <div className="profile-security-item is-static">
-                <span className="profile-security-icon">
-                  <LockOutlined />
-                </span>
-                <div>
-                  <strong>{t('profile.security.twoFactor')}</strong>
-                  <small>{t('profile.security.twoFactorLoading')}</small>
-                </div>
-                <Spin size="small" />
-              </div>
-            ) : null}
-            {MANAGED_TWO_FACTOR_METHODS.filter(
-              (methodName) => twoFactorCapabilities?.methods[methodName].enabled === true,
-            ).map((methodName) => {
-                const method = twoFactorCapabilities?.methods[methodName];
-                return (
-                  <div className="profile-security-item" key={methodName}>
-                    <span className="profile-security-icon">
-                      <LockOutlined />
-                    </span>
-                    <div>
-                      <strong>{t(`profile.security.twoFactorMethods.${methodName}`)}</strong>
-                      <small>
-                        {method?.configured
-                          ? t('profile.security.management.configured')
-                          : twoFactorCapabilities?.forced
-                            ? t('profile.security.twoFactorForced')
-                            : method?.enabled
-                              ? t('profile.security.twoFactorDescription')
-                              : t('profile.security.twoFactorUnavailable')}
-                      </small>
-                    </div>
-                    {methodName === 'totp' ? (
-                      <Button
-                        size="small"
-                        danger={method?.configured}
-                        loading={twoFactorSubmitting === methodName}
-                        disabled={!method?.enabled || !method.canConfigure}
-                        onClick={() => method?.configured ? disableTotp() : void startTotpSetup()}
-                      >
-                        {t(method?.configured ? 'profile.security.management.disable' : 'profile.security.management.enable')}
-                      </Button>
-                    ) : methodName === 'email' ? (
-                      <Button
-                        size="small"
-                        danger={method?.configured}
-                        loading={twoFactorSubmitting === methodName}
-                        disabled={!method?.enabled || !method.canConfigure}
-                        onClick={() => toggleEmailTwoFactor(!method?.configured)}
-                      >
-                        {t(method?.configured ? 'profile.security.management.disable' : 'profile.security.management.enable')}
-                      </Button>
-                    ) : methodName === 'backupCodes' ? (
-                      <Button
-                        size="small"
-                        loading={twoFactorSubmitting === methodName}
-                        disabled={!method?.enabled || !method.canConfigure}
-                        onClick={() => void openBackupCodes(!method?.configured)}
-                      >
-                        {t(method?.configured ? 'profile.security.management.manage' : 'profile.security.management.enable')}
-                      </Button>
-                    ) : null}
-                  </div>
-                );
-              })}
-          </aside>
+          <SecuritySettingsPanel
+            connected={connected}
+            passwordChangedAt={formatDate(userInfo.passwordChangedAt)}
+            capabilities={twoFactorCapabilities}
+            loading={twoFactorLoading}
+            error={twoFactorError}
+            submitting={twoFactorSubmitting}
+            onChangePassword={() => setPasswordOpen(true)}
+            onDisableTotp={disableTotp}
+            onOpenBackupCodes={(generate) => void openBackupCodes(generate)}
+            onRetry={() => void loadTwoFactorCapabilities()}
+            onStartTotp={() => void startTotpSetup()}
+            onToggleEmail={toggleEmailTwoFactor}
+          />
         </div>
       )}
 
-      <Modal
-        title={t('profile.security.management.totpTitle')}
+      <TotpSetupModal
+        form={totpForm}
         open={totpOpen}
-        okText={t('profile.security.management.confirmTotp')}
-        cancelText={t('common.actions.cancel')}
-        confirmLoading={twoFactorSubmitting === 'totp'}
+        setup={totpSetup}
+        submitting={twoFactorSubmitting === 'totp'}
+        secretCopied={secretCopied}
         onCancel={() => {
           setTotpOpen(false);
           setTotpSetup(undefined);
+          setSecretCopied(false);
           totpForm.resetFields();
         }}
-        onOk={() => void submitTotpSetup().catch(() => undefined)}
-        destroyOnHidden
-      >
-        {totpSetup ? (
-          <div className="profile-totp-setup">
-            <QRCodeSVG value={totpSetup.url} size={184} level="M" />
-            <p>{t('profile.security.management.totpInstructions')}</p>
-            <code>{totpSetup.secret}</code>
-            <Form form={totpForm} layout="vertical">
-              <Form.Item
-                name="token"
-                label={t('profile.security.management.totpCode')}
-                rules={[
-                  { required: true, message: t('profile.security.management.totpCodeRequired') },
-                  { pattern: /^\d{6}$/, message: t('profile.security.management.totpCodeInvalid') },
-                ]}
-              >
-                <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
-              </Form.Item>
-            </Form>
-          </div>
-        ) : null}
-      </Modal>
+        onCopySecret={(secret) => void handleCopySecret(secret)}
+        onSubmit={() => void submitTotpSetup().catch(() => undefined)}
+      />
 
-      <Modal
-        title={t('profile.security.management.backupCodesTitle')}
+      <BackupCodesModal
+        codes={backupCodes}
         open={backupCodesOpen}
+        submitting={twoFactorSubmitting === 'backupCodes'}
+        allCodesCopied={allBackupCodesCopied}
+        copiedCodeIndex={copiedBackupCodeIndex}
         onCancel={() => setBackupCodesOpen(false)}
-        footer={[
-          <Button key="regenerate" onClick={() => void openBackupCodes(true)} loading={twoFactorSubmitting === 'backupCodes'}>
-            {t('profile.security.management.regenerate')}
-          </Button>,
-          <Button key="disable" danger onClick={disableBackupCodes}>
-            {t('profile.security.management.disable')}
-          </Button>,
-          <Button key="close" type="primary" onClick={() => setBackupCodesOpen(false)}>
-            {t('common.actions.close')}
-          </Button>,
-        ]}
-      >
-        <Alert type="warning" showIcon message={t('profile.security.management.backupCodesNotice')} />
-        <div className="profile-backup-codes">
-          {backupCodes.map((backupCode) => (
-            <code className={backupCode.unused ? undefined : 'is-used'} key={backupCode.code}>
-              {String(backupCode.code).padStart(8, '0')}
-            </code>
-          ))}
-        </div>
-      </Modal>
+        onCopyAll={() => void handleCopyAllBackupCodes()}
+        onCopyCode={(code, index) => void handleCopySingleBackupCode(code, index)}
+        onDisable={disableBackupCodes}
+        onDownload={handleDownloadBackupCodes}
+        onRegenerate={confirmRegenerateBackupCodes}
+      />
 
-      <Modal
-        title={t('profile.password.title')}
+      <PasswordChangeModal
+        form={passwordForm}
         open={passwordOpen}
-        okText={t('profile.password.submit')}
-        cancelText={t('common.actions.cancel')}
-        confirmLoading={passwordSubmitting}
+        submitting={passwordSubmitting}
         onCancel={() => {
           setPasswordOpen(false);
           passwordForm.resetFields();
         }}
-        onOk={() => void savePassword().catch(() => undefined)}
-        destroyOnHidden
-      >
-        <Alert type="warning" showIcon message={t('profile.password.notice')} />
-        <Form form={passwordForm} layout="vertical" className="profile-password-form">
-          <Form.Item
-            name="currentPassword"
-            label={t('profile.password.current')}
-            rules={[{ required: true, message: t('profile.validation.currentPasswordRequired') }]}
-          >
-            <Input.Password autoComplete="current-password" />
-          </Form.Item>
-          <Form.Item
-            name="newPassword"
-            label={t('profile.password.new')}
-            rules={[{ required: true, message: t('profile.validation.newPasswordRequired') }]}
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            label={t('profile.password.confirm')}
-            dependencies={['newPassword']}
-            rules={[
-              { required: true, message: t('profile.validation.confirmPasswordRequired') },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  return !value || getFieldValue('newPassword') === value
-                    ? Promise.resolve()
-                    : Promise.reject(new Error(t('profile.validation.passwordMismatch')));
-                },
-              }),
-            ]}
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-        </Form>
-      </Modal>
+        onSubmit={() => void savePassword().catch(() => undefined)}
+      />
     </div>
   );
 }
