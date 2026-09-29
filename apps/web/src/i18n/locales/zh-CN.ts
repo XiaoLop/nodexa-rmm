@@ -121,8 +121,6 @@ export const zhCN = {
     "passwordRequired": "请输入密码",
     "showPassword": "显示密码",
     "hidePassword": "隐藏密码",
-    "forgotPassword": "忘记密码？",
-    "forgotPasswordTooltip": "请联系系统管理员重置您的凭证",
     "rememberMe": "记住账号并信任此设备",
     "submit": "登录",
     "register": "注册新账号",

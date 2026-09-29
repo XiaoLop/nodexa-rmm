@@ -5,7 +5,7 @@ import {
   UserAddOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Form, Input, Segmented, Tooltip, Typography } from 'antd';
+import { Alert, Button, Checkbox, Form, Input, Segmented, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -220,11 +220,6 @@ export function LoginForm({
             >
               {t('login.rememberMe')}
             </Checkbox>
-            <Tooltip title={t('login.forgotPasswordTooltip')} placement="topRight">
-              <Button type="link" className="login-forgot-btn">
-                {t('login.forgotPassword')}
-              </Button>
-            </Tooltip>
           </div>
 
           <Button

@@ -121,8 +121,6 @@ export const enUS = {
     "passwordRequired": "Enter your password",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "forgotPassword": "Forgot password?",
-    "forgotPasswordTooltip": "Please contact your system administrator to reset credentials",
     "rememberMe": "Remember account and trust this device",
     "submit": "Sign in",
     "register": "Create an account",
