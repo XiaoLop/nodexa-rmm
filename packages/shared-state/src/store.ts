@@ -90,6 +90,7 @@ export function createMeshCentralControlStore(): MeshCentralControlStore {
           groupName: device.groupName ?? existing?.groupName,
           agentVersion: device.agentVersion ?? existing?.agentVersion,
           platform: device.platform ?? existing?.platform,
+          icon: device.icon ?? existing?.icon,
           lastSeenAt: device.lastSeenAt ?? existing?.lastSeenAt,
           raw:
             typeof existing?.raw === 'object' &&

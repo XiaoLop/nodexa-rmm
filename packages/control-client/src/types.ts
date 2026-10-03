@@ -23,6 +23,7 @@ export interface Device {
   effectiveRights?: number;
   agentVersion?: string;
   platform?: string;
+  icon?: number;
   lastSeenAt?: string;
   raw?: unknown;
 }

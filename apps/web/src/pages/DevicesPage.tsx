@@ -8,9 +8,13 @@ import {
   LinuxOutlined,
   AndroidOutlined,
   QuestionOutlined,
-  CloudServerOutlined,
   DesktopOutlined,
+  LaptopOutlined,
   MobileOutlined,
+  HddOutlined,
+  ApiOutlined,
+  AppstoreOutlined,
+  CodeOutlined,
   RedoOutlined,
   ThunderboltOutlined,
   MoonOutlined,
@@ -99,18 +103,47 @@ function osIcon(platform?: string) {
   if (value.includes('windows')) return <WindowsOutlined />;
   if (value.includes('mac') || value.includes('apple') || value.includes('ios'))
     return <AppleOutlined />;
-  if (value.includes('linux')) return <LinuxOutlined />;
+  if (
+    value.includes('linux') ||
+    value.includes('ubuntu') ||
+    value.includes('debian') ||
+    value.includes('fedora') ||
+    value.includes('centos') ||
+    value.includes('red hat') ||
+    value.includes('rhel') ||
+    value.includes('rocky') ||
+    value.includes('alma') ||
+    value.includes('opensuse') ||
+    value.includes('suse') ||
+    value.includes('arch') ||
+    value.includes('raspbian')
+  ) {
+    return <LinuxOutlined />;
+  }
   if (value.includes('android')) return <AndroidOutlined />;
   return <QuestionOutlined />;
 }
 
-function deviceTypeIcon(platform?: string) {
-  const value = platform?.toLowerCase() ?? '';
-  if (value.includes('server') || value.includes('linux')) return <CloudServerOutlined />;
-  if (value.includes('mobile') || value.includes('android') || value.includes('ios')) {
-    return <MobileOutlined />;
+function deviceTypeIcon(icon?: number) {
+  switch (icon) {
+    case 2:
+      return <LaptopOutlined />;
+    case 3:
+      return <MobileOutlined />;
+    case 4:
+      return <DesktopOutlined />;
+    case 5:
+      return <HddOutlined />;
+    case 6:
+      return <ApiOutlined />;
+    case 7:
+      return <AppstoreOutlined />;
+    case 8:
+      return <CodeOutlined />;
+    case 1:
+    default:
+      return <DesktopOutlined />;
   }
-  return <DesktopOutlined />;
 }
 
 const meshAgentsUrl = new URL(MESH_AGENTS_URL);
@@ -493,7 +526,7 @@ export function DevicesPage() {
             }}
           >
             {osIcon(device.platform)}
-            {deviceTypeIcon(device.platform)}
+            {deviceTypeIcon(device.icon)}
           </div>
         ),
       },

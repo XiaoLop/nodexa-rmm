@@ -24,6 +24,7 @@ describe('protocol normalizers', () => {
             name: 'Server',
             conn: 1,
             osdesc: 'Windows 11',
+            icon: 2,
             agent: { id: 4, ver: 123, caps: 7 },
             intelamt: { state: 2 },
           },
@@ -39,6 +40,7 @@ describe('protocol normalizers', () => {
       amtState: 2,
       isWindows: true,
       agentVersion: '123',
+      icon: 2,
     });
     expect(
       normalizeGroups([{ _id: 'mesh//one', name: 'Servers', desc: 'Production' }])[0],
@@ -49,6 +51,18 @@ describe('protocol normalizers', () => {
     expect(
       normalizeUserInfo({ action: 'userinfo', userinfo: { _id: 'user//admin', name: 'Admin' } }),
     ).toMatchObject({ id: 'user//admin', name: 'Admin' });
+  });
+
+  it('defaults an invalid device icon to the desktop icon', () => {
+    expect(normalizeDevices({ group: [{ _id: 'missing-icon', name: 'Missing' }] })[0]).toMatchObject({
+      icon: 1,
+    });
+    expect(normalizeDevices({ group: [{ _id: 'invalid-icon', name: 'Invalid', icon: 9 }] })[0]).toMatchObject({
+      icon: 1,
+    });
+    expect(normalizeDevices({ group: [{ _id: 'valid-icon', name: 'Valid', icon: 8 }] })[0]).toMatchObject({
+      icon: 8,
+    });
   });
 
   it('uses the Agent connection bit instead of power state for online status', () => {

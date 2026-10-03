@@ -17,6 +17,8 @@ import type {
 import { normalizeRights } from '../permissions/bitmask';
 
 type UnknownRecord = Record<string, unknown>;
+const DEFAULT_DEVICE_ICON = 1;
+
 export const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 export const stringValue = (value: unknown): string | undefined =>
@@ -104,7 +106,11 @@ export function normalizeDevice(
     typeof intelAmt?.state === 'number' && Number.isFinite(intelAmt.state)
       ? intelAmt.state
       : undefined;
-  const platform = stringValue(value.platform) ?? stringValue(value.osdesc);
+  const icon =
+    typeof value.icon === 'number' && Number.isInteger(value.icon) && value.icon >= 1 && value.icon <= 8
+      ? value.icon
+      : DEFAULT_DEVICE_ICON;
+  const platform = stringValue(value.osdesc);
   return {
     id,
     name: stringValue(value.name) ?? stringValue(value.rname) ?? stringValue(value.host) ?? id,
@@ -119,6 +125,7 @@ export function normalizeDevice(
     grants: normalizeGrants(value.links),
     agentVersion,
     platform,
+    icon,
     lastSeenAt: timestampValue(value.lastSeenAt) ?? timestampValue(value.lastconnect),
     raw: value,
   };
