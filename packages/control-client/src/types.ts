@@ -15,9 +15,11 @@ export interface Device {
   groupName?: string;
   online: boolean;
   connectionFlags?: number;
+  machineType?: number;
   agentId?: number;
   agentCapabilities?: number;
   amtState?: number;
+  amtSku?: number;
   isWindows?: boolean;
   grants?: Record<string, PrincipalGrant>;
   effectiveRights?: number;

@@ -97,6 +97,8 @@ export function normalizeDevice(
   }
   const connectionFlags =
     typeof value.conn === 'number' && Number.isFinite(value.conn) ? value.conn : undefined;
+  const machineType =
+    typeof value.mtype === 'number' && Number.isFinite(value.mtype) ? value.mtype : undefined;
   const agent = isRecord(value.agent) ? value.agent : undefined;
   const agentId = typeof agent?.id === 'number' && Number.isFinite(agent.id) ? agent.id : undefined;
   const agentCapabilities =
@@ -105,6 +107,10 @@ export function normalizeDevice(
   const amtState =
     typeof intelAmt?.state === 'number' && Number.isFinite(intelAmt.state)
       ? intelAmt.state
+      : undefined;
+  const amtSku =
+    typeof intelAmt?.sku === 'number' && Number.isFinite(intelAmt.sku)
+      ? intelAmt.sku
       : undefined;
   const icon =
     typeof value.icon === 'number' && Number.isInteger(value.icon) && value.icon >= 1 && value.icon <= 8
@@ -118,10 +124,14 @@ export function normalizeDevice(
     groupName: stringValue(value.groupName) ?? stringValue(value.meshname),
     online,
     connectionFlags,
+    machineType,
     agentId,
     agentCapabilities,
     amtState,
-    isWindows: agentId === 4 || (platform !== undefined && /win/i.test(platform)),
+    amtSku,
+    isWindows:
+      (agentId !== undefined && [1, 2, 3, 4, 21, 22, 34, 42, 43].includes(agentId)) ||
+      (platform !== undefined && /win/i.test(platform)),
     grants: normalizeGrants(value.links),
     agentVersion,
     platform,

@@ -31,9 +31,11 @@ export function workspaceTabPermission(
   tab: WorkspaceTab,
   capabilities: DeviceUiCapabilities,
   remoteControlAllowed: boolean,
+  agentPresent: boolean,
 ): UiPermission | undefined {
   if (tab === 'processes' || tab === 'services') {
-    return { visible: remoteControlAllowed, enabled: remoteControlAllowed };
+    const available = remoteControlAllowed && agentPresent;
+    return { visible: available, enabled: available };
   }
   const definition = tabs.find((item) => item.key === tab);
   return definition?.permission ? capabilities[definition.permission] : undefined;
@@ -44,17 +46,24 @@ export function WorkspaceTabs({
   onChange,
   capabilities,
   remoteControlAllowed,
+  agentPresent,
 }: {
   active: WorkspaceTab;
   onChange: (tab: WorkspaceTab) => void;
   capabilities: DeviceUiCapabilities;
   remoteControlAllowed: boolean;
+  agentPresent: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <nav className="workspace-tabs" aria-label={t('deviceWorkspace.ariaLabel')}>
       {tabs.map((tab) => {
-        const permission = workspaceTabPermission(tab.key, capabilities, remoteControlAllowed);
+        const permission = workspaceTabPermission(
+          tab.key,
+          capabilities,
+          remoteControlAllowed,
+          agentPresent,
+        );
         if (permission && !permission.visible) return null;
         const button = (
           <button

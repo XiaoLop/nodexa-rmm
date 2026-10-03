@@ -53,18 +53,45 @@ describe('getDeviceUiCapabilities', () => {
     expect(capabilities.files.visible).toBe(false);
   });
 
-  it('disables an allowed feature when the agent capability is absent', () => {
+  it('hides features that the device does not advertise', () => {
     const capabilities = getDeviceUiCapabilities(MeshRight.RemoteControl, {
       ...onlineRuntime,
       agentCapabilities: 1 | 2,
     });
 
-    expect(capabilities.files).toEqual({
-      visible: true,
-      enabled: false,
-      reason: 'agent-unsupported',
-      message: '设备 Agent 不支持此功能',
+    expect(capabilities.desktop).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.terminal).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.files).toEqual({ visible: false, enabled: false });
+    expect(capabilities.console).toEqual({ visible: false, enabled: false });
+  });
+
+  it('uses activated Intel AMT capabilities for desktop and terminal visibility', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.RemoteControl, {
+      ...onlineRuntime,
+      agentOnline: false,
+      amtOnline: true,
+      amtReady: true,
+      amtSku: 8,
+      agentCapabilities: undefined,
     });
+
+    expect(capabilities.desktop).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.terminal).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.files).toEqual({ visible: false, enabled: false });
+  });
+
+  it('hides desktop when AMT does not include KVM support', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.RemoteControl, {
+      ...onlineRuntime,
+      agentOnline: false,
+      amtOnline: true,
+      amtReady: true,
+      amtSku: 16,
+      agentCapabilities: undefined,
+    });
+
+    expect(capabilities.desktop).toEqual({ visible: false, enabled: false });
+    expect(capabilities.terminal).toMatchObject({ visible: true, enabled: true });
   });
 
   it('disables guest sharing when the server explicitly disables it', () => {

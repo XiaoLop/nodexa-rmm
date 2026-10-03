@@ -196,9 +196,10 @@ export function DeviceWorkspacePage() {
       activeTab,
       capabilities,
       remoteControlAllowed,
+      device?.agentCapabilities !== undefined,
     );
     if (permission && !permission.visible) setActiveTab('overview');
-  }, [activeTab, capabilities, remoteControlAllowed]);
+  }, [activeTab, capabilities, device?.agentCapabilities, remoteControlAllowed]);
 
   if (isInitialLoading) {
     return (
@@ -376,6 +377,7 @@ export function DeviceWorkspacePage() {
         onChange={setActiveTab}
         capabilities={capabilities}
         remoteControlAllowed={remoteControlAllowed}
+        agentPresent={device.agentCapabilities !== undefined}
       />
       <Suspense fallback={<WorkspacePanelLoading />}>
         {activeTab === 'overview' ? (

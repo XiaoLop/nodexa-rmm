@@ -25,6 +25,7 @@ export interface DeviceRuntimeCapabilities {
   agentOnline: boolean;
   amtOnline: boolean;
   amtReady?: boolean;
+  amtSku?: number;
   agentCapabilities?: number;
   isWindows: boolean;
 }
@@ -98,10 +99,13 @@ function runtimePermission(
 
 function hasAgentCapability(runtime: DeviceRuntimeCapabilities, capability: number): boolean {
   return (
-    runtime.agentCapabilities === undefined ||
-    runtime.agentCapabilities === 0 ||
+    runtime.agentCapabilities !== undefined &&
     (runtime.agentCapabilities & capability) !== 0
   );
+}
+
+function hasAmtCapability(runtime: DeviceRuntimeCapabilities, capability: number): boolean {
+  return runtime.amtSku !== undefined && (runtime.amtSku & capability) !== 0;
 }
 
 export function getDeviceUiCapabilities(
@@ -132,42 +136,54 @@ export function getDeviceUiCapabilities(
   const normalized = normalizeRights(rights);
   const administrator = isFullRights(normalized);
   const desktopAccess = getDesktopAccess(normalized);
+  const desktopSupported =
+    hasAgentCapability(runtime, 1) ||
+    (hasAmtCapability(runtime, 8) && runtime.amtReady !== false);
+  const terminalSupported = hasAgentCapability(runtime, 2) || runtime.amtReady === true;
   const desktopOnline =
     (runtime.agentOnline && hasAgentCapability(runtime, 1)) ||
-    (runtime.amtOnline && runtime.amtReady !== false);
+    (runtime.amtOnline && hasAmtCapability(runtime, 8) && runtime.amtReady !== false);
   const terminalOnline =
     (runtime.agentOnline && hasAgentCapability(runtime, 2)) ||
-    (runtime.amtOnline && runtime.amtReady !== false);
+    (runtime.amtOnline && runtime.amtReady === true);
 
   return {
-    desktop: runtimePermission(desktopAccess !== 'denied', runtime, desktopOnline),
-    desktopInput: runtimePermission(
-      desktopAccess === 'control' || desktopAccess === 'limited-input',
-      runtime,
-      desktopOnline,
-    ),
-    clipboardWrite: runtimePermission(desktopAccess === 'control', runtime, runtime.agentOnline),
-    terminal: runtimePermission(canUseTerminal(normalized), runtime, terminalOnline),
-    files: runtimePermission(
-      canUseDeviceFiles(normalized),
-      runtime,
-      runtime.agentOnline,
-      hasAgentCapability(runtime, 4),
-    ),
-    console: runtimePermission(
-      administrator || hasMeshRight(normalized, MeshRight.AgentConsole),
-      runtime,
-      runtime.agentOnline,
-      hasAgentCapability(runtime, 8),
-    ),
-    registry: runtimePermission(
-      runtime.isWindows &&
-        (administrator ||
-          (hasMeshRight(normalized, MeshRight.RemoteControl) &&
-            !hasMeshRight(normalized, MeshRight.NoRegistry))),
-      runtime,
-      runtime.agentOnline,
-    ),
+    desktop: desktopSupported
+      ? runtimePermission(desktopAccess !== 'denied', runtime, desktopOnline)
+      : hidden(),
+    desktopInput: desktopSupported
+      ? runtimePermission(
+          desktopAccess === 'control' || desktopAccess === 'limited-input',
+          runtime,
+          desktopOnline,
+        )
+      : hidden(),
+    clipboardWrite: hasAgentCapability(runtime, 1)
+      ? runtimePermission(desktopAccess === 'control', runtime, runtime.agentOnline)
+      : hidden(),
+    terminal: terminalSupported
+      ? runtimePermission(canUseTerminal(normalized), runtime, terminalOnline)
+      : hidden(),
+    files: hasAgentCapability(runtime, 4)
+      ? runtimePermission(canUseDeviceFiles(normalized), runtime, runtime.agentOnline)
+      : hidden(),
+    console: hasAgentCapability(runtime, 8)
+      ? runtimePermission(
+          administrator || hasMeshRight(normalized, MeshRight.AgentConsole),
+          runtime,
+          runtime.agentOnline,
+        )
+      : hidden(),
+    registry:
+      runtime.isWindows && runtime.agentCapabilities !== undefined
+        ? runtimePermission(
+            administrator ||
+              (hasMeshRight(normalized, MeshRight.RemoteControl) &&
+                !hasMeshRight(normalized, MeshRight.NoRegistry)),
+            runtime,
+            runtime.agentOnline,
+          )
+        : hidden(),
     software: runtimePermission(
       administrator ||
         (hasMeshRight(normalized, MeshRight.RemoteControl) &&
