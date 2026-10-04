@@ -129,18 +129,43 @@ function simplifyCpuName(name: string | undefined): string {
     .trim() || name;
 }
 
+function numberFrom(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return undefined;
+  const match = value.replace(/,/g, '').match(/[\d.]+/);
+  if (!match) return undefined;
+  const number = Number(match[0]);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function bytesFrom(value: unknown): number {
+  const number = numberFrom(value);
+  if (number === undefined) return 0;
+  const text = typeof value === 'string' ? value.toLowerCase() : '';
+  if (text.includes('tib') || text.includes('tb')) return number * 1024 ** 4;
+  if (text.includes('gib') || text.includes('gb')) return number * 1024 ** 3;
+  if (text.includes('mib') || text.includes('mb')) return number * 1024 ** 2;
+  if (text.includes('kib') || text.includes('kb')) return number * 1024;
+  return number;
+}
+
 function parseVolumes(volumesRecord: unknown): StorageVolume[] {
   if (!volumesRecord || typeof volumesRecord !== 'object') return [];
-  return Object.entries(volumesRecord as Record<string, unknown>).map(([letter, item]) => {
+  const entries = Array.isArray(volumesRecord)
+    ? volumesRecord.map((item, index) => [String(index), item] as const)
+    : Object.entries(volumesRecord as Record<string, unknown>);
+  return entries.map(([letter, item]) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-    const size = typeof record.size === 'number' ? record.size : 0;
-    const remaining = typeof record.sizeremaining === 'number' ? record.sizeremaining : 0;
+    const size = bytesFrom(record.size ?? record.Size);
+    const reportedUsed = bytesFrom(record.used ?? record.Used);
+    const available = bytesFrom(record.available ?? record.FreeSpace ?? record.sizeremaining);
+    const remaining = available || Math.max(0, size - reportedUsed);
     const used = Math.max(0, size - remaining);
     const usedPercent = size > 0 ? Math.min(100, Math.round((used / size) * 100)) : 0;
     return {
-      letter: `${letter.toUpperCase()}:`,
-      name: stringFrom(record.name),
-      type: stringFrom(record.type) ?? 'NTFS',
+      letter: stringFrom(record.mount_point) ?? (letter.match(/^\d+$/) ? `Volume ${Number(letter) + 1}` : `${letter.toUpperCase()}:`),
+      name: stringFrom(record.name) ?? stringFrom(record.Model) ?? stringFrom(record.Caption),
+      type: stringFrom(record.type) ?? stringFrom(record.FileSystem) ?? '—',
       sizeBytes: size,
       remainingBytes: remaining,
       sizeFormatted: formatBytes(size) ?? '—',
@@ -213,31 +238,75 @@ function selectPrimaryInterface(interfaces: NetworkInterfaceInfo[]) {
 
 function staticDetails(details: DeviceDetails | undefined) {
   const hardware = hardwareRecord(details);
-  const platformKey = Object.keys(hardware ?? {})[0];
+  const platformKey = ['windows', 'linux', 'darwin', 'mobile'].find((key) =>
+    hardware?.[key] && typeof hardware[key] === 'object',
+  );
   const platformHardware = platformKey && hardware?.[platformKey];
   const platformRecord = platformHardware && typeof platformHardware === 'object'
     ? (platformHardware as Record<string, unknown>)
     : undefined;
-  const cpu = Array.isArray(platformRecord?.cpu) ? platformRecord.cpu[0] : undefined;
+  const nestedPlatformRecord = platformKey && platformRecord?.[platformKey];
+  const platformDetails = nestedPlatformRecord && typeof nestedPlatformRecord === 'object'
+    ? nestedPlatformRecord as Record<string, unknown>
+    : platformRecord;
+  const detailRaw = details?.raw?.detail && typeof details.raw.detail === 'object' ? (details.raw.detail as Record<string, unknown>) : undefined;
+  const detailNode = detailRaw?.node && typeof detailRaw.node === 'object' ? detailRaw.node as Record<string, unknown> : undefined;
+  const platformKind = platformKey === 'windows'
+    ? 'windows'
+    : platformKey === 'linux'
+      ? 'linux'
+      : platformKey === 'darwin'
+        ? 'macos'
+        : platformKey === 'mobile'
+          ? 'mobile'
+            : platformKey
+              ? 'amt'
+              : detailNode?.mtype === 1
+                ? 'amt'
+                : 'unknown';
+    const platformOsInfo = platformDetails?.osinfo && typeof platformDetails.osinfo === 'object'
+      ? platformDetails.osinfo as Record<string, unknown>
+      : undefined;
+  const cpu = Array.isArray(platformDetails?.cpu)
+    ? platformDetails.cpu[0]
+    : platformRecord?.identifiers && typeof platformRecord.identifiers === 'object'
+      ? undefined
+      : undefined;
   const cpuRecord = cpu && typeof cpu === 'object' ? (cpu as Record<string, unknown>) : undefined;
-  const rawCpuName = stringFrom(cpuRecord?.Name);
+  const systemIdentifiers = detailRecord(details, 'systemInfo')?.identifiers;
+  const identifiers = {
+    ...(systemIdentifiers && typeof systemIdentifiers === 'object'
+      ? systemIdentifiers as Record<string, unknown>
+      : {}),
+    ...(hardware?.identifiers && typeof hardware.identifiers === 'object'
+      ? hardware.identifiers as Record<string, unknown>
+      : {}),
+  };
+  const rawCpuName = stringFrom(cpuRecord?.Name) ?? stringFrom(identifiers?.cpu_name);
   const cpuMaxClock = typeof cpuRecord?.MaxClockSpeed === 'number' ? `${(cpuRecord.MaxClockSpeed / 1000).toFixed(2)} GHz` : undefined;
 
-  const memory = Array.isArray(platformRecord?.memory) ? platformRecord.memory : [];
+  const memory = Array.isArray(platformDetails?.memory)
+    ? platformDetails.memory
+    : platformKey === 'linux' && hardware?.memory && typeof hardware.memory === 'object' && Array.isArray((hardware.memory as Record<string, unknown>).Memory_Device)
+      ? (hardware.memory as Record<string, unknown>).Memory_Device as unknown[]
+      : [];
   const memorySlots = memory.length;
   const firstMemory = memory[0] && typeof memory[0] === 'object' ? (memory[0] as Record<string, unknown>) : undefined;
   const memorySpeed = typeof firstMemory?.Speed === 'number' ? `${firstMemory.Speed} MHz` : undefined;
 
-  const volumes = parseVolumes(platformRecord?.volumes);
-  const drives = Array.isArray(platformRecord?.drives) ? platformRecord.drives : [];
+  const volumes = parseVolumes(platformDetails?.volumes);
+  const drives = Array.isArray(platformDetails?.drives) ? platformDetails.drives : [];
   const driveNames = drives.map((drive) => (drive && typeof drive === 'object' ? stringFrom((drive as Record<string, unknown>).Model) ?? stringFrom((drive as Record<string, unknown>).Caption) : undefined)).filter(Boolean) as string[];
 
   const totalMemory = memory.reduce<number>((sum, item) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : undefined;
-    return sum + (typeof record?.Capacity === 'string' ? Number(record.Capacity) : 0);
+    return sum + bytesFrom(record?.Capacity ?? record?.Size);
   }, 0);
-  const totalStorage = volumes.reduce<number>((sum, item) => sum + item.sizeBytes, 0);
-  const totalRemaining = volumes.reduce<number>((sum, item) => sum + item.remainingBytes, 0);
+  const linuxVolumes = platformKey === 'linux' ? platformDetails?.volumes : undefined;
+  const darwinVolumes = platformKey === 'darwin' ? platformDetails?.volumes : undefined;
+  const parsedVolumes = volumes.length > 0 ? volumes : parseVolumes(linuxVolumes ?? darwinVolumes);
+  const totalStorage = parsedVolumes.reduce<number>((sum, item) => sum + item.sizeBytes, 0);
+  const totalRemaining = parsedVolumes.reduce<number>((sum, item) => sum + item.remainingBytes, 0);
 
   const systemRecord = detailRecord(details, 'systemInfo');
   const networkRecord = detailRecord(details, 'networkInfo');
@@ -245,13 +314,12 @@ function staticDetails(details: DeviceDetails | undefined) {
   const interfaces = parseInterfaces(networkRecord);
   const primaryInterface = selectPrimaryInterface(interfaces);
 
-  const identifiers = systemRecord?.identifiers && typeof systemRecord.identifiers === 'object' ? (systemRecord.identifiers as Record<string, unknown>) : undefined;
   const boardName = stringFrom(identifiers?.board_name) ?? stringFrom(identifiers?.product_name) ?? '—';
   const biosVersion = stringFrom(identifiers?.bios_version)
     ? `${stringFrom(identifiers?.bios_vendor) ?? ''} ${String(identifiers?.bios_version ?? '')}`.trim()
     : '—';
 
-  const gpus = Array.isArray(platformRecord?.gpu) ? platformRecord.gpu : [];
+  const gpus = Array.isArray(platformDetails?.gpu) ? platformDetails.gpu : [];
   const activeGpu = gpus.find((gpu) => gpu && typeof gpu === 'object' && (gpu as Record<string, unknown>).CurrentHorizontalResolution) ?? gpus[0];
   const activeGpuRecord = activeGpu && typeof activeGpu === 'object' ? (activeGpu as Record<string, unknown>) : undefined;
   const gpuName = stringFrom(activeGpuRecord?.Name) ?? (Array.isArray(identifiers?.gpu_name) ? identifiers?.gpu_name[0] : undefined) ?? '—';
@@ -263,8 +331,7 @@ function staticDetails(details: DeviceDetails | undefined) {
     ? (systemRecord.network as Record<string, unknown>).dns
     : []) as string[];
 
-  const detailRaw = details?.raw?.detail && typeof details.raw.detail === 'object' ? (details.raw.detail as Record<string, unknown>) : undefined;
-  const nodeRaw = (detailRaw?.node && typeof detailRaw.node === 'object' ? detailRaw.node : details?.device?.raw) as Record<string, unknown> | undefined;
+  const nodeRaw = (detailNode ?? details?.device?.raw) as Record<string, unknown> | undefined;
   const wsc = nodeRaw?.wsc && typeof nodeRaw.wsc === 'object' ? (nodeRaw.wsc as Record<string, unknown>) : undefined;
   const defender = nodeRaw?.defender && typeof nodeRaw.defender === 'object' ? (nodeRaw.defender as Record<string, unknown>) : undefined;
   const agent = nodeRaw?.agent && typeof nodeRaw.agent === 'object' ? (nodeRaw.agent as Record<string, unknown>) : undefined;
@@ -284,6 +351,12 @@ function staticDetails(details: DeviceDetails | undefined) {
   if (security.pendingReboot) securityParts.push(`pending-reboot:${security.pendingReboot}`);
 
   const hardwareInfo: DeviceHardwareInfo = {
+    platformKind,
+    deviceModel: stringFrom(identifiers?.product_name) ?? stringFrom(platformDetails?.model),
+    osVersion: stringFrom(platformOsInfo?.Caption) ?? stringFrom(platformOsInfo?.Version),
+    kernelVersion: stringFrom(platformDetails?.kernel_release),
+    bootloader: stringFrom(platformDetails?.bootloader),
+    bootTime: platformOsInfo?.LastBootUpTime ?? platformDetails?.LastBootUpTime,
     cpuName: rawCpuName,
     cpuShortName: simplifyCpuName(rawCpuName),
     cpuSpeed: cpuMaxClock,
@@ -293,7 +366,7 @@ function staticDetails(details: DeviceDetails | undefined) {
     storageTotal: formatBytes(totalStorage),
     storageRemaining: formatBytes(totalRemaining),
     storageDrives: driveNames,
-    volumes,
+    volumes: parsedVolumes,
     gpuName,
     gpuResolution,
     boardName,
@@ -352,7 +425,10 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
   const hardware = staticDetails(details);
   const hasSystemDetails = detailRecord(details, 'systemInfo') !== undefined;
   const hasNetworkDetails = detailRecord(details, 'networkInfo') !== undefined;
-  const platformKey = Object.keys(hardwareRecord(details) ?? {})[0];
+  const detailHardware = hardwareRecord(details);
+  const platformKey = ['windows', 'linux', 'darwin', 'mobile'].find((key) =>
+    detailHardware?.[key] && typeof detailHardware[key] === 'object',
+  );
   const platformHardware = platformKey && hardwareRecord(details)?.[platformKey];
   const platformRecord = platformHardware && typeof platformHardware === 'object' ? platformHardware as Record<string, unknown> : undefined;
   const osInfo = platformRecord?.osinfo && typeof platformRecord.osinfo === 'object' ? platformRecord.osinfo as Record<string, unknown> : undefined;
@@ -367,7 +443,10 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     ipAddress: rawString(resolvedDevice, ['ip', 'host'], resolvedDevice.raw),
     macAddress: rawString(resolvedDevice, ['mac', 'macaddr'], resolvedDevice.raw),
     currentUser: rawString(resolvedDevice, ['user', 'currentUser'], resolvedDevice.raw),
-    uptimeSeconds: uptimeSeconds(osInfo?.LastBootUpTime ?? rawRecord(resolvedDevice)?.lastbootuptime, uptimeEndTime),
+    uptimeSeconds: uptimeSeconds(
+      osInfo?.LastBootUpTime ?? hardware.hardware.bootTime ?? rawRecord(resolvedDevice)?.lastbootuptime,
+      uptimeEndTime,
+    ),
     lastHeartbeatAt: resolvedDevice.lastSeenAt,
     groupName: groupName ?? resolvedDevice.groupName,
     tags: [],

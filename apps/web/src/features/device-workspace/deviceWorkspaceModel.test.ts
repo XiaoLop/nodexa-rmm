@@ -209,6 +209,96 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.primarySpeed).toBe('866 Mbps');
   });
 
+  it('normalizes Linux identifiers, kernel details, and mounted volumes', () => {
+    const model = createDeviceWorkspaceModel(
+      { id: 'linux-1', name: 'Ubuntu host', online: true, platform: 'Linux' },
+      {
+        device: { id: 'linux-1', name: 'Ubuntu host', online: true, platform: 'Linux' },
+        networkInfo: undefined,
+        lastConnect: undefined,
+        systemInfo: {
+          identifiers: { cpu_name: 'AMD Ryzen 7 5800X', product_name: 'ThinkStation' },
+          hardware: {
+            identifiers: { product_name: 'ThinkStation' },
+            linux: {
+              kernel_release: '6.8.0-40-generic',
+              volumes: [{ mount_point: '/', size: '100G', used: '40G', available: '60G', type: 'ext4' }],
+            },
+          },
+        },
+        raw: {},
+      } as any,
+    );
+
+    expect(model.hardware.platformKind).toBe('linux');
+    expect(model.hardware.cpuName).toBe('AMD Ryzen 7 5800X');
+    expect(model.hardware.kernelVersion).toBe('6.8.0-40-generic');
+    expect(model.hardware.volumes[0]).toMatchObject({ letter: '/', type: 'ext4', usedPercent: 40 });
+  });
+
+  it('normalizes macOS volumes and boot time', () => {
+    const model = createDeviceWorkspaceModel(
+      { id: 'mac-1', name: 'Mac mini', online: true, platform: 'macOS' },
+      {
+        device: { id: 'mac-1', name: 'Mac mini', online: true, platform: 'macOS' },
+        networkInfo: undefined,
+        lastConnect: undefined,
+        systemInfo: {
+          identifiers: { product_name: 'Mac mini' },
+          hardware: {
+            identifiers: { product_name: 'Mac mini' },
+            darwin: {
+              LastBootUpTime: 1789410000,
+              volumes: [{ mount_point: '/', size: '512 GB', used: '128 GB', available: '384 GB', type: 'apfs' }],
+            },
+          },
+        },
+        raw: {},
+      } as any,
+    );
+
+    expect(model.hardware.platformKind).toBe('macos');
+    expect(model.hardware.deviceModel).toBe('Mac mini');
+    expect(model.hardware.volumes[0]?.type).toBe('apfs');
+    expect(model.hardware.bootTime).toBe(1789410000);
+  });
+
+  it('normalizes Android model and bootloader details', () => {
+    const model = createDeviceWorkspaceModel(
+      { id: 'android-1', name: 'Pixel', online: true, platform: 'Android' },
+      {
+        device: { id: 'android-1', name: 'Pixel', online: true, platform: 'Android' },
+        networkInfo: undefined,
+        lastConnect: undefined,
+        systemInfo: {
+          hardware: { mobile: { brand: 'Google', model: 'Pixel 9', bootloader: 'cloudripper' } },
+        },
+        raw: {},
+      } as any,
+    );
+
+    expect(model.hardware.platformKind).toBe('mobile');
+    expect(model.hardware.deviceModel).toBe('Pixel 9');
+    expect(model.hardware.bootloader).toBe('cloudripper');
+  });
+
+  it('marks a pure Intel AMT device without an agent', () => {
+    const model = createDeviceWorkspaceModel(
+      { id: 'amt-1', name: 'AMT device', online: true, machineType: 1 },
+      {
+        device: { id: 'amt-1', name: 'AMT device', online: true, machineType: 1 },
+        networkInfo: undefined,
+        lastConnect: undefined,
+        systemInfo: { hardware: { identifiers: { product_name: 'Intel vPro' } } },
+        raw: { detail: { node: { mtype: 1 } } },
+      } as any,
+    );
+
+    expect(model.hardware.platformKind).toBe('amt');
+    expect(model.hardware.deviceModel).toBe('Intel vPro');
+    expect(model.hardware.agentVersion).toBeUndefined();
+  });
+
   it('uses the resolved group name when the device only contains a group id', () => {
     const model = createDeviceWorkspaceModel(
       { id: 'node-3', name: 'Node 3', online: true, groupId: 'mesh/domain/group-1' },

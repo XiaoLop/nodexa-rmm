@@ -42,6 +42,12 @@ export interface DeviceSecurityState {
 }
 
 export interface DeviceHardwareInfo {
+  platformKind: 'windows' | 'linux' | 'macos' | 'mobile' | 'amt' | 'unknown';
+  deviceModel?: string;
+  osVersion?: string;
+  kernelVersion?: string;
+  bootloader?: string;
+  bootTime?: unknown;
   cpuName?: string;
   cpuShortName?: string;
   cpuSpeed?: string;

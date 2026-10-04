@@ -255,6 +255,11 @@ export function DeviceOverviewPanel({
           <dl className="workspace-profile-list">
             <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.hostname')}</dt><dd title={model.hostname}>{model.hostname}</dd></div>
             <div><dt><CloudServerOutlined /> {t('deviceWorkspace.overview.fields.platform')}</dt><dd title={model.platform}>{model.platform}</dd></div>
+            {hw.deviceModel && <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.deviceModel')}</dt><dd title={hw.deviceModel}>{hw.deviceModel}</dd></div>}
+            {hw.osVersion && <div><dt><CloudServerOutlined /> {t('deviceWorkspace.overview.fields.osVersion')}</dt><dd title={hw.osVersion}>{hw.osVersion}</dd></div>}
+            {hw.kernelVersion && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.kernel')}</dt><dd title={hw.kernelVersion}>{hw.kernelVersion}</dd></div>}
+            {hw.bootloader && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.bootloader')}</dt><dd title={hw.bootloader}>{hw.bootloader}</dd></div>}
+            {hw.platformKind === 'amt' && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.management')}</dt><dd>{t('deviceWorkspace.overview.amtOnly')}</dd></div>}
             {model.hasSystemDetails && hw.cpuName && <div><dt><ThunderboltOutlined /> {t('deviceWorkspace.overview.fields.cpu')}</dt><dd title={hw.cpuName}>{hw.cpuName}</dd></div>}
             {model.hasSystemDetails && hw.gpuName && <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.gpu')}</dt><dd title={hw.gpuName}>{hw.gpuName}</dd></div>}
             {model.hasSystemDetails && hw.boardName && <div><dt><AppstoreOutlined /> {t('deviceWorkspace.overview.fields.board')}</dt><dd title={`${hw.boardName} (${hw.biosVersion ?? ''})`}>{hw.boardName}</dd></div>}
