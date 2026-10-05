@@ -7,6 +7,7 @@ import {
   GlobalOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ProfileOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -14,7 +15,7 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
+import { Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
@@ -31,6 +32,7 @@ import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { NotificationBell } from '../features/notifications/NotificationBell';
+import { useBatchTasks } from '../features/tasks/BatchTaskContext';
 import {
   useApplicationUiCapabilities,
   type ApplicationCapability,
@@ -65,6 +67,11 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
         key: '/devices/groups',
         icon: <ApartmentOutlined />,
         labelKey: 'navigation.deviceGroups',
+      },
+      {
+        key: '/devices/tasks',
+        icon: <ProfileOutlined />,
+        labelKey: 'navigation.taskCenter',
       },
     ],
   },
@@ -121,6 +128,7 @@ const pageTitleKeys: Record<string, [string, string]> = {
   '/profile': ['header.account', 'header.profile'],
   '/devices': ['navigation.deviceManagement', 'navigation.allDevices'],
   '/devices/groups': ['navigation.deviceManagement', 'navigation.deviceGroups'],
+  '/devices/tasks': ['navigation.deviceManagement', 'navigation.taskCenter'],
   '/monitoring/realtime': ['navigation.monitoringAndEvents', 'navigation.realtimeEvents'],
   '/monitoring/alerts': ['navigation.monitoringAndEvents', 'navigation.alertRules'],
   '/monitoring/audit': ['navigation.monitoringAndEvents', 'navigation.auditLogs'],
@@ -174,6 +182,7 @@ function AppLayoutContent() {
     gateway.store,
     meshCentralControlSelectors.unreadCount,
   );
+  const { activeCount, unviewedCompletedCount } = useBatchTasks();
   const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
   const capabilities = useApplicationUiCapabilities();
@@ -296,6 +305,20 @@ function AppLayoutContent() {
               unreadLabel={t('notifications.unreadDescription', { count: unreadCount })}
               onOpen={() => setNotificationCenterOpen(true)}
             />
+            <Tooltip title={t('navigation.taskCenter')}>
+              <Badge
+                count={activeCount}
+                dot={!activeCount && unviewedCompletedCount > 0}
+                size="small"
+              >
+                <Button
+                  type="text"
+                  icon={<ProfileOutlined />}
+                  aria-label={t('taskCenter.open')}
+                  onClick={() => navigate('/devices/tasks')}
+                />
+              </Badge>
+            </Tooltip>
             <Button type="text" icon={<QuestionCircleOutlined />} aria-label={t('header.help')} />
             <Dropdown
               menu={{

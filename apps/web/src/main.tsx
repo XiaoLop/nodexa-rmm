@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './app/AppRouter';
 import { MeshCentralControlProvider } from './features/gateway/MeshCentralControlProvider';
+import { BatchTaskProvider } from './features/tasks/BatchTaskProvider';
 import { resolveLanguage } from './i18n';
 import 'antd/dist/reset.css';
 import './assets/styles/index.css';
@@ -53,9 +54,11 @@ function ApplicationProviders() {
     >
       <AntApp>
         <MeshCentralControlProvider>
-          <BrowserRouter>
-            <AppRouter />
-          </BrowserRouter>
+          <BatchTaskProvider>
+            <BrowserRouter>
+              <AppRouter />
+            </BrowserRouter>
+          </BatchTaskProvider>
         </MeshCentralControlProvider>
       </AntApp>
     </ConfigProvider>

@@ -44,6 +44,7 @@ interface BatchFileUploadModalProps {
   connected: boolean;
   manager: BatchUploadManager;
   onClose: () => void;
+  onStartTask?: (config: BatchUploadConfig) => void;
 }
 
 interface UploadFormValues {
@@ -96,18 +97,14 @@ function hasMixedPlatforms(devices: BatchUploadDeviceSnapshot[]): boolean {
   return families.size > 1;
 }
 
-function formatTaskDetail(
-  detail: BatchUploadTask['detail'],
-  t: (key: string) => string,
-): string {
+function formatTaskDetail(detail: BatchUploadTask['detail'], t: (key: string) => string): string {
   if (!detail) return '—';
   const key = `batchUpload.details.${detail.code}`;
   const translated = t(key);
-  return translated === key ? detail.raw ?? detail.code : translated;
+  return translated === key ? (detail.raw ?? detail.code) : translated;
 }
 
 export function BatchFileUploadModal({
-
   open,
   devices,
   meshCentralClient,
@@ -115,6 +112,7 @@ export function BatchFileUploadModal({
   connected,
   manager,
   onClose,
+  onStartTask,
 }: BatchFileUploadModalProps) {
   const { t } = useTranslation();
   const [form] = Form.useForm<UploadFormValues>();
@@ -149,7 +147,11 @@ export function BatchFileUploadModal({
 
   const startUpload = async () => {
     if (!selectedFiles.length || !meshCentralClient || !baseUrl || !connected) {
-      void messageApi.error(!selectedFiles.length ? t('batchUpload.messages.selectFilesFirst') : t('batchUpload.messages.gatewayUnavailable'));
+      void messageApi.error(
+        !selectedFiles.length
+          ? t('batchUpload.messages.selectFilesFirst')
+          : t('batchUpload.messages.gatewayUnavailable'),
+      );
       return;
     }
     try {
@@ -174,6 +176,11 @@ export function BatchFileUploadModal({
         overwritePolicy: values.overwritePolicy,
         concurrency: values.concurrency,
       };
+      if (onStartTask) {
+        onStartTask(config);
+        onClose();
+        return;
+      }
       manager.start(config, meshCentralClient, baseUrl);
     } catch {
       // Ant Design form displays validation details.
@@ -181,6 +188,11 @@ export function BatchFileUploadModal({
   };
 
   const closeModal = () => {
+    if (onStartTask) {
+      manager.reset();
+      onClose();
+      return;
+    }
     if (!running) {
       manager.reset();
       onClose();
@@ -263,13 +275,20 @@ export function BatchFileUploadModal({
       render: (_, task) =>
         `${formatBytes(task.acknowledgedBytes)} / ${formatBytes(task.totalBytes)}`,
     },
-    { title: t('batchUpload.columns.duration'), key: 'duration', width: 90, render: (_, task) => formatDuration(task) },
+    {
+      title: t('batchUpload.columns.duration'),
+      key: 'duration',
+      width: 90,
+      render: (_, task) => formatDuration(task),
+    },
     {
       title: t('batchUpload.columns.detail'),
       dataIndex: 'detail',
       ellipsis: { showTitle: false },
       render: (detail?: BatchUploadTask['detail']) => (
-        <Typography.Text ellipsis={{ tooltip: formatTaskDetail(detail, t) }}>{formatTaskDetail(detail, t)}</Typography.Text>
+        <Typography.Text ellipsis={{ tooltip: formatTaskDetail(detail, t) }}>
+          {formatTaskDetail(detail, t)}
+        </Typography.Text>
       ),
     },
     {
@@ -381,11 +400,18 @@ export function BatchFileUploadModal({
                     <Typography.Text
                       ellipsis={{ tooltip: selectedFiles.map((file) => file.name).join('、') }}
                     >
-                      {t('batchUpload.filesSelectedInfo', { count: selectedFiles.length, size: '' }).split('·')[0]} ·{' '}
-                      {formatBytes(selectedFiles.reduce((total, file) => total + file.size, 0))}
+                      {
+                        t('batchUpload.filesSelectedInfo', {
+                          count: selectedFiles.length,
+                          size: '',
+                        }).split('·')[0]
+                      }{' '}
+                      · {formatBytes(selectedFiles.reduce((total, file) => total + file.size, 0))}
                     </Typography.Text>
                   ) : (
-                    <Typography.Text type="secondary">{t('batchUpload.noFilesSelected')}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      {t('batchUpload.noFilesSelected')}
+                    </Typography.Text>
                   )}
                 </div>
               </Form.Item>
@@ -410,7 +436,10 @@ export function BatchFileUploadModal({
               <Alert
                 showIcon
                 type="info"
-                title={t('batchUpload.startNoticeTitle', { deviceCount: devices.length, fileCount: selectedFiles.length })}
+                title={t('batchUpload.startNoticeTitle', {
+                  deviceCount: devices.length,
+                  fileCount: selectedFiles.length,
+                })}
                 description={t('batchUpload.startNoticeDesc')}
               />
             </Form>
@@ -423,7 +452,10 @@ export function BatchFileUploadModal({
                 <Statistic title={t('batchUpload.statistics.success')} value={summary.success} />
                 <Statistic title={t('batchUpload.statistics.skipped')} value={summary.skipped} />
                 <Statistic title={t('batchUpload.statistics.failed')} value={summary.failed} />
-                <Statistic title={t('batchUpload.statistics.cancelled')} value={summary.cancelled} />
+                <Statistic
+                  title={t('batchUpload.statistics.cancelled')}
+                  value={summary.cancelled}
+                />
               </div>
               {!connected && running && (
                 <Alert

@@ -40,6 +40,7 @@ import {
 import { classifyCommandRisk, mayContainSecret } from '../features/commands/commandRisk';
 import { cleanCommandOutput } from '../features/commands/commandOutput';
 import {
+  prepareCommandForDevice,
   resolveCommandShell,
   supportsRemoteCommand,
 } from '../features/commands/commandShell';
@@ -50,6 +51,13 @@ interface CommandExecutionModalProps {
   client?: MeshCentralClient;
   connected: boolean;
   onClose: () => void;
+  onSubmitTask?: (options: {
+    command: string;
+    shell: CommandShell;
+    runAsUser: 0 | 1 | 2;
+    timeoutMs: number;
+    devices: Device[];
+  }) => void;
 }
 
 const statusColors: Record<CommandExecutionStatus, string> = {
@@ -83,12 +91,12 @@ function outputText(result?: CommandDeviceResult) {
 }
 
 export function CommandExecutionModal({
-
   open,
   devices,
   client,
   connected,
   onClose,
+  onSubmitTask,
 }: CommandExecutionModalProps) {
   const { t } = useTranslation();
   const [messageApi, contextHolder] = message.useMessage();
@@ -161,6 +169,14 @@ export function CommandExecutionModal({
 
   const execute = () => {
     if (!client || !connected || !command.trim() || !eligibleDevices.length) return;
+    if (onSubmitTask) {
+      if (!mayContainSecret(command)) {
+        setHistory(addCommandHistory({ command, shell, targetCount: eligibleDevices.length }));
+      }
+      onSubmitTask({ command, shell, runAsUser, timeoutMs, devices: eligibleDevices });
+      onClose();
+      return;
+    }
     unsubscribersRef.current.forEach((unsubscribe) => unsubscribe());
     handlesRef.current.forEach((handle) => handle.stopTracking());
     unsubscribersRef.current = [];
@@ -172,10 +188,11 @@ export function CommandExecutionModal({
     >();
     for (const device of eligibleDevices) {
       const resolved = resolveCommandShell(device, shell);
-      const key = `${resolved}\0${command}`;
+      const preparedCommand = prepareCommandForDevice(device, resolved, command);
+      const key = `${resolved}\0${preparedCommand}`;
       const group = groups.get(key) ?? {
         shell: resolved,
-        command,
+        command: preparedCommand,
         devices: [],
       };
       group.devices.push(device);
@@ -197,7 +214,9 @@ export function CommandExecutionModal({
       setSelectedResultId(eligibleDevices[0]?.id);
       mergeSnapshots();
     } catch (error) {
-      void messageApi.error(error instanceof Error ? error.message : t('commands.errors.submitFailed'));
+      void messageApi.error(
+        error instanceof Error ? error.message : t('commands.errors.submitFailed'),
+      );
     }
   };
 
@@ -251,12 +270,20 @@ export function CommandExecutionModal({
         <Tag color={statusColors[status]}>{t(`commands.status.${status}`)}</Tag>
       ),
     },
-    { title: t('commands.columns.exitCode'), dataIndex: 'exitCode', width: 90, render: (value?: number) => value ?? '—' },
+    {
+      title: t('commands.columns.exitCode'),
+      dataIndex: 'exitCode',
+      width: 90,
+      render: (value?: number) => value ?? '—',
+    },
     {
       title: t('commands.columns.duration'),
       dataIndex: 'durationMs',
       width: 100,
-      render: (value?: number) => (value === undefined ? '—' : t('commands.columns.durationSeconds', { seconds: (value / 1000).toFixed(1) })),
+      render: (value?: number) =>
+        value === undefined
+          ? '—'
+          : t('commands.columns.durationSeconds', { seconds: (value / 1000).toFixed(1) }),
     },
     {
       title: t('commands.columns.outputSummary'),
@@ -280,7 +307,11 @@ export function CommandExecutionModal({
       title={
         <Space>
           <ToolOutlined />
-          {devices.length === 1 ? t('commands.titleSingle', { name: devices.at(0)?.name ?? t('commands.deviceDefault') }) : t('commands.titleBatch', { count: devices.length })}
+          {devices.length === 1
+            ? t('commands.titleSingle', {
+                name: devices.at(0)?.name ?? t('commands.deviceDefault'),
+              })
+            : t('commands.titleBatch', { count: devices.length })}
         </Space>
       }
       width={1040}
@@ -314,12 +345,20 @@ export function CommandExecutionModal({
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Descriptions size="small" column={3}>
             <Descriptions.Item label={t('commands.descriptions.target')}>
-              {devices.length === 1 ? devices[0]?.name : t('commands.descriptions.targetCount', { count: devices.length })}
+              {devices.length === 1
+                ? devices[0]?.name
+                : t('commands.descriptions.targetCount', { count: devices.length })}
             </Descriptions.Item>
-            <Descriptions.Item label={t('commands.descriptions.eligible')}>{eligibleDevices.length}</Descriptions.Item>
-            <Descriptions.Item label={t('commands.descriptions.skipped')}>{skippedCount}</Descriptions.Item>
+            <Descriptions.Item label={t('commands.descriptions.eligible')}>
+              {eligibleDevices.length}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('commands.descriptions.skipped')}>
+              {skippedCount}
+            </Descriptions.Item>
           </Descriptions>
-          {!connected && <Alert showIcon type="error" title={t('commands.alerts.gatewayDisconnected')} />}
+          {!connected && (
+            <Alert showIcon type="error" title={t('commands.alerts.gatewayDisconnected')} />
+          )}
           {skippedCount > 0 && (
             <Alert
               showIcon
@@ -359,7 +398,10 @@ export function CommandExecutionModal({
           </Space>
           <Select
             placeholder={t('commands.templatePlaceholder')}
-            options={templates.map((template) => ({ value: template.id, label: t(`commands.templates.${template.id}`) }))}
+            options={templates.map((template) => ({
+              value: template.id,
+              label: t(`commands.templates.${template.id}`),
+            }))}
             onChange={(id) => {
               const template = templates.find((item) => item.id === id);
               if (template) {
@@ -432,7 +474,9 @@ export function CommandExecutionModal({
                     : 'warning'
               }
               icon={snapshot.status === 'succeeded' ? <CheckCircleOutlined /> : undefined}
-              title={t('commands.statusMessage', { status: t(`commands.status.${snapshot.status}`) })}
+              title={t('commands.statusMessage', {
+                status: t(`commands.status.${snapshot.status}`),
+              })}
               description={
                 snapshot.trackingStopped
                   ? t('commands.trackingStopped')
@@ -467,7 +511,9 @@ export function CommandExecutionModal({
                 </Button>
               </div>
               <pre>
-                {outputText(selectedResult) || selectedResult.error || t('commands.gatewayOutputUnavailable')}
+                {outputText(selectedResult) ||
+                  selectedResult.error ||
+                  t('commands.gatewayOutputUnavailable')}
               </pre>
             </div>
           )}

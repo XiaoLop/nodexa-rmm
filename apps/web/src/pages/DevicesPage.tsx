@@ -25,7 +25,12 @@ import {
   DeleteOutlined,
   EditOutlined,
 } from '@ant-design/icons';
-import { meshCentralControlSelectors, useMeshCentralControlStore, type Device } from '@meshcentral/shared-state';
+import type { BatchDeviceResult } from '@meshcentral/control-client';
+import {
+  meshCentralControlSelectors,
+  useMeshCentralControlStore,
+  type Device,
+} from '@meshcentral/shared-state';
 import {
   Button,
   Dropdown,
@@ -65,6 +70,7 @@ import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsM
 import { CommandExecutionModal } from '../components/CommandExecutionModal';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
+import { useBatchTasks } from '../features/tasks/BatchTaskProvider';
 import { MESH_CENTRAL_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
 import '../assets/styles/commands.css';
 import '../assets/styles/device-details.css';
@@ -162,11 +168,15 @@ export function DevicesPage() {
   const devices = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.devices);
   const groups = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.groups);
   const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
-  const serverInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.serverInfo);
+  const serverInfo = useMeshCentralControlStore(
+    gateway.store,
+    meshCentralControlSelectors.serverInfo,
+  );
   const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
   const deferredDevices = useDeferredValue(devices, []);
   const { client, refreshSnapshot } = gateway;
   const applicationCapabilities = useApplicationUiCapabilities();
+  const batchTasks = useBatchTasks();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const navigate = useNavigate();
@@ -349,9 +359,7 @@ export function DevicesPage() {
     (device: Device) => {
       const permission = deviceCapabilities(device).uninstall;
       if (!client || !permission.enabled) {
-        void messageApi.warning(
-          permission.message ?? t('devices.messages.permissionDeleteDenied'),
-        );
+        void messageApi.warning(permission.message ?? t('devices.messages.permissionDeleteDenied'));
         return;
       }
       const groupText = groupNameById.get(device.groupId ?? '') ?? t('common.status.ungrouped');
@@ -390,19 +398,9 @@ export function DevicesPage() {
   };
 
   const openBatchUpload = () => {
-    const existingSnapshot = batchUploadManager.getSnapshot();
-    if (existingSnapshot.status === 'running' || existingSnapshot.status === 'cancelling') {
-      setBatchDevices(existingSnapshot.tasks.map((task) => task.device));
-      setBatchUploadOpen(true);
-      return;
-    }
     const selected = new Set(selectedDeviceIds.map(String));
     const snapshots = devices
-      .filter(
-        (device) =>
-          selected.has(device.id) &&
-          deviceCapabilities(device).files.enabled,
-      )
+      .filter((device) => selected.has(device.id) && deviceCapabilities(device).files.enabled)
       .map(snapshotDevice);
     if (!snapshots.length) return;
     batchUploadManager.reset();
@@ -475,37 +473,24 @@ export function DevicesPage() {
           void messageApi.warning(t('devices.messages.batchPowerNoTargets'));
           return;
         }
-        try {
-          const result = await client.devices.powerMany(
-            targets.map((device) => ({ id: device.id, name: device.name })),
-            action,
-          );
-          const successful = result.results.filter(
-            (item) => item.status === 'submitted' || item.status === 'succeeded',
-          );
-          const failed = result.results.filter((item) => item.status === 'failed');
-          handleBatchOperationCompleted(successful.map((item) => item.deviceId));
-          if (failed.length) {
-            void messageApi.warning(
-              t('devices.messages.batchPowerPartial', {
-                action: label,
-                success: successful.length,
-                failed: failed.length,
-              }),
-            );
-          } else {
-            void messageApi.success(
-              t('devices.messages.batchPowerSuccess', {
-                count: successful.length,
-                action: label,
-              }),
-            );
-          }
-        } catch (error) {
-          const detail = error instanceof Error ? error.message : t('common.status.unknown');
-          void messageApi.error(t('devices.messages.batchPowerFailed', { action: label, detail }));
-          throw error;
-        }
+        const skippedResults: BatchDeviceResult[] = selectedCapabilities
+          .filter(({ capabilities }) =>
+            action === 'wake' ? !capabilities.wake.enabled : !capabilities.power.enabled,
+          )
+          .map(({ device, capabilities }) => ({
+            deviceId: device.id,
+            deviceName: device.name,
+            status: 'skipped',
+            message: action === 'wake' ? capabilities.wake.message : capabilities.power.message,
+          }));
+        batchTasks.createPowerTask({
+          title: t('devices.confirm.batchPowerTitle', { action: label }),
+          devices: targets.map((device) => ({ id: device.id, name: device.name })),
+          skippedResults,
+          action,
+          onSubmitted: handleBatchOperationCompleted,
+        });
+        void messageApi.success(t('taskCenter.taskCreated'));
       },
     });
   };
@@ -556,7 +541,9 @@ export function DevicesPage() {
         key: 'groupName',
         width: 130,
         render: (_, device) =>
-          groupNameById.get(device.groupId ?? '') || device.groupName || t('common.status.ungrouped'),
+          groupNameById.get(device.groupId ?? '') ||
+          device.groupName ||
+          t('common.status.ungrouped'),
       },
       {
         title: t('devices.columns.ip'),
@@ -860,9 +847,7 @@ export function DevicesPage() {
             </Dropdown>
             <Button
               icon={<CloudUploadOutlined />}
-              disabled={
-                batchUploadManager.getSnapshot().tasks.length === 0 && fileTargets.length === 0
-              }
+              disabled={fileTargets.length === 0}
               onClick={openBatchUpload}
             >
               {selectedDeviceIds.length
@@ -983,6 +968,15 @@ export function DevicesPage() {
           connected={status === 'connected'}
           manager={batchUploadManager}
           onClose={() => setBatchUploadOpen(false)}
+          onStartTask={(config) => {
+            batchTasks.createUploadTask(
+              t('devices.actions.batchUploadCount', { count: batchDevices.length }),
+              batchDevices,
+              config,
+            );
+            setSelectedDeviceIds([]);
+            void messageApi.success(t('taskCenter.taskCreated'));
+          }}
         />
       )}
       {batchMoveOpen && (
@@ -996,6 +990,17 @@ export function DevicesPage() {
           serverInfo={serverInfo}
           onClose={() => setBatchMoveOpen(false)}
           onCompleted={handleBatchOperationCompleted}
+          onSubmitTask={(options) => {
+            batchTasks.createMoveTask({
+              title: t('batchOperations.moveTitle'),
+              devices: options.devices.map((device) => ({ id: device.id, name: device.name })),
+              skippedResults: options.skippedResults,
+              targetGroupId: options.targetGroupId,
+              targetGroupName: options.targetGroupName,
+              onSubmitted: handleBatchOperationCompleted,
+            });
+            void messageApi.success(t('taskCenter.taskCreated'));
+          }}
         />
       )}
       {commandDevices.length > 0 && (
@@ -1005,6 +1010,17 @@ export function DevicesPage() {
           client={client}
           connected={status === 'connected'}
           onClose={() => setCommandDevices([])}
+          onSubmitTask={(options) => {
+            batchTasks.createCommandTask({
+              title:
+                options.devices.length === 1
+                  ? t('commands.titleSingle', { name: options.devices[0]?.name })
+                  : t('commands.titleBatch', { count: options.devices.length }),
+              ...options,
+            });
+            setSelectedDeviceIds([]);
+            void messageApi.success(t('taskCenter.taskCreated'));
+          }}
         />
       )}
     </>

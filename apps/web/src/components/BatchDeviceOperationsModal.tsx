@@ -1,6 +1,4 @@
-import {
-  RetweetOutlined,
-} from '@ant-design/icons';
+import { RetweetOutlined } from '@ant-design/icons';
 import type {
   BatchDeviceResult,
   MeshCentralClient,
@@ -8,7 +6,17 @@ import type {
   UserInfo,
 } from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
-import { Alert, Button, Modal, Select, Space, Table, Tag, Typography, type TableColumnsType } from 'antd';
+import {
+  Alert,
+  Button,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  type TableColumnsType,
+} from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -26,6 +34,12 @@ interface BatchDeviceOperationsModalProps {
   serverInfo?: ServerInfo;
   onClose: () => void;
   onCompleted: (successfulDeviceIds: string[]) => void;
+  onSubmitTask?: (options: {
+    targetGroupId: string;
+    targetGroupName: string;
+    devices: Device[];
+    skippedResults: BatchDeviceResult[];
+  }) => void;
 }
 
 const resultColors: Record<BatchDeviceResult['status'], string> = {
@@ -38,7 +52,6 @@ const resultColors: Record<BatchDeviceResult['status'], string> = {
 };
 
 export function BatchDeviceOperationsModal({
-
   open,
   devices,
   groups,
@@ -48,6 +61,7 @@ export function BatchDeviceOperationsModal({
   serverInfo,
   onClose,
   onCompleted,
+  onSubmitTask,
 }: BatchDeviceOperationsModalProps) {
   const { t } = useTranslation();
   const [targetGroupId, setTargetGroupId] = useState<string>();
@@ -113,6 +127,17 @@ export function BatchDeviceOperationsModal({
       return;
     }
 
+    if (onSubmitTask) {
+      onSubmitTask({
+        targetGroupId,
+        targetGroupName: groups.find((group) => group.id === targetGroupId)?.name ?? targetGroupId,
+        devices: latest.allowed,
+        skippedResults,
+      });
+      onClose();
+      return;
+    }
+
     setSubmitting(true);
     try {
       const deviceTargets = latest.allowed.map((device) => ({ id: device.id, name: device.name }));
@@ -130,7 +155,12 @@ export function BatchDeviceOperationsModal({
 
   const columns: TableColumnsType<BatchDeviceResult> = [
     { title: t('batchOperations.columns.device'), dataIndex: 'deviceName', width: 180 },
-    { title: t('batchOperations.columns.deviceId'), dataIndex: 'deviceId', width: 220, ellipsis: true },
+    {
+      title: t('batchOperations.columns.deviceId'),
+      dataIndex: 'deviceId',
+      width: 220,
+      ellipsis: true,
+    },
     {
       title: t('batchOperations.columns.status'),
       dataIndex: 'status',
@@ -139,7 +169,11 @@ export function BatchDeviceOperationsModal({
         <Tag color={resultColors[status]}>{t(`batchOperations.status.${status}`)}</Tag>
       ),
     },
-    { title: t('batchOperations.columns.detail'), dataIndex: 'message', render: (value?: string) => value || '—' },
+    {
+      title: t('batchOperations.columns.detail'),
+      dataIndex: 'message',
+      render: (value?: string) => value || '—',
+    },
   ];
 
   const selectedGroup = groups.find((group) => group.id === targetGroupId);
@@ -214,7 +248,10 @@ export function BatchDeviceOperationsModal({
             <Alert
               showIcon
               type={classification.allowed.length ? 'info' : 'warning'}
-              title={t('batchOperations.moveCountNotice', { count: classification.allowed.length, name: selectedGroup?.name ?? t('common.status.defaultGroup') })}
+              title={t('batchOperations.moveCountNotice', {
+                count: classification.allowed.length,
+                name: selectedGroup?.name ?? t('common.status.defaultGroup'),
+              })}
               description={t('batchOperations.classificationSummary', {
                 denied: classification.denied.length,
                 unknown: classification.unknown.length,
