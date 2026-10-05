@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UsersResponseMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "users"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "users"
+    },
+    "tag": {
+      "type": "string"
+    },
+    "users": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "_id",
+          "name",
+          "domain",
+          "siteadmin"
+        ],
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "siteadmin": {
+            "type": "number"
+          },
+          "email": {
+            "type": "string"
+          },
+          "creation": {
+            "type": "number"
+          },
+          "access": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

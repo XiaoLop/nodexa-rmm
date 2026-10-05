@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ServerInfoMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "serverinfo"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "serverinfo"
+    },
+    "serverinfo": {
+      "type": "object",
+      "required": [
+        "domain",
+        "name",
+        "serverTime",
+        "features",
+        "languages",
+        "tlshash",
+        "agentCertHash"
+      ],
+      "properties": {
+        "domain": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "mpsname": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mpsport": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mpspass": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "port": {
+          "type": "number"
+        },
+        "emailcheck": {
+          "type": "boolean"
+        },
+        "domainauth": {
+          "type": "boolean"
+        },
+        "serverTime": {
+          "type": "number",
+          "description": "Server time in Unix epoch milliseconds"
+        },
+        "features": {
+          "type": "number"
+        },
+        "features2": {
+          "type": "number"
+        },
+        "features3": {
+          "type": "number"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tlshash": {
+          "type": "string"
+        },
+        "agentCertHash": {
+          "type": "string"
+        },
+        "magenturl": {
+          "type": "string"
+        },
+        "domainsuffix": {
+          "type": "string"
+        },
+        "consent": {
+          "type": "number"
+        },
+        "timeout": {
+          "type": "number"
+        },
+        "logoutonidlesessiontimeout": {
+          "type": "boolean"
+        },
+        "usersSessionRecording": {
+          "type": "number"
+        },
+        "userGroupsSessionRecording": {
+          "type": "number"
+        },
+        "devGroupSessionRecording": {
+          "type": "number"
+        },
+        "vapidpublickey": {
+          "type": "string"
+        },
+        "userMsgProviders": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentLogHelpRequestEvent",
+  "type": "object",
+  "required": [
+    "action",
+    "event"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "event"
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "action",
+        "etype",
+        "nodeid",
+        "msgid",
+        "msgArgs"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "agentlog"
+        },
+        "etype": {
+          "type": "string",
+          "const": "node"
+        },
+        "nodeid": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "msgid": {
+          "type": "number",
+          "const": 98
+        },
+        "msgArgs": {
+          "type": "array",
+          "minItems": 2,
+          "items": [
+            {
+              "type": "string",
+              "description": "Requesting user name"
+            },
+            {
+              "type": "string",
+              "description": "Help details or reason"
+            }
+          ]
+        },
+        "msg": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

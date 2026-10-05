@@ -1,0 +1,26 @@
+{
+  "action": "userinfo",
+  "userinfo": {
+    "_id": "user//admin",
+    "name": "admin",
+    "domain": "",
+    "siteadmin": 4294967295,
+    "email": "admin@example.com",
+    "emailVerified": true,
+    "creation": 1759000000,
+    "access": 1759658400,
+    "links": {
+      "mesh//demo_group": {
+        "rights": 4294967295,
+        "name": "Demo Group",
+        "notify": 30
+      }
+    },
+    "subscriptions": [
+      "*",
+      "server-users",
+      "user//admin",
+      "mesh//demo_group"
+    ]
+  }
+}

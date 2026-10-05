@@ -1,0 +1,7 @@
+{
+  "action": "adduser",
+  "username": "operator",
+  "pass": "TemporaryPassword123!",
+  "email": "operator@example.com",
+  "responseid": "req-adduser-1"
+}

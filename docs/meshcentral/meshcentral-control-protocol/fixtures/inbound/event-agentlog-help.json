@@ -1,0 +1,15 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "node",
+    "action": "agentlog",
+    "nodeid": "node//demo_device_1",
+    "domain": "",
+    "msgid": 98,
+    "msgArgs": [
+      "alice",
+      "VPN disconnected and cannot reach fileserver"
+    ],
+    "msg": "Help Requested, user: alice, details: VPN disconnected and cannot reach fileserver"
+  }
+}

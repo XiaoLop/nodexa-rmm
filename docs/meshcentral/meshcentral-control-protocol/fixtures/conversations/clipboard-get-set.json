@@ -1,0 +1,43 @@
+[
+  {
+    "direction": "client-to-server",
+    "description": "Client polls remote device clipboard",
+    "message": {
+      "action": "msg",
+      "type": "getclip",
+      "nodeid": "node//demo_device_1",
+      "tag": 2
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Agent returns clipboard content to user session",
+    "message": {
+      "action": "msg",
+      "type": "getclip",
+      "nodeid": "node//demo_device_1",
+      "tag": 2,
+      "data": "Sample copied text from remote workstation"
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Client sets remote clipboard",
+    "message": {
+      "action": "msg",
+      "type": "setclip",
+      "nodeid": "node//demo_device_1",
+      "data": "New clipboard text from admin local machine"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Agent acknowledges clipboard write",
+    "message": {
+      "action": "msg",
+      "type": "setclip",
+      "nodeid": "node//demo_device_1",
+      "success": true
+    }
+  }
+]

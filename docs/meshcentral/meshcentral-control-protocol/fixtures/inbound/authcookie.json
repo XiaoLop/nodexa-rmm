@@ -1,0 +1,5 @@
+{
+  "action": "authcookie",
+  "cookie": "ENCRYPTED_USER_AUTH_COOKIE_HEX_STRING",
+  "rcookie": "ENCRYPTED_RELAY_AUTH_COOKIE_HEX_STRING"
+}

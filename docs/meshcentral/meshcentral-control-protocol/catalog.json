@@ -1,0 +1,2531 @@
+[
+  {
+    "action": "serverinfo",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "server",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 563,
+        "lineEnd": 661,
+        "symbol": "CreateMeshUser",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2682,
+        "lineEnd": 2715,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2100,
+        "lineEnd": 2110,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Pushed by server immediately upon WebSocket connection and session initialization. Contains server capabilities, TLS certificate hash, ports, and domain feature flags."
+  },
+  {
+    "action": "userinfo",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "user",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 664,
+        "lineEnd": 664,
+        "symbol": "CreateMeshUser",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2716,
+        "lineEnd": 2721,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2238,
+        "lineEnd": 2247,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Pushed immediately after serverinfo. Contains sanitized user profile, site rights, group links, and permissions."
+  },
+  {
+    "action": "traceinfo",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "server",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "requiredPermission": "SITERIGHT_ADMIN (0xFFFFFFFF)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 670,
+        "lineEnd": 670,
+        "symbol": "CreateMeshUser",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2609,
+        "lineEnd": 2620,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed on connect to site administrators if tracing is enabled on the domain. Enumerates debug logging sources."
+  },
+  {
+    "action": "serverwarnings",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "server",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "snapshot",
+    "requiredPermission": "SITERIGHT_ADMIN (0xFFFFFFFF)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 674,
+        "lineEnd": 676,
+        "symbol": "CreateMeshUser",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2625,
+        "lineEnd": 2670,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed on connect to site administrators if server has active warning items. Full array snapshot of server configuration warnings."
+  },
+  {
+    "action": "serverstats",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "server",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "continuous",
+    "requiredPermission": "SITERIGHT_ADMIN or (user.siteadmin & 21) != 0",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 495,
+        "lineEnd": 546,
+        "symbol": "SendServerStats",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2621,
+        "lineEnd": 2624,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed periodically when client views My Server tab. Contains server CPU/RAM usage, agent error counters, and session counts."
+  },
+  {
+    "action": "serverstats",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "server",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & 21",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5819,
+        "lineEnd": 5819,
+        "symbol": "serverCommandServerStats",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Client requests immediate server stats snapshot."
+  },
+  {
+    "action": "servertimelinestats",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "server",
+    "responseId": "absent",
+    "requestCorrelation": "action",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & 21",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5820,
+        "lineEnd": 5820,
+        "symbol": "serverCommandServerTimelineStats",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2672,
+        "lineEnd": 2675,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Client requests server timeline history stats. Server responds with action:servertimelinestats without echoing responseid or tag."
+  },
+  {
+    "action": "servertimelinestats",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "server",
+    "responseId": "not-echoed",
+    "requestCorrelation": "action",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 7136,
+        "lineEnd": 7136,
+        "symbol": "serverCommandServerTimelineStats",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2672,
+        "lineEnd": 2675,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Carries events array representing server timeline history. Does not echo responseid."
+  },
+  {
+    "action": "serverversion",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "server",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5822,
+        "lineEnd": 5822,
+        "symbol": "serverCommandServerVersion",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1398,
+        "lineEnd": 1398,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests current, latest, and stable MeshCentral server versions from NPM."
+  },
+  {
+    "action": "serverversion",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "server",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 7153,
+        "lineEnd": 7158,
+        "symbol": "serverCommandServerVersion",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3089,
+        "lineEnd": 3109,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2112,
+        "lineEnd": 2127,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Returns tags object with current, latest, stable version strings. Echoes responseid if provided in request."
+  },
+  {
+    "action": "serverconsole",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "server",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "SITERIGHT_ADMIN (0xFFFFFFFF)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5815,
+        "lineEnd": 5815,
+        "symbol": "serverCommandServerConsole",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Executes server console commands (info, args, cores, help, resetserver, etc.). Disallowed for loginToken sessions."
+  },
+  {
+    "action": "serverconsole",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "server",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 7175,
+        "lineEnd": 7220,
+        "symbol": "serverCommandServerConsole",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3141,
+        "lineEnd": 3144,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Returns console output string in value field, echoing responseid and tag."
+  },
+  {
+    "action": "nodes",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 720,
+        "lineEnd": 860,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1411,
+        "lineEnd": 1416,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests device list. Can filter by meshname or meshid, and supports pagination (skip/limit)."
+  },
+  {
+    "action": "nodes",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 855,
+        "lineEnd": 859,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2762,
+        "lineEnd": 2798,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2129,
+        "lineEnd": 2179,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Returns dictionary of meshid -> array of node objects. Echoes responseid and tag if provided."
+  },
+  {
+    "action": "meshes",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device-group",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5805,
+        "lineEnd": 5805,
+        "symbol": "serverCommandMeshes",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1404,
+        "lineEnd": 1405,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests list of all device groups visible to the user."
+  },
+  {
+    "action": "meshes",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device-group",
+    "responseId": "not-echoed",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 6480,
+        "lineEnd": 6485,
+        "symbol": "serverCommandMeshes",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2735,
+        "lineEnd": 2741,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Returns array of meshes with rights. Does NOT return responseid; echoes tag: command.tag."
+  },
+  {
+    "action": "users",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "requiredPermission": "user.siteadmin & 2 (SITERIGHT_MANAGEUSERS)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5831,
+        "lineEnd": 5831,
+        "symbol": "serverCommandUsers",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1400,
+        "lineEnd": 1400,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests all users list in current domain. Requires ManageUsers permission."
+  },
+  {
+    "action": "users",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 7280,
+        "lineEnd": 7290,
+        "symbol": "serverCommandUsers",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2722,
+        "lineEnd": 2729,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2378,
+        "lineEnd": 2400,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "On success: returns users array with tag. Does NOT return responseid on success! Echoes responseid ONLY when access denied."
+  },
+  {
+    "action": "usergroups",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user-group",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1570,
+        "lineEnd": 1585,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1403,
+        "lineEnd": 1403,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests user groups in current administrative domain."
+  },
+  {
+    "action": "usergroups",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user-group",
+    "responseId": "not-echoed",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1577,
+        "lineEnd": 1582,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2742,
+        "lineEnd": 2755,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2334,
+        "lineEnd": 2376,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Returns ugroups dictionary. Echoes tag: command.tag; does NOT return responseid."
+  },
+  {
+    "action": "events",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "audit",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1094,
+        "lineEnd": 1180,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1427,
+        "lineEnd": 1431,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests historical audit event log. Filters by nodeid or userid, with optional limit."
+  },
+  {
+    "action": "events",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "audit",
+    "responseId": "not-echoed",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1114,
+        "lineEnd": 1179,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3145,
+        "lineEnd": 3157,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2129,
+        "lineEnd": 2179,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Returns events array. Echoes tag, nodeid, or userid; does NOT return responseid."
+  },
+  {
+    "action": "recordings",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "recording",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "snapshot",
+    "requiredPermission": "user.siteadmin & SITERIGHT_RECORDINGS (512)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1191,
+        "lineEnd": 1221,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Requests list of recorded sessions on the server."
+  },
+  {
+    "action": "recordings",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "recording",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1215,
+        "lineEnd": 1220,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3158,
+        "lineEnd": 3163,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Returns recordings array. Echoes responseid and tag if provided."
+  },
+  {
+    "action": "files",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "file",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5795,
+        "lineEnd": 5795,
+        "symbol": "serverCommandFiles",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Requests user files list in server storage."
+  },
+  {
+    "action": "files",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "file",
+    "responseId": "not-echoed",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 6440,
+        "lineEnd": 6470,
+        "symbol": "updateUserFiles",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2756,
+        "lineEnd": 2761,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Returns files object. Does NOT return responseid."
+  },
+  {
+    "action": "previousLogins",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "audit",
+    "responseId": "absent",
+    "requestCorrelation": "action",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5109,
+        "lineEnd": 5160,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Requests login history for self or target user (requires site admin)."
+  },
+  {
+    "action": "previousLogins",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "audit",
+    "responseId": "not-echoed",
+    "requestCorrelation": "action",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5121,
+        "lineEnd": 5155,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 4192,
+        "lineEnd": 4214,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Returns events array. Does NOT return responseid or tag."
+  },
+  {
+    "action": "wssessioncount",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "session",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "snapshot",
+    "requiredPermission": "user.siteadmin & 2 (SITERIGHT_MANAGEUSERS)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1222,
+        "lineEnd": 1262,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1401,
+        "lineEnd": 1401,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests current count of active WebSocket sessions per user."
+  },
+  {
+    "action": "wssessioncount",
+    "direction": "server-to-client",
+    "delivery": "response-and-push",
+    "domain": "session",
+    "responseId": "not-echoed",
+    "requestCorrelation": "tag",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 192,
+        "lineEnd": 192,
+        "symbol": "CreateMeshUser (push)",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshuser.js",
+        "lineStart": 1260,
+        "lineEnd": 1260,
+        "symbol": "processWebSocketData (response)",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2730,
+        "lineEnd": 2734,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3914,
+        "lineEnd": 3925,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Can arrive both as a direct response to query ({ action: \"wssessioncount\", wssessions: {...}, tag }) and as an event push ({ action: \"event\", event: { action: \"wssessioncount\", userid, count } })."
+  },
+  {
+    "action": "authcookie",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "authentication",
+    "responseId": "absent",
+    "requestCorrelation": "action",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5788,
+        "lineEnd": 5788,
+        "symbol": "serverCommandAuthCookie",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2181,
+        "lineEnd": 2189,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Requests temporary authenticated cookie strings for web relay sessions (desktop, terminal, files)."
+  },
+  {
+    "action": "authcookie",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "authentication",
+    "responseId": "not-echoed",
+    "requestCorrelation": "action",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 6473,
+        "lineEnd": 6479,
+        "symbol": "serverCommandAuthCookie",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2676,
+        "lineEnd": 2681,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2181,
+        "lineEnd": 2189,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Returns cookie and rcookie. Does NOT return responseid or tag."
+  },
+  {
+    "action": "poweraction",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "MESHRIGHT_RESETOFF (262144) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 3267,
+        "lineEnd": 3325,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1795,
+        "lineEnd": 1810,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Triggers power actions: 2=Power off, 3=Reset, 4=Power sleep, 302=AMT Power On, 308=AMT Reset, etc."
+  },
+  {
+    "action": "poweraction",
+    "direction": "server-to-client",
+    "delivery": "response-and-push",
+    "domain": "device",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 3319,
+        "lineEnd": 3321,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "If responseid provided, returns { action: \"poweraction\", responseid, result: \"ok\" }. Also causes subsequent turnoff/amtpoweraction events."
+  },
+  {
+    "action": "wakedevices",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device",
+    "responseId": "optional",
+    "requestCorrelation": "follow-up-event",
+    "cardinality": "single",
+    "requiredPermission": "MESHRIGHT_WAKEDEVICE (64) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2955,
+        "lineEnd": 3044,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1792,
+        "lineEnd": 1792,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Sends Wake-On-LAN packets to target device MAC addresses. Triggers turnon event."
+  },
+  {
+    "action": "wakedevices",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2971,
+        "lineEnd": 3010,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returned ONLY on single-device error conditions (Invalid nodeid, No known MAC addresses). On success, confirmation arrives via turnon event!"
+  },
+  {
+    "action": "runcommands",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "command",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "MESHRIGHT_REMOTECOMMAND (131072) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 3087,
+        "lineEnd": 3247,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1779,
+        "lineEnd": 1779,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Executes commands on target nodes. type: 0=Windows cmd/Linux sh, 2=PowerShell. Output comes back asynchronously via action:msg, type:console."
+  },
+  {
+    "action": "runcommands",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "command",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 3230,
+        "lineEnd": 3235,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2291,
+        "lineEnd": 2306,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Confirms dispatch of command with result: \"OK\" or error string."
+  },
+  {
+    "action": "toast",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "notification",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "MESHRIGHT_CHATNOTIFY (16384) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 3326,
+        "lineEnd": 3373,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1989,
+        "lineEnd": 1989,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Displays desktop pop-up notification toast to end user on target machines."
+  },
+  {
+    "action": "toast",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "notification",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 3365,
+        "lineEnd": 3370,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\" or error description with echoed responseid."
+  },
+  {
+    "action": "getDeviceDetails",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "action",
+    "cardinality": "snapshot",
+    "requiredPermission": "MESHRIGHT_DEVICEDETAILS (1048576) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5266,
+        "lineEnd": 5616,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1409,
+        "lineEnd": 1409,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Exports full device details (hardware, BIOS, BitLocker, antivirus, TPM). type: \"csv\" or \"json\"."
+  },
+  {
+    "action": "getDeviceDetails",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "not-echoed",
+    "requestCorrelation": "action",
+    "cardinality": "snapshot",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5611,
+        "lineEnd": 5611,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 4215,
+        "lineEnd": 4218,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Returns data and type. Does NOT return responseid or tag."
+  },
+  {
+    "action": "adduser",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & 2 (SITERIGHT_MANAGEUSERS)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5784,
+        "lineEnd": 5784,
+        "symbol": "serverCommandAddUser",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 1452,
+        "lineEnd": 1452,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Creates new user account. Triggers follow-up accountcreate event."
+  },
+  {
+    "action": "adduser",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 6280,
+        "lineEnd": 6290,
+        "symbol": "serverCommandAddUser",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2272,
+        "lineEnd": 2306,
+        "symbol": "onMessage",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\", userid, and echoed responseid."
+  },
+  {
+    "action": "edituser",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & 2 (or edit self)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1422,
+        "lineEnd": 1569,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Edits user account properties. Triggers follow-up accountchange event."
+  },
+  {
+    "action": "edituser",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1560,
+        "lineEnd": 1565,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\" with echoed responseid."
+  },
+  {
+    "action": "deleteuser",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & 2 (SITERIGHT_MANAGEUSERS)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1263,
+        "lineEnd": 1376,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Deletes user account. Triggers follow-up accountremove event."
+  },
+  {
+    "action": "deleteuser",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1370,
+        "lineEnd": 1375,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\" with echoed responseid."
+  },
+  {
+    "action": "createmesh",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "!(user.siteadmin & SITERIGHT_NONEWGROUPS)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2155,
+        "lineEnd": 2256,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Creates new device group. Triggers follow-up createmesh event."
+  },
+  {
+    "action": "createmesh",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2240,
+        "lineEnd": 2245,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\", meshid, and echoed responseid."
+  },
+  {
+    "action": "deletemesh",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "MESHRIGHT_EDITMESH (1) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2257,
+        "lineEnd": 2362,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Deletes device group and all nodes within it. Triggers follow-up deletemesh event."
+  },
+  {
+    "action": "deletemesh",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2355,
+        "lineEnd": 2360,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\" with echoed responseid."
+  },
+  {
+    "action": "editmesh",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "device-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "MESHRIGHT_EDITMESH (1) or MESHRIGHT_ADMIN",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2363,
+        "lineEnd": 2482,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Changes device group name, description, consent, or flags. Triggers follow-up meshchange event."
+  },
+  {
+    "action": "editmesh",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2470,
+        "lineEnd": 2475,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\" with echoed responseid."
+  },
+  {
+    "action": "createusergroup",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & SITERIGHT_USERGROUPS (256)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1586,
+        "lineEnd": 1702,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Creates new user group. Triggers follow-up createusergroup event."
+  },
+  {
+    "action": "createusergroup",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1695,
+        "lineEnd": 1700,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\", ugrpid, and echoed responseid."
+  },
+  {
+    "action": "deleteusergroup",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "user-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "requiredPermission": "user.siteadmin & SITERIGHT_USERGROUPS (256)",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1703,
+        "lineEnd": 1789,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Deletes user group. Triggers follow-up deleteusergroup event."
+  },
+  {
+    "action": "deleteusergroup",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "user-group",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1780,
+        "lineEnd": 1785,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Returns result: \"OK\" with echoed responseid."
+  },
+  {
+    "action": "changemeshnotify",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "notification",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1823,
+        "lineEnd": 1875,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Updates user notification bitmask for a device group: 2=WebConnect, 4=WebDisconnect, 8=WebDesktop/KVM, 16=EmailConnect, 32=EmailDisconnect, 64=EmailHelp, 128=MsgConnect, 256=MsgDisconnect, 512=MsgHelp. Triggers accountchange event."
+  },
+  {
+    "action": "changeusernotify",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "notification",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1876,
+        "lineEnd": 1922,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Updates user notification bitmask override for a specific device. Triggers accountchange event."
+  },
+  {
+    "action": "msg",
+    "type": "notify",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "notification",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 682,
+        "lineEnd": 682,
+        "symbol": "CreateMeshUser (Security Warning)",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshuser.js",
+        "lineStart": 2108,
+        "lineEnd": 2108,
+        "symbol": "meshmessenger (Chat Request)",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2889,
+        "lineEnd": 2899,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3001,
+        "lineEnd": 3010,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Direct notification push to web client. Displays pop-up notification toast with title, value, titleid, msgid, args, icon, and maxtime auto-dismiss seconds."
+  },
+  {
+    "action": "event",
+    "nestedAction": "notify",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "notification",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3961,
+        "lineEnd": 3968,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Notification delivered inside an event wrapper { action: \"event\", event: { action: \"notify\", value, title, icon, maxtime } }."
+  },
+  {
+    "action": "msg",
+    "type": "cpuinfo",
+    "direction": "server-to-client",
+    "delivery": "stream",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "continuous",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2882,
+        "lineEnd": 2887,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Carries live CPU and RAM consumption stats from MeshAgent to Device Details tab."
+  },
+  {
+    "action": "msg",
+    "type": "console",
+    "direction": "server-to-client",
+    "delivery": "stream",
+    "domain": "remote-control",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "continuous",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 1210,
+        "lineEnd": 1225,
+        "symbol": "processAgentData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2888,
+        "lineEnd": 2888,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Standard output / error streams from agent console or runcommands routed to user session."
+  },
+  {
+    "action": "msg",
+    "type": "getclip",
+    "direction": "bidirectional",
+    "delivery": "request",
+    "domain": "remote-control",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1024,
+        "lineEnd": 1024,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2906,
+        "lineEnd": 2916,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Client requests remote clipboard with tag (1=dialog, 2=manual in, 3=auto-poll); agent returns clipboard data text."
+  },
+  {
+    "action": "msg",
+    "type": "setclip",
+    "direction": "bidirectional",
+    "delivery": "request",
+    "domain": "remote-control",
+    "responseId": "absent",
+    "requestCorrelation": "action-and-nodeid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1025,
+        "lineEnd": 1025,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2917,
+        "lineEnd": 2920,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Client sets clipboard text on remote node; agent responds with { success: true/false }."
+  },
+  {
+    "action": "msg",
+    "type": "tunnel",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "remote-control",
+    "responseId": "optional",
+    "requestCorrelation": "responseid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1029,
+        "lineEnd": 1084,
+        "symbol": "processWebSocketData",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshctrl.js",
+        "lineStart": 2188,
+        "lineEnd": 2188,
+        "symbol": "cli",
+        "evidenceType": "cli-source"
+      }
+    ],
+    "notes": "Instructs agent to establish relay tunnel for protocol p (1=terminal, 2=desktop, 4=registry, 5=files)."
+  },
+  {
+    "action": "msg",
+    "type": "ps",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "action-and-nodeid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2900,
+        "lineEnd": 2901,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Process list snapshot from remote agent."
+  },
+  {
+    "action": "msg",
+    "type": "services",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "action-and-nodeid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2902,
+        "lineEnd": 2903,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "OS system services list from remote agent."
+  },
+  {
+    "action": "msg",
+    "type": "service",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "action-and-nodeid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2904,
+        "lineEnd": 2905,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Detailed service properties for a specific service."
+  },
+  {
+    "action": "msg",
+    "type": "psinfo",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "action-and-nodeid",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2954,
+        "lineEnd": 2991,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Detailed process metadata (memory, start time, domain, command line, user)."
+  },
+  {
+    "action": "msg",
+    "type": "userSessions",
+    "direction": "server-to-client",
+    "delivery": "response",
+    "domain": "remote-control",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 2921,
+        "lineEnd": 2953,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Enumerates logged-in OS desktop sessions on remote machine for desktop multiplex connection selection."
+  },
+  {
+    "action": "event",
+    "nestedAction": "nodeconnect",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshcentral.js",
+        "lineStart": 2581,
+        "lineEnd": 2866,
+        "symbol": "nodeconnect dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3847,
+        "lineEnd": 3913,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when device connection or power state changes. Updates node.conn (1=agent, 2=cira, 4=amt, 16=mqtt) and node.pwr."
+  },
+  {
+    "action": "event",
+    "nestedAction": "addnode",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 880,
+        "lineEnd": 880,
+        "symbol": "addnode dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3668,
+        "lineEnd": 3688,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when new device is enrolled into a device group."
+  },
+  {
+    "action": "event",
+    "nestedAction": "removenode",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "db.js",
+        "lineStart": 290,
+        "lineEnd": 290,
+        "symbol": "removenode dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3689,
+        "lineEnd": 3708,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when device is deleted or removed from a device group."
+  },
+  {
+    "action": "event",
+    "nestedAction": "changenode",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 2035,
+        "lineEnd": 2035,
+        "symbol": "changenode dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3709,
+        "lineEnd": 3807,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when device metadata, IP, icon, or description changes."
+  },
+  {
+    "action": "event",
+    "nestedAction": "nodemeshchange",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2852,
+        "lineEnd": 2852,
+        "symbol": "nodemeshchange dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3808,
+        "lineEnd": 3846,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when a device is moved from one device group to another."
+  },
+  {
+    "action": "event",
+    "nestedAction": "devicesessions",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "session",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 1863,
+        "lineEnd": 1879,
+        "symbol": "devicesessions dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3993,
+        "lineEnd": 4013,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when active remote control sessions on a node start or stop."
+  },
+  {
+    "action": "event",
+    "nestedAction": "sysinfohash",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 1432,
+        "lineEnd": 1432,
+        "symbol": "sysinfohash dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3981,
+        "lineEnd": 3987,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when device hardware sysinfo hash changes, prompting client to re-fetch system info if inspecting the device."
+  },
+  {
+    "action": "event",
+    "nestedAction": "ifchange",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 1308,
+        "lineEnd": 1308,
+        "symbol": "ifchange dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3988,
+        "lineEnd": 3992,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when network interface IP or MAC changes on a device."
+  },
+  {
+    "action": "event",
+    "nestedAction": "agentlog",
+    "discriminators": {
+      "msgid": 98
+    },
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "notification",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshagent.js",
+        "lineStart": 1338,
+        "lineEnd": 1363,
+        "symbol": "processAgentData log",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3440,
+        "lineEnd": 3449,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Help request triggered from MeshAgent UI by end user. msgArgs[0]=username, msgArgs[1]=help details/reason. Web client pops up Help Request notification."
+  },
+  {
+    "action": "event",
+    "nestedAction": "relaylog",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "audit",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "apprelays.js",
+        "lineStart": 1258,
+        "lineEnd": 1946,
+        "symbol": "relaylog dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshrelay.js",
+        "lineStart": 599,
+        "lineEnd": 808,
+        "symbol": "relaylog dispatch",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Audit log record of remote relay connection starting or stopping."
+  },
+  {
+    "action": "event",
+    "nestedAction": "recording",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "recording",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshrelay.js",
+        "lineStart": 845,
+        "lineEnd": 855,
+        "symbol": "recording finish dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshdesktopmultiplex.js",
+        "lineStart": 349,
+        "lineEnd": 349,
+        "symbol": "recording multiplex dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3450,
+        "lineEnd": 3453,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when session recording completes and MCREC file is written."
+  },
+  {
+    "action": "event",
+    "nestedAction": "createmesh",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device-group",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2236,
+        "lineEnd": 2236,
+        "symbol": "createmesh dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3588,
+        "lineEnd": 3596,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed to all administrators when a new device group is created."
+  },
+  {
+    "action": "event",
+    "nestedAction": "meshchange",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device-group",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2447,
+        "lineEnd": 2447,
+        "symbol": "meshchange dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3597,
+        "lineEnd": 3647,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when device group properties or user permissions over the group change."
+  },
+  {
+    "action": "event",
+    "nestedAction": "deletemesh",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "device-group",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 2294,
+        "lineEnd": 2294,
+        "symbol": "deletemesh dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3648,
+        "lineEnd": 3667,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when a device group is deleted."
+  },
+  {
+    "action": "event",
+    "nestedAction": "accountcreate",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "user",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 6282,
+        "lineEnd": 6282,
+        "symbol": "accountcreate dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "webserver.js",
+        "lineStart": 714,
+        "lineEnd": 714,
+        "symbol": "accountcreate dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3501,
+        "lineEnd": 3546,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed to site administrators when a user account is created."
+  },
+  {
+    "action": "event",
+    "nestedAction": "accountchange",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "user",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1556,
+        "lineEnd": 1556,
+        "symbol": "accountchange dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3502,
+        "lineEnd": 3546,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when account settings, password, 2FA, or group links change."
+  },
+  {
+    "action": "event",
+    "nestedAction": "accountremove",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "user",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 1367,
+        "lineEnd": 1367,
+        "symbol": "accountremove dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3547,
+        "lineEnd": 3553,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed when an account is removed."
+  },
+  {
+    "action": "event",
+    "nestedAction": "login",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "audit",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "webserver.js",
+        "lineStart": 1553,
+        "lineEnd": 1558,
+        "symbol": "login dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3926,
+        "lineEnd": 3932,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Pushed on user login."
+  },
+  {
+    "action": "event",
+    "nestedAction": "userWebState",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "user",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 4172,
+        "lineEnd": 4172,
+        "symbol": "userWebState dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 3454,
+        "lineEnd": 3499,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Synchronizes client UI state (nightMode, sort, showRealNames, stars) across tabs/sessions."
+  },
+  {
+    "action": "close",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "connection",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "webserver.js",
+        "lineStart": 7442,
+        "lineEnd": 9365,
+        "symbol": "PerformWSSessionAuth close",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Sent by server immediately before closing WebSocket. Carries cause and msg (e.g. cause: \"noauth\", msg: \"tokenrequired\"). Prohibits auto-reconnect without re-auth when unauthenticated."
+  },
+  {
+    "action": "close",
+    "direction": "client-to-server",
+    "delivery": "request",
+    "domain": "connection",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 5791,
+        "lineEnd": 5791,
+        "symbol": "serverCommandClose",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Client requests orderly WebSocket disconnection."
+  },
+  {
+    "action": "stopped",
+    "direction": "server-to-client",
+    "delivery": "push",
+    "domain": "connection",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "single",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 398,
+        "lineEnd": 398,
+        "symbol": "maxusersessions limit",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshuser.js",
+        "lineStart": 8028,
+        "lineEnd": 8028,
+        "symbol": "closeusersessions",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshcentral.js",
+        "lineStart": 2403,
+        "lineEnd": 2403,
+        "symbol": "Server stopped dispatch",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "views/default.handlebars",
+        "lineStart": 4027,
+        "lineEnd": 4031,
+        "symbol": "onMessage",
+        "evidenceType": "web-client-source"
+      }
+    ],
+    "notes": "Fatal terminal message. Triggered by server stop, admin force disconnect, or session limit reached. Displays blocking Stop dialog; automatic reconnection prohibited until page refresh."
+  },
+  {
+    "action": "ping",
+    "direction": "bidirectional",
+    "delivery": "request",
+    "domain": "connection",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "continuous",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 145,
+        "lineEnd": 150,
+        "symbol": "sendPing",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshuser.js",
+        "lineStart": 5806,
+        "lineEnd": 5806,
+        "symbol": "serverCommandPing",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Control channel keepalive ping."
+  },
+  {
+    "action": "pong",
+    "direction": "bidirectional",
+    "delivery": "response",
+    "domain": "connection",
+    "responseId": "absent",
+    "requestCorrelation": "none",
+    "cardinality": "continuous",
+    "confidence": "confirmed",
+    "sourceLocations": [
+      {
+        "file": "meshuser.js",
+        "lineStart": 146,
+        "lineEnd": 150,
+        "symbol": "sendPong",
+        "evidenceType": "server-source"
+      },
+      {
+        "file": "meshuser.js",
+        "lineStart": 5807,
+        "lineEnd": 5807,
+        "symbol": "serverCommandPong",
+        "evidenceType": "server-source"
+      }
+    ],
+    "notes": "Control channel keepalive pong response."
+  }
+]

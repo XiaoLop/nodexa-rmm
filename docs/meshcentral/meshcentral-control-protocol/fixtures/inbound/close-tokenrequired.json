@@ -1,0 +1,10 @@
+{
+  "action": "close",
+  "cause": "noauth",
+  "msg": "tokenrequired",
+  "email2fa": true,
+  "sms2fa": false,
+  "msg2fa": false,
+  "email2fasent": true,
+  "twoFactorCookieDays": 30
+}

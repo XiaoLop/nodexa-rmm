@@ -1,0 +1,34 @@
+[
+  {
+    "direction": "server-to-client",
+    "description": "Initial server warnings snapshot sent on login",
+    "message": {
+      "action": "serverwarnings",
+      "warnings": [
+        {
+          "id": 9,
+          "msg": "Agent hash checking is being skipped, this is unsafe.",
+          "args": []
+        }
+      ]
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Site admin applies configuration change via server console",
+    "message": {
+      "action": "serverconsole",
+      "value": "config ignoreagenthashcheck false",
+      "responseid": "console-cmd-1"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server console acknowledges configuration update",
+    "message": {
+      "action": "serverconsole",
+      "value": "Configuration updated.",
+      "responseid": "console-cmd-1"
+    }
+  }
+]

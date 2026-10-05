@@ -1,0 +1,9 @@
+{
+  "action": "runcommands",
+  "nodeids": [
+    "node//demo_device_1"
+  ],
+  "type": 0,
+  "cmds": "hostname",
+  "responseid": "req-run-1"
+}

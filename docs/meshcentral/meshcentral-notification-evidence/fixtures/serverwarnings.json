@@ -1,0 +1,16 @@
+{
+  "action": "serverwarnings",
+  "warnings": [
+    {
+      "msg": "Agent hash checking is being skipped, this is unsafe.",
+      "id": 9
+    },
+    {
+      "msg": "Invalid Let's Encrypt names, unable to resolve: example.com",
+      "id": 14,
+      "args": [
+        "example.com"
+      ]
+    }
+  ]
+}

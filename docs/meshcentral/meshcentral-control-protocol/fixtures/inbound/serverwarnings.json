@@ -1,0 +1,17 @@
+{
+  "action": "serverwarnings",
+  "warnings": [
+    {
+      "id": 9,
+      "msg": "Agent hash checking is being skipped, this is unsafe.",
+      "args": []
+    },
+    {
+      "id": 3,
+      "msg": "Unrecognized configuration option \"experimentalFeature\".",
+      "args": [
+        "experimentalFeature"
+      ]
+    }
+  ]
+}

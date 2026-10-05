@@ -1,0 +1,7 @@
+{
+  "action": "wakedevices",
+  "nodeids": [
+    "node//demo_device_1"
+  ],
+  "responseid": "req-wake-1"
+}

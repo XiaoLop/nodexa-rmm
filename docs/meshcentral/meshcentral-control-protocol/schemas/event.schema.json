@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ControlChannelEventEnvelope",
+  "type": "object",
+  "required": [
+    "action",
+    "event"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "event"
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "etype": {
+          "type": "string",
+          "enum": [
+            "mesh",
+            "node",
+            "user",
+            "ugrp",
+            "relay",
+            "server",
+            "2fadev"
+          ]
+        },
+        "time": {
+          "type": "number",
+          "description": "Event timestamp in Unix milliseconds"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "nodeid": {
+          "type": "string"
+        },
+        "meshid": {
+          "type": "string"
+        },
+        "userid": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "msgid": {
+          "type": "number"
+        },
+        "msgArgs": {
+          "type": "array"
+        },
+        "nolog": {
+          "type": "number"
+        },
+        "noact": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

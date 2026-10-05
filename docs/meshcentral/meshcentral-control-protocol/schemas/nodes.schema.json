@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NodesResponseMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "nodes"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "nodes"
+    },
+    "responseid": {
+      "type": "string"
+    },
+    "tag": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "object",
+      "patternProperties": {
+        "^mesh/[^/]*/[^/]*$": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "_id",
+              "meshid",
+              "name"
+            ],
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "meshid": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "rname": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "number"
+              },
+              "conn": {
+                "type": "number",
+                "description": "Connection bitmask: 1=agent, 2=cira, 4=amt, 16=mqtt"
+              },
+              "pwr": {
+                "type": "number",
+                "description": "Power state bitmask"
+              },
+              "ip": {
+                "type": "string"
+              },
+              "agent": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,19 @@
+{
+  "action": "meshes",
+  "tag": "tag-meshes-01",
+  "meshes": [
+    {
+      "_id": "mesh//demo_group",
+      "name": "Demo Group",
+      "desc": "Primary office workstations",
+      "mtype": 2,
+      "flags": 0,
+      "consent": 0,
+      "links": {
+        "user//admin": {
+          "rights": 4294967295
+        }
+      }
+    }
+  ]
+}

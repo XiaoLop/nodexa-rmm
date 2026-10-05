@@ -1,0 +1,9 @@
+{
+  "action": "toast",
+  "nodeids": [
+    "node//demo_device_1"
+  ],
+  "title": "System Alert",
+  "msg": "Maintenance scheduled in 10 minutes",
+  "responseid": "req-toast-1"
+}

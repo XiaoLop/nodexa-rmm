@@ -1,0 +1,317 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MeshCentralNotificationCatalog",
+  "description": "MeshCentral 服务端主动推送及通知生命周期相关消息全集目录",
+  "version": "1.2.5",
+  "commit": "02eb8f71d2ce48bdbd59e4e4d4844b7edaf0e69d",
+  "messages": [
+    {
+      "id": "event-notify",
+      "displayName": "事件派发包装通知",
+      "category": "explicit-notification",
+      "topLevelAction": "event",
+      "eventAction": "notify",
+      "direction": "server-to-client",
+      "recipientScope": "单播给特定用户 (DispatchEvent([user._id]))",
+      "permissionsRequired": "用户自身上下文",
+      "schema": {
+        "title": "string (optional)",
+        "value": "string (required, notification body)",
+        "icon": "number (optional)",
+        "tag": "string (optional)",
+        "id": "number (optional, random)",
+        "nolog": "number (optional)",
+        "maxtime": "number (optional, seconds)"
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": true,
+        "increasesUnreadCount": true,
+        "playsSound": true,
+        "triggersDesktopNotification": true,
+        "clickAction": "notificationSelectedEx"
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "msg-notify",
+      "displayName": "会话直接消息通知",
+      "category": "explicit-notification",
+      "topLevelAction": "msg",
+      "type": "notify",
+      "direction": "server-to-client",
+      "recipientScope": "当前会话单播、指定用户全会话或终端控制台组播",
+      "permissionsRequired": "视场景而定 (跨用户需 siteadmin & 2，设备需 MESHRIGHT_CHATNOTIFY)",
+      "schema": {
+        "id": "number (optional)",
+        "title": "string (optional)",
+        "value": "string (optional)",
+        "titleid": "number (optional, 1~6)",
+        "msgid": "number (optional, 1~34)",
+        "args": "array (optional)",
+        "tag": "string (optional)",
+        "icon": "number (optional)",
+        "userid": "string (optional)",
+        "username": "string (optional)",
+        "nodeid": "string (optional)",
+        "url": "string (optional)",
+        "maxtime": "number (optional, seconds)"
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": true,
+        "increasesUnreadCount": true,
+        "playsSound": true,
+        "triggersDesktopNotification": true,
+        "clickAction": "notificationSelectedEx (支持路由 desktop/terminal/files/backupcodes/meshmessenger)"
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "serverwarnings",
+      "displayName": "服务端全局配置警告全量快照",
+      "category": "warning",
+      "topLevelAction": "serverwarnings",
+      "direction": "server-to-client",
+      "recipientScope": "仅限超级管理员 (user.siteadmin === SITERIGHT_ADMIN = 0xFFFFFFFF)",
+      "permissionsRequired": "SITERIGHT_ADMIN",
+      "schema": {
+        "warnings": [
+          {
+            "id": "number (1~27)",
+            "msg": "string",
+            "args": "array (optional)"
+          }
+        ]
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": false,
+        "increasesUnreadCount": false,
+        "rendersInMyServerTab": true,
+        "domTarget": "#serverWarningsDiv #serverWarnings",
+        "dismissable": false
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "serverinfochange",
+      "displayName": "服务端安全策略热变更",
+      "category": "security",
+      "topLevelAction": "event",
+      "eventAction": "serverinfochange",
+      "direction": "server-to-client",
+      "recipientScope": "全部在线用户 (server-allusers)",
+      "permissionsRequired": "公开",
+      "schema": {
+        "lock2factor": "boolean",
+        "domain": "string",
+        "nolog": "number"
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": false,
+        "updatesMemoryState": "serverinfo.lock2factor",
+        "refreshesUi": ["updateSelf", "updateSiteAdmin"]
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "help-request-log",
+      "displayName": "终端求助事件日志通知",
+      "category": "help-and-chat",
+      "topLevelAction": "event",
+      "eventAction": "agentlog",
+      "direction": "server-to-client",
+      "recipientScope": "对该设备所在组具备查看权限的所有在线管理员",
+      "permissionsRequired": "GetNodeRights(nodeid) > 0",
+      "schema": {
+        "etype": "string ('node')",
+        "action": "string ('agentlog')",
+        "nodeid": "string ('node//...')",
+        "domain": "string",
+        "msg": "string ('Help Requested, user: {0}, details: {1}')",
+        "msgid": "number (98)",
+        "msgArgs": ["string (username)", "string (request text)"]
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": true,
+        "increasesUnreadCount": true,
+        "playsSound": true,
+        "triggersDesktopNotification": true,
+        "clickAction": "gotoDevice(nodeid, 10) (打开设备 General 面板)"
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "help-request-session",
+      "displayName": "设备活跃会话与求助状态同步",
+      "category": "help-and-chat",
+      "topLevelAction": "event",
+      "eventAction": "devicesessions",
+      "direction": "server-to-client",
+      "recipientScope": "对该设备所在组具备查看权限的所有在线管理员",
+      "permissionsRequired": "GetNodeRights(nodeid) > 0",
+      "schema": {
+        "etype": "string ('node')",
+        "action": "string ('devicesessions')",
+        "nodeid": "string",
+        "domain": "string",
+        "sessions": {
+          "help": "object (key: username, value: request text)",
+          "kvm": "object (optional)",
+          "terminal": "object (optional)"
+        },
+        "nolog": "number"
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": false,
+        "updatesDeviceHelpIcon": true,
+        "updatesHelpDialogIfOpen": true
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "chat-invite",
+      "displayName": "Messenger 聊天邀请",
+      "category": "help-and-chat",
+      "topLevelAction": "msg",
+      "type": "notify",
+      "direction": "server-to-client",
+      "recipientScope": "被邀请用户的所有会话",
+      "permissionsRequired": "siteadmin & 2 (用户管理) 或 MESHRIGHT_CHATNOTIFY (设备聊天)",
+      "schema": {
+        "id": "number",
+        "title": "string (sender username)",
+        "value": "string ('Chat Request, Click here to accept.')",
+        "msgid": "number (11)",
+        "userid": "string",
+        "username": "string",
+        "tag": "string ('meshmessenger/target/sender')"
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": true,
+        "increasesUnreadCount": true,
+        "playsSound": true,
+        "triggersDesktopNotification": true,
+        "clickAction": "safeNewWindow('/messenger?id=...' ) (打开独立聊天窗口)"
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "relay-recording",
+      "displayName": "会话录制完成就绪",
+      "category": "recording",
+      "topLevelAction": "event",
+      "eventAction": "recording",
+      "direction": "server-to-client",
+      "recipientScope": "具备该设备/录制查看权限的用户",
+      "permissionsRequired": "设备组查看权限或 Site Admin",
+      "schema": {
+        "etype": "string ('relay')",
+        "action": "string ('recording')",
+        "nodeid": "string",
+        "meshid": "string",
+        "meshname": "string",
+        "name": "string (device name)",
+        "icon": "number",
+        "userids": "array of string",
+        "protocol": "number (1: KVM, 2: Terminal, 100/101: AMT, 200: Messenger)",
+        "filename": "string (*.mcrec)",
+        "size": "number (bytes)",
+        "startTime": "number (ms)",
+        "lengthTime": "number (seconds)",
+        "msg": "string"
+      },
+      "clientUiBehavior": {
+        "addsToNotificationBox": false,
+        "updatesRecordingsList": true,
+        "recommendedWebNotificationStage": "FileReady"
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "lifecycle-stopped",
+      "displayName": "服务端停止或强制断开",
+      "category": "lifecycle",
+      "topLevelAction": "stopped",
+      "direction": "server-to-client",
+      "recipientScope": "受影响的目标用户会话",
+      "permissionsRequired": "无",
+      "schema": {
+        "action": "string ('stopped')",
+        "msg": "string ('Server stopped' | 'Session count exceed' | 'Administrator forced disconnection')"
+      },
+      "clientUiBehavior": {
+        "inhibitsAutoReconnect": true,
+        "clearsNotifications": true,
+        "displaysDisconnectBanner": true
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "lifecycle-close",
+      "displayName": "鉴权拦截与连接关闭指令",
+      "category": "lifecycle",
+      "topLevelAction": "close",
+      "direction": "server-to-client",
+      "recipientScope": "握手鉴权未通过的客户端",
+      "permissionsRequired": "无",
+      "schema": {
+        "action": "string ('close')",
+        "cause": "string ('noauth' | 'invalidorigin' | 'emailvalidation' | 'expired' | 'banned' | 'locked' | 'notools')",
+        "msg": "string",
+        "email2fa": "boolean (optional)",
+        "sms2fa": "boolean (optional)",
+        "msg2fa": "boolean (optional)"
+      },
+      "clientUiBehavior": {
+        "inhibitsAutoReconnect": true,
+        "routesToLoginOr2fa": true
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "device-nodeconnect",
+      "displayName": "设备在线状态变更广播",
+      "category": "device-state",
+      "topLevelAction": "event",
+      "eventAction": "nodeconnect",
+      "direction": "server-to-client",
+      "recipientScope": "对该设备拥有权限的全部在线用户",
+      "permissionsRequired": "设备非零权限",
+      "schema": {
+        "action": "string ('nodeconnect')",
+        "nodeid": "string",
+        "meshid": "string",
+        "conn": "number (bitmask: 1 Agent, 2 CIRA, 4 AMT, 16 MQTT)",
+        "pwr": "number",
+        "id": "number"
+      },
+      "clientUiBehavior": {
+        "filteredByClientBitmask": true,
+        "triggersNotificationIfBitmaskMatches": "n & 2 (上线) 或 n & 4 (下线)",
+        "playsSound": "若本地开启且匹配过滤",
+        "triggersDesktopNotification": "若本地开启且匹配过滤"
+      },
+      "confidence": "confirmed"
+    },
+    {
+      "id": "intersession-remove-notify",
+      "displayName": "跨端通知同步清除指令",
+      "category": "sync",
+      "topLevelAction": "intersession",
+      "subaction": "removeNotify",
+      "direction": "inter-session (client-to-server-to-peers)",
+      "recipientScope": "同一用户的其他活跃浏览器 WebSocket 会话",
+      "permissionsRequired": "同用户鉴权",
+      "schema": {
+        "action": "string ('intersession')",
+        "subaction": "string ('removeNotify')",
+        "id": "number (notification id)"
+      },
+      "clientUiBehavior": {
+        "removesNotificationFromDom": true,
+        "decreasesUnreadCount": true,
+        "closesDesktopNotification": true
+      },
+      "confidence": "confirmed"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "action": "users",
+  "tag": "tag-users-01",
+  "users": [
+    {
+      "_id": "user//admin",
+      "name": "admin",
+      "domain": "",
+      "siteadmin": 4294967295,
+      "email": "admin@example.com",
+      "creation": 1759000000,
+      "access": 1759658400
+    },
+    {
+      "_id": "user//operator",
+      "name": "operator",
+      "domain": "",
+      "siteadmin": 0,
+      "email": "operator@example.com",
+      "creation": 1759100000,
+      "access": 1759650000
+    }
+  ]
+}

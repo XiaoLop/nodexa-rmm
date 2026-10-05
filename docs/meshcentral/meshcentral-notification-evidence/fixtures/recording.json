@@ -1,0 +1,22 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "relay",
+    "action": "recording",
+    "domain": "",
+    "nodeid": "node//abc123def456",
+    "meshid": "mesh//xyz789uvw012",
+    "meshname": "Production Servers",
+    "name": "Database-Node-01",
+    "icon": 2,
+    "userids": [
+      "user//admin"
+    ],
+    "protocol": 1,
+    "filename": "2026-10-05-10-15-20-node-abc123def456.mcrec",
+    "size": 4194304,
+    "startTime": 1791202520000,
+    "lengthTime": 120,
+    "msg": "Finished recording session, 120 second(s)"
+  }
+}

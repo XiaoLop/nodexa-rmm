@@ -1,0 +1,11 @@
+{
+  "action": "msg",
+  "type": "notify",
+  "id": 0.3849102934,
+  "title": "Bob",
+  "value": "Chat Request, Click here to accept.",
+  "userid": "user//admin",
+  "username": "Bob",
+  "tag": "meshmessenger/user%2F%2Ftargetuser/user%2F%2Fadmin",
+  "msgid": 11
+}

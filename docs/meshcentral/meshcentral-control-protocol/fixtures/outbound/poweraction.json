@@ -1,0 +1,8 @@
+{
+  "action": "poweraction",
+  "nodeids": [
+    "node//demo_device_1"
+  ],
+  "actiontype": 2,
+  "responseid": "req-pwr-1"
+}

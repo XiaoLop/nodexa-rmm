@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserInfoMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "userinfo"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "userinfo"
+    },
+    "userinfo": {
+      "type": "object",
+      "required": [
+        "_id",
+        "name",
+        "domain",
+        "siteadmin"
+      ],
+      "properties": {
+        "_id": {
+          "type": "string",
+          "pattern": "^user/[^/]*/[^/]*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "siteadmin": {
+          "type": "number",
+          "description": "Site rights bitmask; 0xFFFFFFFF for full site admin"
+        },
+        "email": {
+          "type": "string"
+        },
+        "emailVerified": {
+          "type": "boolean"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "phoneVerified": {
+          "type": "boolean"
+        },
+        "creation": {
+          "type": "number",
+          "description": "Creation timestamp in Unix seconds"
+        },
+        "access": {
+          "type": "number",
+          "description": "Last access timestamp in Unix seconds"
+        },
+        "login": {
+          "type": "number",
+          "description": "Last login timestamp in Unix seconds"
+        },
+        "links": {
+          "type": "object"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notify": {
+          "type": "object",
+          "description": "User-level notification override bitmasks by nodeid or meshid"
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

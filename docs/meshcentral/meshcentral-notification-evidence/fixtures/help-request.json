@@ -1,0 +1,15 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "node",
+    "action": "agentlog",
+    "nodeid": "node//abc123def456",
+    "domain": "",
+    "msg": "Help Requested, user: Alice, details: Need help configuring printer",
+    "msgid": 98,
+    "msgArgs": [
+      "Alice",
+      "Need help configuring printer"
+    ]
+  }
+}

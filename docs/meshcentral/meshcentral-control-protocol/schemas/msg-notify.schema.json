@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MsgNotifyMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "type",
+    "value"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "msg"
+    },
+    "type": {
+      "type": "string",
+      "const": "notify"
+    },
+    "id": {
+      "type": "number"
+    },
+    "title": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string",
+      "description": "Display notification text message"
+    },
+    "nodeid": {
+      "type": "string"
+    },
+    "userid": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "number"
+    },
+    "tag": {
+      "type": "string"
+    },
+    "titleid": {
+      "type": "number"
+    },
+    "msgid": {
+      "type": "number"
+    },
+    "args": {
+      "type": "array"
+    },
+    "maxtime": {
+      "type": "number",
+      "description": "Auto-dismiss timeout duration in seconds"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

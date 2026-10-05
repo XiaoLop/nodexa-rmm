@@ -1,0 +1,13 @@
+{
+  "action": "event",
+  "event": {
+    "action": "nodeconnect",
+    "nodeid": "node//demo_device_1",
+    "meshid": "mesh//demo_group",
+    "time": 1759658460000,
+    "domain": "",
+    "conn": 1,
+    "pwr": 1,
+    "id": 0.5428938291
+  }
+}

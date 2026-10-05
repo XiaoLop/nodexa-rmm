@@ -1,0 +1,27 @@
+{
+  "action": "serverinfo",
+  "serverinfo": {
+    "domain": "",
+    "name": "mesh.example.com",
+    "mpsname": "mesh.example.com",
+    "mpsport": 4433,
+    "mpspass": null,
+    "port": 443,
+    "emailcheck": false,
+    "domainauth": false,
+    "serverTime": 1759658400000,
+    "features": 32801,
+    "features2": 1024,
+    "features3": 0,
+    "languages": [
+      "en"
+    ],
+    "tlshash": "B4F0E8D7C6B5A4938271605F4E3D2C1B0A9F8E7D6C5B4A39281706152433445566778899AABBCCDDEEFF001122334455",
+    "agentCertHash": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+    "magenturl": "mc://mesh.example.com:443",
+    "domainsuffix": "",
+    "consent": 0,
+    "timeout": 1800000,
+    "logoutonidlesessiontimeout": true
+  }
+}

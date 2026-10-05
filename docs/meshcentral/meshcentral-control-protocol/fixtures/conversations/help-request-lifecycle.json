@@ -1,0 +1,59 @@
+[
+  {
+    "direction": "server-to-client",
+    "description": "Agent triggers help request from end-user machine (msgid: 98)",
+    "message": {
+      "action": "event",
+      "event": {
+        "etype": "node",
+        "action": "agentlog",
+        "nodeid": "node//demo_device_1",
+        "domain": "",
+        "msgid": 98,
+        "msgArgs": [
+          "alice",
+          "VPN disconnected and cannot reach fileserver"
+        ],
+        "msg": "Help Requested, user: alice, details: VPN disconnected and cannot reach fileserver"
+      }
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Admin opens device and sends quick desktop toast acknowledgement",
+    "message": {
+      "action": "toast",
+      "nodeids": [
+        "node//demo_device_1"
+      ],
+      "title": "IT Helpdesk",
+      "msg": "Administrator received your request and is connecting...",
+      "responseid": "req-toast-ack"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server acknowledges toast delivery",
+    "message": {
+      "action": "toast",
+      "result": "OK",
+      "responseid": "req-toast-ack"
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Admin requests relay auth cookie to launch remote desktop session",
+    "message": {
+      "action": "authcookie"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server returns user authcookie and remote relay rcookie",
+    "message": {
+      "action": "authcookie",
+      "cookie": "ENCRYPTED_USER_AUTH_COOKIE_HEX_STRING",
+      "rcookie": "ENCRYPTED_RELAY_AUTH_COOKIE_HEX_STRING"
+    }
+  }
+]

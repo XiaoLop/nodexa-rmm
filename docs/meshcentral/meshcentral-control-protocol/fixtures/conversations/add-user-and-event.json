@@ -1,0 +1,50 @@
+[
+  {
+    "direction": "client-to-server",
+    "description": "Site admin creates a new user",
+    "message": {
+      "action": "adduser",
+      "username": "operator",
+      "pass": "TemporaryPassword123!",
+      "email": "operator@example.com",
+      "responseid": "req-adduser-1"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Direct response to creator with userid and responseid",
+    "message": {
+      "action": "adduser",
+      "result": "OK",
+      "userid": "user//operator",
+      "responseid": "req-adduser-1"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Asynchronous accountcreate event broadcast to all subscribed sessions",
+    "message": {
+      "action": "event",
+      "event": {
+        "etype": "user",
+        "action": "accountcreate",
+        "userid": "user//newuser",
+        "username": "newuser",
+        "domain": "",
+        "time": 1759658470000,
+        "msgid": 64,
+        "msgArgs": [
+          "newuser"
+        ],
+        "msg": "Account created, username is newuser",
+        "account": {
+          "_id": "user//newuser",
+          "name": "newuser",
+          "domain": "",
+          "siteadmin": 0,
+          "creation": 1759658470
+        }
+      }
+    }
+  }
+]

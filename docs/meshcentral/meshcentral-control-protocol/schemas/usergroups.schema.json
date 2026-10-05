@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserGroupsResponseMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "ugroups"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "usergroups"
+    },
+    "tag": {
+      "type": "string"
+    },
+    "ugroups": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "patternProperties": {
+        "^ugrp/[^/]*/[^/]*$": {
+          "type": "object",
+          "required": [
+            "_id",
+            "name"
+          ],
+          "properties": {
+            "_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "desc": {
+              "type": "string"
+            },
+            "domain": {
+              "type": "string"
+            },
+            "links": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

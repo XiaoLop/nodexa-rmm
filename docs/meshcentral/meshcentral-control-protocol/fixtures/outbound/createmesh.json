@@ -1,0 +1,7 @@
+{
+  "action": "createmesh",
+  "meshname": "Staging Devices",
+  "meshtype": 2,
+  "desc": "Staging environment hosts",
+  "responseid": "req-createmesh-1"
+}

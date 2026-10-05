@@ -1,0 +1,20 @@
+{
+  "action": "usergroups",
+  "tag": "tag-ugrps-01",
+  "ugroups": {
+    "ugrp//ops_team": {
+      "_id": "ugrp//ops_team",
+      "name": "Operations Team",
+      "desc": "Support Tier 1",
+      "domain": "",
+      "links": {
+        "user//operator": {
+          "rights": 1
+        },
+        "mesh//demo_group": {
+          "rights": 1048840
+        }
+      }
+    }
+  }
+}

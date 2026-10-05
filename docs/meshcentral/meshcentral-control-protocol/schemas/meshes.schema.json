@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MeshesResponseMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "meshes"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "meshes"
+    },
+    "tag": {
+      "type": "string"
+    },
+    "meshes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "_id",
+          "name",
+          "mtype"
+        ],
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          },
+          "mtype": {
+            "type": "number",
+            "description": "Mesh type: 2=Agent group, 1=Generic AMT"
+          },
+          "flags": {
+            "type": "number"
+          },
+          "consent": {
+            "type": "number"
+          },
+          "links": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

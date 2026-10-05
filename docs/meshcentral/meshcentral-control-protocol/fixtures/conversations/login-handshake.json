@@ -1,0 +1,166 @@
+[
+  {
+    "direction": "server-to-client",
+    "description": "Initial server info push immediately on WebSocket open",
+    "message": {
+      "action": "serverinfo",
+      "serverinfo": {
+        "domain": "",
+        "name": "mesh.example.com",
+        "mpsname": "mesh.example.com",
+        "mpsport": 4433,
+        "mpspass": null,
+        "port": 443,
+        "emailcheck": false,
+        "domainauth": false,
+        "serverTime": 1759658400000,
+        "features": 32801,
+        "features2": 1024,
+        "features3": 0,
+        "languages": [
+          "en"
+        ],
+        "tlshash": "B4F0E8D7C6B5A4938271605F4E3D2C1B0A9F8E7D6C5B4A39281706152433445566778899AABBCCDDEEFF001122334455",
+        "agentCertHash": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "magenturl": "mc://mesh.example.com:443",
+        "domainsuffix": "",
+        "consent": 0,
+        "timeout": 1800000,
+        "logoutonidlesessiontimeout": true
+      }
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Initial authenticated user information push",
+    "message": {
+      "action": "userinfo",
+      "userinfo": {
+        "_id": "user//admin",
+        "name": "admin",
+        "domain": "",
+        "siteadmin": 4294967295,
+        "email": "admin@example.com",
+        "emailVerified": true,
+        "creation": 1759000000,
+        "access": 1759658400,
+        "links": {
+          "mesh//demo_group": {
+            "rights": 4294967295,
+            "name": "Demo Group",
+            "notify": 30
+          }
+        },
+        "subscriptions": [
+          "*",
+          "server-users",
+          "user//admin",
+          "mesh//demo_group"
+        ]
+      }
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Trace sources push (site admin only)",
+    "message": {
+      "action": "traceinfo",
+      "traceSources": [
+        "web",
+        "agent",
+        "amt",
+        "mps",
+        "relay",
+        "webrtc"
+      ]
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Active server warnings push (site admin only)",
+    "message": {
+      "action": "serverwarnings",
+      "warnings": [
+        {
+          "id": 9,
+          "msg": "Agent hash checking is being skipped, this is unsafe.",
+          "args": []
+        },
+        {
+          "id": 3,
+          "msg": "Unrecognized configuration option \"experimentalFeature\".",
+          "args": [
+            "experimentalFeature"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Client requests device groups snapshot",
+    "message": {
+      "action": "meshes",
+      "tag": "tag-meshes-01"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server returns device groups snapshot with echoed tag",
+    "message": {
+      "action": "meshes",
+      "tag": "tag-meshes-01",
+      "meshes": [
+        {
+          "_id": "mesh//demo_group",
+          "name": "Demo Group",
+          "desc": "Primary office workstations",
+          "mtype": 2,
+          "flags": 0,
+          "consent": 0,
+          "links": {
+            "user//admin": {
+              "rights": 4294967295
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Client requests devices snapshot",
+    "message": {
+      "action": "nodes",
+      "responseid": "req-nodes-1"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server returns devices snapshot with echoed responseid",
+    "message": {
+      "action": "nodes",
+      "responseid": "req-nodes-1",
+      "nodes": {
+        "mesh//demo_group": [
+          {
+            "_id": "node//demo_device_1",
+            "meshid": "mesh//demo_group",
+            "name": "LAB-DESKTOP-01",
+            "rname": "LAB-DESKTOP-01.lan",
+            "icon": 1,
+            "conn": 1,
+            "pwr": 1,
+            "ip": "192.168.1.101",
+            "agent": {
+              "ver": 125,
+              "id": 4,
+              "core": 1,
+              "caps": 495
+            }
+          }
+        ]
+      }
+    }
+  }
+]

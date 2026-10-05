@@ -1,0 +1,6 @@
+{
+  "action": "changeusernotify",
+  "nodeid": "node//demo_device_1",
+  "notify": 14,
+  "responseid": "req-usernotify-1"
+}

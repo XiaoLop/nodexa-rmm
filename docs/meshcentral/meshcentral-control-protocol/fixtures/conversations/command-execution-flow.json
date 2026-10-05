@@ -1,0 +1,34 @@
+[
+  {
+    "direction": "client-to-server",
+    "description": "User dispatches a quick command to a target device",
+    "message": {
+      "action": "runcommands",
+      "nodeids": [
+        "node//demo_device_1"
+      ],
+      "type": 0,
+      "cmds": "hostname",
+      "responseid": "req-run-1"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server confirms command dispatch to agent",
+    "message": {
+      "action": "runcommands",
+      "result": "OK",
+      "responseid": "req-run-1"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Agent responds asynchronously with output routed back as msg:console",
+    "message": {
+      "action": "msg",
+      "type": "console",
+      "nodeid": "node//demo_device_1",
+      "value": "LAB-DESKTOP-01\r\n"
+    }
+  }
+]

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CloseMessage",
+  "type": "object",
+  "required": [
+    "action",
+    "cause",
+    "msg"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "const": "close"
+    },
+    "cause": {
+      "type": "string",
+      "enum": [
+        "invalidorigin",
+        "noauth",
+        "emailvalidation",
+        "expired",
+        "banned",
+        "locked",
+        "notools"
+      ]
+    },
+    "msg": {
+      "type": "string"
+    },
+    "email2fa": {
+      "type": "boolean"
+    },
+    "sms2fa": {
+      "type": "boolean"
+    },
+    "msg2fa": {
+      "type": "boolean"
+    },
+    "email2fasent": {
+      "type": "boolean"
+    },
+    "sms2fasent": {
+      "type": "boolean"
+    },
+    "msg2fasent": {
+      "type": "boolean"
+    },
+    "twoFactorCookieDays": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}

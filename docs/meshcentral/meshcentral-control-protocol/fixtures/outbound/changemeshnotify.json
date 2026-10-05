@@ -1,0 +1,6 @@
+{
+  "action": "changemeshnotify",
+  "meshid": "mesh//demo_group",
+  "notify": 30,
+  "responseid": "req-meshnotify-1"
+}

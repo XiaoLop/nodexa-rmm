@@ -1,0 +1,10 @@
+{
+  "action": "event",
+  "event": {
+    "action": "notify",
+    "title": "Email verified",
+    "value": "user@example.com",
+    "nolog": 1,
+    "id": 0.4918237194
+  }
+}

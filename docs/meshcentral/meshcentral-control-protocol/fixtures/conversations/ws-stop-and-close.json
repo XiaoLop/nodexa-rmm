@@ -1,0 +1,19 @@
+[
+  {
+    "direction": "server-to-client",
+    "description": "Administrator terminates user session from server console or user limit is exceeded",
+    "message": {
+      "action": "stopped",
+      "msg": "Administrator forced disconnection"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server closes connection with cause and reason",
+    "message": {
+      "action": "close",
+      "cause": "noauth",
+      "msg": "noauth-2c"
+    }
+  }
+]

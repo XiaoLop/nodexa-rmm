@@ -1,0 +1,23 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "user",
+    "action": "accountcreate",
+    "userid": "user//newuser",
+    "username": "newuser",
+    "domain": "",
+    "time": 1759658470000,
+    "msgid": 64,
+    "msgArgs": [
+      "newuser"
+    ],
+    "msg": "Account created, username is newuser",
+    "account": {
+      "_id": "user//newuser",
+      "name": "newuser",
+      "domain": "",
+      "siteadmin": 0,
+      "creation": 1759658470
+    }
+  }
+}

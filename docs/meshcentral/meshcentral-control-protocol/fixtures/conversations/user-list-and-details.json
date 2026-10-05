@@ -1,0 +1,55 @@
+[
+  {
+    "direction": "client-to-server",
+    "description": "Admin requests list of all registered users",
+    "message": {
+      "action": "users",
+      "tag": "tag-users-req"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server returns array of all users in domain",
+    "message": {
+      "action": "users",
+      "tag": "tag-users-req",
+      "users": [
+        {
+          "_id": "user//admin",
+          "name": "admin",
+          "domain": "",
+          "siteadmin": 4294967295
+        },
+        {
+          "_id": "user//operator",
+          "name": "operator",
+          "domain": "",
+          "siteadmin": 0
+        }
+      ]
+    }
+  },
+  {
+    "direction": "client-to-server",
+    "description": "Admin requests detailed system information for selected device",
+    "message": {
+      "action": "getsysinfo",
+      "nodeid": "node//demo_device_1",
+      "tag": "tag-sysinfo"
+    }
+  },
+  {
+    "direction": "server-to-client",
+    "description": "Server queries DB/Agent and returns system info payload",
+    "message": {
+      "action": "getsysinfo",
+      "nodeid": "node//demo_device_1",
+      "tag": "tag-sysinfo",
+      "sysinfo": {
+        "os": "Microsoft Windows 11 Enterprise",
+        "cpu": "Intel(R) Core(TM) i7-12700",
+        "memory": "32 GB"
+      }
+    }
+  }
+]

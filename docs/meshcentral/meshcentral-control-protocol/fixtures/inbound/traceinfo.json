@@ -1,0 +1,11 @@
+{
+  "action": "traceinfo",
+  "traceSources": [
+    "web",
+    "agent",
+    "amt",
+    "mps",
+    "relay",
+    "webrtc"
+  ]
+}

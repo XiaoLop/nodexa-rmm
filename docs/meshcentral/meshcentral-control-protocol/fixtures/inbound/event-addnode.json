@@ -1,0 +1,26 @@
+{
+  "action": "event",
+  "event": {
+    "etype": "node",
+    "action": "addnode",
+    "nodeid": "node//demo_device_2",
+    "meshid": "mesh//demo_group",
+    "time": 1759658450000,
+    "domain": "",
+    "msgid": 57,
+    "msgArgs": [
+      "LAB-DESKTOP-02",
+      "Demo Group"
+    ],
+    "msg": "Added device LAB-DESKTOP-02 to device group Demo Group",
+    "node": {
+      "_id": "node//demo_device_2",
+      "meshid": "mesh//demo_group",
+      "name": "LAB-DESKTOP-02",
+      "icon": 1,
+      "conn": 1,
+      "pwr": 1,
+      "ip": "192.168.1.102"
+    }
+  }
+}
