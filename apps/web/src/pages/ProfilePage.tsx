@@ -8,7 +8,6 @@ import {
   ExclamationCircleOutlined,
   GlobalOutlined,
   HistoryOutlined,
-  InfoCircleOutlined,
   KeyOutlined,
   LockOutlined,
   LoginOutlined,
