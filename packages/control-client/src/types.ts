@@ -1,3 +1,11 @@
+import type { ConnectionTermination } from './lifecycle/termination';
+import type {
+  DeviceSessions,
+  MeshCentralNotification,
+  RecordingReady,
+  ServerWarning,
+} from './notifications/types';
+
 export type ConnectionStatus =
   | 'idle'
   | 'connecting'
@@ -113,6 +121,7 @@ export interface UserInfo {
   siteadmin?: number;
   removeRights: number;
   links: Record<string, UserInfoLink>;
+  notify?: Record<string, number>;
   creationAt?: string;
   lastLoginAt?: string;
   lastAccessAt?: string;
@@ -127,6 +136,7 @@ export interface UserInfoLink {
   id: string;
   type: UserLinkType;
   rights: number;
+  notify?: number;
   name?: string;
 }
 
@@ -307,6 +317,12 @@ export interface MeshCentralDiagnostic {
 export interface MeshCentralClientEvents {
   connection: ConnectionStateChange;
   event: MeshCentralEvent;
+  notification: MeshCentralNotification;
+  serverWarnings: ServerWarning[];
+  deviceSessions: DeviceSessions;
+  termination: ConnectionTermination;
+  accountChanged: UserInfo;
+  recordingReady: RecordingReady;
   userInfo: UserInfo;
   serverInfo: ServerInfo;
   serverStats: ServerStats;

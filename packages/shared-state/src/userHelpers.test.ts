@@ -10,8 +10,15 @@ describe('useUiData user helpers', () => {
   });
 
   it('resolves user display name in priority order', () => {
-    expect(getUserDisplayName({ id: 'user//admin', name: '张三' }, 'admin')).toBe('张三');
-    expect(getUserDisplayName({ id: 'user/domain/admin', name: '' }, 'admin')).toBe('admin');
+    expect(
+      getUserDisplayName({ id: 'user//admin', name: '张三', removeRights: 0, links: {} }, 'admin'),
+    ).toBe('张三');
+    expect(
+      getUserDisplayName(
+        { id: 'user/domain/admin', name: '', removeRights: 0, links: {} },
+        'admin',
+      ),
+    ).toBe('admin');
     expect(getUserDisplayName(undefined, 'administrator')).toBe('administrator');
     expect(getUserDisplayName(undefined, undefined)).toBe('林默');
   });

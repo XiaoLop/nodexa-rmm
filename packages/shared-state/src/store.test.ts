@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { createMeshCentralControlStore, meshCentralControlSelectors } from './store';
 
 describe('gateway store', () => {
+  const notification = (id: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    source: 'msg-notify' as const,
+    message: `Message ${id}`,
+    occurredAt: '2026-10-05T00:00:00.000Z',
+    severity: 'info' as const,
+    raw: {},
+    ...overrides,
+  });
+
   it('applies snapshots and device events', () => {
     const store = createMeshCentralControlStore();
     store.getState().replaceDevices([{ id: 'node-1', name: 'Server 1', online: false }]);
@@ -270,5 +280,156 @@ describe('gateway store', () => {
     expect(store.getState().events).toHaveLength(100);
     expect(store.getState().events[0]?.id).toBe('event-100');
     expect(store.getState().events.at(-1)?.id).toBe('event-1');
+  });
+
+  it('stores notifications newest-first, deduplicates ids and tracks unread state', () => {
+    const store = createMeshCentralControlStore();
+    store.getState().addNotification(
+      notification('one', { occurredAt: '2026-10-05T00:01:00.000Z' }),
+    );
+    store.getState().addNotification(
+      notification('two', { tag: 'desktop', occurredAt: '2026-10-05T00:00:00.000Z' }),
+    );
+    store.getState().addNotification(notification('two', { message: 'Duplicate' }));
+
+    expect(store.getState().notifications.map((item) => item.id)).toEqual(['one', 'two']);
+    expect(store.getState().unreadCount).toBe(2);
+    store.getState().markNotificationRead('two');
+    expect(store.getState().notifications[1]).toMatchObject({ id: 'two', read: true });
+    expect(store.getState().unreadCount).toBe(1);
+    store.getState().markAllNotificationsRead();
+    expect(store.getState().unreadCount).toBe(0);
+  });
+
+  it('keeps notification tag history and caps the queue at 200 entries', () => {
+    const store = createMeshCentralControlStore();
+    for (let index = 0; index < 201; index += 1) {
+      store.getState().addNotification(notification(`notification-${index}`, { tag: 'desktop' }));
+    }
+    expect(store.getState().notifications).toHaveLength(200);
+    expect(store.getState().notifications[0]?.id).toBe('notification-200');
+    expect(store.getState().notifications.at(-1)?.id).toBe('notification-1');
+    expect(store.getState().unreadCount).toBe(200);
+  });
+
+  it('computes and removes expired notifications using maxtime seconds', () => {
+    const store = createMeshCentralControlStore();
+    store.getState().addNotification(notification('temporary', { maxTimeSeconds: 30 }));
+    expect(store.getState().notifications[0]?.expiresAt).toBe('2026-10-05T00:00:30.000Z');
+    store.getState().removeExpiredNotifications('2026-10-05T00:00:29.999Z');
+    expect(store.getState().notifications).toHaveLength(1);
+    store.getState().removeExpiredNotifications('2026-10-05T00:00:30.000Z');
+    expect(store.getState().notifications).toHaveLength(0);
+    expect(store.getState().unreadCount).toBe(0);
+  });
+
+  it('applies and clears authoritative device help snapshots', () => {
+    const store = createMeshCentralControlStore();
+    store.getState().applyDeviceSessions({
+      deviceId: 'node//one',
+      help: { Alice: 'Need help' },
+      sessions: { help: { Alice: 'Need help' } },
+      occurredAt: '2026-10-05T00:00:00.000Z',
+      raw: {},
+    });
+    expect(store.getState().helpRequests['node//one']).toEqual({
+      deviceId: 'node//one',
+      requests: { Alice: 'Need help' },
+      updatedAt: '2026-10-05T00:00:00.000Z',
+    });
+    store.getState().applyDeviceSessions({
+      deviceId: 'node//one',
+      help: {},
+      sessions: {},
+      occurredAt: '2026-10-05T00:01:00.000Z',
+      raw: {},
+    });
+    expect(store.getState().helpRequests['node//one']).toBeUndefined();
+  });
+
+  it('clears sensitive state while retaining the termination reason', () => {
+    const store = createMeshCentralControlStore();
+    store.getState().replaceDevices([{ id: 'node//one', name: 'One', online: true }]);
+    store.getState().addNotification(notification('one'));
+    const termination = {
+      disposition: 'session-expired' as const,
+      requiresLogin: true,
+      retryAllowed: false,
+      occurredAt: '2026-10-05T00:00:00.000Z',
+    };
+    store.getState().setTermination(termination);
+    store.getState().clearSensitiveState();
+    expect(store.getState()).toMatchObject({
+      devices: {},
+      notifications: [],
+      unreadCount: 0,
+      helpRequests: {},
+      termination,
+    });
+  });
+
+  it('merges partial account changes without erasing existing links', () => {
+    const store = createMeshCentralControlStore();
+    store.getState().setUserInfo({
+      id: 'user//admin',
+      name: 'Admin',
+      removeRights: 0,
+      links: { 'mesh//one': { id: 'mesh//one', type: 'device-group', rights: 1 } },
+    });
+    store.getState().applyAccountChanged({
+      id: 'user//admin',
+      name: 'Administrator',
+      removeRights: 0,
+      links: {},
+      raw: { _id: 'user//admin', name: 'Administrator' },
+    });
+    expect(store.getState().userInfo).toMatchObject({
+      name: 'Administrator',
+      links: { 'mesh//one': { rights: 1 } },
+    });
+  });
+
+  it('prunes resolved zero-right resources and their sensitive context', () => {
+    const store = createMeshCentralControlStore();
+    store.getState().setUserInfo({
+      id: 'user//admin',
+      removeRights: 0,
+      links: {
+        'mesh//one': { id: 'mesh//one', type: 'device-group', rights: 1 },
+        'node//one': { id: 'node//one', type: 'device', rights: 1 },
+      },
+    });
+    store.getState().replaceGroups([{ id: 'mesh//one', name: 'One' }]);
+    store.getState().replaceDevices([
+      { id: 'node//one', name: 'One', groupId: 'mesh//one', online: true },
+    ]);
+    store.getState().addNotification(notification('device-notification', { deviceId: 'node//one' }));
+    store.getState().applyDeviceSessions({
+      deviceId: 'node//one',
+      help: { Alice: 'Need help' },
+      sessions: {},
+      occurredAt: '2026-10-05T00:00:00.000Z',
+      raw: {},
+    });
+
+    store.getState().applyAccountChanged({
+      id: 'user//admin',
+      removeRights: 0,
+      links: {
+        'mesh//one': { id: 'mesh//one', type: 'device-group', rights: 0 },
+        'node//one': { id: 'node//one', type: 'device', rights: 0 },
+      },
+      raw: {
+        _id: 'user//admin',
+        links: { 'mesh//one': { rights: 0 }, 'node//one': { rights: 0 } },
+      },
+    });
+    expect(store.getState()).toMatchObject({
+      devices: {},
+      groups: {},
+      helpRequests: {},
+      notifications: [],
+      unreadCount: 0,
+    });
   });
 });

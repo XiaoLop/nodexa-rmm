@@ -74,6 +74,31 @@ export function bindMeshCentralClient(
 ): MeshCentralClientBinding {
   let active = true;
   let syncGeneration = 0;
+  const notificationTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  const clearNotificationTimers = () => {
+    for (const timer of notificationTimers.values()) clearTimeout(timer);
+    notificationTimers.clear();
+  };
+
+  const scheduleNotificationExpiry = (id: string, expiresAt?: string) => {
+    if (!expiresAt) return;
+    const delay = Date.parse(expiresAt) - Date.now();
+    if (!Number.isFinite(delay)) return;
+    if (delay <= 0) {
+      store.getState().removeNotification(id);
+      return;
+    }
+    const existing = notificationTimers.get(id);
+    if (existing) clearTimeout(existing);
+    notificationTimers.set(
+      id,
+      setTimeout(() => {
+        notificationTimers.delete(id);
+        if (active) store.getState().removeExpiredNotifications();
+      }, delay),
+    );
+  };
 
   const sync = async () => {
     const generation = ++syncGeneration;
@@ -91,6 +116,7 @@ export function bindMeshCentralClient(
         })),
       );
       store.getState().replaceGroups(groups);
+      store.getState().setCacheStale(false);
       store.getState().setError(undefined);
     } catch (error) {
       if (!active || generation !== syncGeneration) return;
@@ -107,7 +133,7 @@ export function bindMeshCentralClient(
       if (!active) return;
       if (current === 'connecting' || current === 'reconnecting') {
         syncGeneration += 1;
-        store.getState().clearAuthorizationSnapshot();
+        store.getState().setCacheStale(true);
       }
       store.getState().setConnectionStatus(stateStatus(current), error?.message);
       store.getState().setReconnectAttempt(client.currentReconnectAttempt);
@@ -116,8 +142,53 @@ export function bindMeshCentralClient(
     client.on('message', () => {
       if (active) store.getState().touchMessage();
     }),
+    client.on('message', (message) => {
+      if (
+        !active ||
+        typeof message !== 'object' ||
+        message === null ||
+        (message as Record<string, unknown>).action !== 'intersession' ||
+        (message as Record<string, unknown>).subaction !== 'removeNotify'
+      ) {
+        return;
+      }
+      const id = (message as Record<string, unknown>).id;
+      if (typeof id === 'string' || typeof id === 'number') {
+        const notificationId = String(id);
+        const timer = notificationTimers.get(notificationId);
+        if (timer) clearTimeout(timer);
+        notificationTimers.delete(notificationId);
+        store.getState().removeNotification(notificationId);
+      }
+    }),
     client.on('event', (event) => {
       if (active) applyEvent(store, event);
+    }),
+    client.on('notification', (notification) => {
+      if (!active) return;
+      const state = store.getState();
+      if (state.notifications.some((item) => item.id === notification.id)) return;
+      state.addNotification(notification);
+      scheduleNotificationExpiry(
+        notification.id,
+        store.getState().notifications.find((item) => item.id === notification.id)?.expiresAt,
+      );
+    }),
+    client.on('serverWarnings', (warnings) => {
+      if (active) store.getState().replaceServerWarnings(warnings);
+    }),
+    client.on('deviceSessions', (sessions) => {
+      if (active) store.getState().applyDeviceSessions(sessions);
+    }),
+    client.on('termination', (termination) => {
+      if (!active) return;
+      clearNotificationTimers();
+      store.getState().setTermination(termination);
+      store.getState().clearSensitiveState();
+    }),
+    client.on('accountChanged', (userInfo) => {
+      if (!active || store.getState().userInfo?.id !== userInfo.id) return;
+      store.getState().applyAccountChanged(userInfo);
     }),
     client.on('userInfo', (userInfo) => {
       if (active) store.getState().setUserInfo(userInfo);
@@ -136,6 +207,7 @@ export function bindMeshCentralClient(
       if (!active) return;
       active = false;
       syncGeneration += 1;
+      clearNotificationTimers();
       for (const unsubscribe of unsubscribers) unsubscribe();
     },
   };

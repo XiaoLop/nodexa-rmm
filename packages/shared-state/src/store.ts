@@ -1,7 +1,13 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import {
+  resolveEffectiveDeviceGroupRightsResult,
+  resolveEffectiveDeviceRightsResult,
+} from '@meshcentral/control-client';
 import type {
   Device,
   DeviceGroup,
+  DeviceSessions,
+  MeshCentralNotification,
   MeshCentralEvent,
   MeshCentralControlState,
   ServerInfo,
@@ -10,6 +16,24 @@ import type {
 import { isIdString } from './utils';
 
 const MAX_EVENTS = 100;
+const MAX_NOTIFICATIONS = 200;
+
+function notificationExpiry(notification: MeshCentralNotification): string | undefined {
+  if (
+    notification.maxTimeSeconds === undefined ||
+    !Number.isFinite(notification.maxTimeSeconds) ||
+    notification.maxTimeSeconds <= 0
+  ) {
+    return undefined;
+  }
+  const occurredAt = Date.parse(notification.occurredAt);
+  if (Number.isNaN(occurredAt)) return undefined;
+  return new Date(occurredAt + notification.maxTimeSeconds * 1000).toISOString();
+}
+
+function unreadCount(notifications: MeshCentralControlState['notifications']): number {
+  return notifications.reduce((count, notification) => count + (notification.read ? 0 : 1), 0);
+}
 
 function toRecord<T extends { id: string }>(items: T[]): Record<string, T> {
   return Object.fromEntries(items.map((item) => [item.id, item]));
@@ -36,6 +60,12 @@ const initialData = {
   devices: {},
   groups: {},
   events: [],
+  notifications: [],
+  unreadCount: 0,
+  serverWarnings: [],
+  helpRequests: {},
+  termination: undefined,
+  cacheStale: false,
   userInfo: undefined,
   serverInfo: undefined,
   reconnectAttempt: 0,
@@ -120,6 +150,140 @@ export function createMeshCentralControlStore(): MeshCentralControlStore {
         }
         return { events: [enhancedEvent, ...state.events].slice(0, MAX_EVENTS) };
       }),
+    applyAccountChanged: (userInfo) =>
+      set((state) => {
+        if (state.userInfo?.id !== userInfo.id) return state;
+        const raw =
+          typeof userInfo.raw === 'object' && userInfo.raw !== null
+            ? (userInfo.raw as Record<string, unknown>)
+            : undefined;
+        const hasLinks = raw !== undefined && Object.hasOwn(raw, 'links');
+        const mergedUserInfo: UserInfo = {
+          ...state.userInfo,
+          ...userInfo,
+          links: hasLinks ? userInfo.links : state.userInfo.links,
+          notify: Object.hasOwn(raw ?? {}, 'notify') ? userInfo.notify : state.userInfo.notify,
+          removeRights: Object.hasOwn(raw ?? {}, 'removeRights')
+            ? userInfo.removeRights
+            : state.userInfo.removeRights,
+        };
+        if (!hasLinks) return { userInfo: mergedUserInfo };
+
+        const groups = Object.fromEntries(
+          Object.entries(state.groups).filter(([, group]) => {
+            const result = resolveEffectiveDeviceGroupRightsResult(
+              group,
+              mergedUserInfo,
+              state.serverInfo,
+            );
+            return result.status !== 'resolved' || result.rights !== 0;
+          }),
+        );
+        const devices = Object.fromEntries(
+          Object.entries(state.devices).filter(([, device]) => {
+            const result = resolveEffectiveDeviceRightsResult(
+              device,
+              device.groupId ? groups[device.groupId] : undefined,
+              mergedUserInfo,
+            );
+            return result.status !== 'resolved' || result.rights !== 0;
+          }),
+        );
+        const helpRequests = Object.fromEntries(
+          Object.entries(state.helpRequests).filter(([deviceId]) => devices[deviceId] !== undefined),
+        );
+        const notifications = state.notifications.filter(
+          (notification) =>
+            notification.deviceId === undefined || devices[notification.deviceId] !== undefined,
+        );
+        return {
+          userInfo: mergedUserInfo,
+          groups,
+          devices,
+          helpRequests,
+          notifications,
+          unreadCount: unreadCount(notifications),
+        };
+      }),
+    addNotification: (notification) =>
+      set((state) => {
+        if (state.notifications.some((item) => item.id === notification.id)) return state;
+        const notifications = [
+          {
+            ...notification,
+            read: false,
+            expiresAt: notificationExpiry(notification),
+          },
+          ...state.notifications,
+        ]
+          .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
+          .slice(0, MAX_NOTIFICATIONS);
+        return { notifications, unreadCount: unreadCount(notifications) };
+      }),
+    markNotificationRead: (id) =>
+      set((state) => {
+        const readAt = new Date().toISOString();
+        const notifications = state.notifications.map((notification) =>
+          notification.id === id && !notification.read
+            ? { ...notification, read: true, readAt }
+            : notification,
+        );
+        return { notifications, unreadCount: unreadCount(notifications) };
+      }),
+    markAllNotificationsRead: () =>
+      set((state) => {
+        const readAt = new Date().toISOString();
+        const notifications = state.notifications.map((notification) =>
+          notification.read ? notification : { ...notification, read: true, readAt },
+        );
+        return { notifications, unreadCount: 0 };
+      }),
+    removeNotification: (id) =>
+      set((state) => {
+        const notifications = state.notifications.filter((notification) => notification.id !== id);
+        return { notifications, unreadCount: unreadCount(notifications) };
+      }),
+    clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
+    removeExpiredNotifications: (now = new Date().toISOString()) =>
+      set((state) => {
+        const nowTime = Date.parse(now);
+        if (Number.isNaN(nowTime)) return state;
+        const notifications = state.notifications.filter(
+          (notification) =>
+            notification.expiresAt === undefined || Date.parse(notification.expiresAt) > nowTime,
+        );
+        return { notifications, unreadCount: unreadCount(notifications) };
+      }),
+    replaceServerWarnings: (serverWarnings) => set({ serverWarnings }),
+    applyDeviceSessions: (sessions: DeviceSessions) =>
+      set((state) => {
+        const helpRequests = { ...state.helpRequests };
+        if (Object.keys(sessions.help).length === 0) {
+          delete helpRequests[sessions.deviceId];
+        } else {
+          helpRequests[sessions.deviceId] = {
+            deviceId: sessions.deviceId,
+            requests: sessions.help,
+            updatedAt: sessions.occurredAt,
+          };
+        }
+        return { helpRequests };
+      }),
+    setTermination: (termination) => set({ termination }),
+    setCacheStale: (cacheStale) => set({ cacheStale }),
+    clearSensitiveState: () =>
+      set({
+        devices: {},
+        groups: {},
+        events: [],
+        notifications: [],
+        unreadCount: 0,
+        serverWarnings: [],
+        helpRequests: {},
+        userInfo: undefined,
+        serverInfo: undefined,
+        cacheStale: false,
+      }),
     touchMessage: () => set({ lastMessageAt: new Date().toISOString() }),
     reset: () => set(initialData),
   }));
@@ -132,6 +296,12 @@ export const meshCentralControlSelectors = {
   devices: (state: MeshCentralControlState): Device[] => selectDevices(state.devices),
   groups: (state: MeshCentralControlState): DeviceGroup[] => selectGroups(state.groups),
   events: (state: MeshCentralControlState): MeshCentralEvent[] => state.events,
+  notifications: (state: MeshCentralControlState) => state.notifications,
+  unreadCount: (state: MeshCentralControlState) => state.unreadCount,
+  serverWarnings: (state: MeshCentralControlState) => state.serverWarnings,
+  helpRequests: (state: MeshCentralControlState) => state.helpRequests,
+  termination: (state: MeshCentralControlState) => state.termination,
+  cacheStale: (state: MeshCentralControlState) => state.cacheStale,
   userInfo: (state: MeshCentralControlState): UserInfo | undefined => state.userInfo,
   serverInfo: (state: MeshCentralControlState): ServerInfo | undefined => state.serverInfo,
   deviceCount: (state: MeshCentralControlState) => Object.keys(state.devices).length,

@@ -114,6 +114,70 @@ describe('MeshCentralClient', () => {
     await expect(connecting).rejects.toBeInstanceOf(MeshCentralAuthenticationError);
   });
 
+  it('does not reconnect after an explicit stopped termination', async () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeWebSocket[] = [];
+      const client = new MeshCentralClient({
+        url: 'ws://gateway.test',
+        reconnectDelaysMs: [10],
+        webSocketFactory: () => {
+          const socket = new FakeWebSocket();
+          sockets.push(socket);
+          return socket;
+        },
+      });
+      const terminations = vi.fn();
+      client.on('termination', terminations);
+      const connecting = client.connect();
+      sockets[0]!.open();
+      sockets[0]!.message({ type: 'authenticated' });
+      await connecting;
+
+      sockets[0]!.message({ action: 'stopped', msg: 'Session count exceed' });
+      sockets[0]!.close(1000, 'Stopped');
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(terminations).toHaveBeenCalledWith(
+        expect.objectContaining({ disposition: 'stopped', retryAllowed: false }),
+      );
+      expect(client.connectionStatus).toBe('disconnected');
+      expect(sockets).toHaveLength(1);
+      client.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('continues to reconnect after an unexpected network closure', async () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeWebSocket[] = [];
+      const client = new MeshCentralClient({
+        url: 'ws://gateway.test',
+        reconnectDelaysMs: [10],
+        webSocketFactory: () => {
+          const socket = new FakeWebSocket();
+          sockets.push(socket);
+          return socket;
+        },
+      });
+      const connecting = client.connect();
+      sockets[0]!.open();
+      sockets[0]!.message({ type: 'authenticated' });
+      await connecting;
+
+      sockets[0]!.close(1006, 'Network lost');
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(sockets).toHaveLength(2);
+      expect(client.connectionStatus).toBe('reconnecting');
+      client.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('matches concurrent responseid-less system information by device id', async () => {
     const { client, socket } = await connectedClient();
     const first = client.devices.systemInfo<{ nodeid: string }>('node//one');

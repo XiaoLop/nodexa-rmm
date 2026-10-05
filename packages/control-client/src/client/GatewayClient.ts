@@ -1,4 +1,5 @@
 import { EventDispatcher } from '../events/dispatcher';
+import type { ConnectionTermination } from '../lifecycle/termination';
 import {
   MeshCentralAuthenticationError,
   MeshCentralClientDestroyedError,
@@ -16,6 +17,7 @@ import { DevicesResource } from '../resources/devices';
 import { CommandsResource } from '../resources/commands';
 import { EventsResource } from '../resources/events';
 import { GroupsResource } from '../resources/groups';
+import { NotificationsResource } from '../resources/notifications';
 import { ServerResource } from '../resources/server';
 import { UserGroupsResource } from '../resources/userGroups';
 import { UsersResource } from '../resources/users';
@@ -37,6 +39,7 @@ export class MeshCentralClient {
   readonly devices: DevicesResource;
   readonly commands: CommandsResource;
   readonly groups: GroupsResource;
+    readonly notifications: NotificationsResource;
   readonly events: EventsResource;
   readonly server: ServerResource;
   readonly userGroups: UserGroupsResource;
@@ -70,6 +73,7 @@ export class MeshCentralClient {
     this.devices = new DevicesResource(this);
     this.commands = new CommandsResource(this);
     this.groups = new GroupsResource(this);
+      this.notifications = new NotificationsResource(this);
     this.events = new EventsResource(this);
     this.server = new ServerResource(this);
     this.userGroups = new UserGroupsResource(this);
@@ -164,6 +168,7 @@ export class MeshCentralClient {
     return new Promise<void>((resolve, reject) => {
       let settled = false;
       let authenticationRejected = false;
+      let terminationIntent: ConnectionTermination | undefined;
       const signals = new Set<string>();
       const socket = this.webSocketFactory(this.options.url);
       this.socket = socket;
@@ -229,6 +234,12 @@ export class MeshCentralClient {
         }
         this.dispatcher.emit('message', payload);
         const consumed = this.requestManager.consume(payload);
+        const decoded = decodePush(payload);
+        if (decoded.termination) {
+          terminationIntent = decoded.termination;
+          this.stopHeartbeat();
+          this.dispatcher.emit('termination', decoded.termination);
+        }
         const inspection = inspectConnectionMessage(payload);
         if (!settled) {
           if (inspection.status === 'rejected') {
@@ -249,7 +260,11 @@ export class MeshCentralClient {
           socket.close(4001, 'Authentication failed');
           return;
         }
-        const decoded = decodePush(payload);
+        if (decoded.notification) this.dispatcher.emit('notification', decoded.notification);
+        if (decoded.serverWarnings) this.dispatcher.emit('serverWarnings', decoded.serverWarnings);
+        if (decoded.deviceSessions) this.dispatcher.emit('deviceSessions', decoded.deviceSessions);
+        if (decoded.accountChanged) this.dispatcher.emit('accountChanged', decoded.accountChanged);
+        if (decoded.recordingReady) this.dispatcher.emit('recordingReady', decoded.recordingReady);
         if (decoded.serverInfo) this.dispatcher.emit('serverInfo', decoded.serverInfo);
         if (decoded.serverStats) this.dispatcher.emit('serverStats', decoded.serverStats);
         if (decoded.userInfo) this.dispatcher.emit('userInfo', decoded.userInfo);
@@ -282,7 +297,7 @@ export class MeshCentralClient {
           settled = true;
           reject(
             new MeshCentralConnectionError(event.reason || 'WebSocket closed before connecting.', {
-              retryable: !authenticationRejected,
+              retryable: !authenticationRejected && !terminationIntent,
             }),
           );
         }
@@ -291,6 +306,10 @@ export class MeshCentralClient {
           return;
         }
         if (authenticationRejected) return;
+        if (terminationIntent) {
+          this.setStatus('disconnected');
+          return;
+        }
         this.setStatus(
           'reconnecting',
           new MeshCentralConnectionError(event.reason || 'Connection lost.', { retryable: true }),

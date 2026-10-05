@@ -14,25 +14,23 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import {
-  Badge,
-  Button,
-  Dropdown,
-  Input,
-  Layout,
-  Menu,
-  Tooltip,
-} from 'antd';
+import { Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isFullAdministrator } from '@meshcentral/control-client';
-import { meshCentralControlSelectors, getUserDisplayName, useMeshCentralControlStore } from '@meshcentral/shared-state';
+import {
+  meshCentralControlSelectors,
+  getUserDisplayName,
+  useMeshCentralControlStore,
+} from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/BrandLogo';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
+import { NotificationCenter } from '../features/notifications/NotificationCenter';
+import { NotificationBell } from '../features/notifications/NotificationBell';
 import {
   useApplicationUiCapabilities,
   type ApplicationCapability,
@@ -165,11 +163,17 @@ export function AppLayout() {
 function AppLayoutContent() {
   const { t, i18n } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
+  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const gateway = useMeshCentralControl();
   const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
   const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
+  const devices = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.devices);
+  const unreadCount = useMeshCentralControlStore(
+    gateway.store,
+    meshCentralControlSelectors.unreadCount,
+  );
   const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
   const capabilities = useApplicationUiCapabilities();
@@ -284,20 +288,23 @@ function AppLayoutContent() {
               }}
               trigger={['click']}
             >
-              <Button
-                type="text"
-                icon={<GlobalOutlined />}
-                aria-label={t('common.language')}
-              />
+              <Button type="text" icon={<GlobalOutlined />} aria-label={t('common.language')} />
             </Dropdown>
-            <Badge count={0} size="small">
-              <Button type="text" icon={<BellOutlined />} aria-label={t('header.notifications')} />
-            </Badge>
+            <NotificationBell
+              unreadCount={unreadCount}
+              label={t('header.notifications')}
+              unreadLabel={t('notifications.unreadDescription', { count: unreadCount })}
+              onOpen={() => setNotificationCenterOpen(true)}
+            />
             <Button type="text" icon={<QuestionCircleOutlined />} aria-label={t('header.help')} />
             <Dropdown
               menu={{
                 items: [
-                  { key: 'profile', label: t('header.profile'), onClick: () => navigate('/profile') },
+                  {
+                    key: 'profile',
+                    label: t('header.profile'),
+                    onClick: () => navigate('/profile'),
+                  },
                   { type: 'divider' },
                   { key: 'logout', label: t('header.logout'), danger: true, onClick: handleLogout },
                 ],
@@ -326,6 +333,13 @@ function AppLayoutContent() {
           <Outlet />
         </Content>
       </Layout>
+      <NotificationCenter
+        open={notificationCenterOpen}
+        onClose={() => setNotificationCenterOpen(false)}
+        store={gateway.store}
+        client={gateway.client}
+        devices={devices}
+      />
     </Layout>
   );
 }

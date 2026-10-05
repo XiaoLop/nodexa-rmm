@@ -52,8 +52,21 @@ describe('protocol normalizers', () => {
       '2024-03-09T16:00:00.000Z',
     );
     expect(
-      normalizeUserInfo({ action: 'userinfo', userinfo: { _id: 'user//admin', name: 'Admin' } }),
-    ).toMatchObject({ id: 'user//admin', name: 'Admin' });
+      normalizeUserInfo({
+        action: 'userinfo',
+        userinfo: {
+          _id: 'user//admin',
+          name: 'Admin',
+          links: { 'mesh//one': { rights: 1, notify: 66 } },
+          notify: { 'mesh//one': 4, 'node//one': 2 },
+        },
+      }),
+    ).toMatchObject({
+      id: 'user//admin',
+      name: 'Admin',
+      links: { 'mesh//one': { notify: 66 } },
+      notify: { 'mesh//one': 4, 'node//one': 2 },
+    });
   });
 
   it('defaults an invalid device icon to the desktop icon', () => {

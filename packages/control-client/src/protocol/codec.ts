@@ -1,4 +1,18 @@
 import type { MeshCentralEvent, ServerInfo, ServerStats, UserInfo } from '../types';
+import { normalizeConnectionTermination } from '../lifecycle/termination';
+import {
+  normalizeDeviceSessions,
+  normalizeNotification,
+  normalizeRecordingReady,
+  normalizeServerWarnings,
+} from '../notifications/normalizers';
+import type {
+  DeviceSessions,
+  MeshCentralNotification,
+  RecordingReady,
+  ServerWarning,
+} from '../notifications/types';
+import type { ConnectionTermination } from '../lifecycle/termination';
 import {
   isRecord,
   normalizeEvent,
@@ -15,6 +29,12 @@ export type ConnectionInspection =
 
 export interface DecodedPush {
   event?: MeshCentralEvent;
+  notification?: MeshCentralNotification;
+  serverWarnings?: ServerWarning[];
+  deviceSessions?: DeviceSessions;
+  termination?: ConnectionTermination;
+  accountChanged?: UserInfo;
+  recordingReady?: RecordingReady;
   userInfo?: UserInfo;
   serverInfo?: ServerInfo;
   serverStats?: ServerStats;
@@ -41,6 +61,20 @@ export function inspectConnectionMessage(payload: unknown): ConnectionInspection
 
 export function decodePush(payload: unknown): DecodedPush {
   if (!isRecord(payload)) return { unknown: true };
+  const termination = normalizeConnectionTermination(payload);
+  if (termination) return { termination };
+  const notification = normalizeNotification(payload);
+  if (notification) return { notification };
+  const serverWarnings = normalizeServerWarnings(payload);
+  if (serverWarnings) return { serverWarnings };
+  const deviceSessions = normalizeDeviceSessions(payload);
+  if (deviceSessions) return { deviceSessions };
+  const recordingReady = normalizeRecordingReady(payload);
+  if (recordingReady) return { recordingReady };
+  const rawEvent = isRecord(payload.event) ? payload.event : undefined;
+  if (rawEvent?.action === 'accountchange' && isRecord(rawEvent.account)) {
+    return { accountChanged: normalizeUserInfo(rawEvent.account) };
+  }
   if (payload.action === 'serverstats') return { serverStats: normalizeServerStats(payload) };
   if (payload.action === 'serverinfo' || isRecord(payload.serverinfo))
     return { serverInfo: normalizeServerInfo(payload) };

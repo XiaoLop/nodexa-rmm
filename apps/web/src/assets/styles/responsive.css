@@ -107,7 +107,7 @@
     padding: 12px;
   }
   .header-actions > .ant-btn,
-  .header-actions > .ant-badge,
+  .header-actions > .ant-badge:not(.notification-trigger),
   .header-connection {
     display: none;
   }

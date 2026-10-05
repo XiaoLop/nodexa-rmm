@@ -11,6 +11,12 @@ export type {
   MeshCentralEventType,
   MeshCentralSnapshot,
   MeshCentralControlState,
+  NotificationEntry,
+  DeviceHelpRequest,
+  ConnectionTermination,
+  DeviceSessions,
+  MeshCentralNotification,
+  ServerWarning,
   UserInfo,
 } from './types';
 export * from './types/events.type';

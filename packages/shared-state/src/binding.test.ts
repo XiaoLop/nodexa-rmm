@@ -94,4 +94,160 @@ describe('bindMeshCentralClient', () => {
     expect(store.getState().events).toHaveLength(0);
     client.destroy();
   });
+
+  it('binds notifications, warning snapshots, help sessions and account changes', async () => {
+    const socket = new FakeWebSocket();
+    const client = new MeshCentralClient({
+      url: 'ws://gateway.test',
+      webSocketFactory: () => socket,
+    });
+    const store = createMeshCentralControlStore();
+    const binding = bindMeshCentralClient(store, client);
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+
+    socket.message({
+      action: 'userinfo',
+      userinfo: { _id: 'user//admin', name: 'Admin', siteadmin: 1 },
+    });
+    socket.message({
+      action: 'msg',
+      type: 'notify',
+      id: 1,
+      title: 'Security warning',
+      value: 'Failed login attempt',
+      msgid: 12,
+    });
+    socket.message({ action: 'serverwarnings', warnings: [{ id: 3, msg: 'Certificate warning' }] });
+    socket.message({
+      action: 'event',
+      event: {
+        action: 'devicesessions',
+        nodeid: 'node//one',
+        sessions: { help: { Alice: 'Need help' } },
+      },
+    });
+    socket.message({
+      action: 'event',
+      event: {
+        action: 'accountchange',
+        account: { _id: 'user//admin', name: 'Administrator', siteadmin: 1024 },
+      },
+    });
+
+    expect(store.getState().notifications[0]).toMatchObject({
+      id: '1',
+      source: 'security',
+      read: false,
+    });
+    expect(store.getState().unreadCount).toBe(1);
+    expect(store.getState().serverWarnings).toMatchObject([
+      { id: 3, message: 'Certificate warning' },
+    ]);
+    expect(store.getState().helpRequests['node//one']?.requests).toEqual({ Alice: 'Need help' });
+    expect(store.getState().userInfo).toMatchObject({
+      id: 'user//admin',
+      name: 'Administrator',
+      siteadmin: 1024,
+    });
+    binding.dispose();
+    client.destroy();
+  });
+
+  it('retains cached state during reconnect and clears it on permanent termination', async () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeWebSocket[] = [];
+      const client = new MeshCentralClient({
+        url: 'ws://gateway.test',
+        reconnectDelaysMs: [10],
+        webSocketFactory: () => {
+          const socket = new FakeWebSocket();
+          sockets.push(socket);
+          return socket;
+        },
+      });
+      const store = createMeshCentralControlStore();
+      const binding = bindMeshCentralClient(store, client);
+      const connecting = client.connect();
+      sockets[0]!.open();
+      sockets[0]!.message({ type: 'authenticated' });
+      await connecting;
+      store.getState().replaceDevices([{ id: 'node//one', name: 'One', online: true }]);
+      sockets[0]!.message({ action: 'msg', type: 'notify', id: 1, value: 'Keep me' });
+
+      sockets[0]!.close(1006, 'Network lost');
+      expect(store.getState()).toMatchObject({ cacheStale: true, unreadCount: 1 });
+      expect(store.getState().devices['node//one']).toBeDefined();
+      await vi.advanceTimersByTimeAsync(10);
+      expect(sockets).toHaveLength(2);
+
+      sockets[1]!.open();
+      sockets[1]!.message({ type: 'authenticated' });
+      sockets[1]!.message({ action: 'stopped', msg: 'Session count exceed' });
+      expect(store.getState()).toMatchObject({
+        devices: {},
+        notifications: [],
+        unreadCount: 0,
+        helpRequests: {},
+        termination: { disposition: 'stopped' },
+      });
+      binding.dispose();
+      client.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('expires notifications and clears expiry timers on disposal', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-10-05T00:00:00.000Z'));
+      const socket = new FakeWebSocket();
+      const client = new MeshCentralClient({
+        url: 'ws://gateway.test',
+        webSocketFactory: () => socket,
+      });
+      const store = createMeshCentralControlStore();
+      const binding = bindMeshCentralClient(store, client);
+      const connecting = client.connect();
+      socket.open();
+      socket.message({ type: 'authenticated' });
+      await connecting;
+      socket.message({ action: 'msg', type: 'notify', id: 1, value: 'Temporary', maxtime: 30 });
+      expect(store.getState().notifications).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(store.getState().notifications).toHaveLength(0);
+
+      socket.message({ action: 'msg', type: 'notify', id: 2, value: 'Temporary', maxtime: 30 });
+      binding.dispose();
+      client.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('removes notifications received through intersession synchronization', async () => {
+    const socket = new FakeWebSocket();
+    const client = new MeshCentralClient({
+      url: 'ws://gateway.test',
+      webSocketFactory: () => socket,
+    });
+    const store = createMeshCentralControlStore();
+    const binding = bindMeshCentralClient(store, client);
+    const connecting = client.connect();
+    socket.open();
+    socket.message({ type: 'authenticated' });
+    await connecting;
+    socket.message({ action: 'msg', type: 'notify', id: 1, value: 'Remove me' });
+    expect(store.getState().notifications).toHaveLength(1);
+    socket.message({ action: 'intersession', subaction: 'removeNotify', id: 1 });
+    expect(store.getState().notifications).toHaveLength(0);
+    expect(store.getState().unreadCount).toBe(0);
+    binding.dispose();
+    client.destroy();
+  });
 });

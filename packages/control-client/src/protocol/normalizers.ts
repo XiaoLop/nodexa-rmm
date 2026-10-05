@@ -58,10 +58,25 @@ function normalizeUserInfoLinks(value: unknown): Record<string, UserInfoLink> {
       id,
       type: linkType(id),
       rights: normalizeRights(link.rights),
+      notify:
+        typeof link.notify === 'number' && Number.isInteger(link.notify) && link.notify >= 0
+          ? normalizeRights(link.notify)
+          : undefined,
       name: stringValue(link.name),
     };
   }
   return links;
+}
+
+function normalizeNotificationMasks(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {};
+  const masks: Record<string, number> = {};
+  for (const [id, mask] of Object.entries(value)) {
+    if (typeof mask === 'number' && Number.isInteger(mask) && mask >= 0) {
+      masks[id] = normalizeRights(mask);
+    }
+  }
+  return masks;
 }
 
 export function timestampValue(value: unknown): string | undefined {
@@ -284,6 +299,7 @@ export function normalizeUserInfo(value: unknown): UserInfo | undefined {
         ? normalizeRights(raw.removeRights)
         : 0,
     links: normalizeUserInfoLinks(raw.links),
+    notify: normalizeNotificationMasks(raw.notify),
     creationAt: timestampValue(raw.creation),
     lastLoginAt: timestampValue(raw.login),
     lastAccessAt: timestampValue(raw.access),
