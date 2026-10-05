@@ -7,7 +7,10 @@ import { createMeshCentralControlStore } from './store';
 describe('bindMeshCentralClient', () => {
   it('synchronizes snapshots and applies realtime events', async () => {
     const socket = new FakeWebSocket();
-    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const client = new MeshCentralClient({
+      url: 'ws://gateway.test',
+      webSocketFactory: () => socket,
+    });
     const store = createMeshCentralControlStore();
     const binding = bindMeshCentralClient(store, client);
     const connecting = client.connect();
@@ -49,13 +52,37 @@ describe('bindMeshCentralClient', () => {
     });
     expect(store.getState().devices['node//one']?.online).toBe(false);
     expect(store.getState().events[0]?.type).toBe('deviceOffline');
+
+    socket.message({
+      action: 'event',
+      event: { action: 'nodeconnect', nodeid: 'node//one', conn: 1, pwr: 1 },
+    });
+    expect(store.getState().devices['node//one']?.online).toBe(true);
+    expect(store.getState().events[0]?.type).toBe('deviceOnline');
+
+    socket.message({
+      action: 'event',
+      event: {
+        action: 'changenode',
+        nodeid: 'node//one',
+        node: { _id: 'node//one', name: 'Renamed', osdesc: 'Ubuntu 24.04' },
+      },
+    });
+    expect(store.getState().devices['node//one']).toMatchObject({
+      name: 'Renamed',
+      online: true,
+      platform: 'Ubuntu 24.04',
+    });
     binding.dispose();
     client.destroy();
   });
 
   it('does not write after disposal', async () => {
     const socket = new FakeWebSocket();
-    const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });
+    const client = new MeshCentralClient({
+      url: 'ws://gateway.test',
+      webSocketFactory: () => socket,
+    });
     const store = createMeshCentralControlStore();
     const binding = bindMeshCentralClient(store, client);
     binding.dispose();

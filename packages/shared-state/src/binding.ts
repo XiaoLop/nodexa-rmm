@@ -48,8 +48,20 @@ function applyEvent(store: MeshCentralControlStore, event: MeshCentralEvent): vo
 
   if (event.type === 'deviceChanged' && event.deviceId) {
     const raw = event.raw as Record<string, unknown> | undefined;
-    const device = normalizeDevice(raw?.node ?? raw?.device, event.deviceId);
-    if (device) state.upsertDevice(device);
+    const rawDevice = raw?.node ?? raw?.device;
+    const device = normalizeDevice(rawDevice, event.deviceId);
+    if (device) {
+      const hasConnectionState =
+        typeof rawDevice === 'object' &&
+        rawDevice !== null &&
+        (typeof (rawDevice as Record<string, unknown>).online === 'boolean' ||
+          typeof (rawDevice as Record<string, unknown>).conn === 'number');
+      state.upsertDevice(
+        hasConnectionState
+          ? device
+          : { ...device, online: state.devices[event.deviceId]?.online ?? false },
+      );
+    }
     return;
   }
 
