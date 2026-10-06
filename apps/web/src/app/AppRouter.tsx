@@ -160,14 +160,6 @@ export function AppRouter() {
             }
           />
           <Route path="/admin/*" element={<ComingSoonPage />} />
-          <Route
-            path="/settings/*"
-            element={
-              <RequireCapability capability="manageSettings">
-                <ComingSoonPage />
-              </RequireCapability>
-            }
-          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

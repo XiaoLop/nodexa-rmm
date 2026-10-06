@@ -2,7 +2,6 @@ import {
   AndroidOutlined,
   AppleOutlined,
   ArrowRightOutlined,
-  BellOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
@@ -418,7 +417,6 @@ export function DashboardPage() {
         <div className="dashboard-quick-actions">
           <button type="button" onClick={() => navigate('/devices')}><DesktopOutlined /><span>{t('dashboard.welcome.addDevice')}</span><RightOutlined /></button>
           <button type="button" onClick={() => navigate('/admin/users')}><UserOutlined /><span>{t('dashboard.welcome.createUser')}</span><RightOutlined /></button>
-          <button type="button" onClick={() => navigate('/settings')}><BellOutlined /><span>{t('dashboard.welcome.alertRules')}</span><RightOutlined /></button>
         </div>
       </section>
 

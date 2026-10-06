@@ -513,7 +513,6 @@ export const zhCN = {
     administration: '管理',
     userManagement: '用户管理',
     userGroups: '用户组',
-    settings: '设置',
     deviceWorkspace: '设备工作台',
     userDetails: '用户详情',
     userGroupDetails: '用户组详情',

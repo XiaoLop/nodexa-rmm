@@ -538,7 +538,6 @@ export const enUS = {
     administration: 'Administration',
     userManagement: 'User management',
     userGroups: 'User groups',
-    settings: 'Settings',
     deviceWorkspace: 'Device workspace',
     userDetails: 'User details',
     userGroupDetails: 'User group details',

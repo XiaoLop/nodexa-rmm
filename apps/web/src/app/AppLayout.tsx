@@ -10,7 +10,6 @@ import {
   ProfileOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
-  SettingOutlined,
   TeamOutlined,
   ThunderboltOutlined,
   UserOutlined,
@@ -113,12 +112,6 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
         labelKey: 'navigation.userGroups',
         required: 'manageUserGroups',
       },
-      {
-        key: '/settings',
-        icon: <SettingOutlined />,
-        labelKey: 'navigation.settings',
-        required: 'manageSettings',
-      },
     ],
   },
 ];
@@ -134,7 +127,6 @@ const pageTitleKeys: Record<string, [string, string]> = {
   '/monitoring/reports': ['navigation.monitoringAndEvents', 'navigation.reports'],
   '/admin/users': ['navigation.administration', 'navigation.userManagement'],
   '/admin/roles': ['navigation.administration', 'navigation.userGroups'],
-  '/settings': ['navigation.administration', 'navigation.settings'],
 };
 
 function resolvePageMeta(pathname: string, t: TFunction) {
