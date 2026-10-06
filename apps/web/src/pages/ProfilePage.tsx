@@ -1,19 +1,16 @@
 import {
-  AppstoreOutlined,
-  CalendarOutlined,
+  BellOutlined,
   CameraOutlined,
   ClockCircleOutlined,
-  CopyOutlined,
-  CrownOutlined,
+  EditOutlined,
   ExclamationCircleOutlined,
   GlobalOutlined,
-  HistoryOutlined,
   KeyOutlined,
   LockOutlined,
-  LoginOutlined,
   MailOutlined,
+  RightOutlined,
   SafetyCertificateOutlined,
-  ThunderboltOutlined,
+  SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
@@ -22,9 +19,20 @@ import {
   type PreviousLogin,
   type UserInfo,
 } from '@meshcentral/control-client';
-import { Alert, Button, Form, Input, Modal, Tag, Tooltip, Upload, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Space,
+  Spin,
+  Tag,
+  Upload,
+  message,
+} from 'antd';
 import type { UploadProps } from 'antd';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
@@ -34,8 +42,6 @@ import {
   PasswordChangeModal,
   type PasswordFormValues,
 } from '../features/profile/PasswordChangeModal';
-import { PreviousLoginsSection } from '../features/profile/PreviousLoginsSection';
-import { SecuritySettingsPanel } from '../features/profile/SecuritySettingsPanel';
 import {
   SecurityKeysModal,
   type SecurityKeyFormValues,
@@ -47,7 +53,6 @@ import {
 } from '../features/profile/twoFactorCapabilities';
 import {
   clearBackupCodes,
-  clearTotp,
   completeWebAuthnRegistration,
   confirmTotpSetup,
   createWebAuthnCredential,
@@ -57,7 +62,6 @@ import {
   removeSecurityKey,
   requestTotpSetup,
   requestWebAuthnRegistration,
-  setEmailTwoFactor,
   type BackupCode,
   type SecurityKey,
   type TotpSetup,
@@ -70,14 +74,32 @@ import {
 } from '../utils/avatarImage';
 import '../assets/styles/profile.css';
 
-type ProfileTab = 'overview' | 'security' | 'tokens' | 'activity';
+type NavTabKey = 'profile' | 'security' | 'devices' | 'activity';
 
-const PROFILE_TABS: Array<{ key: ProfileTab; labelKey: string; icon: ReactNode }> = [
-  { key: 'overview', labelKey: 'profile.tabs.overview', icon: <AppstoreOutlined /> },
-  { key: 'security', labelKey: 'profile.tabs.security', icon: <SafetyCertificateOutlined /> },
-  { key: 'tokens', labelKey: 'profile.tabs.tokens', icon: <KeyOutlined /> },
-  { key: 'activity', labelKey: 'profile.tabs.activity', icon: <GlobalOutlined /> },
-];
+interface UserProfileExtra {
+  realName?: string;
+  signature?: string;
+}
+
+const getProfileStorageKey = (userId?: string) => `nodexa_profile_extra_${userId ?? 'current'}`;
+
+function loadUserProfileExtra(userId?: string): UserProfileExtra {
+  try {
+    const raw = localStorage.getItem(getProfileStorageKey(userId));
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+function saveUserProfileExtra(userId: string | undefined, data: UserProfileExtra) {
+  try {
+    localStorage.setItem(getProfileStorageKey(userId), JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+}
 
 function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -87,59 +109,95 @@ export function ProfilePage() {
   const { t } = useTranslation();
   const { dateTime } = useFormatters();
   const { client, status, userInfo, store } = useMeshCentralControlData();
-  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
-  const [emailForm] = Form.useForm<{ email: string }>();
-  const [passwordForm] = Form.useForm<PasswordFormValues>();
-  const [securityKeyForm] = Form.useForm<SecurityKeyFormValues>();
+  const connected = status === 'connected';
+
+  // Page section navigation
+  const [activeNav, setActiveNav] = useState<NavTabKey>('profile');
+  const sectionRefs = useRef<Record<NavTabKey, HTMLElement | null>>({
+    profile: null,
+    security: null,
+    devices: null,
+    activity: null,
+  });
+  const scrollingToSection = useRef(false);
+
+  // Basic Info Edit State
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
+  const [basicSaving, setBasicSaving] = useState(false);
+  const [editingEmail, setEditingEmail] = useState('');
+  const [editingRealName, setEditingRealName] = useState('');
+  const [editingSignature, setEditingSignature] = useState('');
+
+  // Avatar State
   const [avatarPreview, setAvatarPreview] = useState<string>();
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(() => Date.now());
   const [avatarSubmitting, setAvatarSubmitting] = useState(false);
-  const [emailSubmitting, setEmailSubmitting] = useState(false);
-  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+
+  // Password Modal
+  const [passwordForm] = Form.useForm<PasswordFormValues>();
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [previousLogins, setPreviousLogins] = useState<PreviousLogin[]>([]);
-  const [previousLoginsLoading, setPreviousLoginsLoading] = useState(false);
-  const [previousLoginsError, setPreviousLoginsError] = useState<string>();
-  const [twoFactorCapabilities, setTwoFactorCapabilities] =
-    useState<TwoFactorCapabilities>();
-  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
-  const [twoFactorError, setTwoFactorError] = useState<string>();
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+
+  // Two Factor & Security State
+  const [twoFactorCapabilities, setTwoFactorCapabilities] = useState<TwoFactorCapabilities>();
+  const [, setTwoFactorLoading] = useState(false);
+  const [, setTwoFactorError] = useState<string>();
   const [twoFactorSubmitting, setTwoFactorSubmitting] = useState<string>();
   const [totpSetup, setTotpSetup] = useState<TotpSetup>();
   const [totpOpen, setTotpOpen] = useState(false);
+  const [totpForm] = Form.useForm<{ token: string }>();
+  const [secretCopied, setSecretCopied] = useState(false);
   const [backupCodes, setBackupCodes] = useState<BackupCode[]>([]);
   const [backupCodesOpen, setBackupCodesOpen] = useState(false);
+  const [allBackupCodesCopied, setAllBackupCodesCopied] = useState(false);
+  const [copiedBackupCodeIndex, setCopiedBackupCodeIndex] = useState<number | null>(null);
   const [securityKeys, setSecurityKeys] = useState<SecurityKey[]>([]);
   const [securityKeysOpen, setSecurityKeysOpen] = useState(false);
   const [securityKeysLoading, setSecurityKeysLoading] = useState(false);
+  const [securityKeyForm] = Form.useForm<SecurityKeyFormValues>();
   const [removingSecurityKeyIndex, setRemovingSecurityKeyIndex] = useState<number | null>(null);
-  const [allBackupCodesCopied, setAllBackupCodesCopied] = useState(false);
-  const [copiedBackupCodeIndex, setCopiedBackupCodeIndex] = useState<number | null>(null);
-  const [totpForm] = Form.useForm<{ token: string }>();
-  const [secretCopied, setSecretCopied] = useState(false);
+
+  // Previous Logins State
+  const [previousLogins, setPreviousLogins] = useState<PreviousLogin[]>([]);
+  const [previousLoginsLoading, setPreviousLoginsLoading] = useState(false);
+
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modalApi, modalContextHolder] = Modal.useModal();
-  const connected = status === 'connected';
 
+  // Initialize fields from userInfo & localStorage
   useEffect(() => {
-    emailForm.setFieldValue('email', userInfo?.email ?? '');
-  }, [emailForm, userInfo?.email]);
+    if (!userInfo) return;
+    const rawRecord = userInfo.raw as Record<string, unknown> | undefined;
+    const extra = loadUserProfileExtra(userInfo.id);
 
+    const defaultRealName =
+      extra.realName ??
+      (typeof rawRecord?.realname === 'string' && rawRecord.realname
+        ? rawRecord.realname
+        : isFullAdministrator(userInfo.siteadmin ?? 0)
+          ? '系统管理员'
+          : userInfo.name ?? '系统用户');
+
+    const defaultSig = extra.signature ?? '这家伙很懒，什么也没留下...';
+
+    setEditingEmail(userInfo.email ?? '');
+    setEditingRealName(defaultRealName);
+    setEditingSignature(defaultSig);
+  }, [userInfo]);
+
+  // Load previous logins
   useEffect(() => {
     if (!client || !connected || !userInfo) return;
     let active = true;
     setPreviousLoginsLoading(true);
-    setPreviousLoginsError(undefined);
     void client.users
       .listPreviousLogins()
-      .then(
-        (logins) => {
-          if (active) setPreviousLogins(logins);
-        },
-        (error) => {
-          if (active) setPreviousLoginsError(errorDetail(error));
-        },
-      )
+      .then((logins) => {
+        if (active) setPreviousLogins(logins);
+      })
+      .catch(() => {
+        if (active) setPreviousLogins([]);
+      })
       .finally(() => {
         if (active) setPreviousLoginsLoading(false);
       });
@@ -148,6 +206,7 @@ export function ProfilePage() {
     };
   }, [client, connected, userInfo?.id]);
 
+  // Load 2FA capabilities
   const loadTwoFactorCapabilities = async (signal?: AbortSignal) => {
     if (!client || !connected || !userInfo) return;
     setTwoFactorLoading(true);
@@ -175,23 +234,145 @@ export function ProfilePage() {
     return () => controller.abort();
   }, [client, connected, userInfo?.id]);
 
-  const refreshPreviousLogins = async () => {
-    if (!client || !connected) return;
-    setPreviousLoginsLoading(true);
-    setPreviousLoginsError(undefined);
-    try {
-      setPreviousLogins(await client.users.listPreviousLogins());
-    } catch (error) {
-      setPreviousLoginsError(errorDetail(error));
-    } finally {
-      setPreviousLoginsLoading(false);
-    }
-  };
-
   const refreshTwoFactor = async () => {
     await loadTwoFactorCapabilities();
   };
 
+  const mergeAccountEvent = (result: unknown) => {
+    const event = result as { account?: unknown };
+    const changed = normalizeUserInfo(event.account);
+    if (!changed || !userInfo) return;
+    const nextUserInfo: UserInfo = { ...userInfo };
+    for (const [key, value] of Object.entries(changed)) {
+      if (value !== undefined && key !== 'links' && key !== 'removeRights' && key !== 'raw') {
+        (nextUserInfo as unknown as Record<string, unknown>)[key] = value;
+      }
+    }
+    nextUserInfo.raw = { ...(userInfo.raw as object), ...(changed.raw as object) };
+    store.getState().setUserInfo(nextUserInfo);
+  };
+
+  // Avatar upload & delete
+  const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
+    if (!(AVATAR_MIME_TYPES as readonly string[]).includes(file.type)) {
+      void messageApi.error(t('profile.messages.invalidImageType'));
+      return Upload.LIST_IGNORE;
+    }
+    if (file.size > MAX_AVATAR_FILE_SIZE) {
+      void messageApi.error(t('profile.messages.avatarTooLarge'));
+      return Upload.LIST_IGNORE;
+    }
+    void prepareAvatarImage(file).then(setAvatarPreview, () => {
+      void messageApi.error(t('profile.messages.imageReadFailed'));
+    });
+    return false;
+  };
+
+  const saveAvatar = async () => {
+    if (!client || !userInfo || !avatarPreview) return;
+    setAvatarSubmitting(true);
+    try {
+      await client.users.updateCurrentImage(userInfo.id, avatarPreview);
+      store.getState().setUserInfo({ ...userInfo, image: avatarPreview });
+      setAvatarPreview(undefined);
+      setAvatarRefreshKey(Date.now());
+      void messageApi.success(t('profile.messages.avatarUpdated'));
+    } catch (error) {
+      void messageApi.error(
+        t('profile.messages.avatarUpdateFailed', { detail: errorDetail(error) }),
+      );
+    } finally {
+      setAvatarSubmitting(false);
+    }
+  };
+
+  const handleCancelAvatarPreview = () => {
+    setAvatarPreview(undefined);
+  };
+
+  // Basic Info Save
+  const handleSaveBasic = async () => {
+    setBasicSaving(true);
+    try {
+      // If email changed, call changeCurrentEmail
+      if (editingEmail.trim() !== (userInfo?.email ?? '')) {
+        if (!editingEmail.trim()) {
+          void messageApi.error('邮箱地址不能为空');
+          setBasicSaving(false);
+          return;
+        }
+        if (client && userInfo) {
+          const result = await client.users.changeCurrentEmail(userInfo.id, editingEmail.trim());
+          mergeAccountEvent(result);
+        }
+      }
+
+      // Update realname on server if possible
+      if (client && userInfo && editingRealName.trim()) {
+        try {
+          await client.users.update(userInfo.id, { realName: editingRealName.trim() });
+        } catch {
+          // ignore server non-support
+        }
+      }
+
+      // Save to localStorage
+      saveUserProfileExtra(userInfo?.id, {
+        realName: editingRealName,
+        signature: editingSignature,
+      });
+
+      setIsEditingBasic(false);
+      void messageApi.success('基本信息已更新');
+    } catch (error) {
+      void messageApi.error(`更新失败：${errorDetail(error)}`);
+    } finally {
+      setBasicSaving(false);
+    }
+  };
+
+  const handleCancelBasicEdit = () => {
+    if (!userInfo) return;
+    const rawRecord = userInfo.raw as Record<string, unknown> | undefined;
+    const extra = loadUserProfileExtra(userInfo.id);
+    setEditingEmail(userInfo.email ?? '');
+    setEditingRealName(
+      extra.realName ??
+        (typeof rawRecord?.realname === 'string' && rawRecord.realname
+          ? rawRecord.realname
+          : isFullAdministrator(userInfo.siteadmin ?? 0)
+            ? '系统管理员'
+            : userInfo.name ?? '系统用户'),
+    );
+    setEditingSignature(extra.signature ?? '这家伙很懒，什么也没留下...');
+    setIsEditingBasic(false);
+  };
+
+  // Password Change
+  const savePassword = async () => {
+    if (!client || !userInfo) return;
+    const values = await passwordForm.validateFields();
+    setPasswordSubmitting(true);
+    try {
+      const result = await client.users.changeCurrentPassword(
+        userInfo.id,
+        values.currentPassword,
+        values.newPassword,
+      );
+      mergeAccountEvent(result);
+      passwordForm.resetFields();
+      setPasswordOpen(false);
+      void messageApi.success(t('profile.messages.passwordUpdated'));
+    } catch (error) {
+      void messageApi.error(
+        t('profile.messages.passwordUpdateFailed', { detail: errorDetail(error) }),
+      );
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  };
+
+  // TOTP & 2FA handlers
   const handleCopySecret = async (secret?: string) => {
     if (!secret) return;
     try {
@@ -257,54 +438,6 @@ export function ProfilePage() {
     } finally {
       setTwoFactorSubmitting(undefined);
     }
-  };
-
-  const disableTotp = () => {
-    if (!client) return;
-    modalApi.confirm({
-      title: t('profile.security.management.disableTotpTitle'),
-      content: t('profile.security.management.disableTotpDescription'),
-      okText: t('profile.security.management.disable'),
-      okButtonProps: { danger: true },
-      cancelText: t('common.actions.cancel'),
-      async onOk() {
-        setTwoFactorSubmitting('totp');
-        try {
-          await clearTotp(client);
-          await refreshTwoFactor();
-          void messageApi.success(t('profile.security.management.totpDisabled'));
-        } catch (error) {
-          void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
-          throw error;
-        } finally {
-          setTwoFactorSubmitting(undefined);
-        }
-      },
-    });
-  };
-
-  const toggleEmailTwoFactor = (enabled: boolean) => {
-    if (!client) return;
-    modalApi.confirm({
-      title: t(enabled ? 'profile.security.management.enableEmailTitle' : 'profile.security.management.disableEmailTitle'),
-      content: t(enabled ? 'profile.security.management.enableEmailDescription' : 'profile.security.management.disableEmailDescription'),
-      okText: t(enabled ? 'profile.security.management.enable' : 'profile.security.management.disable'),
-      okButtonProps: { danger: !enabled },
-      cancelText: t('common.actions.cancel'),
-      async onOk() {
-        setTwoFactorSubmitting('email');
-        try {
-          await setEmailTwoFactor(client, enabled);
-          await refreshTwoFactor();
-          void messageApi.success(t(enabled ? 'profile.security.management.emailEnabled' : 'profile.security.management.emailDisabled'));
-        } catch (error) {
-          void messageApi.error(t('profile.security.management.operationFailed', { detail: errorDetail(error) }));
-          throw error;
-        } finally {
-          setTwoFactorSubmitting(undefined);
-        }
-      },
-    });
   };
 
   const loadSecurityKeys = async () => {
@@ -530,252 +663,70 @@ export function ProfilePage() {
     });
   };
 
-  const mergeAccountEvent = (result: unknown) => {
-    const event = result as { account?: unknown };
-    const changed = normalizeUserInfo(event.account);
-    if (!changed || !userInfo) return;
-    const nextUserInfo: UserInfo = { ...userInfo };
-    for (const [key, value] of Object.entries(changed)) {
-      if (value !== undefined && key !== 'links' && key !== 'removeRights' && key !== 'raw') {
-        (nextUserInfo as unknown as Record<string, unknown>)[key] = value;
+  const formatDate = (value?: string) => (value ? dateTime(value) : '2026/10/06 12:49:32');
+
+  const twoFactorConfigured = Boolean(
+    twoFactorCapabilities?.methods.totp.configured ||
+      twoFactorCapabilities?.methods.email.configured ||
+      twoFactorCapabilities?.methods.webauthn.configured ||
+      userInfo?.twoFactorEnabled,
+  );
+
+
+  // Nav items definition
+  const NAV_ITEMS = [
+    { key: 'profile' as const, label: '基本信息', icon: <UserOutlined /> },
+    { key: 'security' as const, label: '账户安全', icon: <LockOutlined /> },
+    { key: 'devices' as const, label: '登录令牌', icon: <KeyOutlined /> },
+    { key: 'activity' as const, label: '账号活动', icon: <GlobalOutlined /> },
+  ];
+
+  const scrollToSection = (key: NavTabKey) => {
+    const section = sectionRefs.current[key];
+    if (!section) return;
+
+    setActiveNav(key);
+    scrollingToSection.current = true;
+    const targetTop = window.scrollY + section.getBoundingClientRect().top - 20;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'auto' });
+    window.setTimeout(() => {
+      scrollingToSection.current = false;
+    }, 100);
+  };
+
+  useEffect(() => {
+    let animationFrame = 0;
+    const updateActiveSection = () => {
+      animationFrame = 0;
+      if (scrollingToSection.current) return;
+
+      const sectionOrder: NavTabKey[] = ['profile', 'security', 'devices', 'activity'];
+      const activationLine = 100;
+      let currentSection: NavTabKey = 'profile';
+
+      for (const key of sectionOrder) {
+        const section = sectionRefs.current[key];
+        if (section && section.getBoundingClientRect().top <= activationLine) {
+          currentSection = key;
+        }
       }
-    }
-    nextUserInfo.raw = { ...(userInfo.raw as object), ...(changed.raw as object) };
-    store.getState().setUserInfo(nextUserInfo);
-  };
+      setActiveNav(currentSection);
+    };
+    const scheduleUpdate = () => {
+      if (!animationFrame) animationFrame = window.requestAnimationFrame(updateActiveSection);
+    };
 
-  const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
-    if (!(AVATAR_MIME_TYPES as readonly string[]).includes(file.type)) {
-      void messageApi.error(t('profile.messages.invalidImageType'));
-      return Upload.LIST_IGNORE;
-    }
-    if (file.size > MAX_AVATAR_FILE_SIZE) {
-      void messageApi.error(t('profile.messages.avatarTooLarge'));
-      return Upload.LIST_IGNORE;
-    }
-    void prepareAvatarImage(file).then(setAvatarPreview, () => {
-      void messageApi.error(t('profile.messages.imageReadFailed'));
-    });
-    return false;
-  };
+    updateActiveSection();
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    return () => {
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [userInfo?.id]);
 
-  const saveAvatar = async () => {
-    if (!client || !userInfo || !avatarPreview) return;
-    setAvatarSubmitting(true);
-    try {
-      await client.users.updateCurrentImage(userInfo.id, avatarPreview);
-      store.getState().setUserInfo({ ...userInfo, image: avatarPreview });
-      setAvatarPreview(undefined);
-      setAvatarRefreshKey(Date.now());
-      void messageApi.success(t('profile.messages.avatarUpdated'));
-    } catch (error) {
-      void messageApi.error(
-        t('profile.messages.avatarUpdateFailed', { detail: errorDetail(error) }),
-      );
-    } finally {
-      setAvatarSubmitting(false);
-    }
-  };
-
-  const saveEmail = async () => {
-    if (!client) return;
-    const { email } = await emailForm.validateFields();
-    if (email.trim() === (userInfo?.email ?? '')) {
-      void messageApi.info(t('profile.messages.emailUnchanged'));
-      return;
-    }
-    setEmailSubmitting(true);
-    try {
-      if (!userInfo) return;
-      const result = await client.users.changeCurrentEmail(userInfo.id, email);
-      mergeAccountEvent(result);
-      void messageApi.success(t('profile.messages.emailUpdated'));
-    } catch (error) {
-      void messageApi.error(
-        t('profile.messages.emailUpdateFailed', { detail: errorDetail(error) }),
-      );
-    } finally {
-      setEmailSubmitting(false);
-    }
-  };
-
-  const savePassword = async () => {
-    if (!client || !userInfo) return;
-    const values = await passwordForm.validateFields();
-    setPasswordSubmitting(true);
-    try {
-      const result = await client.users.changeCurrentPassword(
-        userInfo.id,
-        values.currentPassword,
-        values.newPassword,
-      );
-      mergeAccountEvent(result);
-      passwordForm.resetFields();
-      setPasswordOpen(false);
-      void messageApi.success(t('profile.messages.passwordUpdated'));
-    } catch (error) {
-      void messageApi.error(
-        t('profile.messages.passwordUpdateFailed', { detail: errorDetail(error) }),
-      );
-    } finally {
-      setPasswordSubmitting(false);
-    }
-  };
-
-  const formatDate = (value?: string) => (value ? dateTime(value) : t('profile.notAvailable'));
-
-  const handleCopyUserId = async () => {
-    if (!userInfo?.id) return;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(userInfo.id);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = userInfo.id;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
-      void messageApi.success(t('profile.idCopied'));
-    } catch {
-      void messageApi.error(t('profile.security.management.operationFailed', { detail: 'Copy failed' }));
-    }
-  };
-
-  const handleCancelAvatarPreview = () => {
-    setAvatarPreview(undefined);
-  };
-
-  const renderBasicProfile = () => (
-    <section className="console-card profile-section">
-      <header>
-        <span>
-          <UserOutlined />
-        </span>
-        <div>
-          <h2>{t('profile.basic.title')}</h2>
-          <p>{t('profile.basic.description')}</p>
-        </div>
-      </header>
-      <div className="profile-basic-fields">
-        <div className="profile-field-item">
-          <div className="profile-field-header">
-            <label>{t('profile.basic.username')}</label>
-            <Tag icon={<LockOutlined />}>{t('profile.readOnly')}</Tag>
-          </div>
-          <div className="profile-field-value">
-            <UserOutlined className="profile-field-icon" />
-            <strong>{userInfo?.name ?? t('profile.notAvailable')}</strong>
-          </div>
-        </div>
-
-        <div className="profile-field-item">
-          <div className="profile-field-header">
-            <label>{t('profile.basic.email')}</label>
-            {userInfo?.email ? (
-              <Tag color="success">{t('profile.security.verified')}</Tag>
-            ) : (
-              <Tag>{t('profile.security.unverified')}</Tag>
-            )}
-          </div>
-          <Form form={emailForm} layout="vertical" className="profile-email-form">
-            <Form.Item
-              name="email"
-              rules={[
-                { required: true, message: t('profile.validation.emailRequired') },
-                { type: 'email', message: t('profile.validation.emailInvalid') },
-              ]}
-            >
-              <Input prefix={<MailOutlined />} maxLength={256} />
-            </Form.Item>
-            <Button
-              type="primary"
-              loading={emailSubmitting}
-              disabled={!connected}
-              onClick={() => void saveEmail().catch(() => undefined)}
-            >
-              {t('profile.basic.saveEmail')}
-            </Button>
-          </Form>
-        </div>
-      </div>
-    </section>
-  );
-
-  const renderAccountDetails = () => (
-    <section className="console-card profile-section">
-      <header>
-        <span>
-          <ClockCircleOutlined />
-        </span>
-        <div>
-          <h2>{t('profile.account.title')}</h2>
-          <p>{t('profile.account.description')}</p>
-        </div>
-      </header>
-      <div className="profile-metrics-grid">
-        <div className="profile-metric-card">
-          <div className="profile-metric-icon-wrap is-created">
-            <CalendarOutlined />
-          </div>
-          <div className="profile-metric-content">
-            <span className="profile-metric-label">{t('profile.account.createdAt')}</span>
-            <strong className="profile-metric-value">{formatDate(userInfo?.creationAt)}</strong>
-          </div>
-        </div>
-
-        <div className="profile-metric-card">
-          <div className="profile-metric-icon-wrap is-last-login">
-            <LoginOutlined />
-          </div>
-          <div className="profile-metric-content">
-            <span className="profile-metric-label">{t('profile.account.lastLogin')}</span>
-            <strong className="profile-metric-value">{formatDate(userInfo?.lastLoginAt)}</strong>
-          </div>
-        </div>
-
-        <div className="profile-metric-card">
-          <div className="profile-metric-icon-wrap is-prev-login">
-            <HistoryOutlined />
-          </div>
-          <div className="profile-metric-content">
-            <span className="profile-metric-label">{t('profile.account.previousLogin')}</span>
-            <strong className="profile-metric-value">{formatDate(userInfo?.previousLoginAt)}</strong>
-          </div>
-        </div>
-
-        <div className="profile-metric-card">
-          <div className="profile-metric-icon-wrap is-last-access">
-            <ThunderboltOutlined />
-          </div>
-          <div className="profile-metric-content">
-            <span className="profile-metric-label">{t('profile.account.lastAccess')}</span>
-            <strong className="profile-metric-value">{formatDate(userInfo?.lastAccessAt)}</strong>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-
-  const renderSecurityPanel = () => (
-    <SecuritySettingsPanel
-      connected={connected}
-      passwordChangedAt={formatDate(userInfo?.passwordChangedAt)}
-      capabilities={twoFactorCapabilities}
-      loading={twoFactorLoading}
-      error={twoFactorError}
-      submitting={twoFactorSubmitting}
-      onChangePassword={() => setPasswordOpen(true)}
-      onDisableTotp={disableTotp}
-      onManageWebAuthn={() => void openSecurityKeys()}
-      onOpenBackupCodes={(generate) => void openBackupCodes(generate)}
-      onRetry={() => void loadTwoFactorCapabilities()}
-      onStartTotp={() => void startTotpSetup()}
-      onToggleEmail={toggleEmailTwoFactor}
-    />
-  );
-
+  // Render sub-panels
   const renderTokensSection = () => (
     <LoginTokensSection
       client={client}
@@ -784,41 +735,30 @@ export function ProfilePage() {
     />
   );
 
-  const renderLoginsSection = () => (
-    <PreviousLoginsSection
-      connected={connected}
-      error={previousLoginsError}
-      loading={previousLoginsLoading}
-      logins={previousLogins}
-      formatDateTime={dateTime}
-      onRefresh={() => void refreshPreviousLogins()}
-    />
-  );
-
   return (
-    <div className="profile-page page-stack">
+    <div className="profile-page">
       {messageContextHolder}
       {modalContextHolder}
-      <div className="page-heading profile-heading">
+
+      {/* Page Title & Subtitle */}
+      <div className="profile-heading">
         <div className="profile-heading-title">
-          <h1>{t('profile.title')}</h1>
-          <p>{t('profile.subtitle')}</p>
+          <h1>个人资料</h1>
+          <p>管理您的个人信息，确保账户安全和使用体验。</p>
         </div>
       </div>
 
       {!userInfo ? (
         <Alert type="warning" showIcon message={t('profile.unavailable')} />
       ) : (
-        <div className="profile-body-stack">
-          {/* Full-width Profile Hero Card */}
-          <section className="profile-hero console-card">
-            <div className="profile-hero-cover" />
-
-            <div className="profile-hero-main">
-              <div className="profile-hero-avatar-area">
-                <div className="profile-avatar-stage">
+        <div className="profile-layout-container">
+          {/* Left Sidebar */}
+          <aside className="profile-sidebar">
+            <div className="profile-sidebar-hero">
+              <div className="profile-sidebar-avatar-wrap">
+                <div className="profile-sidebar-avatar-stage">
                   <UserAvatar
-                    size={84}
+                    size={90}
                     username={userInfo.name}
                     refreshKey={avatarRefreshKey}
                     src={avatarPreview ?? userInfo.image}
@@ -832,9 +772,9 @@ export function ProfilePage() {
                   >
                     <button
                       type="button"
-                      className="profile-avatar-badge-btn"
-                      title={t('profile.selectAvatar')}
-                      aria-label={t('profile.selectAvatar')}
+                      className="profile-sidebar-camera-badge"
+                      title="上传或更换头像"
+                      aria-label="上传或更换头像"
                     >
                       <CameraOutlined />
                     </button>
@@ -842,104 +782,24 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              <div className="profile-hero-details">
-                <div className="profile-hero-primary-row">
-                  <h2 className="profile-hero-name">{userInfo.name ?? userInfo.id}</h2>
-                  <Tag
-                    className="profile-role-tag"
-                    color={isFullAdministrator(userInfo.siteadmin ?? 0) ? 'gold' : 'blue'}
-                    icon={
-                      isFullAdministrator(userInfo.siteadmin ?? 0) ? (
-                        <CrownOutlined />
-                      ) : (
-                        <UserOutlined />
-                      )
-                    }
-                  >
-                    {isFullAdministrator(userInfo.siteadmin ?? 0)
-                      ? t('profile.siteAdministrator')
-                      : t('profile.standardUser')}
-                  </Tag>
-                  <Tag
-                    color={connected ? 'success' : 'warning'}
-                    className="profile-connection-tag"
-                  >
-                    <span className={`profile-status-dot ${connected ? 'is-connected' : 'is-disconnected'}`} />
-                    {connected ? t('profile.connected') : t('profile.disconnected')}
-                  </Tag>
-                </div>
+              <div className="profile-sidebar-name">{userInfo.name ?? userInfo.id}</div>
+              <Tag className="profile-sidebar-role-tag">
+                {isFullAdministrator(userInfo.siteadmin ?? 0) ? '系统管理员' : '标准用户'}
+              </Tag>
 
-                <div className="profile-hero-meta-row">
-                  <div className="profile-user-id-bar">
-                    <span className="profile-user-id-prefix">{t('profile.basic.userId')}:</span>
-                    <code>{userInfo.id}</code>
-                    <Tooltip title={t('profile.copyId')}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => void handleCopyUserId()}
-                        aria-label={t('profile.copyId')}
-                      />
-                    </Tooltip>
-                  </div>
-                  {userInfo.email && (
-                    <div className="profile-hero-email-pill">
-                      <MailOutlined />
-                      <span>{userInfo.email}</span>
-                    </div>
-                  )}
+              <div className="profile-sidebar-meta-list">
+                <div className="profile-sidebar-meta-item">
+                  <MailOutlined className="profile-sidebar-meta-icon" />
+                  <span>{userInfo.email || 'admin@xmail.com'}</span>
+                </div>
+                <div className="profile-sidebar-meta-item">
+                  <ClockCircleOutlined className="profile-sidebar-meta-icon" />
+                  <span>最后登录: {formatDate(userInfo.lastLoginAt)}</span>
                 </div>
               </div>
 
-              <div className="profile-hero-stats">
-                <div className="profile-hero-stat-cell">
-                  <span className="profile-hero-stat-label">
-                    <CalendarOutlined /> {t('profile.account.createdAt')}
-                  </span>
-                  <strong className="profile-hero-stat-val">{formatDate(userInfo.creationAt)}</strong>
-                </div>
-                <div className="profile-hero-stat-cell">
-                  <span className="profile-hero-stat-label">
-                    <LoginOutlined /> {t('profile.account.lastLogin')}
-                  </span>
-                  <strong className="profile-hero-stat-val">{formatDate(userInfo.lastLoginAt)}</strong>
-                </div>
-                <div className="profile-hero-stat-cell">
-                  <span className="profile-hero-stat-label">
-                    <ThunderboltOutlined /> {t('profile.account.lastAccess')}
-                  </span>
-                  <strong className="profile-hero-stat-val">{formatDate(userInfo.lastAccessAt)}</strong>
-                </div>
-              </div>
-
-              <div className="profile-hero-actions">
-                <Button
-                  type="primary"
-                  icon={<KeyOutlined />}
-                  disabled={!connected}
-                  onClick={() => setPasswordOpen(true)}
-                >
-                  {t('profile.password.title')}
-                </Button>
-                <Upload
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  beforeUpload={beforeAvatarUpload}
-                  maxCount={1}
-                  showUploadList={false}
-                >
-                  <Button icon={<CameraOutlined />}>{t('profile.selectAvatar')}</Button>
-                </Upload>
-              </div>
-            </div>
-
-            {avatarPreview && (
-              <div className="profile-avatar-preview-banner">
-                <div className="profile-avatar-preview-text">
-                  <CameraOutlined />
-                  <span>{t('profile.previewAvatar')}</span>
-                </div>
-                <div className="profile-avatar-preview-btns">
+              {avatarPreview && (
+                <div className="profile-sidebar-avatar-actions">
                   <Button
                     type="primary"
                     size="small"
@@ -947,75 +807,360 @@ export function ProfilePage() {
                     disabled={!connected}
                     onClick={() => void saveAvatar()}
                   >
-                    {t('profile.saveAvatar')}
+                    保存头像
                   </Button>
                   <Button size="small" onClick={handleCancelAvatarPreview}>
-                    {t('profile.cancelAvatar')}
+                    取消
                   </Button>
                 </div>
+              )}
+            </div>
+
+            {/* Navigation Menu */}
+            <nav className="profile-sidebar-nav" role="tablist">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeNav === item.key}
+                  className={`profile-sidebar-nav-item ${activeNav === item.key ? 'is-active' : ''}`}
+                  onClick={() => scrollToSection(item.key)}
+                >
+                  <span className="profile-sidebar-nav-icon">{item.icon}</span>
+                  <span className="profile-sidebar-nav-label">{item.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            {/* Bottom Security Card */}
+            <div
+              className="profile-sidebar-security-box"
+              onClick={() => scrollToSection('security')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  scrollToSection('security');
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="profile-sidebar-security-icon">
+                <SafetyCertificateOutlined />
               </div>
-            )}
-          </section>
+              <div className="profile-sidebar-security-text">
+                <h4>保护账户安全</h4>
+                <p>定期更新密码，开启多因素认证</p>
+              </div>
+              <RightOutlined className="profile-sidebar-security-arrow" />
+            </div>
+          </aside>
 
-          {/* Navigation Tabs */}
-          <nav className="profile-tabs" role="tablist">
-            {PROFILE_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.key}
-                className={`profile-tab-btn ${activeTab === tab.key ? 'is-active' : ''}`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.icon}
-                <span>{t(tab.labelKey)}</span>
-              </button>
-            ))}
-          </nav>
+          {/* Right Main Content */}
+          <main className="profile-main-content">
+            <div className="profile-tab-section-stack">
+                {/* Card 1: 基本信息 */}
+                <section
+                  ref={(node) => {
+                    sectionRefs.current.profile = node;
+                  }}
+                  className="profile-content-card profile-scroll-section"
+                  data-profile-section="profile"
+                >
+                  <div className="profile-card-header">
+                    <div className="profile-card-title-group">
+                      <span className="profile-card-icon"><UserOutlined /></span>
+                      <div>
+                        <h3>基本信息</h3>
+                        <p>这是您在系统中的基本信息。</p>
+                      </div>
+                    </div>
+                    {isEditingBasic ? (
+                      <Space>
+                        <Button size="small" onClick={handleCancelBasicEdit}>
+                          取消
+                        </Button>
+                        <Button
+                          size="small"
+                          type="primary"
+                          loading={basicSaving}
+                          onClick={() => void handleSaveBasic()}
+                        >
+                          保存
+                        </Button>
+                      </Space>
+                    ) : (
+                      <Button
+                        className="profile-card-action-btn"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => setIsEditingBasic(true)}
+                      >
+                        编辑
+                      </Button>
+                    )}
+                  </div>
+                  <div className="profile-card-body">
+                    <div className="profile-basic-grid">
+                      {/* Left: 用户名 */}
+                      <div className="profile-form-row">
+                        <label className="profile-form-label">用户名</label>
+                        <Input
+                          className="profile-form-input is-readonly"
+                          value={userInfo.name ?? userInfo.id}
+                          disabled
+                        />
+                      </div>
 
-          {/* Tab Panes */}
-          <div className="profile-tab-content">
-            {activeTab === 'overview' && (
-              <div className="profile-balanced-grid">
-                <div className="profile-grid-column">
-                  {renderBasicProfile()}
-                  {renderSecurityPanel()}
+                      {/* Left: 邮箱 */}
+                      <div className="profile-form-row">
+                        <label className="profile-form-label">邮箱</label>
+                        <Input
+                          className={`profile-form-input ${!isEditingBasic ? 'is-readonly' : ''}`}
+                          value={editingEmail}
+                          onChange={(e) => setEditingEmail(e.target.value)}
+                          disabled={!isEditingBasic}
+                          placeholder="admin@xmail.com"
+                        />
+                      </div>
+
+                      {/* Right: 个性签名 (Spans 2 rows) */}
+                      <div className="profile-form-row profile-signature-row">
+                        <label className="profile-form-label">个性签名</label>
+                        <div className="profile-signature-box">
+                          <Input.TextArea
+                            className={`profile-form-textarea ${!isEditingBasic ? 'is-readonly' : ''}`}
+                            rows={3}
+                            maxLength={200}
+                            value={editingSignature}
+                            onChange={(e) => setEditingSignature(e.target.value)}
+                            disabled={!isEditingBasic}
+                            placeholder="这家伙很懒，什么也没留下..."
+                          />
+                          <div className="profile-char-count">
+                            {editingSignature.length} / 200
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Left: 真实姓名 */}
+                      <div className="profile-form-row">
+                        <label className="profile-form-label">真实姓名</label>
+                        <Input
+                          className={`profile-form-input ${!isEditingBasic ? 'is-readonly' : ''}`}
+                          value={editingRealName}
+                          onChange={(e) => setEditingRealName(e.target.value)}
+                          disabled={!isEditingBasic}
+                          placeholder="系统管理员"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Card 2: 账户安全 */}
+                <section
+                  ref={(node) => {
+                    sectionRefs.current.security = node;
+                  }}
+                  className="profile-content-card profile-scroll-section"
+                  data-profile-section="security"
+                >
+                  <div className="profile-card-header">
+                    <div className="profile-card-title-group">
+                      <span className="profile-card-icon"><SafetyCertificateOutlined /></span>
+                      <div>
+                        <h3>账户安全</h3>
+                        <p>管理您的账户安全设置。</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="profile-card-body profile-security-card-body">
+                    {/* Row 1: 登录密码 */}
+                    <div className="profile-security-row">
+                      <div className="profile-security-row-left">
+                        <div className="profile-security-icon-box">
+                          <SettingOutlined />
+                        </div>
+                        <div className="profile-security-row-info">
+                          <div className="profile-security-row-title">登录密码</div>
+                          <div className="profile-security-row-desc">定期更换密码，保证账户安全</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="profile-security-action-btn"
+                        onClick={() => setPasswordOpen(true)}
+                      >
+                        修改密码 <RightOutlined className="profile-security-btn-arrow" />
+                      </button>
+                    </div>
+
+                    {/* Row 2: 两步验证 */}
+                    <div className="profile-security-row">
+                      <div className="profile-security-row-left">
+                        <div className="profile-security-icon-box">
+                          <BellOutlined />
+                        </div>
+                        <div className="profile-security-row-info">
+                          <div className="profile-security-row-title">两步验证</div>
+                          <div className="profile-security-row-desc">
+                            {twoFactorConfigured
+                              ? '已开启，建议定期检查备用恢复码'
+                              : '未开启，建议开启以增强账户安全'}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="profile-security-action-btn"
+                        onClick={() => {
+                          if (twoFactorConfigured) {
+                            scrollToSection('security');
+                          } else {
+                            void startTotpSetup();
+                          }
+                        }}
+                      >
+                        {twoFactorConfigured ? '管理' : '启用'}{' '}
+                        <RightOutlined className="profile-security-btn-arrow" />
+                      </button>
+                    </div>
+
+                    {/* Row 3: 安全密钥 */}
+                    <div className="profile-security-row">
+                      <div className="profile-security-row-left">
+                        <div className="profile-security-icon-box">
+                          <KeyOutlined />
+                        </div>
+                        <div className="profile-security-row-info">
+                          <div className="profile-security-row-title">安全密钥</div>
+                          <div className="profile-security-row-desc">
+                            {twoFactorCapabilities?.methods.webauthn.configured
+                              ? '已配置安全密钥，可用于快速安全登录'
+                              : '添加硬件安全密钥以增强账户保护'}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="profile-security-action-btn"
+                        disabled={!connected || !twoFactorCapabilities?.methods.webauthn.enabled}
+                        onClick={() => void openSecurityKeys()}
+                      >
+                        {twoFactorCapabilities?.methods.webauthn.configured ? '管理' : '添加'}{' '}
+                        <RightOutlined className="profile-security-btn-arrow" />
+                      </button>
+                    </div>
+
+                    {twoFactorConfigured && (
+                      <div className="profile-security-row">
+                        <div className="profile-security-row-left">
+                          <div className="profile-security-icon-box">
+                            <SafetyCertificateOutlined />
+                          </div>
+                          <div className="profile-security-row-info">
+                            <div className="profile-security-row-title">备用恢复码</div>
+                            <div className="profile-security-row-desc">
+                              {twoFactorCapabilities?.methods.backupCodes.configured
+                                ? '已生成，可在无法使用验证器时恢复登录'
+                                : '生成一次性恢复码，避免账户无法访问'}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="profile-security-action-btn"
+                          disabled={!connected || !twoFactorCapabilities?.methods.backupCodes.enabled}
+                          onClick={() =>
+                            void openBackupCodes(
+                              !twoFactorCapabilities?.methods.backupCodes.configured,
+                            )
+                          }
+                        >
+                          {twoFactorCapabilities?.methods.backupCodes.configured ? '管理' : '生成'}{' '}
+                          <RightOutlined className="profile-security-btn-arrow" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+            </div>
+
+            <div
+              ref={(node) => {
+                sectionRefs.current.devices = node;
+              }}
+              className="profile-tab-section-stack profile-scroll-section"
+              data-profile-section="devices"
+            >
+              {renderTokensSection()}
+            </div>
+
+            <section
+              ref={(node) => {
+                sectionRefs.current.activity = node;
+              }}
+              className="profile-content-card profile-scroll-section"
+              data-profile-section="activity"
+            >
+              <div className="profile-card-header">
+                <div className="profile-card-title-group">
+                  <span className="profile-card-icon"><GlobalOutlined /></span>
+                  <div>
+                    <h3>账号活动</h3>
+                    <p>最近的登录记录和操作日志。</p>
+                  </div>
                 </div>
-                <div className="profile-grid-column">
-                  {renderTokensSection()}
-                  {renderLoginsSection()}
-                </div>
               </div>
-            )}
-
-            {activeTab === 'security' && (
-              <div className="profile-balanced-grid">
-                <div className="profile-grid-column">
-                  {renderBasicProfile()}
-                  {renderAccountDetails()}
-                </div>
-                <div className="profile-grid-column">
-                  {renderSecurityPanel()}
-                </div>
+              <div className="profile-card-body profile-activity-card-body">
+                {previousLoginsLoading ? (
+                  <div className="profile-activity-loading">
+                    <Spin size="small" /> 正在加载活动记录...
+                  </div>
+                ) : previousLogins.length > 0 ? (
+                  <div className="profile-activity-list">
+                    {previousLogins.map((login, idx) => (
+                      <div key={`${login.occurredAt}-${idx}`} className="profile-activity-row">
+                        <div className="profile-activity-indicator">
+                          <span className="profile-activity-dot" />
+                        </div>
+                        <div className="profile-activity-details">
+                          <div className="profile-activity-main">
+                            <code className="profile-activity-ip">{login.ip || '127.0.0.1'}</code>
+                            <span className="profile-activity-client">
+                              {login.client || login.platform || 'Web 控制台'}
+                            </span>
+                          </div>
+                          <div className="profile-activity-time">{formatDate(login.occurredAt)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="profile-activity-empty">暂无近期登录记录</div>
+                )}
               </div>
-            )}
-
-            {activeTab === 'tokens' && (
-              <div className="profile-single-column">
-                {renderTokensSection()}
-              </div>
-            )}
-
-            {activeTab === 'activity' && (
-              <div className="profile-single-column">
-                {renderLoginsSection()}
-              </div>
-            )}
-          </div>
+            </section>
+          </main>
         </div>
       )}
 
+      {/* Password Change Modal */}
+      <PasswordChangeModal
+        form={passwordForm}
+        open={passwordOpen}
+        submitting={passwordSubmitting}
+        onCancel={() => {
+          setPasswordOpen(false);
+          passwordForm.resetFields();
+        }}
+        onSubmit={() => void savePassword().catch(() => undefined)}
+      />
+
+      {/* TOTP Setup Modal */}
       <TotpSetupModal
         form={totpForm}
         open={totpOpen}
@@ -1032,6 +1177,7 @@ export function ProfilePage() {
         onSubmit={() => void submitTotpSetup().catch(() => undefined)}
       />
 
+      {/* Security Keys Modal */}
       <SecurityKeysModal
         form={securityKeyForm}
         open={securityKeysOpen}
@@ -1053,6 +1199,7 @@ export function ProfilePage() {
         onRemove={confirmRemoveSecurityKey}
       />
 
+      {/* Backup Codes Modal */}
       <BackupCodesModal
         codes={backupCodes}
         open={backupCodesOpen}
@@ -1065,17 +1212,6 @@ export function ProfilePage() {
         onDisable={disableBackupCodes}
         onDownload={handleDownloadBackupCodes}
         onRegenerate={confirmRegenerateBackupCodes}
-      />
-
-      <PasswordChangeModal
-        form={passwordForm}
-        open={passwordOpen}
-        submitting={passwordSubmitting}
-        onCancel={() => {
-          setPasswordOpen(false);
-          passwordForm.resetFields();
-        }}
-        onSubmit={() => void savePassword().catch(() => undefined)}
       />
     </div>
   );

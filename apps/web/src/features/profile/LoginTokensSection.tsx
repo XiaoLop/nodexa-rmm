@@ -5,6 +5,7 @@ import {
   KeyOutlined,
   PlusOutlined,
   ReloadOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import type { MeshCentralClient } from '@meshcentral/control-client';
 import { Alert, Button, Empty, Form, Input, Modal, Select, Spin, Tag, message } from 'antd';
@@ -37,6 +38,8 @@ export function LoginTokensSection({
   const [form] = Form.useForm<{ name: string; expire: number }>();
   const [tokens, setTokens] = useState<LoginToken[]>([]);
   const [createdToken, setCreatedToken] = useState<CreatedLoginToken>();
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [removingTokenUser, setRemovingTokenUser] = useState<string>();
@@ -84,6 +87,7 @@ export function LoginTokensSection({
     try {
       const token = await createLoginToken(client, name.trim(), expire);
       setCreatedToken(token);
+      setCreateModalOpen(false);
       setTokens((current) => [token, ...current.filter((item) => item.tokenUser !== token.tokenUser)]);
       form.resetFields();
       void messageApi.success(t('profile.loginTokens.created'));
@@ -95,6 +99,15 @@ export function LoginTokensSection({
       setCreating(false);
     }
   };
+
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
+  const filteredTokens = normalizedSearch
+    ? tokens.filter(
+        (token) =>
+          token.name.toLocaleLowerCase().includes(normalizedSearch) ||
+          token.tokenUser.toLocaleLowerCase().includes(normalizedSearch),
+      )
+    : tokens;
 
   const confirmRemoveToken = (token: LoginToken) => {
     if (!client) return;
@@ -122,69 +135,48 @@ export function LoginTokensSection({
   };
 
   return (
-    <section className="console-card profile-section profile-token-section">
+    <section className="profile-content-card profile-token-section">
       {messageContextHolder}
       {modalContextHolder}
-      <header>
-        <span>
-          <KeyOutlined />
-        </span>
-        <div>
-          <h2>{t('profile.loginTokens.title')}</h2>
-          <p>{t('profile.loginTokens.description')}</p>
+      <div className="profile-card-header">
+        <div className="profile-card-title-group">
+          <span className="profile-card-icon">
+            <KeyOutlined />
+          </span>
+          <div>
+            <h3>{t('profile.loginTokens.title')}</h3>
+            <p>{t('profile.loginTokens.description')}</p>
+          </div>
         </div>
-        <Button
-          type="text"
-          icon={<ReloadOutlined />}
-          loading={loading}
-          disabled={!connected}
-          title={t('profile.loginTokens.refresh')}
-          aria-label={t('profile.loginTokens.refresh')}
-          onClick={() => void loadTokens()}
-        />
-      </header>
-
-      <Form
-        form={form}
-        className="profile-token-form"
-        initialValues={{ expire: 0 }}
-        onFinish={() => void createToken()}
-      >
-        <Form.Item
-          name="name"
-          rules={[
-            { required: true, whitespace: true, message: t('profile.loginTokens.nameRequired') },
-          ]}
-        >
+        <div className="profile-token-header-actions">
           <Input
-            maxLength={64}
-            placeholder={t('profile.loginTokens.namePlaceholder')}
-            prefix={<KeyOutlined />}
+            allowClear
+            className="profile-token-search"
+            prefix={<SearchOutlined />}
+            placeholder="搜索令牌名称或账号"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
           />
-        </Form.Item>
-        <Form.Item name="expire">
-          <Select
-            aria-label={t('profile.loginTokens.expiration')}
-            prefix={<ClockCircleOutlined />}
-            options={[
-              { value: 0, label: t('profile.loginTokens.expirationOptions.never') },
-              { value: 1440, label: t('profile.loginTokens.expirationOptions.oneDay') },
-              { value: 10080, label: t('profile.loginTokens.expirationOptions.sevenDays') },
-              { value: 43200, label: t('profile.loginTokens.expirationOptions.thirtyDays') },
-              { value: 129600, label: t('profile.loginTokens.expirationOptions.ninetyDays') },
-            ]}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={!connected}
+            onClick={() => setCreateModalOpen(true)}
+          >
+            {t('profile.loginTokens.create')}
+          </Button>
+          <Button
+            type="text"
+            className="profile-token-refresh-btn"
+            icon={<ReloadOutlined />}
+            loading={loading}
+            disabled={!connected}
+            title={t('profile.loginTokens.refresh')}
+            aria-label={t('profile.loginTokens.refresh')}
+            onClick={() => void loadTokens()}
           />
-        </Form.Item>
-        <Button
-          type="primary"
-          htmlType="submit"
-          icon={<PlusOutlined />}
-          loading={creating}
-          disabled={!connected}
-        >
-          {t('profile.loginTokens.create')}
-        </Button>
-      </Form>
+        </div>
+      </div>
 
       {!connected ? (
         <Alert type="warning" showIcon message={t('profile.loginTokens.disconnected')} />
@@ -203,9 +195,11 @@ export function LoginTokensSection({
         </div>
       ) : tokens.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('profile.loginTokens.empty')} />
+      ) : filteredTokens.length === 0 ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到匹配的登录令牌" />
       ) : (
         <div className="profile-token-list">
-          {tokens.map((token) => (
+          {filteredTokens.map((token) => (
             <div className="profile-token-row" key={token.tokenUser}>
               <div className="profile-token-main-info">
                 <div className="profile-token-name-row">
@@ -217,7 +211,10 @@ export function LoginTokensSection({
                 <code>{token.tokenUser}</code>
               </div>
               <div className="profile-token-meta">
-                <span className="profile-token-time">{formatDateTime(token.created)}</span>
+                <div className="profile-token-created-meta">
+                  <ClockCircleOutlined />
+                  <span className="profile-token-time">{formatDateTime(token.created)}</span>
+                </div>
                 <div className="profile-token-actions">
                   <Tag color={token.expire === 0 ? 'cyan' : 'default'} className="profile-token-expire-tag">
                     {token.expire === 0 ? t('profile.loginTokens.neverExpires') : formatDateTime(token.expire)}
@@ -238,6 +235,54 @@ export function LoginTokensSection({
           ))}
         </div>
       )}
+
+      <Modal
+        open={createModalOpen}
+        title={t('profile.loginTokens.create')}
+        okText={t('profile.loginTokens.create')}
+        cancelText={t('common.actions.cancel')}
+        confirmLoading={creating}
+        okButtonProps={{ disabled: !connected }}
+        onOk={() => void createToken()}
+        onCancel={() => {
+          setCreateModalOpen(false);
+          form.resetFields();
+        }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ expire: 0 }}
+          className="profile-token-modal-form"
+        >
+          <Form.Item
+            name="name"
+            label={t('profile.loginTokens.namePlaceholder')}
+            rules={[
+              { required: true, whitespace: true, message: t('profile.loginTokens.nameRequired') },
+            ]}
+          >
+            <Input
+              autoFocus
+              maxLength={64}
+              placeholder={t('profile.loginTokens.namePlaceholder')}
+              prefix={<KeyOutlined />}
+              onPressEnter={() => void createToken()}
+            />
+          </Form.Item>
+          <Form.Item name="expire" label={t('profile.loginTokens.expiration')}>
+            <Select
+              options={[
+                { value: 0, label: t('profile.loginTokens.expirationOptions.never') },
+                { value: 1440, label: t('profile.loginTokens.expirationOptions.oneDay') },
+                { value: 10080, label: t('profile.loginTokens.expirationOptions.sevenDays') },
+                { value: 43200, label: t('profile.loginTokens.expirationOptions.thirtyDays') },
+                { value: 129600, label: t('profile.loginTokens.expirationOptions.ninetyDays') },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         open={Boolean(createdToken)}
