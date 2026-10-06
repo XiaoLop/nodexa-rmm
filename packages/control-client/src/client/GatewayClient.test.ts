@@ -105,6 +105,41 @@ describe('MeshCentralClient', () => {
     client.destroy();
   });
 
+  it('emits normalized server file trees', async () => {
+    const { client, socket } = await connectedClient();
+    const files = vi.fn();
+    const diagnostics: string[] = [];
+    client.on('files', files);
+    client.on('diagnostic', (diagnostic) => diagnostics.push(diagnostic.type));
+
+    socket.message({
+      action: 'files',
+      filetree: {
+        n: 'Root',
+        f: {
+          'user//admin': {
+            t: 1,
+            n: 'My Files',
+            f: { 'notes.txt': { t: 3, s: 12 } },
+          },
+        },
+      },
+    });
+
+    expect(files).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaces: [
+          expect.objectContaining({
+            id: 'user//admin',
+            usedBytes: 12,
+          }),
+        ],
+      }),
+    );
+    expect(diagnostics).not.toContain('unknown-message');
+    client.destroy();
+  });
+
   it('rejects authentication failures', async () => {
     const socket = new FakeWebSocket();
     const client = new MeshCentralClient({ url: 'ws://gateway.test', webSocketFactory: () => socket });

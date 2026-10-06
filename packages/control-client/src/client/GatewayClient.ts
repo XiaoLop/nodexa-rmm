@@ -19,6 +19,7 @@ import { EventsResource } from '../resources/events';
 import { GroupsResource } from '../resources/groups';
 import { NotificationsResource } from '../resources/notifications';
 import { ReportsResource } from '../resources/reports';
+import { ServerFilesResource } from '../resources/serverFiles';
 import { ServerResource } from '../resources/server';
 import { UserGroupsResource } from '../resources/userGroups';
 import { UsersResource } from '../resources/users';
@@ -31,6 +32,8 @@ import type {
   PowerAction,
   WebSocketLike,
 } from '../types';
+import { normalizeServerFileTree } from '../protocol/serverFilesNormalizers';
+import { isRecord } from '../protocol/normalizers';
 import { RequestManager } from './requestManager';
 
 const OPEN = 1;
@@ -43,6 +46,7 @@ export class MeshCentralClient {
   readonly notifications: NotificationsResource;
   readonly events: EventsResource;
   readonly reports: ReportsResource;
+  readonly files: ServerFilesResource;
   readonly server: ServerResource;
   readonly userGroups: UserGroupsResource;
   readonly users: UsersResource;
@@ -78,6 +82,7 @@ export class MeshCentralClient {
     this.notifications = new NotificationsResource(this);
     this.events = new EventsResource(this);
     this.reports = new ReportsResource(this);
+    this.files = new ServerFilesResource(this);
     this.server = new ServerResource(this);
     this.userGroups = new UserGroupsResource(this);
     this.users = new UsersResource(this);
@@ -238,6 +243,15 @@ export class MeshCentralClient {
         this.dispatcher.emit('message', payload);
         const consumed = this.requestManager.consume(payload);
         const decoded = decodePush(payload);
+        let filesMessage = false;
+        if (isRecord(payload) && payload.action === 'files') {
+          filesMessage = true;
+          try {
+            this.dispatcher.emit('files', normalizeServerFileTree(payload));
+          } catch (error) {
+            this.emitError(error);
+          }
+        }
         if (decoded.termination) {
           terminationIntent = decoded.termination;
           this.stopHeartbeat();
@@ -272,7 +286,7 @@ export class MeshCentralClient {
         if (decoded.serverStats) this.dispatcher.emit('serverStats', decoded.serverStats);
         if (decoded.userInfo) this.dispatcher.emit('userInfo', decoded.userInfo);
         if (decoded.event) this.dispatcher.emit('event', decoded.event);
-        if (!consumed && decoded.unknown && inspection.status === 'pending' && !inspection.signal)
+        if (!consumed && !filesMessage && decoded.unknown && inspection.status === 'pending' && !inspection.signal)
           this.dispatcher.emit('diagnostic', {
             type: 'unknown-message',
             message: 'Received an unknown gateway message.',

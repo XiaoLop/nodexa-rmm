@@ -154,6 +154,12 @@ describe('getApplicationUiCapabilities', () => {
     expect(capabilities.createDeviceGroups).toBe(true);
   });
 
+  it('derives server file access from site rights', () => {
+    expect(getApplicationUiCapabilities(0).serverFiles).toBe(false);
+    expect(getApplicationUiCapabilities(SiteRight.FileAccess).serverFiles).toBe(true);
+    expect(getApplicationUiCapabilities(SiteRight.Administrator).serverFiles).toBe(true);
+  });
+
   it('restricts server status to site administrators', () => {
     expect(getApplicationUiCapabilities(0).manageSettings).toBe(false);
     expect(getApplicationUiCapabilities(SiteRight.Administrator).manageSettings).toBe(true);

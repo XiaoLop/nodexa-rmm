@@ -55,6 +55,7 @@ export interface DeviceGroupUiCapabilities {
 }
 
 export interface ApplicationUiCapabilities {
+  serverFiles: boolean;
   manageUsers: boolean;
   manageUserGroups: boolean;
   viewAllEvents: boolean;
@@ -267,6 +268,7 @@ export function getApplicationUiCapabilities(
 ): ApplicationUiCapabilities {
   if (siteRights === undefined) {
     return {
+      serverFiles: false,
       manageUsers: false,
       manageUserGroups: false,
       viewAllEvents: false,
@@ -280,6 +282,7 @@ export function getApplicationUiCapabilities(
   const normalized = normalizeRights(siteRights);
   const administrator = isSiteAdministrator(normalized);
   return {
+    serverFiles: administrator || hasSiteRight(normalized, SiteRight.FileAccess),
     manageUsers: administrator || hasSiteRight(normalized, SiteRight.ManageUsers),
     manageUserGroups: administrator || hasSiteRight(normalized, SiteRight.ManageUserGroups),
     viewAllEvents: administrator || hasSiteRight(normalized, SiteRight.AllEvents),

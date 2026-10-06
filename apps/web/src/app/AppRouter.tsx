@@ -31,6 +31,9 @@ const DeviceWorkspacePage = lazy(() =>
 const DevicesPage = lazy(() =>
   import('../pages/DevicesPage').then((module) => ({ default: module.DevicesPage })),
 );
+const FilesPage = lazy(() =>
+  import('../pages/FilesPage').then((module) => ({ default: module.FilesPage })),
+);
 const TasksPage = lazy(() =>
   import('../pages/TasksPage').then((module) => ({ default: module.TasksPage })),
 );
@@ -110,9 +113,18 @@ export function AppRouter() {
           <Route path="/devices/tasks" element={<TasksPage />} />
           <Route path="/devices/:deviceId/workspace" element={<DeviceWorkspacePage />} />
           <Route path="/devices/*" element={<ComingSoonPage />} />
+          <Route
+            path="/files"
+            element={
+              <RequireCapability capability="serverFiles">
+                <FilesPage />
+              </RequireCapability>
+            }
+          />
           <Route path="/monitoring/realtime" element={<RealtimeEventsPage />} />
           <Route path="/monitoring/reports" element={<ReportsPage />} />
           <Route path="/monitoring/audit" element={<Navigate to="/monitoring/reports" replace />} />
+          <Route path="/monitoring/alerts" element={<NotFoundPage />} />
           <Route path="/monitoring/*" element={<ComingSoonPage />} />
           <Route path="/remote/*" element={<ComingSoonPage />} />
           <Route

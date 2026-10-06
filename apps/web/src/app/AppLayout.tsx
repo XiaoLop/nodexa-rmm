@@ -1,9 +1,9 @@
 import {
   ApartmentOutlined,
   AuditOutlined,
-  BellOutlined,
   DashboardOutlined,
   DesktopOutlined,
+  FolderOpenOutlined,
   GlobalOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -69,6 +69,12 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
         labelKey: 'navigation.deviceGroups',
       },
       {
+        key: '/files',
+        icon: <FolderOpenOutlined />,
+        labelKey: 'navigation.serverFiles',
+        required: 'serverFiles',
+      },
+      {
         key: '/devices/tasks',
         icon: <ProfileOutlined />,
         labelKey: 'navigation.taskCenter',
@@ -83,11 +89,6 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
         key: '/monitoring/realtime',
         icon: <ThunderboltOutlined />,
         labelKey: 'navigation.realtimeEvents',
-      },
-      {
-        key: '/monitoring/alerts',
-        icon: <BellOutlined />,
-        labelKey: 'navigation.alertRules',
       },
       {
         key: '/monitoring/reports',
@@ -124,12 +125,12 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
 
 const pageTitleKeys: Record<string, [string, string]> = {
   '/dashboard': ['navigation.dashboard', 'navigation.overview'],
+  '/files': ['navigation.deviceManagement', 'navigation.serverFiles'],
   '/profile': ['header.account', 'header.profile'],
   '/devices': ['navigation.deviceManagement', 'navigation.allDevices'],
   '/devices/groups': ['navigation.deviceManagement', 'navigation.deviceGroups'],
   '/devices/tasks': ['navigation.deviceManagement', 'navigation.taskCenter'],
   '/monitoring/realtime': ['navigation.monitoringAndEvents', 'navigation.realtimeEvents'],
-  '/monitoring/alerts': ['navigation.monitoringAndEvents', 'navigation.alertRules'],
   '/monitoring/reports': ['navigation.monitoringAndEvents', 'navigation.reports'],
   '/admin/users': ['navigation.administration', 'navigation.userManagement'],
   '/admin/roles': ['navigation.administration', 'navigation.userGroups'],

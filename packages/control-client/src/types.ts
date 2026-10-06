@@ -5,6 +5,7 @@ import type {
   RecordingReady,
   ServerWarning,
 } from './notifications/types';
+import type { ServerFileTree } from './serverFiles.types';
 
 export type ConnectionStatus =
   | 'idle'
@@ -326,6 +327,7 @@ export interface MeshCentralClientEvents {
   userInfo: UserInfo;
   serverInfo: ServerInfo;
   serverStats: ServerStats;
+  files: ServerFileTree;
   message: unknown;
   error: Error;
   diagnostic: MeshCentralDiagnostic;

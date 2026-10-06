@@ -1,0 +1,1017 @@
+import {
+  ArrowUpOutlined,
+  CloseOutlined,
+  CodeOutlined,
+  CopyOutlined,
+  DatabaseOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  EllipsisOutlined,
+  FileImageOutlined,
+  FileOutlined,
+  FilePdfOutlined,
+  FileTextOutlined,
+  FileZipOutlined,
+  FolderAddOutlined,
+  FolderFilled,
+  FolderOpenOutlined,
+  FormOutlined,
+  HomeOutlined,
+  InboxOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  SendOutlined,
+  TeamOutlined,
+  UploadOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import {
+  MAX_SERVER_FILE_BYTES,
+  type ServerFileEntry,
+} from '@meshcentral/control-client';
+import {
+  Alert,
+  Badge,
+  Breadcrumb,
+  Button,
+  Dropdown,
+  Empty,
+  Input,
+  List,
+  Modal,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+  type MenuProps,
+  type TableColumnsType,
+} from 'antd';
+import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ServerFileDestinationDialog } from '../features/server-files/ServerFileDestinationDialog';
+import { ServerFileEditor } from '../features/server-files/ServerFileEditor';
+import {
+  formatServerFileSize,
+  isEditableServerFile,
+  serverFileCommandAvailability,
+  sortServerFileEntries,
+} from '../features/server-files/serverFileViewModel';
+import { useServerFiles } from '../features/server-files/useServerFiles';
+import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useFormatters } from '../i18n/formatters';
+import '../assets/styles/server-files.css';
+
+type NameDialog = 'create' | 'rename';
+type TransferDialog = 'copy' | 'move';
+
+function getFileGlyph(entry: ServerFileEntry) {
+  if (entry.kind === 'directory') {
+    return <FolderFilled className="server-file-glyph is-folder" />;
+  }
+  const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext)) {
+    return <FileImageOutlined className="server-file-glyph is-image" />;
+  }
+  if (['zip', 'tar', 'gz', 'tgz', '7z', 'rar', 'bz2'].includes(ext)) {
+    return <FileZipOutlined className="server-file-glyph is-zip" />;
+  }
+  if (ext === 'pdf') {
+    return <FilePdfOutlined className="server-file-glyph is-pdf" />;
+  }
+  if (
+    [
+      'js',
+      'ts',
+      'jsx',
+      'tsx',
+      'py',
+      'sh',
+      'bat',
+      'ps1',
+      'json',
+      'yaml',
+      'yml',
+      'xml',
+      'html',
+      'css',
+      'sql',
+      'c',
+      'cpp',
+      'h',
+      'rs',
+      'go',
+      'java',
+    ].includes(ext)
+  ) {
+    return <CodeOutlined className="server-file-glyph is-code" />;
+  }
+  if (['txt', 'md', 'log', 'csv', 'ini', 'conf', 'env'].includes(ext)) {
+    return <FileTextOutlined className="server-file-glyph is-text" />;
+  }
+  return <FileOutlined className="server-file-glyph is-generic" />;
+}
+
+export function FilesPage() {
+  const { t } = useTranslation();
+  const { dateTime } = useFormatters();
+  const data = useMeshCentralControlData();
+  const controller = useServerFiles({
+    client: data.client,
+    connected: data.status === 'connected',
+  });
+  const [modal, modalContextHolder] = Modal.useModal();
+  const [nameDialog, setNameDialog] = useState<NameDialog>();
+  const [nameValue, setNameValue] = useState('');
+  const [transferDialog, setTransferDialog] = useState<TransferDialog>();
+  const [actionTargetEntry, setActionTargetEntry] = useState<ServerFileEntry>();
+  const [editingEntry, setEditingEntry] = useState<ServerFileEntry>();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const rawSortedEntries = useMemo(
+    () => sortServerFileEntries(controller.entries),
+    [controller.entries],
+  );
+
+  const entries = useMemo(() => {
+    if (!searchQuery.trim()) return rawSortedEntries;
+    const query = searchQuery.trim().toLowerCase();
+    return rawSortedEntries.filter((entry) => entry.name.toLowerCase().includes(query));
+  }, [rawSortedEntries, searchQuery]);
+
+  // Disable nested table tree expansion: folders are navigated by clicking, not expanded inline
+  const tableEntries = useMemo(
+    () =>
+      entries.map((entry) =>
+        entry.children !== undefined ? { ...entry, children: undefined } : entry,
+      ),
+    [entries],
+  );
+
+  const availability = serverFileCommandAvailability(controller.selectedEntries);
+  const disabled = !controller.connected || controller.busy || controller.loading;
+  const selectedNames = controller.selectedEntries.map((entry) => entry.name);
+
+  const totalFolders = useMemo(
+    () => rawSortedEntries.filter((e) => e.kind === 'directory').length,
+    [rawSortedEntries],
+  );
+  const totalFiles = useMemo(
+    () => rawSortedEntries.filter((e) => e.kind === 'file').length,
+    [rawSortedEntries],
+  );
+
+  const openNameDialog = (dialog: NameDialog, target?: ServerFileEntry) => {
+    setActionTargetEntry(target);
+    setNameDialog(dialog);
+    if (dialog === 'rename') {
+      const initialName = target?.name ?? controller.selectedEntries[0]?.name ?? '';
+      setNameValue(initialName);
+    } else {
+      setNameValue('');
+    }
+  };
+
+  const hasConflict = (name: string) => {
+    const currentRenameName =
+      actionTargetEntry?.name ?? controller.selectedEntries[0]?.name;
+    return controller.entries.some(
+      (entry) =>
+        entry.name.toLocaleLowerCase() === name.toLocaleLowerCase() &&
+        (nameDialog !== 'rename' || entry.name !== currentRenameName),
+    );
+  };
+
+  const submitNameDialog = async () => {
+    const name = nameValue.trim();
+    if (!name) return;
+    if (hasConflict(name)) {
+      modal.error({ title: t('serverFiles.errors.nameConflict') });
+      return;
+    }
+    const target = actionTargetEntry ?? controller.selectedEntries[0];
+    const succeeded =
+      nameDialog === 'create'
+        ? await controller.createFolder(name)
+        : target
+          ? await controller.rename(target.name, name)
+          : false;
+
+    if (succeeded) {
+      setNameDialog(undefined);
+      setActionTargetEntry(undefined);
+    }
+  };
+
+  const download = async (entry: ServerFileEntry) => {
+    if ((entry.size ?? 0) >= MAX_SERVER_FILE_BYTES) return;
+    try {
+      const bytes = await controller.readFile(entry);
+      const buffer = new ArrayBuffer(bytes.byteLength);
+      new Uint8Array(buffer).set(bytes);
+      const url = URL.createObjectURL(new Blob([buffer]));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = entry.name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      modal.error({
+        title: t('serverFiles.errors.downloadFailed'),
+        content:
+          downloadError instanceof Error ? downloadError.message : String(downloadError),
+      });
+    }
+  };
+
+  const upload = async (file: File) => {
+    if (file.size >= MAX_SERVER_FILE_BYTES) {
+      modal.error({ title: t('serverFiles.errors.tooLarge') });
+      return;
+    }
+    const existing = controller.entries.some(
+      (entry) => entry.name.toLocaleLowerCase() === file.name.toLocaleLowerCase(),
+    );
+    if (existing) {
+      const confirmed = await modal.confirm({
+        title: t('serverFiles.upload.overwriteTitle'),
+        content: t('serverFiles.upload.overwriteDescription', { name: file.name }),
+        okText: t('serverFiles.upload.overwrite'),
+        cancelText: t('common.actions.cancel'),
+      });
+      if (!confirmed) return;
+    }
+    await controller.upload(file.name, new Uint8Array(await file.arrayBuffer()));
+  };
+
+  const confirmRemove = (targetNames = selectedNames) => {
+    if (!targetNames.length) return;
+    const recursive = controller.entries.some(
+      (entry) => targetNames.includes(entry.name) && entry.kind === 'directory',
+    );
+    modal.confirm({
+      title: t('serverFiles.delete.title'),
+      content: recursive
+        ? t('serverFiles.delete.recursiveDescription')
+        : t('serverFiles.delete.description', { count: targetNames.length }),
+      okText: t('common.actions.delete'),
+      okButtonProps: { danger: true },
+      cancelText: t('common.actions.cancel'),
+      onOk: () => controller.remove(targetNames, recursive),
+    });
+  };
+
+  const copyCurrentPath = () => {
+    const pathStr = '/' + controller.currentPath.slice(1).join('/');
+    void navigator.clipboard.writeText(pathStr || '/');
+    message.success(t('serverFiles.pathCopied'));
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!disabled && controller.currentSpace && !isDraggingOver) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(false);
+    if (disabled || !controller.currentSpace) return;
+    const files = event.dataTransfer.files;
+    const file = files?.[0];
+    if (file) {
+      void upload(file);
+    }
+  };
+
+  const getRowMenuItems = (entry: ServerFileEntry): MenuProps['items'] => [
+    {
+      key: 'rename',
+      label: t('common.actions.rename'),
+      icon: <FormOutlined />,
+      disabled,
+      onClick: () => openNameDialog('rename', entry),
+    },
+    {
+      key: 'copy',
+      label: t('serverFiles.actions.copy'),
+      icon: <CopyOutlined />,
+      disabled: disabled || entry.kind !== 'file',
+      onClick: () => {
+        setActionTargetEntry(entry);
+        setTransferDialog('copy');
+      },
+    },
+    {
+      key: 'move',
+      label: t('serverFiles.actions.move'),
+      icon: <SendOutlined />,
+      disabled: disabled || entry.kind !== 'file',
+      onClick: () => {
+        setActionTargetEntry(entry);
+        setTransferDialog('move');
+      },
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'delete',
+      label: t('common.actions.delete'),
+      icon: <DeleteOutlined />,
+      danger: true,
+      disabled,
+      onClick: () => confirmRemove([entry.name]),
+    },
+  ];
+
+  const columns: TableColumnsType<ServerFileEntry> = [
+    {
+      title: t('serverFiles.columns.name'),
+      dataIndex: 'name',
+      ellipsis: true,
+      render: (name: string, entry) => (
+        <button
+          type="button"
+          className={
+            entry.kind === 'directory'
+              ? 'server-file-entry is-directory'
+              : 'server-file-entry'
+          }
+          onClick={() => {
+            if (entry.kind === 'directory') {
+              controller.openDirectory(entry);
+              setSearchQuery('');
+            }
+          }}
+        >
+          {getFileGlyph(entry)}
+          <span className="server-file-entry-text" title={name}>
+            {name}
+          </span>
+        </button>
+      ),
+    },
+    {
+      title: t('serverFiles.columns.type'),
+      dataIndex: 'kind',
+      width: 110,
+      className: 'server-files-secondary-column',
+      render: (kind: ServerFileEntry['kind']) => (
+        <Tag
+          bordered={false}
+          className={
+            kind === 'directory' ? 'server-file-tag is-folder' : 'server-file-tag is-file'
+          }
+        >
+          {t(`serverFiles.types.${kind}`)}
+        </Tag>
+      ),
+    },
+    {
+      title: t('serverFiles.columns.size'),
+      dataIndex: 'size',
+      width: 120,
+      align: 'right',
+      render: (size: number | undefined, entry) => (
+        <span className="server-file-size-cell">
+          {entry.kind === 'file' ? formatServerFileSize(size) : '—'}
+        </span>
+      ),
+    },
+    {
+      title: t('serverFiles.columns.modified'),
+      dataIndex: 'modifiedAt',
+      width: 190,
+      className: 'server-files-secondary-column',
+      render: (value?: Date) => (
+        <span className="server-file-date-cell">
+          {value ? dateTime(value) : '—'}
+        </span>
+      ),
+    },
+    {
+      title: t('serverFiles.columns.actions'),
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, entry) => {
+        const canEdit =
+          entry.kind === 'file' &&
+          isEditableServerFile(entry) &&
+          (entry.size ?? 0) < MAX_SERVER_FILE_BYTES;
+        const canDownload =
+          entry.kind === 'file' && (entry.size ?? 0) < MAX_SERVER_FILE_BYTES;
+
+        return (
+          <Space size={2} className="server-file-row-actions">
+            {canEdit && (
+              <Tooltip title={t('serverFiles.actions.edit')}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingEntry(entry);
+                  }}
+                />
+              </Tooltip>
+            )}
+            {canDownload && (
+              <Tooltip title={t('serverFiles.actions.download')}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void download(entry);
+                  }}
+                />
+              </Tooltip>
+            )}
+            <Dropdown
+              menu={{ items: getRowMenuItems(entry) }}
+              trigger={['click']}
+              placement="bottomRight"
+            >
+              <Button
+                type="text"
+                size="small"
+                icon={<EllipsisOutlined />}
+                disabled={disabled}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Dropdown>
+          </Space>
+        );
+      },
+    },
+  ];
+
+  const destinationSelectedNames = actionTargetEntry
+    ? [actionTargetEntry.name]
+    : selectedNames;
+
+  return (
+    <div className="server-files-page">
+      {modalContextHolder}
+      <header className="server-files-heading">
+        <div className="server-files-heading-left">
+          <div className="server-files-title-wrap">
+            <Typography.Title level={2}>{t('serverFiles.title')}</Typography.Title>
+            <Typography.Paragraph>{t('serverFiles.subtitle')}</Typography.Paragraph>
+          </div>
+        </div>
+        <div className="server-files-heading-right">
+          <span
+            className={`server-files-connection-badge ${
+              controller.connected ? 'is-connected' : 'is-disconnected'
+            }`}
+          >
+            <span className="server-files-pulse-dot" />
+            <span className="server-files-connection-label">
+              {t(
+                controller.connected
+                  ? 'serverFiles.states.connected'
+                  : 'serverFiles.states.disconnected',
+              )}
+            </span>
+          </span>
+        </div>
+      </header>
+
+      {!controller.connected && (
+        <Alert
+          type="warning"
+          showIcon
+          title={t('serverFiles.states.disconnectedNotice')}
+          className="server-files-alert"
+        />
+      )}
+      {controller.error && (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          title={t('serverFiles.states.operationUnconfirmed')}
+          description={controller.error}
+          onClose={controller.clearError}
+          className="server-files-alert"
+        />
+      )}
+
+      <div className="server-files-workspace">
+        <aside className="server-files-spaces">
+          <div className="server-files-spaces-header">
+            <div className="server-files-spaces-title">
+              <DatabaseOutlined />
+              <span>{t('serverFiles.spaces.title')}</span>
+            </div>
+            {controller.tree?.spaces && controller.tree.spaces.length > 0 && (
+              <Tag bordered={false} className="server-files-spaces-count">
+                {controller.tree.spaces.length}
+              </Tag>
+            )}
+          </div>
+          <List
+            dataSource={controller.tree?.spaces ?? []}
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={t('serverFiles.spaces.empty')}
+                />
+              ),
+            }}
+            renderItem={(space) => {
+              const selected = space.id === controller.currentSpace?.id;
+              const percent = space.maxBytes
+                ? Math.min(100, Math.round((space.usedBytes / space.maxBytes) * 100))
+                : 0;
+
+              let progressColor = '#3b82f6';
+              if (percent >= 90) progressColor = '#ef4444';
+              else if (percent >= 75) progressColor = '#f59e0b';
+
+              return (
+                <div
+                  key={space.id}
+                  className={`server-file-space-item ${selected ? 'is-selected' : ''}`}
+                  onClick={() => {
+                    controller.openSpace(space.id);
+                    setSearchQuery('');
+                  }}
+                >
+                  <div className="server-file-space-item-content">
+                    <span
+                      className={`server-file-space-icon-box ${
+                        space.kind === 'user' ? 'is-user' : 'is-team'
+                      }`}
+                    >
+                      {space.kind === 'user' ? <UserOutlined /> : <TeamOutlined />}
+                    </span>
+                    <div className="server-file-space-details">
+                      <Typography.Text
+                        className="server-file-space-name"
+                        ellipsis={{ tooltip: space.name }}
+                      >
+                        {space.name}
+                      </Typography.Text>
+                      <div className="server-file-space-usage">
+                        {formatServerFileSize(space.usedBytes)}
+                        {space.maxBytes
+                          ? ` / ${formatServerFileSize(space.maxBytes)}`
+                          : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {space.maxBytes !== undefined && (
+                    <div className="server-file-space-progress-wrap">
+                      <Progress
+                        percent={percent}
+                        showInfo={false}
+                        size="small"
+                        strokeColor={progressColor}
+                        trailColor="rgba(255, 255, 255, 0.08)"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            }}
+          />
+        </aside>
+
+        <section
+          className={`server-files-browser ${isDraggingOver ? 'is-dragging-over' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDraggingOver && (
+            <div className="server-files-drop-overlay">
+              <div className="server-files-drop-box">
+                <InboxOutlined className="server-files-drop-icon" />
+                <div className="server-files-drop-title">
+                  {t('serverFiles.dropHint')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="server-files-toolbar">
+            <div className="server-files-toolbar-left">
+              <Space size={8} wrap>
+                <Tooltip title={t('serverFiles.actions.up')}>
+                  <Button
+                    icon={<ArrowUpOutlined />}
+                    aria-label={t('serverFiles.actions.up')}
+                    disabled={disabled || controller.currentPath.length <= 1}
+                    onClick={() => {
+                      controller.openPath(controller.currentPath.slice(0, -1));
+                      setSearchQuery('');
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip title={t('common.actions.refresh')}>
+                  <Button
+                    icon={<ReloadOutlined />}
+                    aria-label={t('common.actions.refresh')}
+                    disabled={disabled}
+                    onClick={() => void controller.refresh()}
+                  />
+                </Tooltip>
+                <div className="server-files-toolbar-divider" />
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  disabled={disabled || !controller.currentSpace}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {t('serverFiles.actions.upload')}
+                </Button>
+                <Button
+                  icon={<FolderAddOutlined />}
+                  disabled={disabled || !controller.currentSpace}
+                  onClick={() => openNameDialog('create')}
+                >
+                  {t('serverFiles.actions.createFolder')}
+                </Button>
+              </Space>
+            </div>
+
+            <div className="server-files-toolbar-right">
+              <Input
+                placeholder={t('serverFiles.searchPlaceholder')}
+                prefix={<SearchOutlined className="server-files-search-icon" />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                allowClear
+                className="server-files-search-input"
+              />
+            </div>
+
+            <input
+              ref={fileInputRef}
+              hidden
+              type="file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void upload(file);
+                event.target.value = '';
+              }}
+            />
+          </div>
+
+          {selectedNames.length > 0 && (
+            <div className="server-files-selection-bar">
+              <div className="server-files-selection-info">
+                <Badge count={selectedNames.length} color="#3b82f6" />
+                <span>
+                  {t('serverFiles.selectionBar.selected', { count: selectedNames.length })}
+                </span>
+              </div>
+              <Space size={6} wrap>
+                {availability.download && (
+                  <Tooltip title={t('serverFiles.actions.download')}>
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() =>
+                        controller.selectedEntries[0] &&
+                        void download(controller.selectedEntries[0])
+                      }
+                    >
+                      {t('serverFiles.actions.download')}
+                    </Button>
+                  </Tooltip>
+                )}
+                {availability.edit && (
+                  <Tooltip title={t('serverFiles.actions.edit')}>
+                    <Button
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => setEditingEntry(controller.selectedEntries[0])}
+                    >
+                      {t('serverFiles.actions.edit')}
+                    </Button>
+                  </Tooltip>
+                )}
+                {availability.rename && (
+                  <Tooltip title={t('common.actions.rename')}>
+                    <Button
+                      size="small"
+                      icon={<FormOutlined />}
+                      onClick={() => openNameDialog('rename')}
+                    >
+                      {t('common.actions.rename')}
+                    </Button>
+                  </Tooltip>
+                )}
+                <Tooltip title={t('serverFiles.actions.copy')}>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    disabled={disabled || !availability.copy}
+                    onClick={() => {
+                      setActionTargetEntry(undefined);
+                      setTransferDialog('copy');
+                    }}
+                  >
+                    {t('serverFiles.actions.copy')}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('serverFiles.actions.move')}>
+                  <Button
+                    size="small"
+                    icon={<SendOutlined />}
+                    disabled={disabled || !availability.move}
+                    onClick={() => {
+                      setActionTargetEntry(undefined);
+                      setTransferDialog('move');
+                    }}
+                  >
+                    {t('serverFiles.actions.move')}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('common.actions.delete')}>
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    disabled={disabled || !availability.remove}
+                    onClick={() => confirmRemove()}
+                  >
+                    {t('common.actions.delete')}
+                  </Button>
+                </Tooltip>
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<CloseOutlined />}
+                  onClick={() => controller.setSelectedPaths([])}
+                >
+                  {t('serverFiles.selectionBar.clear')}
+                </Button>
+              </Space>
+            </div>
+          )}
+
+          <div className="server-files-nav-bar">
+            <Breadcrumb
+              className="server-files-breadcrumb"
+              items={controller.currentPath.map((segment, index) => {
+                const isFirst = index === 0;
+                const isLast = index === controller.currentPath.length - 1;
+                const displayName = isFirst
+                  ? controller.currentSpace?.name ?? segment
+                  : segment;
+
+                return {
+                  title: (
+                    <button
+                      type="button"
+                      className={`server-files-breadcrumb-btn ${isLast ? 'is-active' : ''}`}
+                      onClick={() => {
+                        controller.openPath(controller.currentPath.slice(0, index + 1));
+                        setSearchQuery('');
+                      }}
+                    >
+                      {isFirst ? (
+                        controller.currentSpace?.kind === 'user' ? (
+                          <HomeOutlined className="server-files-breadcrumb-icon" />
+                        ) : (
+                          <TeamOutlined className="server-files-breadcrumb-icon" />
+                        )
+                      ) : (
+                        <FolderOpenOutlined className="server-files-breadcrumb-icon" />
+                      )}
+                      <span>{displayName}</span>
+                    </button>
+                  ),
+                };
+              })}
+            />
+            <div className="server-files-nav-meta">
+              <Tooltip title={t('serverFiles.copyPath')}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={copyCurrentPath}
+                />
+              </Tooltip>
+              <span className="server-files-nav-counter">
+                {rawSortedEntries.length} {t('serverFiles.columns.name')}
+              </span>
+            </div>
+          </div>
+
+          <div className="server-files-table-wrapper">
+            {controller.currentSpace ? (
+              <Table<ServerFileEntry>
+                size="middle"
+                rowKey={(entry) => entry.path.join('\u0000')}
+                columns={columns}
+                dataSource={tableEntries}
+                expandable={{
+                  childrenColumnName: '__none__',
+                }}
+                loading={controller.loading || controller.busy}
+                pagination={{
+                  pageSize: 50,
+                  hideOnSinglePage: true,
+                  showSizeChanger: false,
+                }}
+                scroll={{ y: 'calc(100vh - 350px)' }}
+                rowSelection={{
+                  selectedRowKeys: controller.selectedPaths,
+                  onChange: (keys) => controller.setSelectedPaths(keys.map(String)),
+                }}
+                onRow={(record) => ({
+                  onDoubleClick: () => {
+                    if (record.kind === 'directory') {
+                      controller.openDirectory(record);
+                      setSearchQuery('');
+                    } else if (
+                      isEditableServerFile(record) &&
+                      (record.size ?? 0) < MAX_SERVER_FILE_BYTES
+                    ) {
+                      setEditingEntry(record);
+                    } else if ((record.size ?? 0) < MAX_SERVER_FILE_BYTES) {
+                      void download(record);
+                    }
+                  },
+                })}
+                locale={{
+                  emptyText: searchQuery ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description={t('serverFiles.stats.filtered', {
+                        count: 0,
+                        total: rawSortedEntries.length,
+                      })}
+                    >
+                      <Button size="small" onClick={() => setSearchQuery('')}>
+                        {t('serverFiles.clearSearch')}
+                      </Button>
+                    </Empty>
+                  ) : (
+                    <div className="server-files-empty-state">
+                      <FolderOpenOutlined className="server-files-empty-icon" />
+                      <div className="server-files-empty-title">
+                        {t('serverFiles.emptyFolder')}
+                      </div>
+                      <div className="server-files-empty-desc">
+                        {t('serverFiles.emptyFolderDesc')}
+                      </div>
+                      <Space size={10} className="server-files-empty-actions">
+                        <Button
+                          type="primary"
+                          icon={<UploadOutlined />}
+                          disabled={disabled}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          {t('serverFiles.actions.upload')}
+                        </Button>
+                        <Button
+                          icon={<FolderAddOutlined />}
+                          disabled={disabled}
+                          onClick={() => openNameDialog('create')}
+                        >
+                          {t('serverFiles.actions.createFolder')}
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                }}
+              />
+            ) : (
+              <Empty
+                description={
+                  controller.loading
+                    ? t('serverFiles.states.loading')
+                    : t('serverFiles.spaces.empty')
+                }
+              />
+            )}
+          </div>
+
+          <div className="server-files-status-bar">
+            <span className="server-files-status-info">
+              {searchQuery
+                ? t('serverFiles.stats.filtered', {
+                    count: entries.length,
+                    total: rawSortedEntries.length,
+                  })
+                : t('serverFiles.stats.summary', {
+                    total: rawSortedEntries.length,
+                    folders: totalFolders,
+                    files: totalFiles,
+                  })}
+            </span>
+            {selectedNames.length > 0 && (
+              <span className="server-files-status-selected">
+                {t('serverFiles.selectionBar.selected', {
+                  count: selectedNames.length,
+                })}
+              </span>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <Modal
+        open={Boolean(nameDialog)}
+        title={
+          <div className="server-files-dialog-title">
+            {nameDialog === 'create' ? <FolderAddOutlined /> : <FormOutlined />}
+            <span>
+              {t(
+                nameDialog === 'create'
+                  ? 'serverFiles.create.title'
+                  : 'serverFiles.rename.title',
+              )}
+            </span>
+          </div>
+        }
+        okText={t('common.actions.confirm')}
+        cancelText={t('common.actions.cancel')}
+        onCancel={() => {
+          setNameDialog(undefined);
+          setActionTargetEntry(undefined);
+        }}
+        onOk={() => void submitNameDialog()}
+        okButtonProps={{ disabled: !nameValue.trim(), loading: controller.busy }}
+        destroyOnHidden
+      >
+        <div style={{ marginTop: 16 }}>
+          <Input
+            autoFocus
+            value={nameValue}
+            maxLength={255}
+            prefix={
+              nameDialog === 'create' ? (
+                <FolderFilled style={{ color: '#38bdf8' }} />
+              ) : (
+                <FileOutlined style={{ color: '#94a3b8' }} />
+              )
+            }
+            placeholder={t('serverFiles.namePlaceholder')}
+            onChange={(event) => setNameValue(event.target.value)}
+            onPressEnter={() => void submitNameDialog()}
+          />
+        </div>
+      </Modal>
+
+      <ServerFileDestinationDialog
+        open={Boolean(transferDialog)}
+        spaces={controller.tree?.spaces ?? []}
+        sourcePath={controller.currentPath}
+        selectedNames={destinationSelectedNames}
+        onCancel={() => {
+          setTransferDialog(undefined);
+          setActionTargetEntry(undefined);
+        }}
+        onConfirm={async (path) => {
+          const namesToTransfer = destinationSelectedNames;
+          const succeeded =
+            transferDialog === 'copy'
+              ? await controller.copy(path, namesToTransfer)
+              : await controller.move(path, namesToTransfer);
+          if (succeeded) {
+            setTransferDialog(undefined);
+            setActionTargetEntry(undefined);
+          }
+          return succeeded;
+        }}
+      />
+
+      <ServerFileEditor
+        entry={editingEntry}
+        onRead={controller.readFile}
+        onSave={(entry, bytes) => controller.upload(entry.name, bytes)}
+        onClose={() => setEditingEntry(undefined)}
+      />
+    </div>
+  );
+}

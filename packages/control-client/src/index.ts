@@ -1,6 +1,7 @@
 export { MeshCentralClient } from './client/MeshCentralClient';
 export * from './errors';
 export * from './reports.types';
+export * from './serverFiles.types';
 export * from './types';
 export * from './lifecycle/termination';
 export * from './notifications/types';
@@ -38,6 +39,7 @@ export {
   SITE_RIGHT_LOCKED,
 } from './protocol/userNormalizers';
 export { normalizeCommandMessage } from './protocol/commandMessages';
+export { normalizeServerFileTree } from './protocol/serverFilesNormalizers';
 export {
   normalizeDeviceSessions,
   normalizeNotification,
@@ -50,6 +52,7 @@ export { CommandExecution } from './resources/CommandExecution';
 export { GroupsResource } from './resources/groups';
 export { NotificationsResource } from './resources/notifications';
 export { ReportsResource } from './resources/reports';
+export { ServerFilesResource } from './resources/serverFiles';
 export { ServerResource } from './resources/server';
 export { EventsResource } from './resources/events';
 export { UserGroupsResource } from './resources/userGroups';
