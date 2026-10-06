@@ -355,19 +355,25 @@ https://mesh.example.com/meshagents?id=4&meshid=mesh//xxxxxxxx&installflags=0
   "tz": "Asia/Shanghai",
   "tf": -480,
   "showTraffic": true,
-  "l": "en",
-  "responseid": "req-report"
+  "l": "en"
 }
 ```
 
-常见 `type`：
+MeshCentral 1.1.54 的 `type`：
 
-- `1`：流量。
-- `2`：登录。
-- `3`：数据库。
+- `1`：远程会话。
+- `2`：用户流量。
+- `3`：用户登录。
+- `4`：数据库记录数量。
 
 常见 `groupBy`：
 
 - `1`：按用户。
 - `2`：按设备。
 - `3`：按天。
+
+请求中的 `start`、`end` 使用 Unix 秒；响应条目的 `time` 使用 Unix 毫秒。按天分组时应同时发送 IANA 时区 `tz`、浏览器时区偏移 `tf` 和语言 `l`。
+
+成功响应不会回显 `responseid`，客户端必须保证同一连接上的 `report` 请求串行发送，并通过 `action: "report"` 匹配唯一待处理请求。服务端可能对非法参数或越权请求静默拒绝，调用方应使用较长超时并将超时提示同时表述为参数、权限或连接问题。
+
+权限边界：远程会话和用户登录按当前用户权限返回数据；用户流量要求站点管理员或 `AllEvents` 权限；数据库记录报表仅站点管理员可用。

@@ -1,5 +1,6 @@
 export { MeshCentralClient } from './client/MeshCentralClient';
 export * from './errors';
+export * from './reports.types';
 export * from './types';
 export * from './lifecycle/termination';
 export * from './notifications/types';
@@ -48,6 +49,7 @@ export { CommandsResource } from './resources/commands';
 export { CommandExecution } from './resources/CommandExecution';
 export { GroupsResource } from './resources/groups';
 export { NotificationsResource } from './resources/notifications';
+export { ReportsResource } from './resources/reports';
 export { ServerResource } from './resources/server';
 export { EventsResource } from './resources/events';
 export { UserGroupsResource } from './resources/userGroups';

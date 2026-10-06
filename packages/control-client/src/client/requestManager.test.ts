@@ -112,4 +112,46 @@ describe('RequestManager', () => {
     expect(manager.consume({ action: 'servertimelinestats', events: [] })).toBe(true);
     await expect(second).resolves.toMatchObject({ action: 'servertimelinestats' });
   });
+
+  it('serializes responseid-less report requests', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const manager = new RequestManager(
+      (payload) => sent.push(payload as Record<string, unknown>),
+      1_000,
+      () => undefined,
+    );
+    const first = manager.request({ action: 'report', type: 1 });
+    const second = manager.request({ action: 'report', type: 3 });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    expect(manager.consume({ action: 'report', data: { columns: [], groups: {} } })).toBe(true);
+    await expect(first).resolves.toMatchObject({ action: 'report' });
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+
+    expect(manager.consume({ action: 'report', data: { columns: [], groups: {} } })).toBe(true);
+    await expect(second).resolves.toMatchObject({ action: 'report' });
+  });
+
+  it('continues the report queue after a timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const sent: Record<string, unknown>[] = [];
+      const manager = new RequestManager(
+        (payload) => sent.push(payload as Record<string, unknown>),
+        10,
+        () => undefined,
+      );
+      const first = manager.request({ action: 'report', type: 1 });
+      const second = manager.request({ action: 'report', type: 2 });
+      await vi.advanceTimersByTimeAsync(10);
+
+      await expect(first).rejects.toMatchObject({ name: 'MeshCentralRequestTimeoutError' });
+      expect(sent).toHaveLength(2);
+
+      expect(manager.consume({ action: 'report', data: { columns: [], groups: {} } })).toBe(true);
+      await expect(second).resolves.toMatchObject({ action: 'report' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

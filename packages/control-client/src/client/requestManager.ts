@@ -23,6 +23,7 @@ const RESPONSE_ID_OPTIONAL_ACTIONS = new Set([
   'meshes',
   'poweraction',
   'previousLogins',
+  'report',
   'servertimelinestats',
   'usergroups',
   'users',

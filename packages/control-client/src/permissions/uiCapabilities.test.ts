@@ -159,6 +159,19 @@ describe('getApplicationUiCapabilities', () => {
     expect(getApplicationUiCapabilities(SiteRight.Administrator).manageSettings).toBe(true);
   });
 
+  it('derives report access from site rights', () => {
+    const regular = getApplicationUiCapabilities(0);
+    const eventViewer = getApplicationUiCapabilities(SiteRight.AllEvents);
+    const administrator = getApplicationUiCapabilities(SiteRight.Administrator);
+
+    expect(regular.viewUserTrafficReports).toBe(false);
+    expect(regular.viewDatabaseRecordReports).toBe(false);
+    expect(eventViewer.viewUserTrafficReports).toBe(true);
+    expect(eventViewer.viewDatabaseRecordReports).toBe(false);
+    expect(administrator.viewUserTrafficReports).toBe(true);
+    expect(administrator.viewDatabaseRecordReports).toBe(true);
+  });
+
   it('grants all application capabilities to a site administrator', () => {
     expect(Object.values(getApplicationUiCapabilities(SiteRight.Administrator))).not.toContain(
       false,

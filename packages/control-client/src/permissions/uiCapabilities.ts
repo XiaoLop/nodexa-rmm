@@ -58,6 +58,8 @@ export interface ApplicationUiCapabilities {
   manageUsers: boolean;
   manageUserGroups: boolean;
   viewAllEvents: boolean;
+  viewUserTrafficReports: boolean;
+  viewDatabaseRecordReports: boolean;
   manageSettings: boolean;
   createDeviceGroups: boolean;
   addDevices: boolean;
@@ -268,6 +270,8 @@ export function getApplicationUiCapabilities(
       manageUsers: false,
       manageUserGroups: false,
       viewAllEvents: false,
+      viewUserTrafficReports: false,
+      viewDatabaseRecordReports: false,
       manageSettings: false,
       createDeviceGroups: false,
       addDevices: false,
@@ -279,6 +283,9 @@ export function getApplicationUiCapabilities(
     manageUsers: administrator || hasSiteRight(normalized, SiteRight.ManageUsers),
     manageUserGroups: administrator || hasSiteRight(normalized, SiteRight.ManageUserGroups),
     viewAllEvents: administrator || hasSiteRight(normalized, SiteRight.AllEvents),
+    viewUserTrafficReports:
+      administrator || hasSiteRight(normalized, SiteRight.AllEvents),
+    viewDatabaseRecordReports: administrator,
     manageSettings: administrator,
     createDeviceGroups: administrator || !hasSiteRight(normalized, SiteRight.NoNewGroups),
     addDevices: administrator || !hasSiteRight(normalized, SiteRight.NoNewDevices),

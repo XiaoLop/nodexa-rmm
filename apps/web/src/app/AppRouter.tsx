@@ -43,6 +43,9 @@ const ProfilePage = lazy(() =>
 const RealtimeEventsPage = lazy(() =>
   import('../pages/RealtimeEventsPage').then((module) => ({ default: module.RealtimeEventsPage })),
 );
+const ReportsPage = lazy(() =>
+  import('../pages/ReportsPage').then((module) => ({ default: module.ReportsPage })),
+);
 const UserDetailsPage = lazy(() =>
   import('../pages/UserDetailsPage').then((module) => ({ default: module.UserDetailsPage })),
 );
@@ -108,14 +111,8 @@ export function AppRouter() {
           <Route path="/devices/:deviceId/workspace" element={<DeviceWorkspacePage />} />
           <Route path="/devices/*" element={<ComingSoonPage />} />
           <Route path="/monitoring/realtime" element={<RealtimeEventsPage />} />
-          <Route
-            path="/monitoring/audit"
-            element={
-              <RequireCapability capability="viewAllEvents">
-                <ComingSoonPage />
-              </RequireCapability>
-            }
-          />
+          <Route path="/monitoring/reports" element={<ReportsPage />} />
+          <Route path="/monitoring/audit" element={<Navigate to="/monitoring/reports" replace />} />
           <Route path="/monitoring/*" element={<ComingSoonPage />} />
           <Route path="/remote/*" element={<ComingSoonPage />} />
           <Route
