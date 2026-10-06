@@ -113,7 +113,7 @@ export function NotificationCenter({
     <Drawer
       open={open}
       onClose={onClose}
-      width="min(420px, 100vw)"
+      size="min(420px, 100vw)"
       className="notification-drawer"
       title={
         <div className="notification-drawer-title">

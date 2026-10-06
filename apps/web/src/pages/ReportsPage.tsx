@@ -41,6 +41,7 @@ import { MeshCentralRequestTimeoutError } from '@meshcentral/control-client';
 import dayjs, { type Dayjs } from 'dayjs';
 import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PageHeader, Panel, StatusBadge } from '../components/ui';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import {
@@ -229,32 +230,23 @@ export function ReportsPage() {
 
   return (
     <div className="page-stack reports-page">
-      <div className="page-heading reports-heading">
-        <div className="reports-title-area">
-          <div className="reports-title-icon">
+      <PageHeader
+        className="reports-heading"
+        leading={
+          <span className="reports-title-icon" aria-hidden="true">
             <BarChartOutlined />
-          </div>
-          <div>
-            <div className="reports-title-row">
-              <h1>{t('reports.title')}</h1>
-              <Tag
-                className="reports-status-tag"
-                color={data.status === 'connected' ? 'success' : 'warning'}
-              >
-                <span
-                  className={`status-indicator-dot ${
-                    data.status === 'connected' ? 'dot-online' : 'dot-offline'
-                  }`}
-                />
-                {t(`common.status.${data.status}`)}
-              </Tag>
-            </div>
-            <p>{t('reports.subtitle')}</p>
-          </div>
-        </div>
-      </div>
+          </span>
+        }
+        title={t('reports.title')}
+        description={t('reports.subtitle')}
+        status={
+          <StatusBadge tone={data.status === 'connected' ? 'success' : 'warning'}>
+            {t(`common.status.${data.status}`)}
+          </StatusBadge>
+        }
+      />
 
-      <section className="console-card reports-filter-panel">
+      <Panel className="reports-filter-panel">
         <div className="reports-filter-top-bar">
           <div className="reports-type-selector" role="group" aria-label={t('reports.filters.type')}>
             {typeOptions.map((option) => {
@@ -372,7 +364,7 @@ export function ReportsPage() {
             </Button>
           </div>
         </div>
-      </section>
+      </Panel>
 
       {data.status !== 'connected' && (
         <Alert showIcon type="warning" title={t('reports.states.disconnected')} />
@@ -388,7 +380,7 @@ export function ReportsPage() {
       )}
 
       {!queried && !error && (
-        <section className="console-card reports-empty-state">
+        <Panel className="reports-empty-state">
           <div className="reports-empty-inner">
             <div className="reports-empty-icon-box">
               <BarChartOutlined />
@@ -409,17 +401,17 @@ export function ReportsPage() {
               {t('reports.actions.query')}
             </Button>
           </div>
-        </section>
+        </Panel>
       )}
 
       {queried && !loading && !error && totalEntries === 0 && (
-        <section className="console-card reports-empty-state">
+        <Panel className="reports-empty-state">
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('reports.states.empty')} />
-        </section>
+        </Panel>
       )}
 
       {resultGroups.map(({ key, title, group, entries }) => (
-        <section className="console-card reports-result-group" key={key}>
+        <Panel className="reports-result-group" key={key}>
           <div className="reports-group-heading">
             <div className="reports-group-title-box">
               <div className="reports-group-avatar">
@@ -455,7 +447,7 @@ export function ReportsPage() {
             scroll={{ x: Math.max(760, columns.length * 150) }}
           />
           <ReportSummaries columns={result?.columns ?? []} group={group} context={presentationContext} />
-        </section>
+        </Panel>
       ))}
     </div>
   );

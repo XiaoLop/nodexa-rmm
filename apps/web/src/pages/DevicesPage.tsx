@@ -68,6 +68,7 @@ import { DeviceInviteModal } from '../components/DeviceInviteModal'; // Agent хо
 import { BatchFileUploadModal } from '../components/BatchFileUploadModal';
 import { BatchDeviceOperationsModal } from '../components/BatchDeviceOperationsModal';
 import { CommandExecutionModal } from '../components/CommandExecutionModal';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
 import { useBatchTasks } from '../features/tasks/BatchTaskProvider';
@@ -784,12 +785,11 @@ export function DevicesPage() {
       {messageContextHolder}
       {modalContextHolder}
       <div className="page-stack devices-page">
-        <div className="page-heading">
-          <div>
-            <h1>{t('devices.title')}</h1>
-            <p>{t('devices.subtitle')}</p>
-          </div>
-          <Space>
+        <PageHeader
+          title={t('devices.title')}
+          description={t('devices.subtitle')}
+          actions={
+            <Space wrap>
             <Dropdown
               trigger={['click']}
               menu={{
@@ -867,10 +867,11 @@ export function DevicesPage() {
             >
               {t('devices.actions.addDevice')}
             </Button>
-          </Space>
-        </div>
-        <section className="console-card devices-table-card">
-          <div className="table-toolbar devices-toolbar">
+            </Space>
+          }
+        />
+        <Panel className="devices-table-card">
+          <FilterBar className="devices-toolbar">
             <Input
               value={query}
               onChange={(event) => updateFilters(setQuery, event.target.value)}
@@ -918,7 +919,7 @@ export function DevicesPage() {
             >
               {t('common.actions.refresh')}
             </Button>
-          </div>
+          </FilterBar>
           <Table
             rowKey="id"
             rowSelection={rowSelection}
@@ -936,7 +937,7 @@ export function DevicesPage() {
               ),
             }}
           />
-        </section>
+        </Panel>
       </div>
       {editingDevice && (
         <DeviceEditModal

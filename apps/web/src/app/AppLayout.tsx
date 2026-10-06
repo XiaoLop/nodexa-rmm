@@ -38,7 +38,6 @@ import {
 } from '../features/permissions/useUiCapabilities';
 import { resolveLanguage, type AppLanguage } from '../i18n';
 import 'antd/dist/reset.css';
-import '../assets/styles/layout.css';
 
 const { Header, Sider, Content } = Layout;
 
@@ -162,7 +161,8 @@ export function AppLayout() {
 
 function AppLayoutContent() {
   const { t, i18n } = useTranslation();
-  const [collapsed, setCollapsed] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -224,36 +224,56 @@ function AppLayoutContent() {
   return (
     <Layout className="app-shell">
       <Sider
-        collapsed={collapsed}
+        collapsed={desktopCollapsed && !mobileMenuOpen}
         width={220}
         collapsedWidth={72}
-        className="app-sider"
+        className={`app-sider ${mobileMenuOpen ? 'is-mobile-open' : ''}`}
         trigger={null}
       >
         <div className="sider-brand">
-          <BrandLogo compact={collapsed} />
+          <BrandLogo compact={desktopCollapsed && !mobileMenuOpen} variant="sidebar" />
         </div>
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[pageMeta.selectedKey]}
-          onClick={({ key }) => navigate(key)}
+          onClick={({ key }) => {
+            navigate(key);
+            setMobileMenuOpen(false);
+          }}
           items={visibleMenuItems}
           className="console-menu"
         />
-        <button className="sider-collapse" onClick={() => setCollapsed((value) => !value)}>
-          {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          {!collapsed && <span>{t('navigation.collapseMenu')}</span>}
+        <button
+          type="button"
+          className="sider-collapse"
+          onClick={() => {
+            if (mobileMenuOpen) setMobileMenuOpen(false);
+            else setDesktopCollapsed((value) => !value);
+          }}
+        >
+          {desktopCollapsed && !mobileMenuOpen ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          {(!desktopCollapsed || mobileMenuOpen) && <span>{t('navigation.collapseMenu')}</span>}
         </button>
       </Sider>
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-menu-backdrop"
+          aria-label={t('navigation.collapseMenu')}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <Layout className="console-main">
         <Header className="app-header">
           <div className="header-left">
             <Button
               type="text"
               className="mobile-menu-button"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed((value) => !value)}
+              icon={mobileMenuOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+              aria-label={t('navigation.collapseMenu')}
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((value) => !value)}
             />
             <span className="breadcrumb-title">{pageMeta.title}</span>
           </div>

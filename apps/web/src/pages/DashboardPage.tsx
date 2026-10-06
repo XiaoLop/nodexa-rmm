@@ -402,7 +402,8 @@ export function DashboardPage() {
 
       <section className="dashboard-welcome">
         <div className="dashboard-welcome-copy">
-          <span>{t('dashboard.welcome.greeting') + '' + displayName}</span>
+          <span className="dashboard-welcome-eyebrow">{t('navigation.overview')}</span>
+          <strong>{t('dashboard.welcome.greeting') + '' + displayName}</strong>
           <p>{t('dashboard.welcome.description')}</p>
           <div className="dashboard-welcome-status">
             <i className={statusTone} />
@@ -410,9 +411,6 @@ export function DashboardPage() {
             <b>·</b>
             <span>{data.lastConnectedAt ? t('dashboard.welcome.lastLogin', { time: formatters.dateTime(data.lastConnectedAt) }) : t('dashboard.status.awaitingUpdate')}</span>
           </div>
-        </div>
-        <div className="dashboard-welcome-art" aria-hidden="true">
-          <img src="/image/logo.png" alt="" />
         </div>
         <div className="dashboard-quick-actions">
           <button type="button" onClick={() => navigate('/devices')}><DesktopOutlined /><span>{t('dashboard.welcome.addDevice')}</span><RightOutlined /></button>

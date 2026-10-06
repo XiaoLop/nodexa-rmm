@@ -132,7 +132,7 @@ export function LoginPage({ initialMode = 'login' }: LoginPageProps) {
           </div>
 
           <div className="login-brand-wrapper">
-            <BrandLogo />
+            <BrandLogo variant="hero" />
             <span className="login-product-tag">{t('login.productLine')}</span>
           </div>
         </div>
@@ -186,7 +186,7 @@ export function LoginPage({ initialMode = 'login' }: LoginPageProps) {
         <div className={`login-panel ${mode === 'register' ? 'register-panel' : ''}`}>
           {/* Mobile-only header when left intro is hidden */}
           <div className="login-mobile-header">
-            <BrandLogo />
+            <BrandLogo variant="hero" />
             <div className="login-mobile-status">
               <span className="login-status-dot" />
               <span>{t('login.systemOperational')}</span>
@@ -250,7 +250,7 @@ export function AppBootScreen() {
     <main className="boot-screen">
       <div className="boot-ambient-orb" aria-hidden="true" />
       <div className="boot-content">
-        <BrandLogo />
+        <BrandLogo variant="boot" />
         <div className="boot-spinner-wrap">
           <span className="boot-spinner" />
           <span className="boot-spinner-core" />
