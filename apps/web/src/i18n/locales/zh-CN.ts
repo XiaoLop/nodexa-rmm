@@ -138,6 +138,43 @@ export const zhCN = {
       processes: '进程',
       services: '服务',
       logs: '日志',
+      reasons: {
+        'permission-denied': '没有使用此功能的权限',
+        'permission-unknown': '正在确认设备权限',
+        'gateway-disconnected': '控制通道未连接',
+        'device-offline': '设备当前离线',
+        'feature-disabled': '服务器未启用此功能',
+        'agent-unsupported': '当前设备或 Agent 不支持此功能',
+      },
+    },
+    data: {
+      platforms: {
+        windows: 'Windows 设备',
+        linux: 'Linux 设备',
+        macos: 'macOS 设备',
+        mobile: '移动设备',
+        amt: 'Intel AMT 设备',
+        unknown: '未识别设备',
+      },
+      management: {
+        agent: 'Mesh Agent 管理',
+        amt: 'Intel AMT 管理',
+        hybrid: 'Agent + AMT 管理',
+        unknown: '管理方式未知',
+      },
+      states: {
+        available: '已采集',
+        partial: '部分可用',
+        unsupported: '此设备不支持',
+        'not-reported': 'Agent 未上报',
+        unavailable: '当前不可用',
+      },
+      sources: {
+        agent: '数据来源：Mesh Agent',
+        amt: '数据来源：Intel AMT',
+        server: '数据来源：服务器',
+        derived: '根据设备状态推导',
+      },
     },
     header: {
       pendingReboot: '待重启',

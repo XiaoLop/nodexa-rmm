@@ -10,7 +10,7 @@ import {
 import type { DeviceUiCapabilities, UiPermission } from '@meshcentral/control-client';
 import { Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
-import type { WorkspaceTab } from '../../features/device-workspace/types';
+import type { DeviceWorkspaceModel, WorkspaceTab } from '../../features/device-workspace/types';
 
 const tabs: Array<{
   key: WorkspaceTab;
@@ -30,29 +30,56 @@ const tabs: Array<{
 export function workspaceTabPermission(
   tab: WorkspaceTab,
   capabilities: DeviceUiCapabilities,
-  remoteControlAllowed: boolean,
-  agentPresent: boolean,
+  context: {
+    model: DeviceWorkspaceModel;
+    remoteControlAllowed: boolean;
+    agentPresent: boolean;
+    controlConnected: boolean;
+  },
 ): UiPermission | undefined {
   if (tab === 'processes' || tab === 'services') {
-    const available = remoteControlAllowed && agentPresent;
-    return { visible: available, enabled: available };
+    if (!context.remoteControlAllowed) return { visible: false, enabled: false };
+    if (!context.agentPresent) {
+      return { visible: true, enabled: false, reason: 'agent-unsupported' };
+    }
+    if (!context.controlConnected) {
+      return { visible: true, enabled: false, reason: 'gateway-disconnected' };
+    }
+    if (!context.model.device.online) {
+      return { visible: true, enabled: false, reason: 'device-offline' };
+    }
+    return { visible: true, enabled: true };
   }
   const definition = tabs.find((item) => item.key === tab);
-  return definition?.permission ? capabilities[definition.permission] : undefined;
+  if (!definition?.permission) return undefined;
+  const permission = capabilities[definition.permission];
+  const accessAllowed = definition.permission === 'desktop'
+    ? context.model.desktopAccess !== undefined && context.model.desktopAccess !== 'denied'
+    : definition.permission === 'terminal'
+      ? context.model.terminalAllowed === true
+      : context.model.filesAllowed === true;
+  if (!permission.visible && accessAllowed) {
+    return { visible: true, enabled: false, reason: 'agent-unsupported' };
+  }
+  return permission;
 }
 
 export function WorkspaceTabs({
   active,
   onChange,
   capabilities,
+  model,
   remoteControlAllowed,
   agentPresent,
+  controlConnected,
 }: {
   active: WorkspaceTab;
   onChange: (tab: WorkspaceTab) => void;
   capabilities: DeviceUiCapabilities;
+  model: DeviceWorkspaceModel;
   remoteControlAllowed: boolean;
   agentPresent: boolean;
+  controlConnected: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -61,8 +88,7 @@ export function WorkspaceTabs({
         const permission = workspaceTabPermission(
           tab.key,
           capabilities,
-          remoteControlAllowed,
-          agentPresent,
+          { model, remoteControlAllowed, agentPresent, controlConnected },
         );
         if (permission && !permission.visible) return null;
         const button = (
@@ -76,8 +102,11 @@ export function WorkspaceTabs({
             <span>{t(tab.labelKey)}</span>
           </button>
         );
-        return permission?.message ? (
-          <Tooltip key={tab.key} title={permission.message}>
+        const permissionMessage = permission?.message ?? (permission?.reason
+          ? t(`deviceWorkspace.tabs.reasons.${permission.reason}`)
+          : undefined);
+        return permissionMessage ? (
+          <Tooltip key={tab.key} title={permissionMessage}>
             <span>{button}</span>
           </Tooltip>
         ) : (

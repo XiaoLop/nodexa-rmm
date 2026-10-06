@@ -11,7 +11,10 @@ import {
 import { Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { splitUptime } from '../../features/device-workspace/deviceWorkspaceModel';
-import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
+import type {
+  DeviceDataStatus,
+  DeviceWorkspaceModel,
+} from '../../features/device-workspace/types';
 import { useFormatters } from '../../i18n/formatters';
 
 function platformIcon(platform: string) {
@@ -38,6 +41,10 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
           : '',
       ].filter(Boolean).join(' ')
     : '—';
+  const statusText = (status: DeviceDataStatus) =>
+    t(`deviceWorkspace.data.states.${status.state}`);
+  const sourceText = (status: DeviceDataStatus) =>
+    status.source ? t(`deviceWorkspace.data.sources.${status.source}`) : '';
 
   return (
     <header className="workspace-device-header console-card">
@@ -53,7 +60,12 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
           </div>
           <div className="workspace-device-badges">
             <Tag color="blue">{model.groupName ?? t('common.status.ungrouped')}</Tag>
-            <Tag color="cyan">{model.platform ?? t('common.status.unknown')}</Tag>
+            <Tag color="cyan">
+              {t(`deviceWorkspace.data.platforms.${hw.platformKind}`)}
+            </Tag>
+            <Tag color={model.managementKind === 'amt' ? 'gold' : 'geekblue'}>
+              {t(`deviceWorkspace.data.management.${model.managementKind}`)}
+            </Tag>
             {hw?.agentVersion && (
               <Tag color="geekblue">
                 {hw.agentVersion} {hw.agentIsRoot ? '(Root)' : ''}
@@ -71,23 +83,23 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
       <div className="workspace-header-metrics">
         <div className="workspace-header-metric">
           <span><ThunderboltOutlined /> {t('deviceWorkspace.header.cpu')}</span>
-          <strong title={hw?.cpuName || model.cpuName}>{hw?.cpuShortName || model.cpuName || '—'}</strong>
-          <small>{hw?.cpuSpeed || t('deviceWorkspace.header.systemHardware')}</small>
+          <strong title={hw?.cpuName || model.cpuName}>{hw?.cpuShortName || model.cpuName || statusText(model.coreDataStatus.cpu)}</strong>
+          <small>{hw?.cpuSpeed || sourceText(model.coreDataStatus.cpu)}</small>
         </div>
         <div className="workspace-header-metric">
           <span><AppstoreOutlined /> {t('deviceWorkspace.header.memory')}</span>
-          <strong>{hw?.memoryTotal || model.memorySummary || '—'}</strong>
-          <small>{hw?.memorySlots ? t('deviceWorkspace.header.slots', { count: hw.memorySlots }) : hw?.memorySpeed || t('deviceWorkspace.header.systemMemory')}</small>
+          <strong>{hw?.memoryTotal || model.memorySummary || statusText(model.coreDataStatus.memory)}</strong>
+          <small>{hw?.memorySlots ? t('deviceWorkspace.header.slots', { count: hw.memorySlots }) : hw?.memorySpeed || sourceText(model.coreDataStatus.memory)}</small>
         </div>
         <div className="workspace-header-metric">
           <span><DatabaseOutlined /> {t('deviceWorkspace.header.storage')}</span>
-          <strong>{hw?.storageTotal || model.storageSummary || '—'}</strong>
-          <small>{hw?.storageRemaining ? t('deviceWorkspace.header.remaining', { value: hw.storageRemaining }) : t('deviceWorkspace.header.localDisk')}</small>
+          <strong>{hw?.storageTotal || model.storageSummary || statusText(model.coreDataStatus.storage)}</strong>
+          <small>{hw?.storageRemaining ? t('deviceWorkspace.header.remaining', { value: hw.storageRemaining }) : sourceText(model.coreDataStatus.storage)}</small>
         </div>
         <div className="workspace-header-metric">
           <span><DesktopOutlined /> {t('deviceWorkspace.header.display')}</span>
-          <strong title={hw?.gpuName || '—'}>{hw?.gpuName || t('deviceWorkspace.header.standardDisplay')}</strong>
-          <small>{hw?.gpuResolution || hw?.primaryNic || '—'}</small>
+          <strong title={hw?.gpuName}>{hw?.gpuName || statusText(model.coreDataStatus.display)}</strong>
+          <small>{hw?.gpuResolution || hw?.primaryNic || sourceText(model.coreDataStatus.display)}</small>
         </div>
       </div>
 

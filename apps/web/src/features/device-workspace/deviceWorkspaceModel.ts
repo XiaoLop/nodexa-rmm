@@ -2,7 +2,12 @@ import type { DeviceDetails } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { canUseDeviceFiles, canUseTerminal, getDesktopAccess } from '../users/meshPermissions';
 import type {
+  DeviceCoreDataStatus,
+  DeviceDataAvailability,
+  DeviceDataStatus,
   DeviceHardwareInfo,
+  DeviceManagementKind,
+  DevicePlatformKind,
   DeviceWorkspaceModel,
   NetworkInterfaceInfo,
   StorageVolume,
@@ -138,7 +143,7 @@ function numberFrom(value: unknown): number | undefined {
   return Number.isFinite(number) ? number : undefined;
 }
 
-function bytesFrom(value: unknown): number {
+function bytesFrom(value: unknown, unitlessMultiplier = 1): number {
   const number = numberFrom(value);
   if (number === undefined) return 0;
   const text = typeof value === 'string' ? value.toLowerCase() : '';
@@ -146,19 +151,22 @@ function bytesFrom(value: unknown): number {
   if (text.includes('gib') || text.includes('gb')) return number * 1024 ** 3;
   if (text.includes('mib') || text.includes('mb')) return number * 1024 ** 2;
   if (text.includes('kib') || text.includes('kb')) return number * 1024;
-  return number;
+  return number * unitlessMultiplier;
 }
 
-function parseVolumes(volumesRecord: unknown): StorageVolume[] {
+function parseVolumes(volumesRecord: unknown, unitlessMultiplier = 1): StorageVolume[] {
   if (!volumesRecord || typeof volumesRecord !== 'object') return [];
   const entries = Array.isArray(volumesRecord)
     ? volumesRecord.map((item, index) => [String(index), item] as const)
     : Object.entries(volumesRecord as Record<string, unknown>);
   return entries.map(([letter, item]) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-    const size = bytesFrom(record.size ?? record.Size);
-    const reportedUsed = bytesFrom(record.used ?? record.Used);
-    const available = bytesFrom(record.available ?? record.FreeSpace ?? record.sizeremaining);
+    const size = bytesFrom(record.size ?? record.Size, unitlessMultiplier);
+    const reportedUsed = bytesFrom(record.used ?? record.Used, unitlessMultiplier);
+    const available = bytesFrom(
+      record.available ?? record.FreeSpace ?? record.sizeremaining,
+      unitlessMultiplier,
+    );
     const remaining = available || Math.max(0, size - reportedUsed);
     const used = Math.max(0, size - remaining);
     const usedPercent = size > 0 ? Math.min(100, Math.round((used / size) * 100)) : 0;
@@ -183,7 +191,11 @@ function parseInterfaces(networkInfo: unknown): NetworkInterfaceInfo[] {
   const list: NetworkInterfaceInfo[] = [];
 
   for (const [name, items] of Object.entries(netif2 as Record<string, unknown>)) {
-    if (name.toLowerCase().includes('loopback') || name.toLowerCase() === 'meta') continue;
+    if (
+      name.toLowerCase().includes('loopback') ||
+      name.toLowerCase() === 'lo' ||
+      name.toLowerCase() === 'meta'
+    ) continue;
     if (Array.isArray(items)) {
       const ipv4 = items.find((item) => item && typeof item === 'object' && (item as Record<string, unknown>).family === 'IPv4') as Record<string, unknown> | undefined;
       const target = ipv4 ?? items[0] as Record<string, unknown> | undefined;
@@ -236,7 +248,7 @@ function selectPrimaryInterface(interfaces: NetworkInterfaceInfo[]) {
   }, undefined);
 }
 
-function staticDetails(details: DeviceDetails | undefined) {
+function staticDetails(details: DeviceDetails | undefined, device: Device) {
   const hardware = hardwareRecord(details);
   const platformKey = ['windows', 'linux', 'darwin', 'mobile'].find((key) =>
     hardware?.[key] && typeof hardware[key] === 'object',
@@ -251,7 +263,7 @@ function staticDetails(details: DeviceDetails | undefined) {
     : platformRecord;
   const detailRaw = details?.raw?.detail && typeof details.raw.detail === 'object' ? (details.raw.detail as Record<string, unknown>) : undefined;
   const detailNode = detailRaw?.node && typeof detailRaw.node === 'object' ? detailRaw.node as Record<string, unknown> : undefined;
-  const platformKind = platformKey === 'windows'
+  const platformKind: DevicePlatformKind = platformKey === 'windows'
     ? 'windows'
     : platformKey === 'linux'
       ? 'linux'
@@ -261,7 +273,7 @@ function staticDetails(details: DeviceDetails | undefined) {
           ? 'mobile'
             : platformKey
               ? 'amt'
-              : detailNode?.mtype === 1
+              : detailNode?.mtype === 1 || device.machineType === 1
                 ? 'amt'
                 : 'unknown';
     const platformOsInfo = platformDetails?.osinfo && typeof platformDetails.osinfo === 'object'
@@ -285,16 +297,19 @@ function staticDetails(details: DeviceDetails | undefined) {
   const rawCpuName = stringFrom(cpuRecord?.Name) ?? stringFrom(identifiers?.cpu_name);
   const cpuMaxClock = typeof cpuRecord?.MaxClockSpeed === 'number' ? `${(cpuRecord.MaxClockSpeed / 1000).toFixed(2)} GHz` : undefined;
 
+  const linuxMemory = platformDetails?.memory && typeof platformDetails.memory === 'object'
+    ? platformDetails.memory as Record<string, unknown>
+    : undefined;
   const memory = Array.isArray(platformDetails?.memory)
     ? platformDetails.memory
-    : platformKey === 'linux' && hardware?.memory && typeof hardware.memory === 'object' && Array.isArray((hardware.memory as Record<string, unknown>).Memory_Device)
-      ? (hardware.memory as Record<string, unknown>).Memory_Device as unknown[]
+    : platformKey === 'linux' && Array.isArray(linuxMemory?.Memory_Device)
+      ? linuxMemory.Memory_Device as unknown[]
       : [];
   const memorySlots = memory.length;
   const firstMemory = memory[0] && typeof memory[0] === 'object' ? (memory[0] as Record<string, unknown>) : undefined;
   const memorySpeed = typeof firstMemory?.Speed === 'number' ? `${firstMemory.Speed} MHz` : undefined;
 
-  const volumes = parseVolumes(platformDetails?.volumes);
+  const volumes = parseVolumes(platformDetails?.volumes, platformKey === 'linux' ? 1024 : 1);
   const drives = Array.isArray(platformDetails?.drives) ? platformDetails.drives : [];
   const driveNames = drives.map((drive) => (drive && typeof drive === 'object' ? stringFrom((drive as Record<string, unknown>).Model) ?? stringFrom((drive as Record<string, unknown>).Caption) : undefined)).filter(Boolean) as string[];
 
@@ -304,9 +319,13 @@ function staticDetails(details: DeviceDetails | undefined) {
   }, 0);
   const linuxVolumes = platformKey === 'linux' ? platformDetails?.volumes : undefined;
   const darwinVolumes = platformKey === 'darwin' ? platformDetails?.volumes : undefined;
-  const parsedVolumes = volumes.length > 0 ? volumes : parseVolumes(linuxVolumes ?? darwinVolumes);
-  const totalStorage = parsedVolumes.reduce<number>((sum, item) => sum + item.sizeBytes, 0);
-  const totalRemaining = parsedVolumes.reduce<number>((sum, item) => sum + item.remainingBytes, 0);
+  const parsedVolumes = volumes.length > 0
+    ? volumes
+    : parseVolumes(linuxVolumes ?? darwinVolumes, platformKey === 'linux' ? 1024 : 1);
+  const storageSummaryVolumes = parsedVolumes.filter((item) => item.type?.toLowerCase() !== 'overlay');
+  const summarizedVolumes = storageSummaryVolumes.length > 0 ? storageSummaryVolumes : parsedVolumes;
+  const totalStorage = summarizedVolumes.reduce<number>((sum, item) => sum + item.sizeBytes, 0);
+  const totalRemaining = summarizedVolumes.reduce<number>((sum, item) => sum + item.remainingBytes, 0);
 
   const systemRecord = detailRecord(details, 'systemInfo');
   const networkRecord = detailRecord(details, 'networkInfo');
@@ -314,15 +333,15 @@ function staticDetails(details: DeviceDetails | undefined) {
   const interfaces = parseInterfaces(networkRecord);
   const primaryInterface = selectPrimaryInterface(interfaces);
 
-  const boardName = stringFrom(identifiers?.board_name) ?? stringFrom(identifiers?.product_name) ?? '—';
+  const boardName = stringFrom(identifiers?.board_name) ?? stringFrom(identifiers?.product_name);
   const biosVersion = stringFrom(identifiers?.bios_version)
     ? `${stringFrom(identifiers?.bios_vendor) ?? ''} ${String(identifiers?.bios_version ?? '')}`.trim()
-    : '—';
+    : undefined;
 
   const gpus = Array.isArray(platformDetails?.gpu) ? platformDetails.gpu : [];
   const activeGpu = gpus.find((gpu) => gpu && typeof gpu === 'object' && (gpu as Record<string, unknown>).CurrentHorizontalResolution) ?? gpus[0];
   const activeGpuRecord = activeGpu && typeof activeGpu === 'object' ? (activeGpu as Record<string, unknown>) : undefined;
-  const gpuName = stringFrom(activeGpuRecord?.Name) ?? (Array.isArray(identifiers?.gpu_name) ? identifiers?.gpu_name[0] : undefined) ?? '—';
+  const gpuName = stringFrom(activeGpuRecord?.Name) ?? (Array.isArray(identifiers?.gpu_name) ? identifiers?.gpu_name[0] : undefined);
   const gpuResolution = activeGpuRecord?.CurrentHorizontalResolution && activeGpuRecord?.CurrentVerticalResolution
     ? `${activeGpuRecord.CurrentHorizontalResolution} × ${activeGpuRecord.CurrentVerticalResolution}`
     : undefined;
@@ -420,11 +439,131 @@ function desktopPermission(
   return typeof rights === 'number' && Number.isFinite(rights) ? getDesktopAccess(rights) : undefined;
 }
 
+function managementKind(device: Device): DeviceManagementKind {
+  const connectionFlags = device.connectionFlags ?? 0;
+  const hasAgent =
+    device.agentId !== undefined ||
+    device.agentCapabilities !== undefined ||
+    (connectionFlags & 1) !== 0;
+  const hasAmt =
+    device.machineType === 1 ||
+    device.amtState !== undefined ||
+    device.amtSku !== undefined ||
+    (connectionFlags & 6) !== 0;
+  if (hasAgent && hasAmt) return 'hybrid';
+  if (hasAgent) return 'agent';
+  if (hasAmt) return 'amt';
+  return 'unknown';
+}
+
+function dataStatus(
+  available: boolean,
+  device: Device,
+  fallback: DeviceDataStatus['state'],
+  source: DeviceDataStatus['source'],
+): DeviceDataStatus {
+  if (available) return { state: 'available', source };
+  if (!device.online && fallback !== 'unsupported') return { state: 'unavailable', source };
+  return { state: fallback, source };
+}
+
+function dataAvailability(
+  device: Device,
+  hardware: DeviceHardwareInfo,
+  hasSystemDetails: boolean,
+  hasNetworkDetails: boolean,
+): { sections: DeviceDataAvailability; core: DeviceCoreDataStatus } {
+  const management = managementKind(device);
+  const source = management === 'amt' ? 'amt' : 'agent';
+  const systemFallback = hardware.platformKind === 'amt' ? 'partial' : 'not-reported';
+  const limitedPlatform = hardware.platformKind === 'amt' || hardware.platformKind === 'mobile';
+  const hardwareValues = Boolean(
+    hardware.cpuName || hardware.memoryTotal || hardware.deviceModel || hardware.boardName,
+  );
+  const securityValues = Boolean(
+    hardware.security.antiVirus ||
+      hardware.security.firewall ||
+      hardware.security.autoUpdate ||
+      hardware.security.realTimeProtection !== undefined ||
+      hardware.security.pendingReboot,
+  );
+  const securityUnsupported = ['linux', 'macos', 'mobile', 'amt'].includes(
+    hardware.platformKind,
+  );
+  const sections: DeviceDataAvailability = {
+    system: dataStatus(hasSystemDetails, device, systemFallback, source),
+    hardware: dataStatus(
+      hardwareValues,
+      device,
+      hasSystemDetails ? 'partial' : systemFallback,
+      source,
+    ),
+    storage: dataStatus(
+      hardware.volumes.length > 0,
+      device,
+      limitedPlatform ? 'unsupported' : hasSystemDetails ? 'not-reported' : systemFallback,
+      source,
+    ),
+    network: dataStatus(
+      hasNetworkDetails && hardware.interfaces.length > 0,
+      device,
+      hasNetworkDetails ? 'partial' : 'not-reported',
+      source,
+    ),
+    security: dataStatus(
+      securityValues,
+      device,
+      securityUnsupported
+        ? 'unsupported'
+        : hasSystemDetails
+          ? 'not-reported'
+          : systemFallback,
+      source,
+    ),
+  };
+
+  return {
+    sections,
+    core: {
+      cpu: dataStatus(
+        Boolean(hardware.cpuName),
+        device,
+        hasSystemDetails ? 'not-reported' : systemFallback,
+        source,
+      ),
+      memory: dataStatus(
+        Boolean(hardware.memoryTotal),
+        device,
+        limitedPlatform ? 'unsupported' : hasSystemDetails ? 'not-reported' : systemFallback,
+        source,
+      ),
+      storage: sections.storage,
+      display: dataStatus(
+        Boolean(hardware.gpuName),
+        device,
+        hardware.platformKind === 'amt'
+          ? 'unsupported'
+          : hasSystemDetails
+            ? 'not-reported'
+            : systemFallback,
+        source,
+      ),
+      network: sections.network,
+    },
+  };
+}
+
 export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetails, groupName?: string): DeviceWorkspaceModel {
   const resolvedDevice = details?.device ?? device;
-  const hardware = staticDetails(details);
+  const hardware = staticDetails(details, resolvedDevice);
   const hasSystemDetails = detailRecord(details, 'systemInfo') !== undefined;
   const hasNetworkDetails = detailRecord(details, 'networkInfo') !== undefined;
+  const availability = dataAvailability(
+    resolvedDevice,
+    hardware.hardware,
+    hasSystemDetails,
+    hasNetworkDetails,
+  );
   const detailHardware = hardwareRecord(details);
   const platformKey = ['windows', 'linux', 'darwin', 'mobile'].find((key) =>
     detailHardware?.[key] && typeof detailHardware[key] === 'object',
@@ -436,6 +575,9 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
   return {
     device: resolvedDevice,
     details,
+    managementKind: managementKind(resolvedDevice),
+    dataAvailability: availability.sections,
+    coreDataStatus: availability.core,
     hasSystemDetails,
     hasNetworkDetails,
     hostname: rawString(resolvedDevice, ['rname', 'host', 'hostname'], resolvedDevice.raw) ?? resolvedDevice.name,

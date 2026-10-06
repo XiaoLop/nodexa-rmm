@@ -138,6 +138,43 @@ export const enUS = {
       processes: 'Processes',
       services: 'Services',
       logs: 'Logs',
+      reasons: {
+        'permission-denied': 'You do not have permission to use this feature',
+        'permission-unknown': 'Confirming device permissions',
+        'gateway-disconnected': 'The control channel is disconnected',
+        'device-offline': 'The device is offline',
+        'feature-disabled': 'This feature is disabled by the server',
+        'agent-unsupported': 'This device or agent does not support the feature',
+      },
+    },
+    data: {
+      platforms: {
+        windows: 'Windows device',
+        linux: 'Linux device',
+        macos: 'macOS device',
+        mobile: 'Mobile device',
+        amt: 'Intel AMT device',
+        unknown: 'Unrecognized device',
+      },
+      management: {
+        agent: 'Mesh Agent managed',
+        amt: 'Intel AMT managed',
+        hybrid: 'Agent + AMT managed',
+        unknown: 'Management unknown',
+      },
+      states: {
+        available: 'Collected',
+        partial: 'Partially available',
+        unsupported: 'Unsupported by this device',
+        'not-reported': 'Not reported by the agent',
+        unavailable: 'Currently unavailable',
+      },
+      sources: {
+        agent: 'Source: Mesh Agent',
+        amt: 'Source: Intel AMT',
+        server: 'Source: server',
+        derived: 'Derived from device state',
+      },
     },
     header: {
       pendingReboot: 'Restart required',

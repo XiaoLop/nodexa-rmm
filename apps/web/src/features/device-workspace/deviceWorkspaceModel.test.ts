@@ -45,6 +45,8 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.volumes).toEqual([]);
     expect(model.hasSystemDetails).toBe(false);
     expect(model.hasNetworkDetails).toBe(false);
+    expect(model.managementKind).toBe('unknown');
+    expect(model.dataAvailability.system.state).toBe('not-reported');
   });
 
   it('uses readable fallbacks when optional fields are absent', () => {
@@ -209,6 +211,20 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.primarySpeed).toBe('866 Mbps');
   });
 
+  it('excludes the Linux loopback interface from network summaries', () => {
+    const model = createDeviceWorkspaceModel(device, {
+      networkInfo: {
+        netif2: {
+          lo: [{ family: 'IPv4', address: '127.0.0.1', status: 'up' }],
+          eth0: [{ family: 'IPv4', address: '10.0.0.8', gateway: '10.0.0.1', status: 'up' }],
+        },
+      },
+    } as any);
+
+    expect(model.hardware.interfaces.map((item) => item.name)).toEqual(['eth0']);
+    expect(model.hardware.primaryNic).toBe('eth0');
+  });
+
   it('normalizes Linux identifiers, kernel details, and mounted volumes', () => {
     const model = createDeviceWorkspaceModel(
       { id: 'linux-1', name: 'Ubuntu host', online: true, platform: 'Linux' },
@@ -222,7 +238,13 @@ describe('createDeviceWorkspaceModel', () => {
             identifiers: { product_name: 'ThinkStation' },
             linux: {
               kernel_release: '6.8.0-40-generic',
-              volumes: [{ mount_point: '/', size: '100G', used: '40G', available: '60G', type: 'ext4' }],
+              volumes: [
+                { mount_point: '/', size: '104857600', used: '41943040', available: '62914560', type: 'ext4' },
+                { mount_point: '/var/lib/docker/overlay', size: '104857600', used: '41943040', available: '62914560', type: 'overlay' },
+              ],
+              memory: {
+                Memory_Device: [{ Size: '2560 MB' }],
+              },
             },
           },
         },
@@ -234,6 +256,12 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.cpuName).toBe('AMD Ryzen 7 5800X');
     expect(model.hardware.kernelVersion).toBe('6.8.0-40-generic');
     expect(model.hardware.volumes[0]).toMatchObject({ letter: '/', type: 'ext4', usedPercent: 40 });
+    expect(model.hardware.volumes[0]?.sizeFormatted).toBe('100.0 GB');
+    expect(model.hardware.storageTotal).toBe('100.0 GB');
+    expect(model.hardware.volumes).toHaveLength(2);
+    expect(model.hardware.memoryTotal).toBe('2.5 GB');
+    expect(model.dataAvailability.security.state).toBe('unsupported');
+    expect(model.dataAvailability.network.state).toBe('not-reported');
   });
 
   it('normalizes macOS volumes and boot time', () => {
@@ -297,6 +325,49 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.hardware.platformKind).toBe('amt');
     expect(model.hardware.deviceModel).toBe('Intel vPro');
     expect(model.hardware.agentVersion).toBeUndefined();
+    expect(model.managementKind).toBe('amt');
+    expect(model.dataAvailability.storage.state).toBe('unsupported');
+    expect(model.coreDataStatus.display.state).toBe('unsupported');
+  });
+
+  it('recognizes AMT from normalized machine type without raw detail data', () => {
+    const model = createDeviceWorkspaceModel({
+      id: 'amt-normalized',
+      name: 'AMT device',
+      online: true,
+      machineType: 1,
+      amtState: 2,
+    });
+
+    expect(model.hardware.platformKind).toBe('amt');
+    expect(model.managementKind).toBe('amt');
+  });
+
+  it('marks devices with agent and AMT connectivity as hybrid managed', () => {
+    const model = createDeviceWorkspaceModel({
+      id: 'hybrid-1',
+      name: 'Hybrid device',
+      online: true,
+      connectionFlags: 3,
+      agentCapabilities: 7,
+      amtState: 2,
+    });
+
+    expect(model.managementKind).toBe('hybrid');
+  });
+
+  it('distinguishes offline data from data that was never reported', () => {
+    const model = createDeviceWorkspaceModel({
+      id: 'offline-1',
+      name: 'Offline device',
+      online: false,
+      agentCapabilities: 7,
+    });
+
+    expect(model.managementKind).toBe('agent');
+    expect(model.dataAvailability.system.state).toBe('unavailable');
+    expect(model.coreDataStatus.cpu.state).toBe('unavailable');
+    expect(model.dataAvailability.security.state).toBe('unavailable');
   });
 
   it('uses the resolved group name when the device only contains a group id', () => {

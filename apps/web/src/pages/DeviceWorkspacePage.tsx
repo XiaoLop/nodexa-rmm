@@ -191,15 +191,19 @@ export function DeviceWorkspacePage() {
   };
 
   useEffect(() => {
-    if (!capabilities) return;
+    if (!capabilities || !model) return;
     const permission = workspaceTabPermission(
       activeTab,
       capabilities,
-      remoteControlAllowed,
-      device?.agentCapabilities !== undefined,
+      {
+        model,
+        remoteControlAllowed,
+        agentPresent: device?.agentCapabilities !== undefined || device?.agentId !== undefined,
+        controlConnected: data.status === 'connected',
+      },
     );
     if (permission && !permission.visible) setActiveTab('overview');
-  }, [activeTab, capabilities, device?.agentCapabilities, remoteControlAllowed]);
+  }, [activeTab, capabilities, data.status, device?.agentCapabilities, device?.agentId, model, remoteControlAllowed]);
 
   if (isInitialLoading) {
     return (
@@ -376,8 +380,10 @@ export function DeviceWorkspacePage() {
         active={activeTab}
         onChange={setActiveTab}
         capabilities={capabilities}
+        model={model}
         remoteControlAllowed={remoteControlAllowed}
-        agentPresent={device.agentCapabilities !== undefined}
+        agentPresent={device.agentCapabilities !== undefined || device.agentId !== undefined}
+        controlConnected={data.status === 'connected'}
       />
       <Suspense fallback={<WorkspacePanelLoading />}>
         {activeTab === 'overview' ? (

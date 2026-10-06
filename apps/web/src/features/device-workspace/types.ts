@@ -12,6 +12,40 @@ export type WorkspaceTab =
   | 'monitoring'
   | 'security';
 
+export type DevicePlatformKind = 'windows' | 'linux' | 'macos' | 'mobile' | 'amt' | 'unknown';
+
+export type DeviceManagementKind = 'agent' | 'amt' | 'hybrid' | 'unknown';
+
+export type DeviceDataState =
+  | 'available'
+  | 'partial'
+  | 'unsupported'
+  | 'not-reported'
+  | 'unavailable';
+
+export type DeviceDataSource = 'agent' | 'amt' | 'server' | 'derived';
+
+export interface DeviceDataStatus {
+  state: DeviceDataState;
+  source?: DeviceDataSource;
+}
+
+export interface DeviceDataAvailability {
+  system: DeviceDataStatus;
+  hardware: DeviceDataStatus;
+  storage: DeviceDataStatus;
+  network: DeviceDataStatus;
+  security: DeviceDataStatus;
+}
+
+export interface DeviceCoreDataStatus {
+  cpu: DeviceDataStatus;
+  memory: DeviceDataStatus;
+  storage: DeviceDataStatus;
+  display: DeviceDataStatus;
+  network: DeviceDataStatus;
+}
+
 export interface StorageVolume {
   letter: string;
   name?: string;
@@ -42,7 +76,7 @@ export interface DeviceSecurityState {
 }
 
 export interface DeviceHardwareInfo {
-  platformKind: 'windows' | 'linux' | 'macos' | 'mobile' | 'amt' | 'unknown';
+  platformKind: DevicePlatformKind;
   deviceModel?: string;
   osVersion?: string;
   kernelVersion?: string;
@@ -77,6 +111,9 @@ export interface DeviceHardwareInfo {
 export interface DeviceWorkspaceModel {
   device: Device;
   details?: DeviceDetails;
+  managementKind: DeviceManagementKind;
+  dataAvailability: DeviceDataAvailability;
+  coreDataStatus: DeviceCoreDataStatus;
   hasSystemDetails: boolean;
   hasNetworkDetails: boolean;
   hostname: string;
