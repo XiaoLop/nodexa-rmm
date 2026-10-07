@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { getSiteUrl } from "@/config/site";
 import { isLocale } from "@/i18n/config";
 import "../globals.css";
+
+export const metadata: Metadata = { metadataBase: getSiteUrl() };
 
 type LocaleLayoutProps = {
   children: ReactNode;

@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nodexa RMM Product Site
 
-## Getting Started
+The public, bilingual product site for Nodexa RMM. It is a Next.js application with localized Chinese and English routes, product screenshots, contact entry points, and generated SEO metadata.
 
-First, run the development server:
+## Development
+
+From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev:site
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or run the package directly:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm --filter @meshcentral/site dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The default development URL is `http://localhost:3000`.
 
-## Learn More
+## Environment
 
-To learn more about Next.js, take a look at the following resources:
+Copy `.env.example` to `.env` and configure the public deployment values:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```dotenv
+NEXT_PUBLIC_SITE_URL=https://www.example.com
+NEXT_PUBLIC_CONSOLE_URL=https://console.example.com
+NEXT_PUBLIC_CONTACT_EMAIL=hello@example.com
+NEXT_PUBLIC_CONTACT_TELEGRAM=@your-telegram-id
+NEXT_PUBLIC_CONTACT_WECHAT=your-wechat-id
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `NEXT_PUBLIC_SITE_URL` is used for canonical links, Open Graph metadata, `robots.txt`, and `sitemap.xml`. It defaults to `http://localhost:3000` for local development.
+- `NEXT_PUBLIC_CONSOLE_URL` is optional. When no contact details are configured, the primary CTA opens this URL.
+- Contact values are optional and intentionally public. When at least one is configured, the primary CTA scrolls to the contact section.
 
-## Deploy on Vercel
+## Validation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Run the package checks before deployment:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm --filter @meshcentral/site typecheck
+pnpm --filter @meshcentral/site lint
+pnpm --filter @meshcentral/site build
+```
+
+## Routes
+
+- `/zh-CN` - Simplified Chinese product site
+- `/en` - English product site
+- `/robots.txt` - generated crawler policy
+- `/sitemap.xml` - generated localized sitemap
+- `/[locale]/opengraph-image` - generated social sharing image
+
+The root route redirects to `/zh-CN`.

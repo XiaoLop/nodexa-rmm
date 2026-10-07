@@ -15,7 +15,6 @@ import {
   FileUp,
   Fingerprint,
   Gauge,
-  Globe2,
   Laptop,
   Layers,
   LockKeyhole,
@@ -36,6 +35,7 @@ import {
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { ContactInfo } from "@/config/contact";
+import { SiteHeader } from "@/components/SiteHeader";
 
 const capabilityIcons = [Radar, MonitorSmartphone, Workflow, ShieldCheck];
 const capabilityAccents = ["blue", "cyan", "violet", "green"];
@@ -63,7 +63,7 @@ const staggerContainer: Variants = {
   },
 };
 
-export function ProductHome({ locale, dictionary, contact }: { locale: Locale; dictionary: Dictionary; contact: ContactInfo }) {
+export function ProductHome({ locale, dictionary, contact, consoleUrl }: { locale: Locale; dictionary: Dictionary; contact: ContactInfo; consoleUrl?: string }) {
   const alternateLocale = locale === "zh-CN" ? "en" : "zh-CN";
   const imgLocale = locale === "zh-CN" ? "zh-CN" : "en-US";
 
@@ -108,35 +108,30 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
     contact.wechat ? { label: dictionary.contact.wechat, value: contact.wechat } : null,
   ].filter((item): item is { label: string; value: string; href?: string } => Boolean(item));
 
-  return (
-    <main>
-      <motion.header
-        className="site-header"
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        <a className="brand" href="#top" aria-label={dictionary.header.homeLabel}>
-          <span className="brand-mark"><Image src="/logo.png" alt="" width={42} height={42} priority /></span>
-          <span><strong>Nodexa</strong><small>RMM</small></span>
-        </a>
-        <nav className="site-nav" aria-label={dictionary.header.navigationLabel}>
-          <a href="#capabilities">{dictionary.header.capabilities}</a>
-          <a href="#showcase">{dictionary.header.showcase}</a>
-          <a href="#workflow">{dictionary.header.automation}</a>
-          <a href="#security">{dictionary.header.security}</a>
-          <a href="#deployment">{dictionary.header.deployment}</a>
-        </nav>
-        <div className="header-actions">
-          <a className="language-switch" href={`/${alternateLocale}`} aria-label={dictionary.header.languageLabel}>
-            <Globe2 aria-hidden="true" size={15} />{dictionary.header.languageShort}
-          </a>
-          <a className="header-action" href="#contact">
-            {dictionary.header.contact} <ArrowRight aria-hidden="true" size={16} />
-          </a>
-        </div>
-      </motion.header>
+  const hasContactDetails = contactItems.length > 0;
+  const primaryActionHref = hasContactDetails ? "#contact" : consoleUrl ?? "#showcase";
+  const primaryActionLabel = hasContactDetails ? dictionary.hero.primaryAction : consoleUrl ? dictionary.header.console : dictionary.hero.secondaryAction;
+  const headerActionHref = hasContactDetails ? "#contact" : consoleUrl ?? "#showcase";
+  const headerActionLabel = hasContactDetails ? dictionary.header.contact : consoleUrl ? dictionary.header.console : dictionary.header.showcase;
+  const primaryActionExternal = Boolean(consoleUrl && !hasContactDetails);
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number, itemCount: number, selectIndex: (index: number) => void, tabPrefix: string) => {
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % itemCount;
+    else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + itemCount) % itemCount;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = itemCount - 1;
+    else return;
+    event.preventDefault();
+    selectIndex(nextIndex);
+    document.getElementById(`${tabPrefix}-${nextIndex}`)?.focus();
+  };
+
+  return (
+    <>
+      <a className="skip-link" href="#main-content">{dictionary.accessibility.skipToContent}</a>
+      <SiteHeader alternateLocale={alternateLocale} dictionary={dictionary} actionHref={headerActionHref} actionLabel={headerActionLabel} actionExternal={primaryActionExternal} />
+      <main id="main-content">
       <section className="hero" id="top">
         <div className="hero-atmosphere" aria-hidden="true" />
         <div className="hero-content shell">
@@ -154,8 +149,8 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
             </motion.h1>
             <motion.p variants={fadeInUp}>{dictionary.hero.description}</motion.p>
             <motion.div variants={fadeInUp} className="hero-actions">
-              <a className="button button-primary" href="#contact">
-                {dictionary.hero.primaryAction} <ArrowRight aria-hidden="true" size={18} />
+              <a className="button button-primary" href={primaryActionHref} {...(primaryActionExternal ? { target: "_blank", rel: "noreferrer" } : {})}>
+                {primaryActionLabel} <ArrowRight aria-hidden="true" size={18} />
               </a>
               <a className="button button-secondary" href="#showcase">
                 <Play aria-hidden="true" size={17} fill="currentColor" />{dictionary.hero.secondaryAction}
@@ -173,16 +168,22 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.15, ease: "easeOut" }}
           >
-            <div className="console-quick-switch" role="tablist" aria-label="Quick View Tabs">
-              {heroQuickTabs.map((item) => {
+            <div className="console-quick-switch" role="tablist" aria-label={dictionary.accessibility.heroTabsLabel}>
+              {heroQuickTabs.map((item, index) => {
                 const Icon = item.icon;
                 const isActive = activeHeroView === item.id;
                 return (
                   <button
                     key={item.id}
+                    id={`hero-tab-${index}`}
                     type="button"
                     className={`console-quick-btn relative ${isActive ? "active" : ""}`}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls="hero-product-panel"
+                    tabIndex={isActive ? 0 : -1}
                     onClick={() => setActiveHeroView(item.id)}
+                    onKeyDown={(event) => handleTabKeyDown(event, index, heroQuickTabs.length, (nextIndex) => setActiveHeroView(heroQuickTabs[nextIndex].id), "hero-tab")}
                   >
                     {isActive && (
                       <motion.span
@@ -199,7 +200,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
               })}
             </div>
 
-            <div className="console-frame">
+            <div className="console-frame" id="hero-product-panel" role="tabpanel" aria-labelledby={`hero-tab-${heroQuickTabs.findIndex((item) => item.id === activeHeroView)}`}>
               <div className="console-bar">
                 <div className="console-brand">
                   <div className="console-window-dots" aria-hidden="true">
@@ -240,6 +241,8 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
                       width={1920}
                       height={1080}
                       priority
+                      loading="eager"
+                      sizes="(max-width: 820px) calc(100vw - 32px), (max-width: 1100px) calc(100vw - 48px), 650px"
                     />
                   </motion.div>
                 </AnimatePresence>
@@ -252,7 +255,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
               transition={{ delay: 0.5, duration: 0.4 }}
             >
               <span className="metric-icon"><Gauge size={18} /></span>
-              <span><b>99.9%</b><small>{dictionary.hero.availability}</small></span>
+              <span><b>Live</b><small>{dictionary.hero.availability}</small></span>
             </motion.div>
             <motion.div
               className="metric-float metric-latency"
@@ -261,7 +264,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
               transition={{ delay: 0.6, duration: 0.4 }}
             >
               <span className="pulse-ring"><i /></span>
-              <span><b>28 ms</b><small>{dictionary.hero.latency}</small></span>
+              <span><b>Low</b><small>{dictionary.hero.latency}</small></span>
             </motion.div>
           </motion.div>
         </div>
@@ -305,7 +308,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
               const Icon = capabilityIcons[index];
               return (
               <motion.article
-                className="capability-item cursor-pointer"
+                className="capability-item"
                 key={title}
                 variants={fadeInUp}
                 whileHover={{ y: -6, transition: { duration: 0.2 } }}
@@ -337,18 +340,22 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
             <p>{dictionary.showcase.description}</p>
           </motion.div>
 
-          <div className="showcase-tabs-nav" role="tablist" aria-label="Console Views">
+          <div className="showcase-tabs-nav" role="tablist" aria-label={dictionary.accessibility.showcaseTabsLabel}>
             {showcaseTabs.map((tab, idx) => {
               const TabIcon = showcaseIcons[idx] || Monitor;
               const isActive = activeShowcaseIndex === idx;
               return (
                 <button
                   key={tab.id}
+                  id={`showcase-tab-${idx}`}
                   type="button"
                   className={`showcase-tab-btn relative ${isActive ? "active" : ""}`}
                   role="tab"
                   aria-selected={isActive}
+                  aria-controls="showcase-product-panel"
+                  tabIndex={isActive ? 0 : -1}
                   onClick={() => setActiveShowcaseIndex(idx)}
+                  onKeyDown={(event) => handleTabKeyDown(event, idx, showcaseTabs.length, setActiveShowcaseIndex, "showcase-tab")}
                 >
                   {isActive && (
                     <motion.div
@@ -370,6 +377,9 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
 
           <motion.div
             className="showcase-window"
+            id="showcase-product-panel"
+            role="tabpanel"
+            aria-labelledby={`showcase-tab-${activeShowcaseIndex}`}
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
@@ -416,7 +426,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
                       alt={currentShowcase.title}
                       width={1920}
                       height={1080}
-                      priority
+                      sizes="(max-width: 820px) calc(100vw - 32px), (max-width: 1240px) calc(100vw - 48px), 1180px"
                     />
                   </motion.div>
                 </AnimatePresence>
@@ -525,6 +535,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
                   alt={dictionary.mobile.imageAlt}
                   width={1920}
                   height={1080}
+                  sizes="(max-width: 820px) calc(100vw - 32px), 620px"
                 />
               </div>
             </div>
@@ -598,17 +609,17 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
           >
             <motion.div variants={fadeInUp} className="architecture-node endpoints">
               <MonitorSmartphone size={24} />
-              <span><b>Operations</b><small>Web / Mobile</small></span>
+                <span><b>{dictionary.security.architectureNodes.operations.title}</b><small>{dictionary.security.architectureNodes.operations.detail}</small></span>
             </motion.div>
             <div className="architecture-line"><i /></div>
             <motion.div variants={fadeInUp} className="architecture-node gateway">
               <LockKeyhole size={24} />
-              <span><b>Secure Gateway</b><small>Auth / Policy / Audit</small></span>
+                <span><b>{dictionary.security.architectureNodes.gateway.title}</b><small>{dictionary.security.architectureNodes.gateway.detail}</small></span>
             </motion.div>
             <div className="architecture-line"><i /></div>
             <motion.div variants={fadeInUp} className="architecture-node infrastructure">
               <ServerCog size={24} />
-              <span><b>Infrastructure</b><small>Devices / Services</small></span>
+              <span><b>{dictionary.security.architectureNodes.infrastructure.title}</b><small>{dictionary.security.architectureNodes.infrastructure.detail}</small></span>
             </motion.div>
             <span className="encrypted-label"><Fingerprint size={14} />{dictionary.security.encryptedChannel}</span>
           </motion.div>
@@ -655,7 +666,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
             <h2>{dictionary.contact.title}</h2>
             <p>{dictionary.contact.description}</p>
           </div>
-          {contactItems.length > 0 ? (
+          {hasContactDetails ? (
             <div className="contact-list">
               {contactItems.map((item) => {
                 const content = <><span>{item.label}</span><strong>{item.value}</strong></>;
@@ -677,7 +688,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
           <div><span className="section-kicker light">{dictionary.cta.kicker}</span><h2>{dictionary.cta.title}<br />{dictionary.cta.titleAccent}</h2></div>
-          <a className="button button-light" href="#contact">{dictionary.cta.action} <ArrowRight size={18} /></a>
+          <a className="button button-light" href={primaryActionHref} {...(primaryActionExternal ? { target: "_blank", rel: "noreferrer" } : {})}>{hasContactDetails ? dictionary.cta.action : primaryActionLabel} <ArrowRight size={18} /></a>
         </motion.div>
       </section>
 
@@ -688,6 +699,7 @@ export function ProductHome({ locale, dictionary, contact }: { locale: Locale; d
           <span>© {new Date().getFullYear()} {dictionary.footer.copyright}</span>
         </div>
       </footer>
-    </main>
+      </main>
+    </>
   );
 }

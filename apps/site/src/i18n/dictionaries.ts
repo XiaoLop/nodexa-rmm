@@ -5,6 +5,7 @@ type Stat = { value: string; label: string };
 
 export type Dictionary = {
   metadata: { title: string; description: string };
+  accessibility: { skipToContent: string; heroTabsLabel: string; showcaseTabsLabel: string; openMenu: string; closeMenu: string };
   header: {
     homeLabel: string;
     navigationLabel: string;
@@ -85,6 +86,11 @@ export type Dictionary = {
     description: string;
     architectureLabel: string;
     encryptedChannel: string;
+    architectureNodes: {
+      operations: { title: string; detail: string };
+      gateway: { title: string; detail: string };
+      infrastructure: { title: string; detail: string };
+    };
     trustItems: [string, string, string, string];
   };
   deployment: {
@@ -103,6 +109,13 @@ const zhCN: Dictionary = {
     title: "Nodexa RMM | 统一设备运维平台",
     description: "Nodexa RMM 将远程监控、安全访问、自动化和设备运维整合到一个平台。",
   },
+  accessibility: {
+    skipToContent: "跳到主要内容",
+    heroTabsLabel: "产品快速视图",
+    showcaseTabsLabel: "控制台产品视图",
+    openMenu: "打开导航菜单",
+    closeMenu: "关闭导航菜单",
+  },
   header: {
     homeLabel: "Nodexa RMM 首页",
     navigationLabel: "主导航",
@@ -111,7 +124,7 @@ const zhCN: Dictionary = {
     automation: "自动化",
     security: "安全架构",
     deployment: "部署方式",
-    console: "联系我们",
+    console: "进入控制台",
     contact: "联系我们",
     languageLabel: "切换语言",
     languageShort: "EN",
@@ -126,8 +139,8 @@ const zhCN: Dictionary = {
     proofLabel: "平台特性",
     proofs: ["无需浏览器插件", "支持私有化部署", "跨平台设备接入"],
     consoleAlt: "Nodexa RMM 远程桌面管理工作区",
-    availability: "平台可用性",
-    latency: "当前会话延迟",
+    availability: "状态示例",
+    latency: "交互延迟示例",
     liveWorkspace: "实时工作区",
     quickViews: {
       workspace: "远程桌面",
@@ -155,7 +168,7 @@ const zhCN: Dictionary = {
         subtitle: "极速接管，像坐在终端机前一样自然",
         description: "高响应流传输结合原生键盘鼠标控制、剪贴板交互与系统指标实时观测，复杂故障排查一步到位。",
         tag: "远程核心",
-        highlights: ["毫秒级画面低延迟响应", "终端与文件系统深度集成", "无须繁琐安装客户端插件"],
+        highlights: ["低延迟交互式画面传输", "终端与文件系统深度集成", "无须安装浏览器插件"],
       },
       {
         id: "dashboard",
@@ -170,7 +183,7 @@ const zhCN: Dictionary = {
         id: "devices",
         name: "设备资产矩阵",
         title: "多层级资产纳管与批量任务调度",
-        subtitle: "万台设备，结构化统一分组",
+        subtitle: "多设备资产，结构化统一分组",
         description: "支持灵活的树形设备分组、操作系统精准识别、多维度标签过滤及批量命令调度，告别逐台重复维护。",
         tag: "资产与批量",
         highlights: ["树形多租户资产分类", "多条件智能筛选与搜索", "批量安全下发运维动作"],
@@ -182,7 +195,7 @@ const zhCN: Dictionary = {
         subtitle: "最小特权原则，关键操作全程留痕",
         description: "按部门与角色授予精确的设备访问权限与会话能力，所有接入与关键运维动作全程留存合规审计日志。",
         tag: "安全治理",
-        highlights: ["RBAC 精细化多角色授权", "会话与指令完整安全审计", "敏感凭据隔离不落地"],
+        highlights: ["RBAC 精细化多角色授权", "会话与指令操作记录", "网关侧凭据访问边界"],
       },
     ],
   },
@@ -234,12 +247,17 @@ const zhCN: Dictionary = {
     description: "Nodexa RMM 通过业务网关建立受控访问边界，敏感凭证不进入浏览器，每次远程会话与管理操作都可被授权和追踪。",
     architectureLabel: "Nodexa 安全连接架构",
     encryptedChannel: "加密通道",
+    architectureNodes: {
+      operations: { title: "运维工作台", detail: "Web / 移动端" },
+      gateway: { title: "安全网关", detail: "认证 / 策略 / 审计" },
+      infrastructure: { title: "基础设施", detail: "设备 / 服务" },
+    },
     trustItems: ["基于角色的精细权限", "网关隔离核心服务", "完整的操作审计链路", "面向私有化部署设计"],
   },
   deployment: {
     kicker: "DEPLOY YOUR WAY",
     title: "部署在你的边界内",
-    description: "支持从单节点到生产集群的渐进式部署，保留对网络、数据与身份体系的控制权。",
+    description: "支持从单节点开始渐进式部署，并保留对网络、数据与身份体系的控制权。",
     options: ["容器化部署", "反向代理接入", "自动化配置", "平滑升级"],
   },
   cta: {
@@ -268,6 +286,13 @@ const en = {
     title: "Nodexa RMM | Unified Device Operations Platform",
     description: "Nodexa RMM unifies remote monitoring, secure access, automation, and device operations in one platform.",
   },
+  accessibility: {
+    skipToContent: "Skip to main content",
+    heroTabsLabel: "Product quick views",
+    showcaseTabsLabel: "Console product views",
+    openMenu: "Open navigation menu",
+    closeMenu: "Close navigation menu",
+  },
   header: {
     homeLabel: "Nodexa RMM home",
     navigationLabel: "Main navigation",
@@ -291,8 +316,8 @@ const en = {
     proofLabel: "Platform benefits",
     proofs: ["No browser plugin", "Private deployment ready", "Cross-platform agents"],
     consoleAlt: "Nodexa RMM remote desktop operations workspace",
-    availability: "Platform availability",
-    latency: "Current session latency",
+    availability: "Status example",
+    latency: "Latency example",
     liveWorkspace: "Live workspace",
     quickViews: {
       workspace: "Remote Desktop",
@@ -320,7 +345,7 @@ const en = {
         subtitle: "Direct control as if standing in front of the console",
         description: "Low-latency streaming combined with native keyboard/mouse events, clipboard sharing, and live system vital metrics.",
         tag: "Core Control",
-        highlights: ["Sub-second responsive streaming", "Terminal & file browser integrated", "Zero client installation required"],
+        highlights: ["Responsive low-latency streaming", "Terminal & file browser integrated", "No browser plugin required"],
       },
       {
         id: "dashboard",
@@ -345,7 +370,7 @@ const en = {
         name: "User & Access Control",
         title: "Enterprise RBAC & Full Audit Trail",
         subtitle: "Least privilege by default, verified in depth",
-        description: "Grant fine-grained endpoint access and action permissions per department, retaining comprehensive immutable logs for compliance.",
+        description: "Grant fine-grained endpoint access and action permissions per department, retaining comprehensive activity records for review.",
         tag: "Governance",
         highlights: ["Granular role-based access control", "Complete session and command audit", "Zero-trust credential isolation"],
       },
@@ -399,6 +424,11 @@ const en = {
     description: "Nodexa RMM creates a controlled access boundary through the business gateway. Sensitive credentials stay out of the browser, while every session and management action can be authorized and traced.",
     architectureLabel: "Nodexa secure connection architecture",
     encryptedChannel: "Encrypted channel",
+    architectureNodes: {
+      operations: { title: "Operations", detail: "Web / Mobile" },
+      gateway: { title: "Secure Gateway", detail: "Auth / Policy / Audit" },
+      infrastructure: { title: "Infrastructure", detail: "Devices / Services" },
+    },
     trustItems: ["Role-based access control", "Gateway-isolated core services", "Complete operations audit trail", "Designed for private deployment"],
   },
   deployment: {
