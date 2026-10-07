@@ -593,7 +593,7 @@ export function ProfilePage() {
   const handleDownloadBackupCodes = () => {
     if (!backupCodes.length) return;
     const content = [
-      'MeshCentral Recovery Codes',
+      'Nodex RMM Recovery Codes',
       '========================',
       `Account: ${userInfo?.name ?? userInfo?.id ?? 'User'} (${userInfo?.id ?? ''})`,
       `Exported: ${new Date().toISOString()}`,

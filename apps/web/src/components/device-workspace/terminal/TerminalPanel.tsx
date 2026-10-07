@@ -127,7 +127,7 @@ export function TerminalPanel({ device, meshCentralClient, controlConnected, ter
   }, [device.id, meshCentralClient]);
   useEffect(() => {
     if (controlConnected || (!sessionRef.current && !abortRef.current)) return;
-    disconnect('MeshCentral control connection was lost.');
+    disconnect('Nodex RMM control connection was lost.');
     setError(t('deviceWorkspace.terminal.gatewayDisconnected'));
   }, [controlConnected]);
   useEffect(() => {

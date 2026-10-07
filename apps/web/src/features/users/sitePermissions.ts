@@ -68,7 +68,7 @@ export const SITE_PERMISSIONS: SitePermission[] = [
     labelKey: 'permissions.site.serverUpdate.label',
     descriptionKey: 'permissions.site.serverUpdate.description',
     label: '服务器更新',
-    description: '执行 MeshCentral 服务器更新',
+    description: '执行 Nodex RMM 服务器更新',
     category: 'server',
     risk: 'high',
   },

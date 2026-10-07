@@ -134,7 +134,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   }, [device.id, meshCentralClient]);
   useEffect(() => {
     if (!controlConnected && (sessionRef.current || abortRef.current)) {
-      disconnect('MeshCentral control connection was lost.');
+      disconnect('Nodex RMM control connection was lost.');
       setError(t('deviceWorkspace.remoteDesktop.gatewayDisconnected'));
     }
   }, [controlConnected]);

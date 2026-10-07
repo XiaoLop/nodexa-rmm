@@ -811,7 +811,7 @@ export const zhCN = {
       connectedUsers: '在线用户',
     },
     gateway: {
-      title: 'MeshCentral 控制连接',
+      title: '服务器状态',
       description: '业务网关实时通信状态',
       address: '网关地址',
       connectedAt: '连接时间',
