@@ -8,7 +8,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: meshcentral
       MONGO_INITDB_ROOT_PASSWORD: development-password
     volumes:
-      - ../apps/meshcentral/runtime/mongodb:/data/db
+      - ../../apps/meshcentral/runtime/mongodb:/data/db
     healthcheck:
       test:
         [
@@ -31,27 +31,33 @@ services:
 
   meshcentral:
     build:
-      context: ..
+      context: ../..
       dockerfile: apps/meshcentral/Dockerfile
       args:
         MESHCENTRAL_VERSION: 1.1.54
     image: mesh-console-meshcentral:development
     restart: unless-stopped
     environment:
-      MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'false'
+      MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'true'
     command:
-      - --configfile
-      - /run/config/meshcentral.json
+      - --config-yaml
+      - /run/config/config.yaml
       - --datapath
       - /var/lib/meshcentral/data
     ports:
-      - '8443:443'
+      - '8443:8443'
     volumes:
-      - ${MESHCENTRAL_CONFIG_FILE:-./config/meshcentral.example.json}:/run/config/meshcentral.json:ro
-      - ../apps/meshcentral/runtime/data:/var/lib/meshcentral/data
-      - ../apps/meshcentral/runtime/files:/var/lib/meshcentral/files
-      - ../apps/meshcentral/runtime/backups:/var/lib/meshcentral/backups
-      - ../apps/meshcentral/runtime/recordings:/var/lib/meshcentral/recordings
+      - type: bind
+        source: ${MESHCENTRAL_CONFIG_FILE:-../config/config.meshcental.dev.yaml}
+        target: /run/config/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - ../assets:/data:ro
+      - ../../apps/meshcentral/runtime/data:/var/lib/meshcentral/data
+      - ../../apps/meshcentral/runtime/files:/var/lib/meshcentral/files
+      - ../../apps/meshcentral/runtime/backups:/var/lib/meshcentral/backups
+      - ../../apps/meshcentral/runtime/recordings:/var/lib/meshcentral/recordings
     depends_on:
       mongodb:
         condition: service_healthy
@@ -61,7 +67,7 @@ services:
           'CMD',
           'node',
           '-e',
-          "require('http').get('http://localhost:8443/health.ashx', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+          "require('https').get('https://localhost:8443/', { rejectUnauthorized: false, timeout: 5000 }, response => process.exit(response.statusCode === 200 ? 0 : 1)).on('timeout', function () { this.destroy(); }).on('error', () => process.exit(1))",
         ]
       interval: 30s
       timeout: 5s

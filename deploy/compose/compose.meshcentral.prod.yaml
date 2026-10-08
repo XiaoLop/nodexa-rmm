@@ -1,0 +1,71 @@
+name: meshcentral-production
+
+services:
+  mongodb:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-meshcentral}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:?Set MONGODB_ROOT_PASSWORD}
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mongosh --quiet --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "quit(db.adminCommand(''ping'').ok ? 0 : 1)"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  meshcentral:
+    image: ${MESHCENTRAL_IMAGE:-mesh-console-meshcentral:production}
+    restart: unless-stopped
+    environment:
+      MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'true'
+      MESHCENTRAL_DB_HOST: mongodb
+      MESHCENTRAL_DB_PORT: '27017'
+      MESHCENTRAL_DB_NAME: meshcentral
+      MESHCENTRAL_DB_AUTH_SOURCE: admin
+      MESHCENTRAL_DB_USERNAME: ${MONGODB_ROOT_USERNAME:-meshcentral}
+      MESHCENTRAL_DB_PASSWORD: ${MONGODB_ROOT_PASSWORD:?Set MONGODB_ROOT_PASSWORD}
+    command:
+      - --config-yaml
+      - /run/config/config.yaml
+      - --datapath
+      - /var/lib/meshcentral/data
+    ports:
+      - '443:8443'
+    volumes:
+      - type: bind
+        source: ${MESHCENTRAL_CONFIG_FILE:-./config/config.meshcental.prod.yaml}
+        target: /run/config/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - ./assets:/data:ro
+      - ./data:/var/lib/meshcentral/data
+      - ./files:/var/lib/meshcentral/files
+      - ./backups:/var/lib/meshcentral/backups
+      - ./recordings:/var/lib/meshcentral/recordings
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('https').get('https://localhost:8443/', { rejectUnauthorized: false, timeout: 5000 }, response => process.exit(response.statusCode === 200 ? 0 : 1)).on('timeout', function () { this.destroy(); }).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mongodb-data:
+

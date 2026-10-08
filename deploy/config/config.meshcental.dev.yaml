@@ -1,0 +1,14 @@
+settings:
+  cert: localhost
+  port: 8443
+  aliasPort: 8443
+  exactPorts: true
+  tlsOffload: false
+  trustedProxy: null
+  mongoDb: mongodb://meshcentral:development-password@mongodb:27017/meshcentral?authSource=admin
+
+domains:
+  '':
+    title: MeshCentral Development
+    title2: Local development
+    newAccounts: false

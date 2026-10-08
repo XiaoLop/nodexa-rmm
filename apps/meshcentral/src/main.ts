@@ -1,7 +1,22 @@
 import { spawn } from 'node:child_process';
+import { prepareConfig } from './config';
+import './config.default.json';
 
+let prepared: ReturnType<typeof prepareConfig>;
+try {
+  prepared = prepareConfig(
+    process.argv.slice(2).filter((argument) => argument !== '--'),
+    require.resolve('./config.default.json'),
+  );
+} catch {
+  console.error(
+    'Unable to prepare MeshCentral configuration. Check configuration arguments, YAML structure and file access.',
+  );
+  process.exit(1);
+}
+process.once('exit', prepared.cleanup);
 const meshCentralEntry = require.resolve('meshcentral/meshcentral.js');
-const child = spawn(process.execPath, [meshCentralEntry, ...process.argv.slice(2)], {
+const child = spawn(process.execPath, [meshCentralEntry, ...prepared.args], {
   stdio: 'inherit',
 });
 
@@ -15,6 +30,7 @@ child.once('error', (error) => {
 });
 
 child.once('exit', (code, signal) => {
+  prepared.cleanup();
   if (signal) {
     process.kill(process.pid, signal);
     return;

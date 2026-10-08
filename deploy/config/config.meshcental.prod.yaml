@@ -1,0 +1,14 @@
+settings:
+  cert: mesh.example.com
+  port: 8443
+  aliasPort: 443
+  exactPorts: true
+  tlsOffload: false
+  trustedProxy: null
+  mongoDbName: meshcentral
+
+domains:
+  '':
+    title: MeshCentral
+    title2: Device management
+    newAccounts: false
