@@ -1,10 +1,8 @@
 settings:
-  cert: mesh.example.com
-  port: 8443
+  cert: mesh.xiaonext.com
+  port: 443
+  redirPort: 80
   aliasPort: 443
-  exactPorts: true
-  tlsOffload: false
-  trustedProxy: null
   mongoDbName: meshcentral
 
 domains:
@@ -12,3 +10,22 @@ domains:
     title: MeshCentral
     title2: Device management
     newAccounts: false
+    agentFileInfo:
+      icon: favicon.ico
+      fileDescription: Nodexa RMM Remote Support Client
+      fileVersion: 1.0.0.0
+      internalName: NodexaRMM
+      legalCopyright: Copyright Nodexa
+      originalFilename: nodexa-rmm-agent.exe
+      productName: Nodexa RMM Agent
+      productVersion: v1.0.0.0
+    agentCustomization:
+      displayName: Nodexa RMM Agent
+      description: Nodexa RMM device management and remote support service
+      companyName: Nodexa
+      serviceName: nodexarmmagent
+      installText: Install the Nodexa RMM remote management service
+      image: logo.png
+      fileName: nodexa-rmm-agent
+      foregroundColor: '#FFFFFF'
+      backgroundColor: '#2563EB'

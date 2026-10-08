@@ -102,7 +102,7 @@ docker save -o nodexa-rmm-production.tar nodexa-rmm:production
 | `nodexa-rmm-production.tar`                    | `meshcentral-deploy/nodexa-rmm-production.tar`               |
 | `deploy/compose/compose.meshcentral.prod.yaml` | `meshcentral-deploy/compose.meshcentral.prod.yaml`           |
 | `deploy/config/config.meshcental.prod.yaml`    | `meshcentral-deploy/config/config.meshcental.prod.yaml`      |
-| `deploy/environments/.env.example`             | `meshcentral-deploy/.env.production`                         |
+| `deploy/environments/.env.example`             | `meshcentral-deploy/.env`                         |
 | `deploy/assets/logo.png`                       | `meshcentral-deploy/assets/logo.png`                         |
 | `deploy/assets/favicon.ico`                    | `meshcentral-deploy/assets/favicon.ico`                      |
 
@@ -205,19 +205,13 @@ docker load -i nodexa-rmm-production.tar
 先校验 Compose；无输出表示通过：
 
 ```bash
-docker compose \
-  --env-file .env.production \
-  -f compose.meshcentral.prod.yaml \
-  config --quiet
+docker compose -f compose.meshcentral.prod.yaml config --quiet
 ```
 
 启动 MongoDB 和 MeshCentral。生产 Compose 不在运行环境构建镜像：
 
 ```bash
-docker compose \
-  --env-file .env.production \
-  -f compose.meshcentral.prod.yaml \
-  up -d
+docker compose -f compose.meshcentral.prod.yaml up -d
 ```
 
 检查容器状态和启动日志：

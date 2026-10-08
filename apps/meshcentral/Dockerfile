@@ -37,6 +37,10 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder --chown=node:node /app /app
 COPY --from=builder --chown=node:node /workspace/apps/meshcentral/runtime/data/plugins /opt/meshcentral-plugins
 COPY --chown=node:node apps/meshcentral/docker-entrypoint.sh /usr/local/bin/meshcentral-entrypoint
@@ -49,8 +53,6 @@ RUN mkdir -p \
       /var/lib/meshcentral/recordings \
     && chmod +x /usr/local/bin/meshcentral-entrypoint \
     && chown -R node:node /run/config /var/lib/meshcentral /opt/meshcentral-plugins
-
-USER node
 
 EXPOSE 8443
 

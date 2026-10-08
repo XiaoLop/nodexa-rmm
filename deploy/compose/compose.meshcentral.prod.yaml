@@ -37,7 +37,8 @@ services:
       - --datapath
       - /var/lib/meshcentral/data
     ports:
-      - '443:8443'
+      - '8800:80'
+      - '4433:443'
     volumes:
       - type: bind
         source: ${MESHCENTRAL_CONFIG_FILE:-./config/config.meshcental.prod.yaml}

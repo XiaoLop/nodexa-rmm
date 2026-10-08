@@ -3,13 +3,11 @@
     "settings": {
         "_cert": "mesh.example.com",
         "port": 443,
-        "aliasPort": 8443,
-        "redirPort": 0,
+        "aliasPort": 443,
+        "redirPort": 80,
         "dataPath": "/var/lib/meshcentral/data",
         "filesPath": "/var/lib/meshcentral/files",
         "WANonly": true,
-        "tlsOffload": true,
-        "trustedProxy": "127.0.0.1",
         "mongoDb": "mongodb://meshcentral:development-password@mongodb:27017/meshcentral?authSource=admin",
         "mongoDbName": "meshcentral",
         "selfUpdate": false,
@@ -34,13 +32,14 @@
             "title": "Mesh Console Dev",
             "title2": "Local development",
             "newAccounts": false,
-            "minify": false,
+            "geoLocation": true,
+            "ipLocation": true,
             "sessionRecording": {
                 "filepath": "/var/lib/meshcentral/recordings",
                 "protocols": []
             },
             "agentFileInfo": {
-                "icon": "myagent.ico",
+                "icon": "favicon.ico",
                 "fileDescription": "Nodexa RMM Remote Support Client",
                 "fileVersion": "1.0.0.0",
                 "internalName": "NodexaRMM",
@@ -55,7 +54,7 @@
                 "companyName": "Nodexa",
                 "serviceName": "nodexarmmagent",
                 "installText": "Install the Nodexa RMM remote management service",
-                "image": "myagent.png",
+                "image": "logo.png",
                 "fileName": "nodexa-rmm-agent",
                 "foregroundColor": "#FFFFFF",
                 "backgroundColor": "#2563EB"
