@@ -3,6 +3,8 @@ import {
   PluginHook,
 } from '../../decorators/plugin.drcorator.js';
 import type {
+  MeshCentralAgentConnection,
+  MeshCentralAgentServer,
   MeshCentralCommand,
   MeshCentralConnection,
   MeshCentralDomain,
@@ -10,6 +12,8 @@ import type {
   MeshCentralServerActionContext,
   MeshCentralUser,
 } from '../../types/meshcentral.types.js';
+import { publicIp } from './services/geo-ip-location.service.js';
+import type { GeoIpLocationLookup, MeshCentralNodeDocument } from './utils.types.js';
 
 const SETTINGS_LOCKED = 0x00000400;
 
@@ -49,11 +53,73 @@ function methodCapability(
 
 @MeshPlugin()
 export class UtilsPlugin {
-  constructor(private readonly meshServer: MeshCentralServer) {}
+  private readonly pendingLocationUpdates = new Map<string, Promise<void>>();
+
+  constructor(
+    private readonly meshServer: MeshCentralServer,
+    private readonly geoIpLocation: GeoIpLocationLookup,
+  ) {}
 
   @PluginHook('server_startup')
   serverStartup(): void {
     console.log('[utils] Plugin started');
+    void this.geoIpLocation.initialize();
+  }
+
+  @PluginHook('hook_agentCoreIsStable')
+  agentCoreIsStable(agent: MeshCentralAgentConnection, agentServer: MeshCentralAgentServer): void {
+    const nodeId = agent.dbNodeKey;
+    if (!nodeId || this.pendingLocationUpdates.has(nodeId)) return;
+    const update = this.updateNodeLocation(nodeId, agentServer)
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.meshServer.debug?.('utils', `GeoIP update failed for ${nodeId}: ${message}`);
+      })
+      .finally(() => this.pendingLocationUpdates.delete(nodeId));
+    this.pendingLocationUpdates.set(nodeId, update);
+  }
+
+  private async updateNodeLocation(nodeId: string, agentServer: MeshCentralAgentServer): Promise<void> {
+    await this.geoIpLocation.initialize();
+    const databaseVersion = this.geoIpLocation.databaseVersion;
+    const node = await this.getNode(nodeId);
+    if (!databaseVersion || !node) return;
+    const lookupIp = publicIp(node.publicip) ?? publicIp(node.ip);
+    if (!lookupIp) return;
+    const cached = node.nodexa?.location;
+    if (cached?.lookupIp === lookupIp && cached.databaseVersion === databaseVersion) return;
+
+    const location = this.geoIpLocation.lookup(lookupIp);
+    if (!location) return;
+    const latestNode = await this.getNode(nodeId);
+    if (!latestNode) return;
+    const latestIp = publicIp(latestNode.publicip) ?? publicIp(latestNode.ip);
+    if (latestIp !== lookupIp) return;
+
+    latestNode.nodexa = { ...(latestNode.nodexa ?? {}), location };
+    this.meshServer.db?.Set?.(latestNode);
+
+    const cloneSafeNode = agentServer.CloneSafeNode ?? this.meshServer.webserver?.CloneSafeNode;
+    const createTargets = agentServer.CreateMeshDispatchTargets ?? this.meshServer.webserver?.CreateMeshDispatchTargets;
+    if (!cloneSafeNode || !createTargets || !latestNode.meshid) return;
+    const event: Record<string, unknown> = {
+      etype: 'node', action: 'changenode', nodeid: latestNode._id, domain: latestNode.domain,
+      node: cloneSafeNode(latestNode), nolog: 1,
+    };
+    if (this.meshServer.db?.changeStream) event.noact = 1;
+    this.meshServer.DispatchEvent?.(createTargets(latestNode.meshid, [latestNode._id]), this, event);
+  }
+
+  private getNode(nodeId: string): Promise<MeshCentralNodeDocument | undefined> {
+    return new Promise((resolve) => {
+      const get = this.meshServer.db?.Get;
+      if (!get) { resolve(undefined); return; }
+      get(nodeId, (error, documents) => {
+        if (error || documents.length !== 1) { resolve(undefined); return; }
+        const document = documents[0];
+        resolve(document && typeof document === 'object' ? document as MeshCentralNodeDocument : undefined);
+      });
+    });
   }
 
   @PluginHook('serveraction')

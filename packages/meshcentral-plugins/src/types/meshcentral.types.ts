@@ -135,6 +135,7 @@ export interface MeshCentralServer {
   smsserver?: unknown;
   msgserver?: { providers?: number };
   firebase?: unknown;
+  webserver?: MeshCentralWebServer;
   decodeCookie?(
     value: string,
     key: unknown,
@@ -165,6 +166,8 @@ export interface MeshCentralWebServer {
     json(...args: unknown[]): unknown;
     urlencoded(...args: unknown[]): unknown;
   };
+  CloneSafeNode?(node: Record<string, unknown>): Record<string, unknown>;
+  CreateMeshDispatchTargets?(meshId: string, nodeIds?: string[]): string[];
   setSessionRandom?(request: unknown): void;
   args?: { lanonly?: boolean; nousers?: boolean; sessionsamesite?: string };
   users?: Record<string, MeshCentralUser>;
@@ -203,6 +206,8 @@ export interface MeshCentralAgentConnection extends MeshCentralConnection {
 
 export interface MeshCentralAgentServer {
   parent?: MeshCentralServer;
+  CloneSafeNode?(node: Record<string, unknown>): Record<string, unknown>;
+  CreateMeshDispatchTargets?(meshId: string, nodeIds?: string[]): string[];
   [key: string]: unknown;
 }
 

@@ -17,6 +17,23 @@ export type ConnectionStatus =
   | 'error'
   | 'destroyed';
 
+export type LocalizedNames = Record<string, string>;
+
+export interface DeviceLocation {
+  lookupIp: string;
+  countryCode?: string;
+  subdivisionCode?: string;
+  countryNames?: LocalizedNames;
+  regionNames?: LocalizedNames;
+  cityNames?: LocalizedNames;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  source: 'geoip-mmdb';
+  databaseVersion: string;
+  resolvedAt?: string;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -36,6 +53,7 @@ export interface Device {
   platform?: string;
   icon?: number;
   lastSeenAt?: string;
+  location?: DeviceLocation;
   raw?: unknown;
 }
 

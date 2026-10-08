@@ -58,6 +58,17 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.groupName).toBeUndefined();
   });
 
+  it('preserves the normalized device location', () => {
+    const location = {
+      lookupIp: '8.8.8.8', countryCode: 'US', cityNames: { en: 'Mountain View' },
+      source: 'geoip-mmdb' as const, databaseVersion: '2026-10',
+    };
+    const model = createDeviceWorkspaceModel({
+      id: 'node-location', name: 'Located Node', online: true, location,
+    });
+    expect(model.location).toEqual(location);
+  });
+
   it('calculates uptime from the device last boot timestamp', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-16T08:00:00.000Z'));

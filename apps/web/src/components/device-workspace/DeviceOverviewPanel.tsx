@@ -7,6 +7,7 @@ import {
   CloudServerOutlined,
   DatabaseOutlined,
   DesktopOutlined,
+  EnvironmentOutlined,
   ExclamationCircleFilled,
   GlobalOutlined,
   HddOutlined,
@@ -20,6 +21,7 @@ import { formatEventMessage } from '@meshcentral/shared-state';
 import { Button, Empty, Progress, Tag } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDeviceLocation } from '../../features/device-location/formatDeviceLocation';
 import { splitUptime } from '../../features/device-workspace/deviceWorkspaceModel';
 import type {
   DeviceWorkspaceModel,
@@ -53,7 +55,7 @@ export function DeviceOverviewPanel({
   controlConnected: boolean;
   onNavigate: (tab: WorkspaceTab) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { time, dateTime } = useFormatters();
   const hw = model.hardware;
   const uptime = model.uptimeSeconds === undefined ? undefined : splitUptime(model.uptimeSeconds);
@@ -86,6 +88,7 @@ export function DeviceOverviewPanel({
       .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
       .slice(0, 20);
   }, [events, historyEvents, model.device.id]);
+  const locationText = formatDeviceLocation(model.location, i18n.resolvedLanguage ?? i18n.language);
 
   const statusLabels = { unknown: t('deviceWorkspace.overview.status.unknown'), healthy: t('deviceWorkspace.overview.status.healthy'), warning: t('deviceWorkspace.overview.status.warning'), danger: t('deviceWorkspace.overview.status.danger') };
   const avStatus = statusIndicator(sec?.antiVirus, statusLabels);
@@ -256,6 +259,7 @@ export function DeviceOverviewPanel({
             <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.hostname')}</dt><dd title={model.hostname}>{model.hostname}</dd></div>
             <div><dt><CloudServerOutlined /> {t('deviceWorkspace.overview.fields.platform')}</dt><dd title={model.platform}>{model.platform ?? t(`deviceWorkspace.data.platforms.${hw.platformKind}`)}</dd></div>
             <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.management')}</dt><dd>{t(`deviceWorkspace.data.management.${model.managementKind}`)}</dd></div>
+            {locationText && <div><dt><EnvironmentOutlined /> {t('deviceWorkspace.overview.fields.location')}</dt><dd title={t('deviceWorkspace.location.approximate')}>{locationText}</dd></div>}
             {hw.deviceModel && <div><dt><DesktopOutlined /> {t('deviceWorkspace.overview.fields.deviceModel')}</dt><dd title={hw.deviceModel}>{hw.deviceModel}</dd></div>}
             {hw.osVersion && <div><dt><CloudServerOutlined /> {t('deviceWorkspace.overview.fields.osVersion')}</dt><dd title={hw.osVersion}>{hw.osVersion}</dd></div>}
             {hw.kernelVersion && <div><dt><ApiOutlined /> {t('deviceWorkspace.overview.fields.kernel')}</dt><dd title={hw.kernelVersion}>{hw.kernelVersion}</dd></div>}

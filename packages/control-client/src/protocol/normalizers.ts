@@ -1,6 +1,7 @@
 import type {
   Device,
   DeviceGroup,
+  DeviceLocation,
   MeshCentralEvent,
   PrincipalGrant,
   ServerInfo,
@@ -90,6 +91,41 @@ export function timestampValue(value: unknown): string | undefined {
   return new Date(value < 1_000_000_000_000 ? value * 1000 : value).toISOString();
 }
 
+function localizedNames(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const names: Record<string, string> = {};
+  for (const [language, name] of Object.entries(value)) {
+    const normalized = stringValue(name);
+    if (normalized) names[language] = normalized;
+  }
+  return Object.keys(names).length > 0 ? names : undefined;
+}
+
+function normalizeDeviceLocation(value: UnknownRecord): DeviceLocation | undefined {
+  const nodexa = isRecord(value.nodexa) ? value.nodexa : undefined;
+  const location = isRecord(nodexa?.location) ? nodexa.location : undefined;
+  if (!location || location.source !== 'geoip-mmdb') return undefined;
+  const lookupIp = stringValue(location.lookupIp);
+  const databaseVersion = stringValue(location.databaseVersion);
+  if (!lookupIp || !databaseVersion) return undefined;
+  const number = (field: unknown) =>
+    typeof field === 'number' && Number.isFinite(field) ? field : undefined;
+  return {
+    lookupIp,
+    countryCode: stringValue(location.countryCode),
+    subdivisionCode: stringValue(location.subdivisionCode),
+    countryNames: localizedNames(location.countryNames),
+    regionNames: localizedNames(location.regionNames),
+    cityNames: localizedNames(location.cityNames),
+    latitude: number(location.latitude),
+    longitude: number(location.longitude),
+    timezone: stringValue(location.timezone),
+    source: 'geoip-mmdb',
+    databaseVersion,
+    resolvedAt: timestampValue(location.resolvedAt),
+  };
+}
+
 export function normalizeDevice(
   value: unknown,
   fallbackId?: string,
@@ -152,6 +188,7 @@ export function normalizeDevice(
     platform,
     icon,
     lastSeenAt: timestampValue(value.lastSeenAt) ?? timestampValue(value.lastconnect),
+    location: normalizeDeviceLocation(value),
     raw: value,
   };
 }

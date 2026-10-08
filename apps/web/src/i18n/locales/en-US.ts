@@ -122,6 +122,9 @@ export const enUS = {
     loadFailed: 'Failed to load device details',
     notFound: 'Device not found',
     backToList: 'Back to device list',
+    location: {
+      approximate: 'Estimated from public IP',
+    },
     partialRefreshFailed: 'Failed to refresh partial device data',
     duration: {
       years: '{{count}} year(s)',
@@ -234,6 +237,7 @@ export const enUS = {
       profileDescription: 'Device identity and low-level components',
       fields: {
         hostname: 'Hostname',
+        location: 'Approximate location',
         platform: 'Operating system',
         deviceModel: 'Device model',
         osVersion: 'OS version',
@@ -913,6 +917,7 @@ export const enUS = {
       name: 'Device name',
       groupName: 'Group',
       ip: 'IP',
+      location: 'Location',
       desc: 'Description',
       status: 'Status',
       lastSeenAt: 'Last seen',

@@ -591,6 +591,7 @@ export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetai
     ),
     lastHeartbeatAt: resolvedDevice.lastSeenAt,
     groupName: groupName ?? resolvedDevice.groupName,
+    location: resolvedDevice.location,
     tags: [],
     ...hardware,
     sessionStartedAt: '—',

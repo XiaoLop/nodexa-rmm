@@ -122,6 +122,9 @@ export const zhCN = {
     loadFailed: '设备信息加载失败',
     notFound: '未找到该设备',
     backToList: '返回设备列表',
+    location: {
+      approximate: '根据公网 IP 推测',
+    },
     partialRefreshFailed: '设备部分数据刷新失败',
     duration: {
       years: '{{count}} 年',
@@ -228,6 +231,7 @@ export const zhCN = {
       profileDescription: '设备身份与底层组件信息',
       fields: {
         hostname: '主机名',
+        location: '大概位置',
         platform: '操作系统',
         deviceModel: '设备型号',
         osVersion: '系统版本',
@@ -882,6 +886,7 @@ export const zhCN = {
       name: '设备名称',
       groupName: '分组名称',
       ip: 'IP',
+      location: '位置',
       desc: '描述',
       status: '状态',
       lastSeenAt: '最后在线时间',

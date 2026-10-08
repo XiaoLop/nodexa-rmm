@@ -25,6 +25,7 @@ services:
     restart: unless-stopped
     environment:
       MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'true'
+      NODEXA_GEOIP_MMDB_PATH: /data/GeoLite2-City.mmdb
       MESHCENTRAL_DB_HOST: mongodb
       MESHCENTRAL_DB_PORT: '27017'
       MESHCENTRAL_DB_NAME: meshcentral

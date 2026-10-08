@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
+  MeshCentralAgentServer,
   MeshCentralConnection,
   MeshCentralDomain,
   MeshCentralPluginHandler,
@@ -7,6 +8,8 @@ import type {
   MeshCentralUser,
 } from '../../types/meshcentral.types.js';
 import { utils } from './index.js';
+import { UtilsPlugin } from './utils.plugin.js';
+import type { GeoIpLocationLookup } from './utils.types.js';
 
 const user: MeshCentralUser = {
   _id: 'user//alice',
@@ -174,5 +177,39 @@ describe('utils two-factor capabilities', () => {
       success: false,
       error: 'AUTHENTICATED_USER_REQUIRED',
     });
+  });
+});
+
+describe('utils GeoIP location', () => {
+  it('writes the public IP location and broadcasts a safe node change', async () => {
+    const node = { _id: 'node//one', domain: '', meshid: 'mesh//one', publicip: '8.8.8.8' };
+    const set = vi.fn();
+    const dispatchEvent = vi.fn();
+    const meshServer: MeshCentralServer = {
+      db: { Get: (_id, callback) => callback(undefined, [{ ...node }]), Set: set },
+      DispatchEvent: dispatchEvent,
+    };
+    const geoIpLocation: GeoIpLocationLookup = {
+      databaseVersion: '2026-10',
+      initialize: vi.fn(async () => undefined),
+      lookup: vi.fn((lookupIp) => ({
+        lookupIp, countryCode: 'US', source: 'geoip-mmdb' as const,
+        databaseVersion: '2026-10', resolvedAt: 1_791_468_682,
+      })),
+    };
+    const plugin = new UtilsPlugin(meshServer, geoIpLocation);
+    const agentServer: MeshCentralAgentServer = {
+      CloneSafeNode: (value) => ({ ...value }),
+      CreateMeshDispatchTargets: () => ['*', 'mesh//one'],
+    };
+
+    plugin.agentCoreIsStable({ dbNodeKey: 'node//one', send: vi.fn() }, agentServer);
+
+    await vi.waitFor(() => expect(set).toHaveBeenCalledOnce());
+    expect(geoIpLocation.lookup).toHaveBeenCalledWith('8.8.8.8');
+    expect(dispatchEvent).toHaveBeenCalledWith(
+      ['*', 'mesh//one'], plugin,
+      expect.objectContaining({ action: 'changenode', nodeid: 'node//one', nolog: 1 }),
+    );
   });
 });

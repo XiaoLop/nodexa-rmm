@@ -4,12 +4,14 @@ import {
   CloudServerOutlined,
   DatabaseOutlined,
   DesktopOutlined,
+  EnvironmentOutlined,
   ThunderboltOutlined,
   WarningOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
 import { Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { formatDeviceLocation } from '../../features/device-location/formatDeviceLocation';
 import { splitUptime } from '../../features/device-workspace/deviceWorkspaceModel';
 import type {
   DeviceDataStatus,
@@ -25,7 +27,7 @@ function platformIcon(platform: string) {
 }
 
 export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { time } = useFormatters();
   const hw = model.hardware;
   const isDiffName = model.device.name && model.hostname && model.device.name !== model.hostname;
@@ -45,6 +47,7 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
     t(`deviceWorkspace.data.states.${status.state}`);
   const sourceText = (status: DeviceDataStatus) =>
     status.source ? t(`deviceWorkspace.data.sources.${status.source}`) : '';
+  const locationText = formatDeviceLocation(model.location, i18n.resolvedLanguage ?? i18n.language);
 
   return (
     <header className="workspace-device-header console-card">
@@ -71,6 +74,7 @@ export function DeviceWorkspaceHeader({ model }: { model: DeviceWorkspaceModel }
                 {hw.agentVersion} {hw.agentIsRoot ? '(Root)' : ''}
               </Tag>
             )}
+            {locationText && <Tag color="cyan" icon={<EnvironmentOutlined />} title={locationText}>{locationText}</Tag>}
             {hw?.security?.pendingReboot && (
               <Tag color="warning" icon={<WarningOutlined />}>
                 {t('deviceWorkspace.header.pendingReboot')}

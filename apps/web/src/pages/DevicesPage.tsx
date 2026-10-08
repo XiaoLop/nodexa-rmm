@@ -59,6 +59,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
 import {
+  deviceLocationSearchValues,
+  formatDeviceLocation,
+} from '../features/device-location/formatDeviceLocation';
+import {
   getDeviceCapabilities,
   useApplicationUiCapabilities,
 } from '../features/permissions/useUiCapabilities';
@@ -162,7 +166,7 @@ const deviceInviteServerInfo = {
 };
 
 export function DevicesPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const formatters = useFormatters();
   const { token } = theme.useToken();
   const gateway = useMeshCentralControl();
@@ -332,6 +336,7 @@ export function DevicesPage() {
           device.groupName,
           rawString(device, 'ip'),
           rawString(device, 'host'),
+          ...deviceLocationSearchValues(device.location),
         ].some((value) => value?.toLowerCase().includes(normalized));
       const matchesGroup =
         !groupId ||
@@ -553,6 +558,13 @@ export function DevicesPage() {
         render: (_, device) => rawString(device, 'ip') || '-',
       },
       {
+        title: t('devices.columns.location'),
+        key: 'location',
+        width: 190,
+        render: (_, device) =>
+          formatDeviceLocation(device.location, i18n.resolvedLanguage ?? i18n.language) ?? '—',
+      },
+      {
         title: t('devices.columns.desc'),
         key: 'desc',
         width: 150,
@@ -744,6 +756,8 @@ export function DevicesPage() {
       deviceCapabilities,
       formatters,
       groupNameById,
+      i18n.language,
+      i18n.resolvedLanguage,
       messageApi,
       navigate,
       openDeviceEditor,

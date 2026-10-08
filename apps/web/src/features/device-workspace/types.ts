@@ -1,5 +1,5 @@
 import type { Device } from '@meshcentral/shared-state';
-import type { DeviceDetails } from '@meshcentral/control-client';
+import type { DeviceDetails, DeviceLocation } from '@meshcentral/control-client';
 
 export type WorkspaceTab =
   | 'overview'
@@ -124,6 +124,7 @@ export interface DeviceWorkspaceModel {
   uptimeSeconds?: number;
   lastHeartbeatAt?: string;
   groupName?: string;
+  location?: DeviceLocation;
   tags: string[];
   cpuName?: string;
   memorySummary?: string;
