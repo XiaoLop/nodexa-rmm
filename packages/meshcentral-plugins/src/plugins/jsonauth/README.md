@@ -154,9 +154,9 @@ export class JsonAuthPlugin {
 
 Controller 遍历全部 Domain：
 
-- 默认 Domain 注册 `/api/auth/login`。
-- 路径型 Domain 注册 `/<domain>/api/auth/login`。
-- DNS 型 Domain 共用 `/api/auth/login`，运行时通过 `request.xdomain` 识别 Domain。
+- 默认 Domain 注册 `/auth/login`。
+- 路径型 Domain 注册 `/<domain>/auth/login`。
+- DNS 型 Domain 共用 `/auth/login`，运行时通过 `request.xdomain` 识别 Domain。
 - 使用 `Set` 避免相同路径重复注册。
 - JSON 请求体上限为 `16kb`。
 - 每个 Domain 同时注册登录、独立 2FA 验证和退出接口。
@@ -362,16 +362,16 @@ MeshCentral 插件元数据，定义：
 插件提供注册检查、登录、二阶段验证和退出接口，根据 Domain 配置注册到不同路径。
 
 ```http
-GET /api/auth/can-register
-GET /<domain>/api/auth/can-register
-POST /api/auth/register
-POST /<domain>/api/auth/register
-POST /api/auth/login
-POST /<domain>/api/auth/login
-POST /api/auth/login/verify-2fa
-POST /<domain>/api/auth/login/verify-2fa
-POST /api/auth/logout
-POST /<domain>/api/auth/logout
+GET /auth/can-register
+GET /<domain>/auth/can-register
+POST /auth/register
+POST /<domain>/auth/register
+POST /auth/login
+POST /<domain>/auth/login
+POST /auth/login/verify-2fa
+POST /<domain>/auth/login/verify-2fa
+POST /auth/logout
+POST /<domain>/auth/logout
 Content-Type: application/json
 ```
 
@@ -415,7 +415,7 @@ Content-Type: application/json
 浏览器调用必须保留 Cookie：
 
 ```typescript
-const response = await fetch('/api/auth/login', {
+const response = await fetch('/auth/login', {
   method: 'POST',
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },
@@ -429,7 +429,7 @@ const response = await fetch('/api/auth/login', {
 如果 Domain 配置了 `loginkey`，请求还必须携带：
 
 ```http
-POST /api/auth/login?key=<login-key>
+POST /auth/login?key=<login-key>
 ```
 
 密码正确且需要 2FA 时返回 `transactionId`。随后调用独立接口：
@@ -446,7 +446,7 @@ POST /api/auth/login?key=<login-key>
 退出登录请求无需 Body，但必须携带 Session Cookie：
 
 ```typescript
-const response = await fetch('/api/auth/logout', {
+const response = await fetch('/auth/logout', {
   method: 'POST',
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },

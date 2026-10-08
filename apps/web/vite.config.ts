@@ -3,8 +3,6 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(() => {
   const meshcentralTarget = 'https://mesh.xiaonext.com';
-  const rewriteMeshcentralPath = (path: string) =>
-    path.startsWith('/api/auth/') ? path : path.replace(/^\/api/, '');
   return {
     plugins: [react()],
     build: {
@@ -21,7 +19,7 @@ export default defineConfig(() => {
           changeOrigin: true,
           ws: true,
           rewriteWsOrigin: true,
-          rewrite: rewriteMeshcentralPath,
+          rewrite: (path) => path.replace(/^\/api/, ''),
         },
         '/agent.ashx': {
           target: meshcentralTarget,

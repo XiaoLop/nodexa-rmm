@@ -318,52 +318,52 @@ describe('jsonauth handler', () => {
     expect(runtime.webServer.app.post).toHaveBeenCalledTimes(8);
     expect(runtime.webServer.app.get).toHaveBeenCalledTimes(2);
     expect(runtime.webServer.app.get).toHaveBeenCalledWith(
-      '/api/auth/can-register',
+      '/auth/can-register',
       expect.any(Function),
     );
     expect(runtime.webServer.app.get).toHaveBeenCalledWith(
-      '/tenant/api/auth/can-register',
+      '/tenant/auth/can-register',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/api/auth/register',
+      '/auth/register',
       'json-parser',
       'urlencoded-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/tenant/api/auth/register',
+      '/tenant/auth/register',
       'json-parser',
       'urlencoded-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/api/auth/login',
+      '/auth/login',
       'json-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/tenant/api/auth/login',
+      '/tenant/auth/login',
       'json-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/api/auth/login/verify-2fa',
+      '/auth/login/verify-2fa',
       'json-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/tenant/api/auth/login/verify-2fa',
+      '/tenant/auth/login/verify-2fa',
       'json-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/api/auth/logout',
+      '/auth/logout',
       'json-parser',
       expect.any(Function),
     );
     expect(runtime.webServer.app.post).toHaveBeenCalledWith(
-      '/tenant/api/auth/logout',
+      '/tenant/auth/logout',
       'json-parser',
       expect.any(Function),
     );

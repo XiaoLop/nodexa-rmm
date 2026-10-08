@@ -33,7 +33,7 @@ export class JsonAuthController {
     if (domains == null) return;
     const registeredPaths = new Set<string>();
     for (const domain of Object.values(domains)) {
-      const basePath = domain.dns == null ? `${domain.url}api/auth` : '/api/auth';
+      const basePath = domain.dns == null ? `${domain.url}auth` : '/auth';
       const loginPath = `${basePath}/login`;
       const verifyPath = `${basePath}/login/verify-2fa`;
       const logoutPath = `${basePath}/logout`;

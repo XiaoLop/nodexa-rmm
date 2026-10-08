@@ -339,16 +339,16 @@ export const audit: MeshCentralPluginFactory = () => {
 `jsonauth` 插件为本地 MeshCentral 账号提供不重定向的 JSON 登录接口：
 
 ```text
-POST /api/auth/login
-POST /<domain>/api/auth/login
-POST /api/auth/login/verify-2fa
-POST /<domain>/api/auth/login/verify-2fa
+POST /auth/login
+POST /<domain>/auth/login
+POST /auth/login/verify-2fa
+POST /<domain>/auth/login/verify-2fa
 ```
 
 请求必须使用 `Content-Type: application/json`，浏览器调用必须保留 Cookie：
 
 ```javascript
-const response = await fetch('/api/auth/login', {
+const response = await fetch('/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
@@ -364,7 +364,7 @@ const result = await response.json();
 密码正确且需要 2FA 时，接口返回有效期 5 分钟的一次性 `transactionId`。第二步不再提交用户名和密码：
 
 ```javascript
-await fetch('/api/auth/login/verify-2fa', {
+await fetch('/auth/login/verify-2fa', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',

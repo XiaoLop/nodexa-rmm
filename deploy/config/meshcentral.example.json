@@ -47,15 +47,24 @@
             },
             "agentFileInfo": {
                 "icon": "myagent.ico",
-                "fileDescription": "Remote Support Client",
-                "productName": "My Remote Agent"
+                "fileDescription": "Nodexa RMM Remote Support Client",
+                "fileVersion": "1.0.0.0",
+                "internalName": "NodexaRMM",
+                "legalCopyright": "Copyright Nodexa",
+                "originalFilename": "nodexa-rmm-agent.exe",
+                "productName": "Nodexa RMM Agent",
+                "productVersion": "v1.0.0.0"
             },
             "agentCustomization": {
-                "displayName": "远程管理助手",
-                "description": "用于远程管理和技术支持的服务程序",
-                "companyName": "My Company",
-                "fileName": "RemoteAgent",
-                "image": "myagent.png"
+                "displayName": "Nodexa RMM Agent",
+                "description": "Nodexa RMM device management and remote support service",
+                "companyName": "Nodexa",
+                "serviceName": "nodexarmmagent",
+                "installText": "Install the Nodexa RMM remote management service",
+                "image": "myagent.png",
+                "fileName": "nodexa-rmm-agent",
+                "foregroundColor": "#FFFFFF",
+                "backgroundColor": "#2563EB"
             }
         }
     }
