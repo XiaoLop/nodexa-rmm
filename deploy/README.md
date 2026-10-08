@@ -79,15 +79,17 @@ localhost 不能作为远程设备连接地址。不要把开发密码环境直�
 docker build \
   -f apps/meshcentral/Dockerfile \
   --build-arg MESHCENTRAL_VERSION=1.1.54 \
-  -t mesh-console-meshcentral:production \
+  -t nodexa-rmm:production \
   .
 ```
 
 导出镜像到部署目录：
 
 ```bash
-docker save -o mesh-console-meshcentral-production.tar mesh-console-meshcentral:production
+docker save -o nodexa-rmm-production.tar nodexa-rmm:production
 ```
+
+快捷命令（一键构建并导出 tar）：`pnpm prod:meshcentral:package`；或单独执行 `pnpm prod:meshcentral:build`、`pnpm prod:meshcentral:save`。
 
 如果运行环境可以访问私有镜像仓库，也可以执行 `docker push`，无需生成 tar 文件。
 
@@ -97,7 +99,7 @@ docker save -o mesh-console-meshcentral-production.tar mesh-console-meshcentral:
 
 | 仓库或构建产物                                 | 运行环境目标路径                                             |
 | ---------------------------------------------- | ------------------------------------------------------------ |
-| `mesh-console-meshcentral-production.tar`      | `meshcentral-deploy/mesh-console-meshcentral-production.tar` |
+| `nodexa-rmm-production.tar`                    | `meshcentral-deploy/nodexa-rmm-production.tar`               |
 | `deploy/compose/compose.meshcentral.prod.yaml` | `meshcentral-deploy/compose.meshcentral.prod.yaml`           |
 | `deploy/config/config.meshcental.prod.yaml`    | `meshcentral-deploy/config/config.meshcental.prod.yaml`      |
 | `deploy/environments/.env.example`             | `meshcentral-deploy/.env.production`                         |
@@ -111,7 +113,7 @@ docker save -o mesh-console-meshcentral-production.tar mesh-console-meshcentral:
 
 ```text
 meshcentral-deploy/
-  mesh-console-meshcentral-production.tar
+  nodexa-rmm-production.tar
   assets/
     logo.png
     favicon.ico
@@ -197,7 +199,7 @@ cd /opt/meshcentral-deploy
 如果使用 tar 文件交付镜像，先加载镜像：
 
 ```bash
-docker load -i mesh-console-meshcentral-production.tar
+docker load -i nodexa-rmm-production.tar
 ```
 
 先校验 Compose；无输出表示通过：
@@ -263,7 +265,7 @@ docker compose \
 更新时在源码仓库重新构建并导出相同标签的镜像，把新的 tar 文件复制到部署目录，然后执行：
 
 ```bash
-docker load -i mesh-console-meshcentral-production.tar
+docker load -i nodexa-rmm-production.tar
 docker compose \
   --env-file .env.production \
   -f compose.meshcentral.prod.yaml \

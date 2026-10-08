@@ -35,7 +35,7 @@ services:
       dockerfile: apps/meshcentral/Dockerfile
       args:
         MESHCENTRAL_VERSION: 1.1.54
-    image: mesh-console-meshcentral:development
+    image: nodexa-rmm:development
     restart: unless-stopped
     environment:
       MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'true'
