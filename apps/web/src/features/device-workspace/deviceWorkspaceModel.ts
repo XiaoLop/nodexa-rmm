@@ -554,7 +554,9 @@ function dataAvailability(
 }
 
 export function createDeviceWorkspaceModel(device: Device, details?: DeviceDetails, groupName?: string): DeviceWorkspaceModel {
-  const resolvedDevice = details?.device ?? device;
+  const resolvedDevice = details?.device
+    ? { ...details.device, ...device }
+    : device;
   const hardware = staticDetails(details, resolvedDevice);
   const hasSystemDetails = detailRecord(details, 'systemInfo') !== undefined;
   const hasNetworkDetails = detailRecord(details, 'networkInfo') !== undefined;

@@ -31,6 +31,10 @@ import {
   workspaceTabPermission,
 } from '../components/device-workspace/WorkspaceTabs';
 import type { RemoteDesktopPanelHandle } from '../components/device-workspace/RemoteDesktopPanel';
+import {
+  deviceOnlineFromMessage,
+  normalizeDeviceRouteId,
+} from '../features/device-workspace/deviceConnectionState';
 import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel.ts';
 import type { WorkspaceTab } from '../features/device-workspace/types';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
@@ -74,7 +78,8 @@ export function DeviceWorkspacePage() {
   const { t } = useTranslation();
   const data = useMeshCentralControlData();
   const navigate = useNavigate();
-  const { deviceId } = useParams();
+  const { deviceId: routeDeviceId } = useParams();
+  const deviceId = normalizeDeviceRouteId(routeDeviceId);
   const [searchParams, setSearchParams] = useSearchParams();
   const [, messageContextHolder] = message.useMessage();
   const desktopPanelRef = useRef<RemoteDesktopPanelHandle>(null);
@@ -84,6 +89,10 @@ export function DeviceWorkspacePage() {
   const [deviceDetails, setDeviceDetails] =
     useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
   const [fetchedDevice, setFetchedDevice] = useState<Device>();
+  const [liveConnection, setLiveConnection] = useState<{
+    deviceId: string;
+    online: boolean;
+  }>();
   const [historyEvents, setHistoryEvents] = useState<MeshCentralEvent[]>([]);
   const [loadedDeviceId, setLoadedDeviceId] = useState<string>();
   const [failedDeviceId, setFailedDeviceId] = useState<string>();
@@ -135,13 +144,25 @@ export function DeviceWorkspacePage() {
     };
   }, [data.status, loadDetails]);
 
+  useEffect(() => {
+    setLiveConnection(undefined);
+    if (!data.client || !deviceId) return undefined;
+    return data.client.on('message', (message) => {
+      const online = deviceOnlineFromMessage(message, deviceId);
+      if (online !== undefined) setLiveConnection({ deviceId, online });
+    });
+  }, [data.client, deviceId]);
+
   const storeDevice = data.devices.find((item) => item.id === deviceId);
   const device = useMemo(() => {
+    const liveOnline =
+      liveConnection && liveConnection.deviceId === deviceId ? liveConnection.online : undefined;
     if (storeDevice && fetchedDevice) {
-      return { ...fetchedDevice, ...storeDevice };
+      return { ...fetchedDevice, ...storeDevice, online: liveOnline ?? storeDevice.online };
     }
-    return storeDevice ?? fetchedDevice;
-  }, [fetchedDevice, storeDevice]);
+    const snapshot = storeDevice ?? fetchedDevice;
+    return snapshot && liveOnline !== undefined ? { ...snapshot, online: liveOnline } : snapshot;
+  }, [deviceId, fetchedDevice, liveConnection, storeDevice]);
 
   const detailsReady = loadedDeviceId === deviceId && Boolean(deviceDetails);
   const currentLoadError = failedDeviceId === deviceId ? loadError : undefined;

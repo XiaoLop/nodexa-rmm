@@ -185,6 +185,22 @@ export class DevicesResource {
     return this.client.request({ action: 'removedevices', nodeids: [deviceId] });
   }
 
+  uninstallAgent(deviceId: string): void {
+    required(deviceId, 'Device ID');
+    this.client.send({ action: 'uninstallagent', nodeids: [deviceId] });
+  }
+
+  uninstallAgents(deviceIds: Array<string | BatchDeviceTarget>): BatchOperationResult {
+    const targets = normalizeBatchTargets(deviceIds);
+    const startedAt = Date.now();
+    this.client.send({
+      action: 'uninstallagent',
+      nodeids: targets.map(({ id }) => id),
+    });
+    const results = targets.map((target) => batchResult(target, 'submitted', startedAt));
+    return { results, raw: results };
+  }
+
   setUserRights(deviceId: string, username: string, rights: number): Promise<unknown> {
     required(deviceId, 'Device ID');
     required(username, 'Username');

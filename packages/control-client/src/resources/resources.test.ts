@@ -145,6 +145,34 @@ describe('resources', () => {
     });
   });
 
+  it('submits agent uninstall commands without waiting for a response', () => {
+    const client = new FakeClient();
+    const devices = new DevicesResource(client);
+
+    devices.uninstallAgent('node//one');
+    expect(client.sent.at(-1)).toEqual({
+      action: 'uninstallagent',
+      nodeids: ['node//one'],
+    });
+
+    expect(
+      devices.uninstallAgents([
+        { id: 'node//one', name: 'One' },
+        { id: 'node//two', name: 'Two' },
+      ]),
+    ).toMatchObject({
+      results: [
+        { deviceId: 'node//one', deviceName: 'One', status: 'submitted' },
+        { deviceId: 'node//two', deviceName: 'Two', status: 'submitted' },
+      ],
+    });
+    expect(client.sent.at(-1)).toEqual({
+      action: 'uninstallagent',
+      nodeids: ['node//one', 'node//two'],
+    });
+    expect(client.requests).toEqual([]);
+  });
+
   it('builds group and history requests', async () => {
     const client = new FakeClient();
     const groups = new GroupsResource(client);

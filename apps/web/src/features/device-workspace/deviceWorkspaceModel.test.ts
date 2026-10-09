@@ -109,6 +109,17 @@ describe('createDeviceWorkspaceModel', () => {
     expect(model.uptimeSeconds).toBeUndefined();
   });
 
+  it('keeps the realtime connection state when device details contain a stale snapshot', () => {
+    const model = createDeviceWorkspaceModel(
+      { id: 'node-realtime', name: 'Realtime Node', online: false },
+      {
+        device: { id: 'node-realtime', name: 'Realtime Node', online: true },
+      } as any,
+    );
+
+    expect(model.device.online).toBe(false);
+  });
+
   it('parses the Windows DMTF boot time from system details', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-10T10:00:00.000Z'));

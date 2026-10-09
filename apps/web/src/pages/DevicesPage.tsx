@@ -368,15 +368,12 @@ export function DevicesPage() {
         void messageApi.warning(permission.message ?? t('devices.messages.permissionDeleteDenied'));
         return;
       }
-      const groupText = groupNameById.get(device.groupId ?? '') ?? t('common.status.ungrouped');
-      const statusText = device.online ? t('common.status.online') : t('common.status.offline');
       modal.confirm({
         title: t('devices.confirm.deleteTitle'),
         content: (
           <div>
             <p>{t('devices.confirm.deleteContent', { name: device.name })}</p>
-            <p>{t('devices.confirm.deviceId', { id: device.id })}</p>
-            <p>{t('devices.confirm.groupAndStatus', { group: groupText, status: statusText })}</p>
+            <p>{t('devices.confirm.deleteAgentFirst')}</p>
           </div>
         ),
         okText: t('devices.confirm.deleteOk'),
@@ -396,7 +393,38 @@ export function DevicesPage() {
         },
       });
     },
-    [client, deviceCapabilities, groupNameById, messageApi, modal, refreshSnapshot, t],
+    [client, deviceCapabilities, messageApi, modal, refreshSnapshot, t],
+  );
+
+  const confirmAgentUninstall = useCallback(
+    (device: Device) => {
+      const permission = deviceCapabilities(device).uninstall;
+      if (!client || !permission.enabled) {
+        void messageApi.warning(
+          permission.message ?? t('devices.messages.permissionUninstallDenied'),
+        );
+        return;
+      }
+      modal.confirm({
+        title: t('devices.confirm.uninstallAgentTitle'),
+        content: t('devices.confirm.uninstallAgentContent', { name: device.name }),
+        okText: t('devices.confirm.uninstallAgentOk'),
+        cancelText: t('common.actions.cancel'),
+        okButtonProps: { danger: true },
+        onOk: () => {
+          try {
+            client.devices.uninstallAgent(device.id);
+            void messageApi.success(
+              t('devices.messages.uninstallAgentSuccess', { name: device.name }),
+            );
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : t('common.status.unknown');
+            void messageApi.error(t('devices.messages.uninstallAgentFailed', { detail }));
+          }
+        },
+      });
+    },
+    [client, deviceCapabilities, messageApi, modal, t],
   );
 
   const openInviteModal = () => {
@@ -497,6 +525,48 @@ export function DevicesPage() {
           onSubmitted: handleBatchOperationCompleted,
         });
         void messageApi.success(t('taskCenter.taskCreated'));
+      },
+    });
+  };
+
+  const confirmBatchAgentUninstall = () => {
+    if (!client || status !== 'connected' || !selectedDevices.length) return;
+    const targets = selectedCapabilities
+      .filter(({ capabilities }) => capabilities.uninstall.enabled)
+      .map(({ device }) => device);
+    const skippedCount = selectedDevices.length - targets.length;
+    modal.confirm({
+      title: t('devices.confirm.batchUninstallAgentTitle'),
+      content: (
+        <div>
+          <p>{t('devices.confirm.batchUninstallAgentContent', { count: targets.length })}</p>
+          {skippedCount > 0 && (
+            <p>{t('devices.confirm.batchUninstallAgentSkipped', { count: skippedCount })}</p>
+          )}
+          <p>{t('devices.confirm.batchUninstallAgentNotice')}</p>
+        </div>
+      ),
+      okText: t('devices.confirm.uninstallAgentOk'),
+      cancelText: t('common.actions.cancel'),
+      okButtonProps: { danger: true },
+      onOk: () => {
+        if (!targets.length) {
+          void messageApi.warning(t('devices.messages.batchUninstallAgentNoTargets'));
+          return;
+        }
+        try {
+          client.devices.uninstallAgents(
+            targets.map((device) => ({ id: device.id, name: device.name })),
+          );
+          const submittedIds = new Set(targets.map((device) => device.id));
+          setSelectedDeviceIds((ids) => ids.filter((id) => !submittedIds.has(String(id))));
+          void messageApi.success(
+            t('devices.messages.batchUninstallAgentSuccess', { count: targets.length }),
+          );
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : t('common.status.unknown');
+          void messageApi.error(t('devices.messages.batchUninstallAgentFailed', { detail }));
+        }
       },
     });
   };
@@ -648,6 +718,17 @@ export function DevicesPage() {
                 : (capabilities.edit.message ?? t('devices.messages.permissionEditDenied')),
             },
             {
+              key: 'uninstallAgent',
+              icon: <DeleteOutlined />,
+              label: t('devices.actions.uninstallAgent'),
+              danger: true,
+              disabled: !capabilities.uninstall.enabled,
+              title: capabilities.uninstall.enabled
+                ? undefined
+                : (capabilities.uninstall.message ??
+                  t('devices.messages.permissionUninstallDenied')),
+            },
+            {
               key: 'delete',
               icon: <DeleteOutlined />,
               label: t('common.actions.delete'),
@@ -725,6 +806,8 @@ export function DevicesPage() {
                       openDeviceEditor(device);
                     } else if (key === 'delete') {
                       confirmDeviceDeletion(device);
+                    } else if (key === 'uninstallAgent') {
+                      confirmAgentUninstall(device);
                     } else if (key === 'command') {
                       if (!capabilities.command.enabled) {
                         void messageApi.warning(
@@ -752,6 +835,7 @@ export function DevicesPage() {
     [
       client,
       compareDeviceName,
+      confirmAgentUninstall,
       confirmDeviceDeletion,
       deviceCapabilities,
       formatters,
@@ -838,6 +922,15 @@ export function DevicesPage() {
                     ),
                   },
                   {
+                    key: 'uninstallAgent',
+                    icon: <DeleteOutlined />,
+                    label: t('devices.actions.uninstallAgent'),
+                    danger: true,
+                    disabled: !selectedCapabilities.some(
+                      ({ capabilities }) => capabilities.uninstall.enabled,
+                    ),
+                  },
+                  {
                     key: 'poweroff',
                     label: t('devices.powerActions.poweroff'),
                     danger: true,
@@ -849,6 +942,7 @@ export function DevicesPage() {
                 onClick: ({ key }) => {
                   if (key === 'move') setBatchMoveOpen(true);
                   else if (key === 'command') setCommandDevices(commandTargets);
+                  else if (key === 'uninstallAgent') confirmBatchAgentUninstall();
                   else confirmBatchPowerAction(key as PowerAction);
                 },
               }}

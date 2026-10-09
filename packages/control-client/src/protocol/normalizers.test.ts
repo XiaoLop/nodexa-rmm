@@ -115,6 +115,12 @@ describe('protocol normalizers', () => {
     expect(normalizeEvent({ action: 'nodeconnect', nodeid: 'one', conn: 2 })?.type).toBe(
       'deviceOffline',
     );
+    expect(normalizeEvent({ action: 'nodeconnect', nodeid: 'one', conn: '0' })?.type).toBe(
+      'deviceOffline',
+    );
+    expect(
+      normalizeEvent({ action: 'nodeconnect', nodeid: 'one', node: { conn: 0 } })?.type,
+    ).toBe('deviceOffline');
     expect(normalizeEvent({ action: 'changenode', nodeid: 'one' })?.type).toBe('deviceChanged');
     expect(normalizeEvent({ action: 'relaylog', nodeid: 'one' })?.type).toBe('relayLog');
     expect(normalizeEvent({ action: 'manual', nodeid: 'one' })?.type).toBe('manualOperation');

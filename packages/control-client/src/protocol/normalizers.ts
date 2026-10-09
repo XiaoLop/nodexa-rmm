@@ -282,7 +282,14 @@ export function normalizeEvent(value: unknown): MeshCentralEvent | undefined {
   const entityType = stringValue(raw.etype);
   const deviceId = stringValue(raw.deviceId) ?? stringValue(raw.nodeid);
   const node = isRecord(raw.node) ? raw.node : undefined;
-  const conn = typeof raw.conn === 'number' ? raw.conn : undefined;
+  const eventDevice = isRecord(raw.device) ? raw.device : undefined;
+  const rawConn = raw.conn ?? node?.conn ?? eventDevice?.conn;
+  const conn =
+    typeof rawConn === 'number' && Number.isFinite(rawConn)
+      ? rawConn
+      : typeof rawConn === 'string' && /^\d+$/.test(rawConn.trim())
+        ? Number(rawConn)
+        : undefined;
   let type: MeshCentralEvent['type'] = 'unknown';
   if (classificationAction === 'nodeconnect' || classificationAction === 'connect' || classificationAction === 'connected')
     type = conn !== undefined && (conn & 1) === 0 ? 'deviceOffline' : 'deviceOnline';

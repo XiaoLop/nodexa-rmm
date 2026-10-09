@@ -907,6 +907,7 @@ export const enUS = {
       workspace: 'Workspace',
       fileManagement: 'File management',
       moveGroup: 'Move group',
+      uninstallAgent: 'Uninstall agent',
       manageFilesAria: 'Manage files for {{name}}',
       openWorkspaceAria: 'Open workspace for {{name}}',
       deviceActionAria: 'Actions for {{name}}',
@@ -931,9 +932,18 @@ export const enUS = {
       deleteTitle: 'Delete device',
       deleteContent:
         'Are you sure you want to delete device "{{name}}"? This action cannot be undone.',
-      deviceId: 'Device ID: {{id}}',
-      groupAndStatus: 'Group: {{group}}; Status: {{status}}',
+      deleteAgentFirst:
+        'Uninstall the agent first, then delete the device after confirming the agent has been removed.',
       deleteOk: 'Delete device',
+      uninstallAgentTitle: 'Uninstall agent',
+      uninstallAgentContent: 'Are you sure you want to uninstall the agent from "{{name}}"?',
+      uninstallAgentOk: 'Uninstall agent',
+      batchUninstallAgentTitle: 'Batch uninstall agents',
+      batchUninstallAgentContent: 'Send the uninstall command to {{count}} devices?',
+      batchUninstallAgentSkipped:
+        '{{count}} devices without permission or currently unavailable will be skipped.',
+      batchUninstallAgentNotice:
+        'The command has no completion response. Check device connectivity later to confirm removal.',
       batchPowerTitle: 'Batch {{action}}',
       batchPowerContent: 'Are you sure you want to {{action}} {{count}} devices?',
       batchPowerSkipped:
@@ -946,6 +956,11 @@ export const enUS = {
       powerFailed: 'Failed to send {{action}} command: {{detail}}',
       deleteSuccess: 'Deleted "{{name}}"',
       deleteFailed: 'Failed to delete device: {{detail}}',
+      uninstallAgentSuccess: 'Sent the agent uninstall command to "{{name}}"',
+      uninstallAgentFailed: 'Failed to send the agent uninstall command: {{detail}}',
+      batchUninstallAgentNoTargets: 'No eligible devices found for agent uninstall.',
+      batchUninstallAgentSuccess: 'Sent the agent uninstall command to {{count}} devices.',
+      batchUninstallAgentFailed: 'Failed to send batch agent uninstall command: {{detail}}',
       batchPowerNoTargets: 'No eligible devices found for this action.',
       batchPowerSuccess: 'Submitted {{action}} request to {{count}} devices.',
       batchPowerPartial:
@@ -958,6 +973,8 @@ export const enUS = {
         'Current account is not authorized to perform power actions on this device',
       permissionEditDenied: 'Current account is not authorized to edit this device',
       permissionDeleteDenied: 'Current account is not authorized to delete this device',
+      permissionUninstallDenied:
+        'Current account is not authorized to uninstall the agent from this device',
       permissionCommandDenied: 'Current account is not authorized to execute commands',
       permissionFilesDenied: 'Current account is not authorized to manage files on this device',
     },
