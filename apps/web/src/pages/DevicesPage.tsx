@@ -625,14 +625,25 @@ export function DevicesPage() {
         title: t('devices.columns.ip'),
         key: 'ip',
         width: 190,
-        render: (_, device) => (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span>{rawString(device, 'ip') || '-'}</span>
-            <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
-              {formatDeviceLocation(device.location, i18n.resolvedLanguage ?? i18n.language) ?? '—'}
-            </span>
-          </div>
-        ),
+        render: (_, device) => {
+          const location = formatDeviceLocation(
+            device.location,
+            i18n.resolvedLanguage ?? i18n.language,
+          );
+          return (
+            <div className="device-ip-cell">
+              <span>{rawString(device, 'ip') || '-'}</span>
+              <Tooltip title={location}>
+                <span
+                  className="device-location-text"
+                  style={{ color: token.colorTextSecondary }}
+                >
+                  {location ?? '—'}
+                </span>
+              </Tooltip>
+            </div>
+          );
+        },
       },
       {
         title: t('devices.columns.desc'),
