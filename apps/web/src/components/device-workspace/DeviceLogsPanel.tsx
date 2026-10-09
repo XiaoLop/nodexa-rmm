@@ -57,7 +57,8 @@ const typeLabelKeys: Record<MeshCentralEventType, string> = {
   unknown: 'deviceWorkspace.logs.types.unknown',
 };
 
-function filterMatches(event: MeshCentralEvent, filter?: HistoricalEventFilter) {
+export function filterMatches(event: MeshCentralEvent, filter?: HistoricalEventFilter) {
+  if (event.type === 'deviceOffline') return false;
   if (!filter) return true;
   if (filter === 'removenode') return event.action === 'removenode' || event.action === 'deletenode';
   return event.action === filter;

@@ -21,16 +21,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useFormatters } from '../i18n';
+import { realtimeEventMatches } from './realtimeEvents';
 import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
-
-function filterMatches(event: MeshCentralEvent, filter?: HistoricalEventFilter) {
-  if (!filter) return true;
-  const action = event.action;
-  if (filter === 'removenode') return action === 'removenode' || action === 'deletenode';
-  return action === filter;
-}
 
 function sanitizeRaw(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeRaw);
@@ -224,7 +218,7 @@ export function RealtimeEventsPage() {
     const byId = new Map(historyEvents.map((event) => [event.id, event]));
     for (const event of data.events) byId.set(event.id, event);
     return [...byId.values()]
-      .filter((event) => filterMatches(event, eventFilter))
+      .filter((event) => realtimeEventMatches(event, eventFilter))
       .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
   }, [data.events, eventFilter, historyEvents]);
   const waitingForConnection = !data.client || data.status !== 'connected';

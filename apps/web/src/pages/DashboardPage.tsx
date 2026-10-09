@@ -25,6 +25,7 @@ import { MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { useFormatters } from '../i18n';
+import { isDashboardEventVisible } from './dashboardEvents';
 import '../assets/styles/dashboard.css';
 import '../assets/styles/dashboard-widgets.css';
 
@@ -163,6 +164,7 @@ export function DashboardPage() {
     const eventsById = new Map(historyEvents.map((event) => [event.id, event]));
     for (const event of data.events) eventsById.set(event.id, event);
     return [...eventsById.values()]
+      .filter(isDashboardEventVisible)
       .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
       .slice(0, 30);
   }, [data.events, historyEvents]);
@@ -646,10 +648,11 @@ export function DashboardPage() {
             {dashboardEvents.slice(0, 10).map((event) => {
               const name = getEventTargetName(event, data.devices);
               const message = formatEventMessage(event, data.devices, data.groups);
+              const type = t(`events.types.${event.type}`);
               const tone =
                 event.type === 'deviceOnline'
                   ? 'success'
-                  : event.type === 'deviceOffline' || event.type === 'deviceRemoved'
+                  : event.type === 'deviceRemoved'
                     ? 'danger'
                     : 'info';
 
@@ -657,8 +660,13 @@ export function DashboardPage() {
                 <div className="event-row" key={event.id}>
                   <i className={tone} />
                   <div className="event-row-body">
-                    <strong>{name || event.user || t('common.status.systemEvent')}</strong>
-                    <span>{message}</span>
+                    <strong title={message}>{message}</strong>
+                    <div className="event-row-meta">
+                      <span className="event-type">{type}</span>
+                      <span>{name || event.deviceId || t('common.status.systemEvent')}</span>
+                      <span>{event.user || t('common.status.systemEvent')}</span>
+                      {event.ip && <span>{event.ip}</span>}
+                    </div>
                   </div>
                   <Tooltip title={formatters.dateTime(event.occurredAt)}>
                     <time>{formatters.time(event.occurredAt)}</time>
