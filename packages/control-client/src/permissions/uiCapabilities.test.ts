@@ -160,9 +160,23 @@ describe('getApplicationUiCapabilities', () => {
     expect(getApplicationUiCapabilities(SiteRight.Administrator).serverFiles).toBe(true);
   });
 
-  it('restricts server status to site administrators', () => {
+  it('restricts settings management to site administrators', () => {
     expect(getApplicationUiCapabilities(0).manageSettings).toBe(false);
     expect(getApplicationUiCapabilities(SiteRight.Administrator).manageSettings).toBe(true);
+  });
+
+  it.each([
+    SiteRight.ServerBackup,
+    SiteRight.ServerRestore,
+    SiteRight.ServerUpdate,
+    SiteRight.Administrator,
+  ])('allows server stats for site rights %s', (siteRights) => {
+    expect(getApplicationUiCapabilities(siteRights).viewServerStats).toBe(true);
+  });
+
+  it('denies server stats without a matching server permission', () => {
+    expect(getApplicationUiCapabilities(0).viewServerStats).toBe(false);
+    expect(getApplicationUiCapabilities(SiteRight.ManageUsers).viewServerStats).toBe(false);
   });
 
   it('derives report access from site rights', () => {

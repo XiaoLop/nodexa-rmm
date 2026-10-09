@@ -334,16 +334,20 @@ export function DashboardPage() {
   const displayName = getUserDisplayName(data.userInfo, data.username);
 
   useEffect(() => {
-    if (!applicationCapabilities.manageSettings || !data.client || data.status !== 'connected') {
+    if (!applicationCapabilities.viewServerStats || !data.client || data.status !== 'connected') {
       setServerStats(undefined);
       return;
     }
     setServerStats(undefined);
     return data.client.server.subscribeStats(setServerStats);
-  }, [applicationCapabilities.manageSettings, data.client, data.status]);
+  }, [applicationCapabilities.viewServerStats, data.client, data.status]);
 
   useEffect(() => {
-    if (!data.client || data.status !== 'connected') {
+    if (
+      !applicationCapabilities.viewServerStats ||
+      !data.client ||
+      data.status !== 'connected'
+    ) {
       setTimelineStats([]);
       setTimelineLoading(false);
       setTimelineError(false);
@@ -370,7 +374,13 @@ export function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [data.client, data.status, timelineHours, timelineRequestVersion]);
+  }, [
+    applicationCapabilities.viewServerStats,
+    data.client,
+    data.status,
+    timelineHours,
+    timelineRequestVersion,
+  ]);
 
   useEffect(() => {
     if (!data.client || data.status !== 'connected') return;
@@ -462,8 +472,9 @@ export function DashboardPage() {
       </div>
 
       {/* Overview Grid: Attention vs Connection & Server */}
-      <div className="dashboard-overview-grid">
-        <section className="console-card attention-card online-trend-card">
+      {applicationCapabilities.viewServerStats && (
+        <div className="dashboard-overview-grid">
+          <section className="console-card attention-card online-trend-card">
           <div className="card-header">
             <div>
               <h2>
@@ -489,7 +500,7 @@ export function DashboardPage() {
             unavailable={data.status !== 'connected'}
             onRetry={() => setTimelineRequestVersion((version) => version + 1)}
           />
-        </section>
+          </section>
 
         <section className="console-card connection-card">
           <div className="card-header">
@@ -542,8 +553,7 @@ export function DashboardPage() {
             />
           </div>
 
-          {applicationCapabilities.manageSettings && (
-            <div className="server-stats-grid">
+          <div className="server-stats-grid">
             <div className="server-stat-box">
               <div className="server-stat-header">
                 <span>{t('dashboard.server.cpu')}</span>
@@ -617,9 +627,9 @@ export function DashboardPage() {
               </strong>
             </div>
             </div>
-          )}
         </section>
-      </div>
+        </div>
+      )}
 
       {/* Insights Grid: Events + Platforms + Groups */}
       <div className="dashboard-insights-grid">
