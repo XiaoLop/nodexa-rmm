@@ -19,7 +19,6 @@ import {
   Space,
   Spin,
   Table,
-  Tag,
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -131,13 +130,6 @@ export function DeviceLogsPanel({
   const columns = [
     { title: t('deviceWorkspace.logs.columns.time'), dataIndex: 'occurredAt', width: 175, render: (value?: string) => value ? dateTime(value) : '—' },
     {
-      title: t('deviceWorkspace.logs.columns.type'),
-      width: 116,
-      render: (_: unknown, event: MeshCentralEvent) => (
-        <Tag>{eventEntityTypeLabel(event, t)}</Tag>
-      ),
-    },
-    {
       title: t('deviceWorkspace.logs.columns.action'),
       width: 140,
       render: (_: unknown, event: MeshCentralEvent) => eventActionLabel(event, t),
@@ -221,7 +213,7 @@ export function DeviceLogsPanel({
         dataSource={filteredEvents}
         loading={loading && filteredEvents.length === 0 ? { indicator: <Spin /> } : false}
         pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
-        scroll={{ x: 1020 }}
+        scroll={{ x: 900 }}
         locale={{
           emptyText: (
             <Empty

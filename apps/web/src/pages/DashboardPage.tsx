@@ -16,7 +16,7 @@ import {
   WindowsOutlined,
 } from '@ant-design/icons';
 import type { MeshCentralEvent, ServerStats, ServerTimelineStats } from '@meshcentral/control-client';
-import { getEventTargetName, getUserDisplayName } from '@meshcentral/shared-state';
+import { getUserDisplayName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Progress, Spin, Tag, Tooltip } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +25,6 @@ import { MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import {
   eventActionLabel,
-  eventEntityTypeLabel,
   eventMessage,
   isHistoricalEventVisible,
 } from '../features/events/eventPresentation';
@@ -646,9 +645,7 @@ export function DashboardPage() {
             )}
 
             {dashboardEvents.slice(0, 10).map((event) => {
-              const name = getEventTargetName(event, data.devices);
               const message = eventMessage(event);
-              const entityType = eventEntityTypeLabel(event, t);
               const action = eventActionLabel(event, t);
               const tone =
                 event.type === 'deviceOnline'
@@ -661,14 +658,8 @@ export function DashboardPage() {
                 <div className="event-row" key={event.id}>
                   <i className={tone} />
                   <div className="event-row-body">
-                    <strong title={message}>{message}</strong>
-                    <div className="event-row-meta">
-                      <span className="event-type">{entityType}</span>
-                      <span>{action}</span>
-                      <span>{name || event.deviceId || t('common.status.systemEvent')}</span>
-                      <span>{event.user || t('common.status.systemEvent')}</span>
-                      {event.ip && <span>{event.ip}</span>}
-                    </div>
+                    <span className="event-action">{action}</span>
+                    <span className="event-message" title={message}>{message}</span>
                   </div>
                   <Tooltip title={formatters.dateTime(event.occurredAt)}>
                     <time>{formatters.time(event.occurredAt)}</time>
