@@ -623,3 +623,110 @@
 .desktop-canvas { display: block; margin: auto; outline: none; image-rendering: auto; touch-action: none; }
 .desktop-canvas:focus-visible { box-shadow: inset 0 0 0 2px #2f80ff; }
 .remote-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+
+/* Power Timeline Gantt Card */
+.workspace-power-timeline-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.timeline-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.timeline-title-row > .anticon {
+  color: var(--muted);
+  font-size: 15px;
+}
+.timeline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.timeline-summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.timeline-summary-tags .ant-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 3px 8px;
+  color: var(--muted);
+  background: transparent;
+  border-color: var(--border);
+}
+.timeline-summary-tags strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.timeline-summary-tags span {
+  padding-left: 4px;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+}
+.timeline-chart-container {
+  position: relative;
+  min-width: 0;
+  padding: 10px 12px 4px;
+}
+.timeline-echarts {
+  width: 100%;
+}
+.timeline-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+}
+.timeline-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(36, 51, 72, 0.5);
+  font-size: 10px;
+}
+.timeline-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+}
+.legend-item i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.timeline-hint {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+@media (max-width: 600px) {
+  .timeline-summary-tags .ant-tag {
+    width: 100%;
+  }
+  .timeline-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

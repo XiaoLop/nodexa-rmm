@@ -9,6 +9,7 @@ export type WorkspaceTab =
   | 'processes'
   | 'services'
   | 'logs'
+  | 'online-stats'
   | 'monitoring'
   | 'security';
 

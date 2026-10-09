@@ -1,4 +1,5 @@
 import {
+  BarChartOutlined,
   CodeOutlined,
   DashboardOutlined,
   DesktopOutlined,
@@ -25,6 +26,7 @@ const tabs: Array<{
   { key: 'processes', labelKey: 'deviceWorkspace.tabs.processes', icon: <MonitorOutlined /> },
   { key: 'services', labelKey: 'deviceWorkspace.tabs.services', icon: <SettingOutlined /> },
   { key: 'logs', labelKey: 'deviceWorkspace.tabs.logs', icon: <UnorderedListOutlined /> },
+  { key: 'online-stats', labelKey: 'deviceWorkspace.tabs.onlineStats', icon: <BarChartOutlined /> },
 ];
 
 export function workspaceTabPermission(

@@ -131,6 +131,16 @@ export class DevicesResource {
     return normalizeLastConnects(isRecord(response) ? response.lastconnects : undefined);
   }
 
+  async powerTimeline(deviceId: string, timeoutMs?: number): Promise<number[]> {
+    required(deviceId, 'Device ID');
+    const response = await this.client.request<{
+      action?: string;
+      nodeid?: string;
+      timeline?: number[];
+    }>({ action: 'powertimeline', nodeid: deviceId }, timeoutMs);
+    return Array.isArray(response?.timeline) ? response.timeline : [];
+  }
+
   async details(deviceId: string): Promise<DeviceDetails> {
     required(deviceId, 'Device ID');
     const response = await this.client.request<unknown>({

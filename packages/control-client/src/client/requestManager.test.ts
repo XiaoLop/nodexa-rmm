@@ -113,6 +113,46 @@ describe('RequestManager', () => {
     await expect(second).resolves.toMatchObject({ action: 'servertimelinestats' });
   });
 
+  it('serializes responseid-less powertimeline requests', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const manager = new RequestManager(
+      (payload) => sent.push(payload as Record<string, unknown>),
+      1_000,
+      () => undefined,
+    );
+    const first = manager.request({ action: 'powertimeline', nodeid: 'node//one' });
+    const second = manager.request({ action: 'powertimeline', nodeid: 'node//two' });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ action: 'powertimeline', nodeid: 'node//one' });
+
+    expect(
+      manager.consume({
+        action: 'powertimeline',
+        nodeid: 'node//one',
+        timeline: [0, 1791548099, 1, 977, 0],
+      }),
+    ).toBe(true);
+    await expect(first).resolves.toMatchObject({
+      action: 'powertimeline',
+      nodeid: 'node//one',
+      timeline: [0, 1791548099, 1, 977, 0],
+    });
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toMatchObject({ action: 'powertimeline', nodeid: 'node//two' });
+
+    expect(
+      manager.consume({
+        action: 'powertimeline',
+        nodeid: 'node//two',
+        timeline: [1, 1791548099, 1],
+      }),
+    ).toBe(true);
+    await expect(second).resolves.toMatchObject({
+      action: 'powertimeline',
+      nodeid: 'node//two',
+    });
+  });
+
   it('serializes responseid-less report requests', async () => {
     const sent: Record<string, unknown>[] = [];
     const manager = new RequestManager(

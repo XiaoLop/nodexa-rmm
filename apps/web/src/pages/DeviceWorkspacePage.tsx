@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeviceOverviewPanel } from '../components/device-workspace/DeviceOverviewPanel';
 import { DeviceLogsPanel } from '../components/device-workspace/DeviceLogsPanel';
+import { DevicePowerTimelineCard } from '../components/device-workspace/DevicePowerTimelineCard';
 import { DeviceWorkspaceHeader } from '../components/device-workspace/DeviceWorkspaceHeader';
 import {
   DeviceProcessesPanel,
@@ -66,6 +67,7 @@ const WORKSPACE_TABS: WorkspaceTab[] = [
   'processes',
   'services',
   'logs',
+  'online-stats',
   'monitoring',
   'security',
 ];
@@ -476,6 +478,12 @@ export function DeviceWorkspacePage() {
           <DeviceLogsPanel
             device={model.device}
             meshCentralClient={data.client}
+            controlConnected={data.status === 'connected'}
+          />
+        ) : activeTab === 'online-stats' ? (
+          <DevicePowerTimelineCard
+            deviceId={model.device.id}
+            client={data.client}
             controlConnected={data.status === 'connected'}
           />
         ) : (

@@ -22,6 +22,7 @@ const RESPONSE_ID_OPTIONAL_ACTIONS = new Set([
   'getDeviceDetails',
   'meshes',
   'poweraction',
+  'powertimeline',
   'previousLogins',
   'report',
   'servertimelinestats',

@@ -173,6 +173,23 @@ describe('resources', () => {
     expect(client.requests).toEqual([]);
   });
 
+  it('requests device power timeline', async () => {
+    const client = new FakeClient();
+    const devices = new DevicesResource(client);
+    client.responses.push({
+      action: 'powertimeline',
+      nodeid: 'node//target',
+      timeline: [0, 1791548099, 1, 977, 0],
+    });
+
+    const result = await devices.powerTimeline('node//target');
+    expect(client.requests.at(-1)).toEqual({
+      action: 'powertimeline',
+      nodeid: 'node//target',
+    });
+    expect(result).toEqual([0, 1791548099, 1, 977, 0]);
+  });
+
   it('builds group and history requests', async () => {
     const client = new FakeClient();
     const groups = new GroupsResource(client);
