@@ -121,6 +121,7 @@ export interface MeshCentralEvent {
   id: string;
   type: MeshCentralEventType;
   action?: string;
+  entityType?: string;
   deviceId?: string;
   deviceName?: string;
   user?: string;

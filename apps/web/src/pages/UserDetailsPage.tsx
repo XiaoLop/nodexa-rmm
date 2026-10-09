@@ -22,17 +22,17 @@ import {
 import {
   isFullAdministrator,
   type Device,
-  type DeviceGroup,
   type MeshCentralEvent,
   type ManagedUser,
   type UserGroup,
   type UserLink,
 } from '@meshcentral/control-client';
-import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
+import { getEventTargetName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Modal, Space, Tag, Tooltip, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { eventMessage } from '../features/events/eventPresentation';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
 import { SitePermissionModal } from '../components/users/SitePermissionModal';
@@ -182,7 +182,7 @@ function AccessCard({
   );
 }
 
-function EventTable({ events, devices, groups }: { events: MeshCentralEvent[]; devices: Device[]; groups: DeviceGroup[] }) {
+function EventTable({ events, devices }: { events: MeshCentralEvent[]; devices: Device[] }) {
   const { t } = useTranslation();
   const { dateTime } = useFormatters();
   return (
@@ -195,7 +195,7 @@ function EventTable({ events, devices, groups }: { events: MeshCentralEvent[]; d
             <div className="user-detail-log-row" key={event.id}>
               <span>{event.occurredAt ? dateTime(event.occurredAt, { second: undefined }) : t('userDetails.missing')}</span>
               <span><Tag>{t(eventTypeKeys[event.type])}</Tag></span>
-              <span>{formatEventMessage(event, devices, groups)}</span>
+              <span>{eventMessage(event)}</span>
               <span>{getEventTargetName(event, devices) || event.deviceId || '—'}</span>
               <span>{event.ip || '—'}</span>
             </div>
@@ -814,10 +814,10 @@ export function UserDetailsPage() {
             <AccessCard constrained icon={<TeamOutlined />} title={t('userDetails.tabs.userGroups')} rows={userGroupRows} tone="purple-text" />
             <AccessCard constrained icon={<DesktopOutlined />} title={t('userDetails.tabs.sharedDevices')} rows={sharedDeviceRows} tone="blue-text" />
           </section>
-          <EventTable events={events.slice(0, 10)} devices={devices} groups={availableGroups} />
+          <EventTable events={events.slice(0, 10)} devices={devices} />
         </>
       ) : activeTab === 'logs' ? (
-        <EventTable events={events} devices={devices} groups={availableGroups} />
+        <EventTable events={events} devices={devices} />
       ) : activeTab === 'device-groups' ? (
         <AccessCard
           editable

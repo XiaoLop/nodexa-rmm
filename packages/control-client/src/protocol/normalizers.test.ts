@@ -120,6 +120,23 @@ describe('protocol normalizers', () => {
     expect(normalizeEvent({ action: 'manual', nodeid: 'one' })?.type).toBe('manualOperation');
   });
 
+  it('preserves event entity types and missing actions', () => {
+    expect(normalizeEvent({ action: 'agentlog', etype: 'node' })).toMatchObject({
+      type: 'agentLog',
+      action: 'agentlog',
+      entityType: 'node',
+    });
+    expect(normalizeEvent({ etype: 'relay' })).toMatchObject({
+      type: 'relayLog',
+      entityType: 'relay',
+    });
+    expect(normalizeEvent({ etype: 'user', msg: 'Authentication failed' })).toMatchObject({
+      type: 'unknown',
+      entityType: 'user',
+    });
+    expect(normalizeEvent({ etype: 'user', msg: 'Authentication failed' })?.action).toBeUndefined();
+  });
+
   it('normalizes managed users and preserves unsigned site rights', () => {
     expect(
       normalizeManagedUsers({

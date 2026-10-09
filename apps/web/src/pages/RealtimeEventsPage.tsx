@@ -1,9 +1,8 @@
 import type {
   MeshCentralEvent,
-  MeshCentralEventType,
   HistoricalEventFilter,
 } from '@meshcentral/control-client';
-import { formatEventMessage, getEventTargetName } from '@meshcentral/shared-state';
+import { getEventTargetName } from '@meshcentral/shared-state';
 import {
   Alert,
   Button,
@@ -19,9 +18,14 @@ import {
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  eventActionLabel,
+  eventEntityTypeLabel,
+  eventMessage,
+  historicalEventMatches,
+} from '../features/events/eventPresentation';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
 import { useFormatters } from '../i18n';
-import { realtimeEventMatches } from './realtimeEvents';
 import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
@@ -85,7 +89,10 @@ function EventDetailsDrawer({
               {formatters.dateTime(event.occurredAt)}
             </Descriptions.Item>
             <Descriptions.Item label={t('events.drawer.type')}>
-              {t(`events.types.${event.type}`)}
+              {eventEntityTypeLabel(event, t)}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('events.drawer.action')}>
+              {eventActionLabel(event, t)}
             </Descriptions.Item>
             <Descriptions.Item label={t('events.drawer.device')}>
               {target || event.deviceId || t('common.status.systemEvent')}
@@ -93,7 +100,7 @@ function EventDetailsDrawer({
             <Descriptions.Item label={t('events.drawer.user')}>{event.user || '—'}</Descriptions.Item>
             <Descriptions.Item label={t('events.drawer.ip')}>{event.ip || '—'}</Descriptions.Item>
             <Descriptions.Item label={t('events.drawer.content')}>
-              {formatEventMessage(event, devices)}
+              {eventMessage(event)}
             </Descriptions.Item>
           </Descriptions>
           {(relayDetails || agentDetails) && (
@@ -215,12 +222,10 @@ export function RealtimeEventsPage() {
   }, [loadHistory]);
 
   const events = useMemo(() => {
-    const byId = new Map(historyEvents.map((event) => [event.id, event]));
-    for (const event of data.events) byId.set(event.id, event);
-    return [...byId.values()]
-      .filter((event) => realtimeEventMatches(event, eventFilter))
+    return historyEvents
+      .filter((event) => historicalEventMatches(event, eventFilter))
       .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
-  }, [data.events, eventFilter, historyEvents]);
+  }, [eventFilter, historyEvents]);
   const waitingForConnection = !data.client || data.status !== 'connected';
   const tableLoading = loading || (waitingForConnection && events.length === 0);
   const devicesById = useMemo(
@@ -241,9 +246,15 @@ export function RealtimeEventsPage() {
     },
     {
       title: t('events.columns.type'),
-      dataIndex: 'type',
       width: 112,
-      render: (type: MeshCentralEventType) => <Tag>{t(`events.types.${type}`)}</Tag>,
+      render: (_: unknown, event: MeshCentralEvent) => (
+        <Tag>{eventEntityTypeLabel(event, t)}</Tag>
+      ),
+    },
+    {
+      title: t('events.columns.action'),
+      width: 140,
+      render: (_: unknown, event: MeshCentralEvent) => eventActionLabel(event, t),
     },
     {
       title: t('events.columns.device'),
@@ -261,8 +272,7 @@ export function RealtimeEventsPage() {
     { title: t('events.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
       title: t('events.columns.content'),
-      render: (_: unknown, event: MeshCentralEvent) =>
-        formatEventMessage(event, data.devices, data.groups),
+      render: (_: unknown, event: MeshCentralEvent) => eventMessage(event),
     },
     {
       title: t('events.columns.actions'),
@@ -303,7 +313,7 @@ export function RealtimeEventsPage() {
                     : t('common.status.disconnected')}
             </Tag>
             <Select
-              aria-label={t('events.columns.type')}
+              aria-label={t('events.columns.action')}
               value={eventFilter ?? allEventFilter}
               options={eventFilters}
               style={{ width: 132 }}
@@ -321,6 +331,13 @@ export function RealtimeEventsPage() {
               style={{ width: 100 }}
               onChange={(value) => setHistoryLimit(value)}
             />
+            <Button
+              disabled={waitingForConnection}
+              loading={loading}
+              onClick={() => void loadHistory()}
+            >
+              {t('common.actions.refresh')}
+            </Button>
           </Space>
         </div>
         {data.status !== 'connected' && (
@@ -365,7 +382,7 @@ export function RealtimeEventsPage() {
             ),
           }}
           pagination={false}
-          scroll={{ x: 1080 }}
+          scroll={{ x: 1200 }}
           onRow={(event) => ({ onClick: () => setSelectedEvent(event) })}
         />
       </section>

@@ -191,9 +191,9 @@ describe('resources', () => {
       },
     });
     await expect(remove).resolves.toMatchObject({ action: 'accountchange' });
-    client.responses.push({ events: [{ action: 'agentlog', nodeid: 'one', msg: 'Uploaded' }] });
+    client.responses.push({ events: [{ action: 'agentlog', etype: 'node', nodeid: 'one', msg: 'Uploaded' }] });
     await expect(events.listByDevice('one')).resolves.toMatchObject([
-      { type: 'agentLog', deviceId: 'one' },
+      { type: 'agentLog', action: 'agentlog', entityType: 'node', deviceId: 'one' },
     ]);
     client.responses.push({ events: [] });
     await events.listByUser('user//admin', { limit: 60 });

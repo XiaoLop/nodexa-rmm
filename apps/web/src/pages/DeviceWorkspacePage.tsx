@@ -389,7 +389,6 @@ export function DeviceWorkspacePage() {
         {activeTab === 'overview' ? (
           <DeviceOverviewPanel
             model={model}
-            events={data.events}
             historyEvents={historyEvents}
             controlConnected={data.status === 'connected'}
             onNavigate={setActiveTab}
@@ -455,7 +454,6 @@ export function DeviceWorkspacePage() {
         ) : activeTab === 'logs' ? (
           <DeviceLogsPanel
             device={model.device}
-            events={data.events}
             meshCentralClient={data.client}
             controlConnected={data.status === 'connected'}
           />

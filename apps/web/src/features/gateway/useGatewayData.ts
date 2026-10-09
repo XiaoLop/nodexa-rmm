@@ -22,7 +22,6 @@ export function useMeshCentralControlData() {
   const gateway = useMeshCentralControl();
   const devices = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.devices);
   const groups = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.groups);
-  const events = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.events);
   const status = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.status);
   const error = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.error);
   const userInfo = useMeshCentralControlStore(gateway.store, meshCentralControlSelectors.userInfo);
@@ -34,7 +33,6 @@ export function useMeshCentralControlData() {
     ...gateway,
     devices,
     groups,
-    events,
     userInfo,
     serverInfo,
     status,

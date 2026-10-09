@@ -5,10 +5,9 @@ import {
 import type {
   MeshCentralClient,
   MeshCentralEvent,
-  MeshCentralEventType,
   HistoricalEventFilter,
 } from '@meshcentral/control-client';
-import { formatEventMessage, type Device } from '@meshcentral/shared-state';
+import type { Device } from '@meshcentral/shared-state';
 import {
   Alert,
   Button,
@@ -25,6 +24,12 @@ import {
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  eventActionLabel,
+  eventEntityTypeLabel,
+  eventMessage,
+  historicalEventMatches,
+} from '../../features/events/eventPresentation';
 import { useFormatters } from '../../i18n/formatters';
 
 const allEventFilter = 'all' as const;
@@ -43,27 +48,6 @@ const eventFilters: Array<{
   { labelKey: 'deviceWorkspace.logs.filters.removenode', value: 'removenode' },
 ];
 
-const typeLabelKeys: Record<MeshCentralEventType, string> = {
-  deviceOnline: 'deviceWorkspace.logs.types.deviceOnline',
-  deviceOffline: 'deviceWorkspace.logs.types.deviceOffline',
-  deviceChanged: 'deviceWorkspace.logs.types.deviceChanged',
-  deviceRemoved: 'deviceWorkspace.logs.types.deviceRemoved',
-  relayLog: 'deviceWorkspace.logs.types.relayLog',
-  agentLog: 'deviceWorkspace.logs.types.agentLog',
-  manualOperation: 'deviceWorkspace.logs.types.manualOperation',
-  commandExecution: 'deviceWorkspace.logs.types.commandExecution',
-  batchUpload: 'deviceWorkspace.logs.types.batchUpload',
-  userSessionCount: 'deviceWorkspace.logs.types.userSessionCount',
-  unknown: 'deviceWorkspace.logs.types.unknown',
-};
-
-export function filterMatches(event: MeshCentralEvent, filter?: HistoricalEventFilter) {
-  if (event.type === 'deviceOffline') return false;
-  if (!filter) return true;
-  if (filter === 'removenode') return event.action === 'removenode' || event.action === 'deletenode';
-  return event.action === filter;
-}
-
 function sanitizeRaw(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeRaw);
   if (!value || typeof value !== 'object') return value;
@@ -79,12 +63,10 @@ function sanitizeRaw(value: unknown): unknown {
 
 export function DeviceLogsPanel({
   device,
-  events,
   meshCentralClient,
   controlConnected,
 }: {
   device: Device;
-  events: MeshCentralEvent[];
   meshCentralClient?: MeshCentralClient;
   controlConnected: boolean;
 }) {
@@ -128,40 +110,43 @@ export function DeviceLogsPanel({
 
   const deviceList = useMemo(() => [device], [device]);
   const filteredEvents = useMemo(() => {
-    const byId = new Map(historyEvents.map((event) => [event.id, event]));
-    for (const event of events) {
-      if (event.deviceId === device.id) byId.set(event.id, event);
-    }
     const query = searchText.trim().toLocaleLowerCase();
-    return [...byId.values()]
-      .filter((event) => filterMatches(event, eventFilter))
+    return historyEvents
+      .filter((event) => historicalEventMatches(event, eventFilter))
       .filter((event) => {
         if (!query) return true;
         const searchable = [
-          t(typeLabelKeys[event.type]),
+          eventEntityTypeLabel(event, t),
+          eventActionLabel(event, t),
           event.action,
           event.user,
           event.ip,
-          formatEventMessage(event, deviceList, []),
+          eventMessage(event),
         ];
         return searchable.some((value) => value?.toLocaleLowerCase().includes(query));
       })
         .sort((left, right) => compare(right.occurredAt, left.occurredAt));
-      }, [compare, device.id, deviceList, eventFilter, events, historyEvents, searchText, t]);
+      }, [compare, deviceList, eventFilter, historyEvents, searchText, t]);
 
   const columns = [
     { title: t('deviceWorkspace.logs.columns.time'), dataIndex: 'occurredAt', width: 175, render: (value?: string) => value ? dateTime(value) : '—' },
     {
       title: t('deviceWorkspace.logs.columns.type'),
-      dataIndex: 'type',
       width: 116,
-      render: (type: MeshCentralEventType) => <Tag>{t(typeLabelKeys[type])}</Tag>,
+      render: (_: unknown, event: MeshCentralEvent) => (
+        <Tag>{eventEntityTypeLabel(event, t)}</Tag>
+      ),
+    },
+    {
+      title: t('deviceWorkspace.logs.columns.action'),
+      width: 140,
+      render: (_: unknown, event: MeshCentralEvent) => eventActionLabel(event, t),
     },
     { title: t('deviceWorkspace.logs.columns.user'), dataIndex: 'user', width: 120, render: (value?: string) => value || t('common.status.systemEvent') },
     { title: t('deviceWorkspace.logs.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
       title: t('deviceWorkspace.logs.columns.content'),
-      render: (_: unknown, event: MeshCentralEvent) => formatEventMessage(event, deviceList, []),
+      render: (_: unknown, event: MeshCentralEvent) => eventMessage(event),
     },
     {
       title: t('deviceWorkspace.logs.columns.actions'),
@@ -183,9 +168,6 @@ export function DeviceLogsPanel({
           <span>{t('deviceWorkspace.logs.description')}</span>
         </div>
         <Space wrap>
-          <Tag color={controlConnected ? 'success' : 'warning'}>
-            {controlConnected ? t('deviceWorkspace.logs.live') : t('common.status.disconnected')}
-          </Tag>
           <Input.Search
             allowClear
             aria-label={t('deviceWorkspace.logs.searchAria')}
@@ -239,7 +221,7 @@ export function DeviceLogsPanel({
         dataSource={filteredEvents}
         loading={loading && filteredEvents.length === 0 ? { indicator: <Spin /> } : false}
         pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
-        scroll={{ x: 880 }}
+        scroll={{ x: 1020 }}
         locale={{
           emptyText: (
             <Empty
@@ -263,12 +245,12 @@ export function DeviceLogsPanel({
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.time')}>{dateTime(selectedEvent.occurredAt)}</Descriptions.Item>
-              <Descriptions.Item label={t('deviceWorkspace.logs.columns.type')}>{t(typeLabelKeys[selectedEvent.type])}</Descriptions.Item>
-              <Descriptions.Item label={t('deviceWorkspace.logs.drawer.action')}>{selectedEvent.action || '—'}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.type')}>{eventEntityTypeLabel(selectedEvent, t)}</Descriptions.Item>
+              <Descriptions.Item label={t('deviceWorkspace.logs.columns.action')}>{eventActionLabel(selectedEvent, t)}</Descriptions.Item>
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.user')}>{selectedEvent.user || t('common.status.systemEvent')}</Descriptions.Item>
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.ip')}>{selectedEvent.ip || '—'}</Descriptions.Item>
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.content')}>
-                {formatEventMessage(selectedEvent, deviceList, [])}
+                {eventMessage(selectedEvent)}
               </Descriptions.Item>
             </Descriptions>
             <section>

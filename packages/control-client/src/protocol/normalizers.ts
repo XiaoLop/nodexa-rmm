@@ -277,27 +277,30 @@ function eventId(raw: UnknownRecord, action: string, deviceId?: string): string 
 export function normalizeEvent(value: unknown): MeshCentralEvent | undefined {
   if (!isRecord(value)) return undefined;
   const raw = isRecord(value.event) ? value.event : value;
-  const action = stringValue(raw.action) ?? 'unknown';
+  const action = stringValue(raw.action);
+  const classificationAction = action ?? 'unknown';
+  const entityType = stringValue(raw.etype);
   const deviceId = stringValue(raw.deviceId) ?? stringValue(raw.nodeid);
   const node = isRecord(raw.node) ? raw.node : undefined;
   const conn = typeof raw.conn === 'number' ? raw.conn : undefined;
   let type: MeshCentralEvent['type'] = 'unknown';
-  if (action === 'nodeconnect' || action === 'connect' || action === 'connected')
+  if (classificationAction === 'nodeconnect' || classificationAction === 'connect' || classificationAction === 'connected')
     type = conn !== undefined && (conn & 1) === 0 ? 'deviceOffline' : 'deviceOnline';
-  else if (action === 'nodedisconnect' || action === 'disconnect' || action === 'disconnected')
+  else if (classificationAction === 'nodedisconnect' || classificationAction === 'disconnect' || classificationAction === 'disconnected')
     type = 'deviceOffline';
-  else if (action === 'changenode') type = 'deviceChanged';
-  else if (action === 'removenode' || action === 'deletenode') type = 'deviceRemoved';
-  else if (action === 'relaylog' || raw.etype === 'relay') type = 'relayLog';
-  else if (action === 'agentlog') type = 'agentLog';
-  else if (action === 'manual') type = 'manualOperation';
-  else if (action === 'runcommands') type = 'commandExecution';
-  else if (action === 'batchupload') type = 'batchUpload';
-  else if (action === 'wssessioncount') type = 'userSessionCount';
+  else if (classificationAction === 'changenode') type = 'deviceChanged';
+  else if (classificationAction === 'removenode' || classificationAction === 'deletenode') type = 'deviceRemoved';
+  else if (classificationAction === 'relaylog' || entityType === 'relay') type = 'relayLog';
+  else if (classificationAction === 'agentlog') type = 'agentLog';
+  else if (classificationAction === 'manual') type = 'manualOperation';
+  else if (classificationAction === 'runcommands') type = 'commandExecution';
+  else if (classificationAction === 'batchupload') type = 'batchUpload';
+  else if (classificationAction === 'wssessioncount') type = 'userSessionCount';
   return {
-    id: eventId(raw, action, deviceId),
+    id: eventId(raw, classificationAction, deviceId),
     type,
     action,
+    entityType,
     deviceId,
     deviceName: stringValue(raw.deviceName) ?? stringValue(raw.nodename) ?? stringValue(node?.name),
     user:

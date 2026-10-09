@@ -17,12 +17,12 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import type { MeshCentralEvent } from '@meshcentral/control-client';
-import { formatEventMessage } from '@meshcentral/shared-state';
 import { Button, Empty, Progress, Tag } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDeviceLocation } from '../../features/device-location/formatDeviceLocation';
 import { splitUptime } from '../../features/device-workspace/deviceWorkspaceModel';
+import { eventMessage, isHistoricalEventVisible } from '../../features/events/eventPresentation';
 import type {
   DeviceWorkspaceModel,
   WorkspaceTab,
@@ -44,13 +44,11 @@ function statusIndicator(status: string | undefined, labels: { unknown: string; 
 
 export function DeviceOverviewPanel({
   model,
-  events,
   historyEvents,
   controlConnected,
   onNavigate,
 }: {
   model: DeviceWorkspaceModel;
-  events: MeshCentralEvent[];
   historyEvents: MeshCentralEvent[];
   controlConnected: boolean;
   onNavigate: (tab: WorkspaceTab) => void;
@@ -80,14 +78,11 @@ export function DeviceOverviewPanel({
     sec?.realTimeProtection !== undefined,
   );
   const recentEvents = useMemo(() => {
-    const byId = new Map(historyEvents.map((event) => [event.id, event]));
-    for (const event of events) {
-      if (event.deviceId === model.device.id) byId.set(event.id, event);
-    }
-    return [...byId.values()]
+    return [...historyEvents]
+      .filter(isHistoricalEventVisible)
       .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
       .slice(0, 20);
-  }, [events, historyEvents, model.device.id]);
+  }, [historyEvents]);
   const locationText = formatDeviceLocation(model.location, i18n.resolvedLanguage ?? i18n.language);
 
   const statusLabels = { unknown: t('deviceWorkspace.overview.status.unknown'), healthy: t('deviceWorkspace.overview.status.healthy'), warning: t('deviceWorkspace.overview.status.warning'), danger: t('deviceWorkspace.overview.status.danger') };
@@ -285,7 +280,7 @@ export function DeviceOverviewPanel({
               <div key={event.id}>
                 <i className={event.type === 'deviceOffline' ? 'is-danger' : ''} />
                 <span>
-                  <strong>{formatEventMessage(event, [model.device], [])}</strong>
+                  <strong>{eventMessage(event)}</strong>
                   <small>{event.user ?? t('common.status.systemEvent')}</small>
                 </span>
                 <time>{time(event.occurredAt)}</time>

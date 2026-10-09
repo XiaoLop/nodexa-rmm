@@ -16,16 +16,21 @@ import {
   WindowsOutlined,
 } from '@ant-design/icons';
 import type { MeshCentralEvent, ServerStats, ServerTimelineStats } from '@meshcentral/control-client';
-import { formatEventMessage, getEventTargetName, getUserDisplayName } from '@meshcentral/shared-state';
+import { getEventTargetName, getUserDisplayName } from '@meshcentral/shared-state';
 import { Alert, Button, Empty, Progress, Spin, Tag, Tooltip } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
 import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import {
+  eventActionLabel,
+  eventEntityTypeLabel,
+  eventMessage,
+  isHistoricalEventVisible,
+} from '../features/events/eventPresentation';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { useFormatters } from '../i18n';
-import { isDashboardEventVisible } from './dashboardEvents';
 import '../assets/styles/dashboard.css';
 import '../assets/styles/dashboard-widgets.css';
 
@@ -161,20 +166,15 @@ export function DashboardPage() {
   const offlineRate = data.devices.length ? Math.round((offline / data.devices.length) * 100) : 0;
 
   const dashboardEvents = useMemo(() => {
-    const eventsById = new Map(historyEvents.map((event) => [event.id, event]));
-    for (const event of data.events) eventsById.set(event.id, event);
-    return [...eventsById.values()]
-      .filter(isDashboardEventVisible)
+    return historyEvents
+      .filter(isHistoricalEventVisible)
       .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
       .slice(0, 30);
-  }, [data.events, historyEvents]);
+  }, [historyEvents]);
 
-  const waitingForRealtimeEvents =
+  const waitingForEvents =
     dashboardEvents.length === 0 &&
     (eventsLoading || data.status === 'connecting' || data.status === 'reconnecting');
-  const recentEvents = dashboardEvents.filter(
-    (event) => Date.now() - new Date(event.occurredAt).getTime() <= 86_400_000,
-  );
 
   const platformData = useMemo(() => {
     const counts = new Map<string, number>();
@@ -454,7 +454,7 @@ export function DashboardPage() {
         />
         <MetricCard
           label={t('dashboard.metrics.events24h')}
-          value={recentEvents.length}
+          value={dashboardEvents.length}
           hint={t('dashboard.metrics.events24hHint')}
           tone="red"
           icon={iconForMetric('events')}
@@ -647,8 +647,9 @@ export function DashboardPage() {
 
             {dashboardEvents.slice(0, 10).map((event) => {
               const name = getEventTargetName(event, data.devices);
-              const message = formatEventMessage(event, data.devices, data.groups);
-              const type = t(`events.types.${event.type}`);
+              const message = eventMessage(event);
+              const entityType = eventEntityTypeLabel(event, t);
+              const action = eventActionLabel(event, t);
               const tone =
                 event.type === 'deviceOnline'
                   ? 'success'
@@ -662,7 +663,8 @@ export function DashboardPage() {
                   <div className="event-row-body">
                     <strong title={message}>{message}</strong>
                     <div className="event-row-meta">
-                      <span className="event-type">{type}</span>
+                      <span className="event-type">{entityType}</span>
+                      <span>{action}</span>
                       <span>{name || event.deviceId || t('common.status.systemEvent')}</span>
                       <span>{event.user || t('common.status.systemEvent')}</span>
                       {event.ip && <span>{event.ip}</span>}
@@ -676,7 +678,7 @@ export function DashboardPage() {
             })}
 
             {dashboardEvents.length === 0 &&
-              (waitingForRealtimeEvents ? (
+              (waitingForEvents ? (
                 <div className="event-list-loading">
                   <Spin size="small" />
                   <span>{t('dashboard.events.connecting')}</span>

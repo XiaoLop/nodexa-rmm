@@ -11,7 +11,6 @@ import {
   QuestionCircleOutlined,
   SearchOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
@@ -85,7 +84,7 @@ const menuItems: Array<NavigationItem | NavigationGroup> = [
     children: [
       {
         key: '/monitoring/realtime',
-        icon: <ThunderboltOutlined />,
+        icon: <AuditOutlined />,
         labelKey: 'navigation.realtimeEvents',
       },
       {
