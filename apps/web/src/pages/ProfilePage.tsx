@@ -35,7 +35,7 @@ import type { UploadProps } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserAvatar } from '../components/users/UserAvatar';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { BackupCodesModal } from '../features/profile/BackupCodesModal';
 import { LoginTokensSection } from '../features/profile/LoginTokensSection';
 import {

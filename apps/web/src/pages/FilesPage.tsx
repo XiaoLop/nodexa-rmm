@@ -61,7 +61,7 @@ import {
   sortServerFileEntries,
 } from '../features/server-files/serverFileViewModel';
 import { useServerFiles } from '../features/server-files/useServerFiles';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n/formatters';
 import '../assets/styles/server-files.css';
 

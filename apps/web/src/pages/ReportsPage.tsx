@@ -42,7 +42,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader, Panel, StatusBadge } from '../components/ui';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import {
   formatReportValue,

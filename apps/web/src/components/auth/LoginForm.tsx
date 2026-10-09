@@ -14,7 +14,7 @@ import {
   MeshCentralLoginError,
   useMeshCentralControl,
   type TwoFactorChallenge,
-} from '../../features/gateway/MeshCentralControlProvider';
+} from '../../features/gateway';
 
 interface LoginFormValue {
   username: string;

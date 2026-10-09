@@ -49,7 +49,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
 import '../assets/styles/user-details.css';
 

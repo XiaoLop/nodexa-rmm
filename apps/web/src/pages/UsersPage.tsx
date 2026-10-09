@@ -32,7 +32,7 @@ import { UserCreateModal } from '../components/users/UserCreateModal';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { filterManagedUsers, type UserFilter } from '../features/users/userFilters';
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n';
 import '../assets/styles/users.css';
 

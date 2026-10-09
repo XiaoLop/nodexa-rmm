@@ -57,7 +57,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
+import { useMeshCentralControl } from '../features/gateway';
 import {
   deviceLocationSearchValues,
   formatDeviceLocation,
@@ -75,7 +75,7 @@ import { CommandExecutionModal } from '../components/CommandExecutionModal';
 import { FilterBar, PageHeader, Panel } from '../components/ui';
 import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
-import { useBatchTasks } from '../features/tasks/BatchTaskProvider';
+import { useBatchTasks } from '../features/tasks/BatchTaskContext';
 import { MESH_CENTRAL_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
 import '../assets/styles/commands.css';
 import '../assets/styles/device-details.css';

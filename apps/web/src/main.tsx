@@ -6,7 +6,7 @@ import zhCN from 'antd/locale/zh_CN';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './app/AppRouter';
-import { MeshCentralControlProvider } from './features/gateway/MeshCentralControlProvider';
+import { MeshCentralControlProvider } from './features/gateway';
 import { BatchTaskProvider } from './features/tasks/BatchTaskProvider';
 import { resolveLanguage } from './i18n';
 import { appTheme } from './theme/appTheme';

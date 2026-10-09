@@ -37,7 +37,7 @@ import {
 } from '../features/device-workspace/deviceConnectionState';
 import { createDeviceWorkspaceModel } from '../features/device-workspace/deviceWorkspaceModel.ts';
 import type { WorkspaceTab } from '../features/device-workspace/types';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { getDeviceCapabilities } from '../features/permissions/useUiCapabilities';
 import '../assets/styles/user-details.css';
 import '../assets/styles/device-workspace.css';

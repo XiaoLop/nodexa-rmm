@@ -42,7 +42,7 @@ import {
   UserEditDrawer,
   type UserEditSubmission,
 } from '../components/users/UserEditDrawer';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n/formatters';
 import { summarizeMeshRights } from '../features/users/meshPermissions';
 import { preserveLatestAccountLock, summarizeSiteRights } from '../features/users/sitePermissions';

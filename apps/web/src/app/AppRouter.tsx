@@ -2,13 +2,14 @@ import { Result } from 'antd';
 import { lazy, Suspense, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
+import { useMeshCentralControl } from '../features/gateway';
 import {
   useApplicationUiCapabilities,
   type ApplicationCapability,
 } from '../features/permissions/useUiCapabilities';
 import { AppBootScreen, LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { appRoutes } from './appRoutes';
 
 const AppLayout = lazy(() =>
   import('./AppLayout').then((module) => ({ default: module.AppLayout })),
@@ -17,51 +18,8 @@ const AppLayout = lazy(() =>
 const ComingSoonPage = lazy(() =>
   import('../pages/ComingSoonPage').then((module) => ({ default: module.ComingSoonPage })),
 );
-const DashboardPage = lazy(() =>
-  import('../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
-);
-const DeviceGroupsPage = lazy(() =>
-  import('../pages/DeviceGroupsPage').then((module) => ({ default: module.DeviceGroupsPage })),
-);
-const DeviceWorkspacePage = lazy(() =>
-  import('../pages/DeviceWorkspacePage').then((module) => ({
-    default: module.DeviceWorkspacePage,
-  })),
-);
-const DevicesPage = lazy(() =>
-  import('../pages/DevicesPage').then((module) => ({ default: module.DevicesPage })),
-);
-const FilesPage = lazy(() =>
-  import('../pages/FilesPage').then((module) => ({ default: module.FilesPage })),
-);
-const TasksPage = lazy(() =>
-  import('../pages/TasksPage').then((module) => ({ default: module.TasksPage })),
-);
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
-);
-const ProfilePage = lazy(() =>
-  import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
-);
-const RealtimeEventsPage = lazy(() =>
-  import('../pages/RealtimeEventsPage').then((module) => ({ default: module.RealtimeEventsPage })),
-);
-const ReportsPage = lazy(() =>
-  import('../pages/ReportsPage').then((module) => ({ default: module.ReportsPage })),
-);
-const UserDetailsPage = lazy(() =>
-  import('../pages/UserDetailsPage').then((module) => ({ default: module.UserDetailsPage })),
-);
-const UserGroupDetailsPage = lazy(() =>
-  import('../pages/UserGroupDetailsPage').then((module) => ({
-    default: module.UserGroupDetailsPage,
-  })),
-);
-const UserGroupsPage = lazy(() =>
-  import('../pages/UserGroupsPage').then((module) => ({ default: module.UserGroupsPage })),
-);
-const UsersPage = lazy(() =>
-  import('../pages/UsersPage').then((module) => ({ default: module.UsersPage })),
 );
 
 function ProtectedRoute({ children }: PropsWithChildren) {
@@ -106,59 +64,26 @@ export function AppRouter() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/devices" element={<DevicesPage />} />
-          <Route path="/devices/groups" element={<DeviceGroupsPage />} />
-          <Route path="/devices/tasks" element={<TasksPage />} />
-          <Route path="/devices/:deviceId/workspace" element={<DeviceWorkspacePage />} />
+          {appRoutes.map(({ path, component: Page, capability }) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                capability ? (
+                  <RequireCapability capability={capability}>
+                    <Page />
+                  </RequireCapability>
+                ) : (
+                  <Page />
+                )
+              }
+            />
+          ))}
           <Route path="/devices/*" element={<ComingSoonPage />} />
-          <Route
-            path="/files"
-            element={
-              <RequireCapability capability="serverFiles">
-                <FilesPage />
-              </RequireCapability>
-            }
-          />
-          <Route path="/monitoring/realtime" element={<RealtimeEventsPage />} />
-          <Route path="/monitoring/reports" element={<ReportsPage />} />
           <Route path="/monitoring/audit" element={<Navigate to="/monitoring/reports" replace />} />
           <Route path="/monitoring/alerts" element={<NotFoundPage />} />
           <Route path="/monitoring/*" element={<ComingSoonPage />} />
           <Route path="/remote/*" element={<ComingSoonPage />} />
-          <Route
-            path="/admin/users"
-            element={
-              <RequireCapability capability="manageUsers">
-                <UsersPage />
-              </RequireCapability>
-            }
-          />
-          <Route
-            path="/admin/users/:userId"
-            element={
-              <RequireCapability capability="manageUsers">
-                <UserDetailsPage />
-              </RequireCapability>
-            }
-          />
-          <Route
-            path="/admin/roles"
-            element={
-              <RequireCapability capability="manageUserGroups">
-                <UserGroupsPage />
-              </RequireCapability>
-            }
-          />
-          <Route
-            path="/admin/roles/:userGroupId"
-            element={
-              <RequireCapability capability="manageUserGroups">
-                <UserGroupDetailsPage />
-              </RequireCapability>
-            }
-          />
           <Route path="/admin/*" element={<ComingSoonPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

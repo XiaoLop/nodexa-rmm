@@ -26,7 +26,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import {
   getDeviceGroupUiCapabilities,

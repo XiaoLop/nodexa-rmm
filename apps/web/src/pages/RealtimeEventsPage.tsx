@@ -24,7 +24,7 @@ import {
   eventMessage,
   historicalEventMatches,
 } from '../features/events/eventPresentation';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n';
 import '../assets/styles/realtime-events.css';
 

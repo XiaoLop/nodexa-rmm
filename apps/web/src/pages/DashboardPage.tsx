@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { MetricCard, TrendChart, iconForMetric } from '../components/ConsoleUi';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import {
   eventActionLabel,
   eventMessage,

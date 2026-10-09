@@ -32,7 +32,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock Gateway
-vi.mock('../../features/gateway/MeshCentralControlProvider', () => ({
+vi.mock('../../features/gateway', () => ({
   useMeshCentralControl: () => ({
     authenticated: false,
     initializing: false,

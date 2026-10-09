@@ -9,7 +9,7 @@ import {
   type ServerInfo,
   type UserInfo,
 } from '@meshcentral/control-client';
-import { useMeshCentralControlData } from '../gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../gateway';
 
 export type ApplicationCapability = keyof ApplicationUiCapabilities;
 

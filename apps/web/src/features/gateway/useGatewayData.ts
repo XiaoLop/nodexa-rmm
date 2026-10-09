@@ -1,5 +1,5 @@
 import { meshCentralControlSelectors, useMeshCentralControlStore } from '@meshcentral/shared-state';
-import { useMeshCentralControl } from './MeshCentralControlProvider';
+import { useMeshCentralControl } from './GatewayProvider';
 
 const statusMap = {
   idle: { color: 'default' },

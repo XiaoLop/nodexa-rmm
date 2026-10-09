@@ -12,7 +12,7 @@ const capabilities = {
   viewDatabaseRecordReports: false,
 };
 
-vi.mock('../features/gateway/useMeshCentralControlData', () => ({
+vi.mock('../features/gateway', () => ({
   useMeshCentralControlData: () => ({
     status: 'connected',
     client: { reports: { query: vi.fn() } },

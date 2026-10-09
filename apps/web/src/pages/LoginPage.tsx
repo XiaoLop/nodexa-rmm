@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { LoginForm, RegisterForm } from '../components/auth';
 import { BrandLogo } from '../components/BrandLogo';
-import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
+import { useMeshCentralControl } from '../features/gateway';
 import {
   requestRegistrationAvailability,
   type RegistrationAvailability,

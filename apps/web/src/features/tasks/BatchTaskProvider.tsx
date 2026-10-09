@@ -1,16 +1,14 @@
 import type { BatchDeviceResult, CommandExecutionHandle } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
 import { useEffect, useMemo, useSyncExternalStore, type PropsWithChildren } from 'react';
-import { useMeshCentralControl } from '../gateway/MeshCentralControlProvider';
+import { useMeshCentralControl } from '../gateway';
 import { prepareCommandForDevice, resolveCommandShell } from '../commands/commandShell';
 import { BatchUploadManager } from '../batch-upload/BatchUploadManager';
 import { summarizeBatchUpload } from '../batch-upload/types';
 import { MESH_CENTRAL_RELAY_URL } from '../../config/gateway';
 import { BatchTaskManager } from './BatchTaskManager';
-import { BatchTaskContext, type BatchTaskContextValue, useBatchTasks } from './BatchTaskContext';
+import { BatchTaskContext, type BatchTaskContextValue } from './BatchTaskContext';
 import type { BatchTask, BatchTaskStatus } from './types';
-
-export { useBatchTasks };
 
 function commandStatus(handles: CommandExecutionHandle[]): BatchTaskStatus {
   const statuses = handles.map((handle) => handle.getSnapshot().status);

@@ -35,7 +35,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useMeshCentralControlData } from '../features/gateway/useMeshCentralControlData';
+import { useMeshCentralControlData } from '../features/gateway';
 import { createCollator } from '../i18n';
 import { useFormatters } from '../i18n/formatters';
 import '../assets/styles/users.css';

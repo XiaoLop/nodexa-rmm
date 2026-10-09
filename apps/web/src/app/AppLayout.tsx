@@ -1,21 +1,13 @@
 import {
-  ApartmentOutlined,
-  AuditOutlined,
-  DashboardOutlined,
-  DesktopOutlined,
-  FolderOpenOutlined,
   GlobalOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   ProfileOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
-  TeamOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import { Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -27,132 +19,16 @@ import {
 } from '@meshcentral/shared-state';
 import { BrandLogo } from '../components/BrandLogo';
 import { UserAvatar } from '../components/users/UserAvatar';
-import { useMeshCentralControl } from '../features/gateway/MeshCentralControlProvider';
+import { useMeshCentralControl } from '../features/gateway';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { useBatchTasks } from '../features/tasks/BatchTaskContext';
-import {
-  useApplicationUiCapabilities,
-  type ApplicationCapability,
-} from '../features/permissions/useUiCapabilities';
+import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { resolveLanguage, type AppLanguage } from '../i18n';
+import { appNavigationGroups, appRoutes, resolvePageMeta } from './appRoutes';
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
-
-type NavigationItem = {
-  key: string;
-  icon: React.ReactNode;
-  labelKey: string;
-  required?: ApplicationCapability;
-};
-
-type NavigationGroup = {
-  type: 'group';
-  labelKey: string;
-  children: NavigationItem[];
-};
-
-const menuItems: Array<NavigationItem | NavigationGroup> = [
-  { key: '/dashboard', icon: <DashboardOutlined />, labelKey: 'navigation.dashboard' },
-  {
-    type: 'group' as const,
-    labelKey: 'navigation.deviceManagement',
-    children: [
-      { key: '/devices', icon: <DesktopOutlined />, labelKey: 'navigation.allDevices' },
-      {
-        key: '/devices/groups',
-        icon: <ApartmentOutlined />,
-        labelKey: 'navigation.deviceGroups',
-      },
-      {
-        key: '/files',
-        icon: <FolderOpenOutlined />,
-        labelKey: 'navigation.serverFiles',
-        required: 'serverFiles',
-      },
-      {
-        key: '/devices/tasks',
-        icon: <ProfileOutlined />,
-        labelKey: 'navigation.taskCenter',
-      },
-    ],
-  },
-  {
-    type: 'group' as const,
-    labelKey: 'navigation.monitoringAndEvents',
-    children: [
-      {
-        key: '/monitoring/realtime',
-        icon: <AuditOutlined />,
-        labelKey: 'navigation.realtimeEvents',
-      },
-      {
-        key: '/monitoring/reports',
-        icon: <AuditOutlined />,
-        labelKey: 'navigation.reports',
-      },
-    ],
-  },
-  {
-    type: 'group' as const,
-    labelKey: 'navigation.administration',
-    children: [
-      {
-        key: '/admin/users',
-        icon: <TeamOutlined />,
-        labelKey: 'navigation.userManagement',
-        required: 'manageUsers',
-      },
-      {
-        key: '/admin/roles',
-        icon: <UserOutlined />,
-        labelKey: 'navigation.userGroups',
-        required: 'manageUserGroups',
-      },
-    ],
-  },
-];
-
-const pageTitleKeys: Record<string, [string, string]> = {
-  '/dashboard': ['navigation.dashboard', 'navigation.overview'],
-  '/files': ['navigation.deviceManagement', 'navigation.serverFiles'],
-  '/profile': ['header.account', 'header.profile'],
-  '/devices': ['navigation.deviceManagement', 'navigation.allDevices'],
-  '/devices/groups': ['navigation.deviceManagement', 'navigation.deviceGroups'],
-  '/devices/tasks': ['navigation.deviceManagement', 'navigation.taskCenter'],
-  '/monitoring/realtime': ['navigation.monitoringAndEvents', 'navigation.realtimeEvents'],
-  '/monitoring/reports': ['navigation.monitoringAndEvents', 'navigation.reports'],
-  '/admin/users': ['navigation.administration', 'navigation.userManagement'],
-  '/admin/roles': ['navigation.administration', 'navigation.userGroups'],
-};
-
-function resolvePageMeta(pathname: string, t: TFunction) {
-  if (/^\/devices\/[^/]+\/workspace$/.test(pathname)) {
-    return {
-      selectedKey: '/devices',
-      title: `${t('navigation.deviceManagement')} / ${t('navigation.deviceWorkspace')}`,
-    };
-  }
-  if (/^\/admin\/users\/[^/]+$/.test(pathname)) {
-    return {
-      selectedKey: '/admin/users',
-      title: `${t('navigation.administration')} / ${t('navigation.userDetails')}`,
-    };
-  }
-  if (/^\/admin\/roles\/[^/]+$/.test(pathname)) {
-    return {
-      selectedKey: '/admin/roles',
-      title: `${t('navigation.administration')} / ${t('navigation.userGroupDetails')}`,
-    };
-  }
-  const selectedKey = Object.keys(pageTitleKeys).find((key) => pathname === key) ?? pathname;
-  const titleKeys = pageTitleKeys[selectedKey];
-  return {
-    selectedKey,
-    title: titleKeys ? `${t(titleKeys[0])} / ${t(titleKeys[1])}` : t('navigation.console'),
-  };
-}
 
 export function AppLayout() {
   return <AppLayoutContent />;
@@ -184,30 +60,31 @@ function AppLayoutContent() {
     [i18n.resolvedLanguage, location.pathname, t],
   );
   const visibleMenuItems = useMemo<NonNullable<MenuProps['items']>>(
-    () =>
-      menuItems.flatMap<NonNullable<MenuProps['items']>[number]>((item) => {
-        if ('type' in item) {
-          const children = item.children.filter(
-            (child) => !child.required || capabilities[child.required],
-          );
-          return children.length > 0
-            ? [
-                {
-                  type: item.type,
-                  label: t(item.labelKey),
-                  children: children.map((child) => ({
-                    key: child.key,
-                    icon: child.icon,
-                    label: t(child.labelKey),
-                  })),
-                },
-              ]
-            : [];
-        }
-        return !item.required || capabilities[item.required]
-          ? [{ key: item.key, icon: item.icon, label: t(item.labelKey) }]
-          : [];
-      }),
+    () => {
+      const visibleRoutes = appRoutes.filter(
+        (route) => route.navigation && (!route.capability || capabilities[route.capability]),
+      );
+      const standalone = visibleRoutes
+        .filter((route) => !route.navigation?.group)
+        .map((route) => ({
+          key: route.path,
+          icon: route.navigation?.icon,
+          label: t(route.navigation?.labelKey ?? ''),
+        }));
+      const groups = appNavigationGroups.flatMap<NonNullable<MenuProps['items']>[number]>(
+        (group) => {
+          const children = visibleRoutes
+            .filter((route) => route.navigation?.group === group)
+            .map((route) => ({
+              key: route.path,
+              icon: route.navigation?.icon,
+              label: t(route.navigation?.labelKey ?? ''),
+            }));
+          return children.length > 0 ? [{ type: 'group', label: t(group), children }] : [];
+        },
+      );
+      return [...standalone, ...groups];
+    },
     [capabilities, i18n.resolvedLanguage, t],
   );
 
