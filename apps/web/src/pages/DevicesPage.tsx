@@ -624,15 +624,15 @@ export function DevicesPage() {
       {
         title: t('devices.columns.ip'),
         key: 'ip',
-        width: 150,
-        render: (_, device) => rawString(device, 'ip') || '-',
-      },
-      {
-        title: t('devices.columns.location'),
-        key: 'location',
         width: 190,
-        render: (_, device) =>
-          formatDeviceLocation(device.location, i18n.resolvedLanguage ?? i18n.language) ?? '—',
+        render: (_, device) => (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span>{rawString(device, 'ip') || '-'}</span>
+            <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
+              {formatDeviceLocation(device.location, i18n.resolvedLanguage ?? i18n.language) ?? '—'}
+            </span>
+          </div>
+        ),
       },
       {
         title: t('devices.columns.desc'),
@@ -1034,7 +1034,7 @@ export function DevicesPage() {
             columns={columns}
             dataSource={filteredDevices}
             pagination={pagination}
-            scroll={{ x: 1420 }}
+            scroll={{ x: 1230 }}
             locale={{
               emptyText: (
                 <Empty
