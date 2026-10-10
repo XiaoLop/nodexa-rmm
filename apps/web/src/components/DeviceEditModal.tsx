@@ -18,6 +18,8 @@ interface DeviceEditModalProps {
   onSaved: () => Promise<void>;
 }
 
+import { deviceDescription, deviceTags } from '../utils/device';
+
 interface DeviceEditValues {
   name: string;
   desc?: string;
@@ -25,23 +27,10 @@ interface DeviceEditValues {
   groupId?: string;
 }
 
-function rawString(device: Device, key: string) {
-  const raw = device.raw as Record<string, unknown> | undefined;
-  const value = raw?.[key];
-  return typeof value === 'string' ? value : undefined;
-}
-
-function deviceTags(device: Device): string[] {
-  const raw = device.raw as Record<string, unknown> | undefined;
-  if (Array.isArray(raw?.tags)) return raw.tags.filter((tag): tag is string => typeof tag === 'string');
-  if (typeof raw?.tags === 'string') return raw.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
-  return [];
-}
-
 function formValues(device: Device): DeviceEditValues {
   return {
     name: device.name,
-    desc: rawString(device, 'desc') ?? rawString(device, 'description') ?? '',
+    desc: deviceDescription(device) ?? '',
     tags: deviceTags(device),
     groupId: device.groupId,
   };

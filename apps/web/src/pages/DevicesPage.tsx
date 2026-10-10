@@ -77,6 +77,7 @@ import { BatchUploadManager } from '../features/batch-upload/BatchUploadManager'
 import { snapshotDevice, type BatchUploadDeviceSnapshot } from '../features/batch-upload/types';
 import { useBatchTasks } from '../features/tasks/BatchTaskContext';
 import { MESH_CENTRAL_RELAY_URL, MESH_AGENTS_URL } from '../config/gateway';
+import { deviceDescription, deviceTags } from '../utils/device';
 import '../assets/styles/commands.css';
 import '../assets/styles/device-details.css';
 import '../assets/styles/devices.css';
@@ -336,6 +337,8 @@ export function DevicesPage() {
           device.groupName,
           rawString(device, 'ip'),
           rawString(device, 'host'),
+          deviceDescription(device),
+          ...deviceTags(device),
           ...deviceLocationSearchValues(device.location),
         ].some((value) => value?.toLowerCase().includes(normalized));
       const matchesGroup =
@@ -648,8 +651,36 @@ export function DevicesPage() {
       {
         title: t('devices.columns.desc'),
         key: 'desc',
-        width: 150,
-        render: (_, device) => rawString(device, 'desc') || '-',
+        width: 180,
+        render: (_, device) => {
+          const desc = deviceDescription(device);
+          const tags = deviceTags(device);
+
+          if (!desc && tags.length === 0) {
+            return '-';
+          }
+
+          return (
+            <div className="device-desc-cell">
+              {desc ? <span className="device-desc-text">{desc}</span> : null}
+              {tags.length > 0 ? (
+                <div className="device-tags-list">
+                  {tags.map((tag) => (
+                    <Tag
+                      key={tag}
+                      color="blue"
+                      bordered={false}
+                      className="device-tag-item"
+                      title={tag}
+                    >
+                      {tag}
+                    </Tag>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         title: t('devices.columns.status'),
@@ -1045,7 +1076,7 @@ export function DevicesPage() {
             columns={columns}
             dataSource={filteredDevices}
             pagination={pagination}
-            scroll={{ x: 1230 }}
+            scroll={{ x: 1260 }}
             locale={{
               emptyText: (
                 <Empty
