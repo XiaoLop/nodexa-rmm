@@ -14,6 +14,8 @@
         "compression": true,
         "wsCompression": false,
         "agentWsCompression": false,
+        "agentPing": 30,
+        "agentPong": 60,
         "autoBackup": {
             "backupIntervalHours": 24,
             "keepLastDaysBackup": 7,
