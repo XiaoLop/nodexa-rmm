@@ -19,7 +19,6 @@ export default defineConfig(() => {
           changeOrigin: true,
           ws: true,
           rewriteWsOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
         },
         '/agent.ashx': {
           target: meshcentralTarget,

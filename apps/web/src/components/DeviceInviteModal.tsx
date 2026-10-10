@@ -52,7 +52,7 @@ const systemTypes = [
   [6, 'Linux x86-64'],
   [5, 'Linux x86-32'],
   [10005, 'Apple OSX Universal'],
-  [25, 'Linux ARM-HF, Rasberry Pi'],
+  [25, 'Linux ARM-HF, Raspberry Pi'],
   [26, 'Linux ARM64-HF'],
   [28, 'Linux MIPS24KC (OpenWRT)'],
   [30, 'FreeBSD x86-64'],
@@ -61,7 +61,7 @@ const systemTypes = [
   [37, 'OpenBSD x86-64'],
   [40, 'Linux MIPSEL24KC (OpenWRT)'],
   [41, 'ARMADA/CORTEX-A53/MUSL (OpenWRT)'],
-  [45, 'RISC-V x86-64'],
+  [45, 'RISC-V 64-bit'],
   [16, 'Apple macOS x86-64'],
   [29, 'Apple macOS ARM-64'],
 ] as const;
@@ -135,19 +135,25 @@ function CommandView({ command, note }: { command: string; note?: string }) {
   const { t } = useTranslation();
   return (
     <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
-      <Flex justify="space-between" align="flex-start" gap={16}>
-        <div style={{ flex: 1, overflowX: 'auto' }}>
-          <Typography.Text code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            {command}
-          </Typography.Text>
-        </div>
+      <div style={{ width: '100%', overflowX: 'auto' }}>
+        <Typography.Text code style={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+          {command}
+        </Typography.Text>
+      </div>
+      <Flex
+        justify={note ? 'space-between' : 'flex-end'}
+        align="center"
+        style={{ marginTop: 12 }}
+        wrap="wrap"
+        gap={8}
+      >
+        {note ? (
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <Typography.Text type="secondary">{note}</Typography.Text>
+          </div>
+        ) : null}
         <CopyButton value={command} label={t('devices.inviteModal.copyCommand')} />
       </Flex>
-      {note && (
-        <div style={{ marginTop: 12 }}>
-          <Typography.Text type="secondary">{note}</Typography.Text>
-        </div>
-      )}
     </Card>
   );
 }
@@ -168,6 +174,14 @@ function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: View
     ['Windows x86-64 (.exe)', 4],
     ['Windows ARM-64 (.exe)', 43],
   ];
+  const win64Url = buildAgentDownloadUrl(agentUrl, {
+    id: 4,
+    meshid: meshId,
+    installflags: installFlags,
+    key: urlKey,
+  });
+  const psCommand = `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('${win64Url}', \\"$env:TEMP\\meshagent.exe\\"); Start-Process \\"$env:TEMP\\meshagent.exe\\" -ArgumentList '-install' -Wait"`;
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {items.map(([label, id]) => (
@@ -182,6 +196,10 @@ function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: View
           })}
         />
       ))}
+      <CommandView
+        command={psCommand}
+        note={t('devices.inviteModal.powershellDeployNote')}
+      />
       {debugMode && (
         <DownloadRow
           label={t('devices.inviteModal.mshFile')}
@@ -194,9 +212,8 @@ function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: View
 
 function ScriptView({ agentUrl, origin, meshId, urlKey, uninstall = false }: ViewProps & { uninstall?: boolean }) {
   const url = buildAgentDownloadUrl(agentUrl, { script: 1, key: urlKey });
-  const command = uninstall
-    ? `wget "${url}" -O ./meshinstall.sh && chmod 755 ./meshinstall.sh && sudo -E ./meshinstall.sh uninstall`
-    : `wget "${url}" -O ./meshinstall.sh && chmod 755 ./meshinstall.sh && sudo -E ./meshinstall.sh ${origin} '${meshId}'`;
+  const runTarget = uninstall ? `uninstall ${origin} '${meshId}'` : `${origin} '${meshId}'`;
+  const command = `(wget "${url}" --no-check-certificate -O ./meshinstall.sh || wget "${url}" --no-proxy --no-check-certificate -O ./meshinstall.sh) && chmod 755 ./meshinstall.sh && sudo -E ./meshinstall.sh ${runTarget} || ./meshinstall.sh ${runTarget}`;
   return <CommandView command={command} note={uninstall ? undefined : '* For BSD, run "pkg install wget sudo bash" beforehand.'} />;
 }
 
@@ -208,12 +225,13 @@ function BinaryView({ agentUrl, meshId, installFlags, urlKey, systemType }: View
     installflags: installFlags,
     key: urlKey,
   });
+  const command = `(wget "${url}" --no-check-certificate -O ./meshagent || wget "${url}" --no-proxy --no-check-certificate -O ./meshagent) && chmod 755 ./meshagent && (sudo ./meshagent -install || ./meshagent -install)`;
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <DownloadRow label={t('devices.inviteModal.downloadBinary')} url={url} />
       <CommandView
-        command={`wget "${url}" -O ./meshagent && chmod 755 ./meshagent`}
-        note={t('devices.inviteModal.binaryNote')}
+        command={command}
+        note={t('devices.inviteModal.binaryInstallNote')}
       />
     </Space>
   );
@@ -226,6 +244,14 @@ function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
     ['macOS ARM (64bit)', 29],
     ['macOS (Universal)', 10005],
   ];
+  const universalUrl = buildAgentDownloadUrl(agentUrl, {
+    id: 10005,
+    meshid: meshId,
+    installflags: installFlags,
+    key: urlKey,
+  });
+  const macCommand = `(curl -k -fsSL "${universalUrl}" -o ./meshagent || wget "${universalUrl}" --no-check-certificate -O ./meshagent) && chmod 755 ./meshagent && (xattr -r -d com.apple.quarantine ./meshagent 2>/dev/null || true) && (sudo ./meshagent -install || ./meshagent -install)`;
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {items.map(([label, id]) => (
@@ -240,9 +266,27 @@ function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
           })}
         />
       ))}
+      <CommandView
+        command={macCommand}
+        note={t('devices.inviteModal.macosTerminalInstallNote')}
+      />
       <Typography.Text type="secondary">
         {t('devices.inviteModal.macosPrivacyNote')}
       </Typography.Text>
+    </Space>
+  );
+}
+
+function MacosUninstallView() {
+  const { t } = useTranslation();
+  const uninstallCommand = 'sudo /usr/local/mesh/meshagent -uninstall || sudo ./meshagent -uninstall';
+  return (
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Typography.Paragraph>{t('devices.inviteModal.macosUninstallTip')}</Typography.Paragraph>
+      <CommandView
+        command={uninstallCommand}
+        note="* Run this command in macOS Terminal to remove the MeshAgent daemon and service."
+      />
     </Space>
   );
 }
@@ -379,6 +423,7 @@ export function DeviceInviteModal({
   else if (os === OperatingSystem.Assistant)
     content = <AssistantView {...common} assistantType={assistantType} />;
   else if (os === OperatingSystem.WindowsUninstall) content = <WindowsUninstallView {...common} />;
+  else if (os === OperatingSystem.MacosUninstall) content = <MacosUninstallView />;
   else content = <ScriptView {...common} uninstall />;
 
   return (

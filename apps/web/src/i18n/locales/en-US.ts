@@ -1047,12 +1047,20 @@ export const enUS = {
       downloadBinary: 'Download preconfigured binary installer',
       binaryNote:
         'After downloading, register the agent as a service or run in foreground as required by the OS.',
+      binaryInstallNote:
+        '* Run -install after setting permissions to register the service (or -connect for temporary session).',
       macosPrivacyNote:
         'Grant accessibility, screen recording, and other macOS privacy permissions as needed after installation.',
+      macosTerminalInstallNote:
+        '* For Headless servers or SSH remote terminal deployment (Universal binary).',
+      powershellDeployNote:
+        '* For Windows Server Core or remote silent deployment (PowerShell one-liner, x86-64).',
       mobileScanTip: 'Scan the QR code with the MeshCentral Android app to pair.',
       downloadAndroidApk: 'Download Android APK',
       assistantTip: 'MeshCentral Assistant is an on-demand user session app.',
       uninstallTip: 'Download and run the uninstaller as administrator.',
+      macosUninstallTip:
+        'Run the following command as root in macOS Terminal to uninstall the MeshAgent daemon and service.',
       binaryInstaller: 'Binary installer',
       mobileDevices: 'Mobile devices',
       mshFile: 'Mesh Agent config file (.msh)',
