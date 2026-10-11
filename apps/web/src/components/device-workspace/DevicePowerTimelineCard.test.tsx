@@ -70,8 +70,8 @@ describe('DevicePowerTimelineCard', () => {
     );
 
     expect(screen.getByText('近 7 天在线统计')).toBeDefined();
-    expect(screen.getByText('7天在线率')).toBeDefined();
-    expect(screen.getByText('今日在线率')).toBeDefined();
+    expect(screen.getByText(/7天在线率/)).toBeDefined();
+    expect(screen.getByText(/今日在线率/)).toBeDefined();
 
     await waitFor(() => {
       expect(fakeClient?.devices.powerTimeline).toHaveBeenCalledWith('node//target');

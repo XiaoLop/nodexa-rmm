@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BatchUploadManager,
   calculateFileHash,
   uploadFileInChunks,
+  type BatchUploadItem,
+  type BatchUploadSummary,
   type ChunkUploadProgress,
 } from './chunkUploadService';
 
@@ -159,5 +162,169 @@ describe('chunkUploadService dynamic concurrency', () => {
     // 初始批次并发为 2，超时后降回 1
     expect(observedConcurrencies[0]).toBe(2);
     expect(observedConcurrencies).toContain(1);
+  });
+
+  describe('BatchUploadManager', () => {
+    it('manages queue with active concurrency limit and calculates summary', async () => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        const urlStr = String(url);
+        if (urlStr.includes('/status')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ isExisting: false, uploadedChunks: [] }),
+          });
+        }
+        if (urlStr.includes('/chunk')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (urlStr.includes('/merge')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        return Promise.reject(new Error(`Unhandled: ${urlStr}`));
+      }) as unknown as typeof fetch;
+
+      const file1 = new File(['content1'], 'file1.txt', { type: 'text/plain' });
+      const file2 = new File(['content2'], 'file2.txt', { type: 'text/plain' });
+      const file3 = new File(['content3'], 'file3.txt', { type: 'text/plain' });
+
+      let finalSummary: BatchUploadSummary | undefined;
+      const completedFiles: string[] = [];
+
+      await new Promise<void>((resolve) => {
+        const manager = new BatchUploadManager('user//alice', ['test'], {
+          maxActiveFiles: 2,
+          chunkSize: 1024,
+          onFileCompleted: (item: BatchUploadItem) => {
+            completedFiles.push(item.file.name);
+          },
+          onAllCompleted: (summary) => {
+            finalSummary = summary;
+            resolve();
+          },
+        });
+
+        manager.addFiles([file1, file2, file3]);
+      });
+
+      expect([...completedFiles].sort()).toEqual(['file1.txt', 'file2.txt', 'file3.txt']);
+      expect(finalSummary).toBeDefined();
+      expect(finalSummary?.totalFiles).toBe(3);
+      expect(finalSummary?.completedFiles).toBe(3);
+      expect(finalSummary?.failedFiles).toBe(0);
+      expect(finalSummary?.overallPercent).toBe(100);
+    });
+
+    it('isolates errors and continues processing remaining queued files', async () => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        const urlStr = String(url);
+        if (urlStr.includes('/status')) {
+          if (urlStr.includes('badfile.txt')) {
+            return Promise.resolve({
+              ok: false,
+              json: () => Promise.resolve({ message: 'Disk full' }),
+            });
+          }
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ isExisting: false, uploadedChunks: [] }),
+          });
+        }
+        if (urlStr.includes('/chunk')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (urlStr.includes('/merge')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        return Promise.reject(new Error(`Unhandled: ${urlStr}`));
+      }) as unknown as typeof fetch;
+
+      const goodFile1 = new File(['good1'], 'good1.txt', { type: 'text/plain' });
+      const badFile = new File(['bad'], 'badfile.txt', { type: 'text/plain' });
+      const goodFile2 = new File(['good2'], 'good2.txt', { type: 'text/plain' });
+
+      let finalSummary: BatchUploadSummary | undefined;
+
+      await new Promise<void>((resolve) => {
+        const manager = new BatchUploadManager('user//alice', [], {
+          maxActiveFiles: 1,
+          chunkSize: 1024,
+          onAllCompleted: (summary) => {
+            finalSummary = summary;
+            resolve();
+          },
+        });
+
+        manager.addFiles([goodFile1, badFile, goodFile2]);
+      });
+
+      expect(finalSummary?.totalFiles).toBe(3);
+      expect(finalSummary?.completedFiles).toBe(2);
+      expect(finalSummary?.failedFiles).toBe(1);
+    });
+
+    it('passes subPath segments when uploading nested folder items', async () => {
+      const fetchMock = vi.fn().mockImplementation((url: string | URL) => {
+        const urlStr = String(url);
+        if (urlStr.includes('/status')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ isExisting: false, uploadedChunks: [] }),
+          });
+        }
+        if (urlStr.includes('/chunk')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (urlStr.includes('/merge')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        return Promise.reject(new Error(`Unhandled: ${urlStr}`));
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const file = new File(['sub'], 'subfile.txt', { type: 'text/plain' });
+
+      await new Promise<void>((resolve) => {
+        const manager = new BatchUploadManager('user//alice', ['base', 'folder'], {
+          maxActiveFiles: 1,
+          chunkSize: 1024,
+          onAllCompleted: () => resolve(),
+        });
+
+        manager.addFiles([
+          {
+            file,
+            subPath: ['deep', 'dir'],
+            relativePath: 'deep/dir/subfile.txt',
+          },
+        ]);
+      });
+
+      const mergeCall = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/merge'),
+      );
+      expect(mergeCall).toBeDefined();
+
+      const mergeInit = mergeCall?.[1] as RequestInit | undefined;
+      const parsedBody = JSON.parse(String(mergeInit?.body)) as { path?: string[] };
+      expect(parsedBody.path).toEqual(['base', 'folder', 'deep', 'dir']);
+    });
   });
 });

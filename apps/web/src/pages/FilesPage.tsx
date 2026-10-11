@@ -58,8 +58,16 @@ import { useSearchParams } from 'react-router-dom';
 import { FilterBar, PageHeader, Panel } from '../components/ui';
 import { ServerFileDestinationDialog } from '../features/server-files/ServerFileDestinationDialog';
 import { ServerFileViewerModal } from '../features/server-files/ServerFileViewerModal';
-import { ChunkUploadProgressModal } from '../features/server-files/ChunkUploadProgressModal';
-import { uploadFileInChunks, type ChunkUploadProgress } from '../features/server-files/chunkUploadService';
+import { ServerFileUploadDrawer } from '../features/server-files/ServerFileUploadDrawer';
+import {
+  scanFilesFromDataTransfer,
+  type StagedUploadFile,
+} from '../features/server-files/fileDirectoryScanner';
+import {
+  BatchUploadManager,
+  type BatchUploadItem,
+  type BatchUploadSummary,
+} from '../features/server-files/chunkUploadService';
 import {
   canEditServerFile,
   canPreviewServerFile,
@@ -139,8 +147,12 @@ export function FilesPage() {
   const [actionTargetEntry, setActionTargetEntry] = useState<ServerFileEntry>();
   const [viewerEntry, setViewerEntry] = useState<ServerFileEntry>();
   const [viewerMode, setViewerMode] = useState<'preview' | 'edit'>('preview');
-  const [uploadingFile, setUploadingFile] = useState<string>();
-  const [uploadProgress, setUploadProgress] = useState<ChunkUploadProgress>();
+  const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
+  const [stagedFiles, setStagedFiles] = useState<StagedUploadFile[]>([]);
+  const [isScanningDrop, setIsScanningDrop] = useState(false);
+  const [batchItems, setBatchItems] = useState<BatchUploadItem[]>([]);
+  const [batchSummary, setBatchSummary] = useState<BatchUploadSummary>();
+  const batchManagerRef = useRef<BatchUploadManager | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [spacesCollapsed, setSpacesCollapsed] = useState<boolean>(() => {
@@ -150,7 +162,6 @@ export function FilesPage() {
       return false;
     }
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleSpacesCollapsed = () => {
     setSpacesCollapsed((prev) => {
@@ -287,42 +298,108 @@ export function FilesPage() {
     }
   };
 
-  const upload = async (file: File) => {
-    if (!controller.currentSpace) return;
-    const existing = controller.entries.some(
-      (entry) => entry.name.toLocaleLowerCase() === file.name.toLocaleLowerCase(),
+  useEffect(() => {
+    return () => {
+      batchManagerRef.current?.destroy();
+    };
+  }, []);
+
+  const uploadStagedFiles = async (filesToUploadList: StagedUploadFile[]) => {
+    if (!controller.currentSpace || filesToUploadList.length === 0) return;
+
+    // 冲突检查：检查直属在当前层级下的同名普通文件
+    const existingFileNames = new Set(
+      controller.entries
+        .filter((entry) => entry.kind !== 'directory')
+        .map((entry) => entry.name.toLocaleLowerCase()),
     );
-    if (existing) {
-      const confirmed = await modal.confirm({
-        title: t('serverFiles.upload.overwriteTitle'),
-        content: t('serverFiles.upload.overwriteDescription', { name: file.name }),
-        okText: t('serverFiles.upload.overwrite'),
-        cancelText: t('common.actions.cancel'),
+    const conflictingItems = filesToUploadList.filter(
+      (item) =>
+        item.subPath.length === 0 &&
+        existingFileNames.has(item.file.name.toLocaleLowerCase()),
+    );
+
+    let finalUploadList = filesToUploadList;
+
+    if (conflictingItems.length > 0) {
+      const isSingle = conflictingItems.length === 1 && filesToUploadList.length === 1;
+      const shouldOverwrite = await modal.confirm({
+        title: isSingle
+          ? t('serverFiles.upload.overwriteTitle', '文件已存在')
+          : t('serverFiles.upload.batchConflictTitle', '检测到同名文件'),
+        content: isSingle
+          ? t('serverFiles.upload.overwriteDescription', { name: conflictingItems[0]?.file.name ?? '' })
+          : t(
+              'serverFiles.upload.batchConflictDesc',
+              '选中的文件中包含 {{count}} 个已存在的同名文件 (如: {{names}})，是否覆盖？',
+              {
+                count: conflictingItems.length,
+                names:
+                  conflictingItems.slice(0, 3).map((f) => f.file.name).join(', ') +
+                  (conflictingItems.length > 3 ? '...' : ''),
+              },
+            ),
+        okText: isSingle
+          ? t('serverFiles.upload.overwrite', '覆盖')
+          : t('serverFiles.upload.overwriteAll', '全部覆盖'),
+        cancelText: isSingle
+          ? t('common.actions.cancel', '取消')
+          : t('serverFiles.upload.skipConflicts', '跳过同名'),
       });
-      if (!confirmed) return;
+
+      if (!shouldOverwrite) {
+        if (isSingle) {
+          return;
+        }
+        finalUploadList = filesToUploadList.filter(
+          (item) =>
+            item.subPath.length > 0 ||
+            !existingFileNames.has(item.file.name.toLocaleLowerCase()),
+        );
+        if (finalUploadList.length === 0) {
+          message.info(t('serverFiles.upload.allSkipped', '所有同名文件均已跳过'));
+          return;
+        }
+      }
     }
 
-    setUploadingFile(file.name);
-    try {
-      const relativePath = controller.currentPath.slice(1);
-      await uploadFileInChunks(
-        file,
-        controller.currentSpace.id,
-        relativePath,
-        (progress) => setUploadProgress(progress),
-      );
-      void controller.refresh();
-      message.success(t('serverFiles.upload.success', '文件上传成功'));
-    } catch (uploadError) {
-      modal.error({
-        title: t('serverFiles.upload.failed', '文件上传失败'),
-        content:
-          uploadError instanceof Error ? uploadError.message : String(uploadError),
-      });
-    } finally {
-      setUploadingFile(undefined);
-      setUploadProgress(undefined);
+    if (batchManagerRef.current) {
+      batchManagerRef.current.destroy();
     }
+
+    const relativePath = controller.currentPath.slice(1);
+    const manager = new BatchUploadManager(controller.currentSpace.id, relativePath, {
+      onStateChange: (items, summary) => {
+        setBatchItems(items);
+        setBatchSummary(summary);
+      },
+      onFileCompleted: () => {
+        void controller.refresh();
+      },
+      onAllCompleted: (summary) => {
+        void controller.refresh();
+        if (summary.failedFiles === 0) {
+          message.success(t('serverFiles.upload.batchSuccess', '文件已全部成功上传'));
+        } else {
+          message.warning(
+            t(
+              'serverFiles.upload.batchPartial',
+              '部分文件上传完成，{{failed}} 个文件失败',
+              { failed: summary.failedFiles },
+            ),
+          );
+        }
+      },
+    });
+
+    batchManagerRef.current = manager;
+    manager.addFiles(
+      finalUploadList.map((item) => ({
+        file: item.file,
+        subPath: item.subPath,
+        relativePath: item.relativePath,
+      })),
+    );
   };
 
   const confirmRemove = (targetNames = selectedNames) => {
@@ -363,15 +440,32 @@ export function FilesPage() {
     setIsDraggingOver(false);
   };
 
-  const handleDrop = (event: React.DragEvent) => {
+  const handleDrop = async (event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
     setIsDraggingOver(false);
-    if (disabled || !controller.currentSpace) return;
-    const files = event.dataTransfer.files;
-    const file = files?.[0];
-    if (file) {
-      void upload(file);
+    if (disabled || !controller.currentSpace || !event.dataTransfer) return;
+
+    setIsScanningDrop(true);
+    setUploadDrawerOpen(true);
+    try {
+      const { files, exceededMaxLimit } = await scanFilesFromDataTransfer(event.dataTransfer);
+      if (exceededMaxLimit) {
+        message.warning(
+          t(
+            'serverFiles.upload.maxFilesScanned',
+            '已达到单次扫描上限（1000个文件），超出部分已被忽略。建议将过大目录打包上传。',
+          ),
+        );
+      }
+      setStagedFiles((prev) => {
+        const map = new Map<string, StagedUploadFile>();
+        for (const item of prev) map.set(item.relativePath, item);
+        for (const item of files) map.set(item.relativePath, item);
+        return Array.from(map.values());
+      });
+    } finally {
+      setIsScanningDrop(false);
     }
   };
 
@@ -708,7 +802,7 @@ export function FilesPage() {
               type="primary"
               icon={<UploadOutlined />}
               disabled={disabled || !controller.currentSpace}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => setUploadDrawerOpen(true)}
             >
               {t('serverFiles.actions.upload')}
             </Button>
@@ -721,17 +815,6 @@ export function FilesPage() {
             </Button>
           </Space>
         }
-      />
-
-      <input
-        ref={fileInputRef}
-        hidden
-        type="file"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void upload(file);
-          event.target.value = '';
-        }}
       />
 
       {!controller.connected && (
@@ -1089,7 +1172,7 @@ export function FilesPage() {
                           type="primary"
                           icon={<UploadOutlined />}
                           disabled={disabled}
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => setUploadDrawerOpen(true)}
                         >
                           {t('serverFiles.actions.upload')}
                         </Button>
@@ -1214,14 +1297,34 @@ export function FilesPage() {
         onClose={() => setViewerEntry(undefined)}
       />
 
-      <ChunkUploadProgressModal
-        open={Boolean(uploadingFile)}
-        fileName={uploadingFile ?? ''}
-        progress={uploadProgress}
-        onCancel={() => {
-          setUploadingFile(undefined);
-          setUploadProgress(undefined);
+      <ServerFileUploadDrawer
+        open={uploadDrawerOpen}
+        targetPathDisplay={'/' + controller.currentPath.slice(1).join('/') || '/'}
+        stagedFiles={stagedFiles}
+        onStagedFilesChange={setStagedFiles}
+        onClose={() => {
+          setUploadDrawerOpen(false);
+          const allFinished =
+            batchItems.length > 0 &&
+            batchItems.every((item) =>
+              ['completed', 'skipped', 'error', 'canceled'].includes(item.status),
+            );
+          if (allFinished) {
+            setBatchItems([]);
+            setBatchSummary(undefined);
+            batchManagerRef.current?.destroy();
+            batchManagerRef.current = null;
+          }
         }}
+        onStartUpload={(files) => {
+          setStagedFiles([]);
+          void uploadStagedFiles(files);
+        }}
+        isScanning={isScanningDrop}
+        uploadItems={batchItems}
+        uploadSummary={batchSummary}
+        onCancelUploadItem={(id) => batchManagerRef.current?.cancelItem(id)}
+        onRetryUploadItem={(id) => batchManagerRef.current?.retryItem(id)}
       />
     </div>
   );
