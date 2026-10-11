@@ -74,15 +74,24 @@ function applyScale(
   scale: string,
 ): void {
   if (!screen) return;
+  const container = canvas.parentElement;
+  if (!container) return;
+
   if (scale === 'fit') {
-    const container = canvas.parentElement;
-    if (!container) return;
+    // 保持被控端原始屏幕的真实纵横比，在当前 4:3 容器内最大化居中呈现，不变形
     const factor = Math.min(
       container.clientWidth / screen.width,
       container.clientHeight / screen.height,
     );
     canvas.style.width = `${Math.max(1, Math.floor(screen.width * factor))}px`;
     canvas.style.height = `${Math.max(1, Math.floor(screen.height * factor))}px`;
+    canvas.style.maxWidth = 'none';
+    canvas.style.maxHeight = 'none';
+    return;
+  }
+  if (scale === 'stretch') {
+    canvas.style.width = `${container.clientWidth}px`;
+    canvas.style.height = `${container.clientHeight}px`;
     canvas.style.maxWidth = 'none';
     canvas.style.maxHeight = 'none';
     return;

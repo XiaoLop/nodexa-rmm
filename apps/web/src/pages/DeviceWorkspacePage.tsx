@@ -417,7 +417,7 @@ export function DeviceWorkspacePage() {
             onNavigate={setActiveTab}
           />
         ) : activeTab === 'desktop' ? (
-          <div className="device-workspace-grid">
+          <div className="device-workspace-desktop-container">
             <RemoteDesktopPanel
               ref={desktopPanelRef}
               model={model}
@@ -425,25 +425,12 @@ export function DeviceWorkspacePage() {
               meshCentralClient={data.client}
               controlConnected={data.status === 'connected'}
               desktopAccess={model.desktopAccess}
-              keyboardEnabled={settings.keyboard}
-              mouseEnabled={settings.mouse}
-              quality={settings.quality}
+              settings={settings}
+              onSettingsChange={setSettings}
               scale={scale}
               onScaleChange={setScale}
               onSessionActiveChange={handleDesktopSessionActiveChange}
               onLatencyChange={handleDesktopLatencyChange}
-            />
-            <WorkspaceSettings
-              value={settings}
-              onChange={setSettings}
-              controlAvailable={
-                model.desktopAccess !== 'denied' && model.desktopAccess !== 'view-only'
-              }
-              sessionActive={desktopSessionActive}
-              latency={desktopLatency}
-              latencyTrend={desktopLatencyTrend}
-              latencyTimedOut={desktopLatencyTimedOut}
-              onEndSession={() => desktopPanelRef.current?.disconnect()}
             />
           </div>
         ) : activeTab === 'terminal' ? (
