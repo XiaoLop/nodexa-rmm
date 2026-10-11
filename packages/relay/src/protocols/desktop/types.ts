@@ -51,7 +51,39 @@ export interface DesktopRttMessage extends Record<string, unknown> {
   time: number;
 }
 
-export type DesktopControlMessage = DesktopMetadataMessage | DesktopRttMessage;
+export interface DesktopWebRtcAnswerMessage extends Record<string, unknown> {
+  type: 'answer';
+  sdp: string;
+}
+
+export interface DesktopWebRtcSwitchMessage extends Record<string, unknown> {
+  ctrlChannel?: string | number;
+  type: 'webrtc0' | 'webrtc1' | 'webrtc2';
+}
+
+export type DesktopControlMessage =
+  | DesktopMetadataMessage
+  | DesktopRttMessage
+  | DesktopWebRtcAnswerMessage
+  | DesktopWebRtcSwitchMessage;
+
+export type DesktopTransportType = 'websocket' | 'webrtc';
+
+export type DesktopWebRtcState =
+  | 'idle'
+  | 'offering'
+  | 'connecting'
+  | 'switching'
+  | 'connected'
+  | 'failed'
+  | 'closed';
+
+export interface DesktopWebRtcOptions {
+  enabled?: boolean;
+  rtcConfig?: RTCConfiguration;
+  /** 可用于依赖注入测试的 RTCPeerConnection 构造器 */
+  peerConnectionFactory?: (config?: RTCConfiguration) => RTCPeerConnection;
+}
 
 export type DesktopSessionErrorCode =
   | 'protocol'
@@ -78,6 +110,7 @@ export interface DesktopSessionOptions {
   rttIntervalMs?: number;
   rttTimeoutMs?: number;
   now?: () => number;
+  webrtc?: DesktopWebRtcOptions;
   onControlMessage?: (message: DesktopControlMessage) => void;
   onUnknownCommand?: (command: DesktopProtocolCommand) => void;
   onUnhandledMessage?: (message: RelayInboundData) => void;

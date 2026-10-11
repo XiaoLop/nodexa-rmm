@@ -2,7 +2,13 @@ import { RELAY_PROTOCOLS, type RelayProtocolDescriptor } from '../types';
 
 export { DesktopProtocolParser } from './DesktopProtocolParser';
 export { DesktopSession } from './DesktopSession';
-export { DESKTOP_CONTROL_CHANNEL, createDesktopRttMessage, parseDesktopControlMessage } from './controlMessages';
+export { DesktopWebRtcSignaler } from './DesktopWebRtcSignaler';
+export {
+  DESKTOP_CONTROL_CHANNEL,
+  createDesktopRttMessage,
+  createWebRtcSwitchMessage,
+  parseDesktopControlMessage,
+} from './controlMessages';
 export {
   createCadMessage,
   createCompressionMessage,
@@ -26,6 +32,11 @@ export {
   type DesktopKeyPhase,
   type DesktopMetadataMessage,
   type DesktopRttMessage,
+  type DesktopWebRtcAnswerMessage,
+  type DesktopWebRtcSwitchMessage,
+  type DesktopTransportType,
+  type DesktopWebRtcState,
+  type DesktopWebRtcOptions,
   type DesktopMouseButton,
   type DesktopPoint,
   type DesktopProtocolCommand,

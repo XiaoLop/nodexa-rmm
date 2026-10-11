@@ -370,6 +370,8 @@ export const enUS = {
       limitedInput: 'Limited input',
       accessPending: 'Permission pending server confirmation',
       recorded: 'Recorded',
+      webrtcP2p: 'WebRTC P2P Direct',
+      websocketRelay: 'WebSocket Relay',
       fitWindow: 'Fit window',
       unavailable: 'Remote desktop session cannot be established',
       establishing: 'Establishing a new desktop session',

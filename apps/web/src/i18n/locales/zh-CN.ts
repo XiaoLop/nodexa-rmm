@@ -360,6 +360,8 @@ export const zhCN = {
       limitedInput: '受限输入',
       accessPending: '权限待服务端确认',
       recorded: '已录制',
+      webrtcP2p: 'WebRTC P2P 直连',
+      websocketRelay: 'WebSocket 中继',
       fitWindow: '适应窗口',
       unavailable: '当前不可建立远程桌面会话',
       establishing: '正在建立新的桌面会话',

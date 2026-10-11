@@ -2,9 +2,10 @@ import type { RelaySession } from '../../RelaySession';
 import type { RelayInboundData } from '../../types';
 import { RELAY_PROTOCOLS } from '../types';
 import { DesktopProtocolParser } from './DesktopProtocolParser';
+import { DesktopWebRtcSignaler } from './DesktopWebRtcSignaler';
 import { createDesktopRttMessage, parseDesktopControlMessage } from './controlMessages';
 import { createCadMessage, createCompressionMessage, createKeyMessage, createMouseButtonMessage, createMouseDoubleClickMessage, createMouseMoveMessage, createMouseWheelMessage, createUnicodeMessage, parseDisplayGeometry, parseScreenSize, parseTile } from './commands';
-import { DesktopSessionError, type DesktopCompressionOptions, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile } from './types';
+import { DesktopSessionError, type DesktopCompressionOptions, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile, type DesktopTransportType, type DesktopWebRtcState } from './types';
 
 function inboundSize(data: RelayInboundData): number {
   if (typeof data === 'string') return new TextEncoder().encode(data).byteLength;
@@ -21,6 +22,7 @@ async function toBytes(data: Exclude<RelayInboundData, string>): Promise<Uint8Ar
 
 export class DesktopSession {
   private stateValue: DesktopSessionState = 'ready';
+  private transportTypeValue: DesktopTransportType = 'websocket';
   private disposed = false;
   private pendingBytes = 0;
   private inboundQueue = Promise.resolve();
@@ -28,8 +30,11 @@ export class DesktopSession {
   private rttTimeout?: ReturnType<typeof setTimeout>;
   private pendingRtt?: number;
   private readonly parser: DesktopProtocolParser;
+  private readonly signaler?: DesktopWebRtcSignaler;
   private readonly removeListeners: Array<() => void> = [];
   private readonly stateListeners = new Set<(state: DesktopSessionState) => void>();
+  private readonly transportListeners = new Set<(transport: DesktopTransportType) => void>();
+  private readonly webrtcStateListeners = new Set<(state: DesktopWebRtcState) => void>();
   private readonly screenListeners = new Set<(screen: DesktopScreenSize) => void>();
   private readonly geometryListeners = new Set<(geometry: DesktopDisplayGeometry) => void>();
   private readonly tileListeners = new Set<(tile: DesktopTile) => void>();
@@ -44,16 +49,44 @@ export class DesktopSession {
     if (relay.state !== 'ready') throw new DesktopSessionError('Desktop relay session is not ready.', 'connection-lost');
     this.parser = new DesktopProtocolParser(options);
     this.now = options.now ?? Date.now;
+
+    if (options.webrtc?.enabled !== false) {
+      this.signaler = new DesktopWebRtcSignaler(options.webrtc, {
+        stateChange: (webrtcState) => {
+          for (const listener of this.webrtcStateListeners) listener(webrtcState);
+        },
+        sendSignal: (signalText) => {
+          if (!this.disposed && this.relay.state === 'ready') {
+            this.relay.sendText(signalText);
+          }
+        },
+        message: (data) => {
+          this.enqueue(data);
+        },
+        switched: () => {
+          this.setTransport('webrtc');
+        },
+        fallback: () => {
+          this.setTransport('websocket');
+        },
+      });
+    }
+
     this.removeListeners.push(
       relay.onMessage((data) => this.enqueue(data)),
       relay.onError((error) => this.fail(new DesktopSessionError(error.message, 'connection-lost', { cause: error }))),
       relay.onClose(() => this.finish(relay.state === 'error' ? 'error' : 'closed')),
     );
     this.startRtt();
+    this.signaler?.start();
   }
 
   get state(): DesktopSessionState { return this.stateValue; }
+  get transport(): DesktopTransportType { return this.transportTypeValue; }
+  get webrtcState(): DesktopWebRtcState | undefined { return this.signaler?.state; }
   onStateChange(listener: (state: DesktopSessionState) => void): () => void { this.stateListeners.add(listener); return () => this.stateListeners.delete(listener); }
+  onTransportChange(listener: (transport: DesktopTransportType) => void): () => void { this.transportListeners.add(listener); return () => this.transportListeners.delete(listener); }
+  onWebRtcStateChange(listener: (state: DesktopWebRtcState) => void): () => void { this.webrtcStateListeners.add(listener); return () => this.webrtcStateListeners.delete(listener); }
   onScreenSize(listener: (screen: DesktopScreenSize) => void): () => void { this.screenListeners.add(listener); return () => this.screenListeners.delete(listener); }
   onDisplayGeometry(listener: (geometry: DesktopDisplayGeometry) => void): () => void { this.geometryListeners.add(listener); return () => this.geometryListeners.delete(listener); }
   onTile(listener: (tile: DesktopTile) => void): () => void { this.tileListeners.add(listener); return () => this.tileListeners.delete(listener); }
@@ -77,7 +110,15 @@ export class DesktopSession {
   sendCad(): void { this.sendInput(createCadMessage()); }
   setCompression(options: DesktopCompressionOptions): void { this.sendCommand(createCompressionMessage(options)); }
 
-  dispose(): void { if (!this.disposed) this.finish(this.relay.state === 'error' ? 'error' : 'closed'); }
+  dispose(): void {
+    if (!this.disposed) this.finish(this.relay.state === 'error' ? 'error' : 'closed');
+  }
+
+  private setTransport(transport: DesktopTransportType): void {
+    if (this.disposed || this.transportTypeValue === transport) return;
+    this.transportTypeValue = transport;
+    for (const listener of this.transportListeners) listener(transport);
+  }
 
   private sendInput(message: Uint8Array): void {
     if (!this.options.inputAllowed) throw new DesktopSessionError('Desktop input is not allowed.', 'input-not-allowed');
@@ -86,6 +127,9 @@ export class DesktopSession {
 
   private sendCommand(message: Uint8Array): void {
     if (this.disposed || this.relay.state !== 'ready') throw new DesktopSessionError('Desktop relay session is not ready.', 'connection-lost');
+    if (this.signaler?.isSwitched) {
+      if (this.signaler.send(message)) return;
+    }
     this.relay.sendBinary(message);
   }
 
@@ -111,6 +155,8 @@ export class DesktopSession {
     if (typeof data === 'string') {
       const control = parseDesktopControlMessage(data);
       if (control) {
+        // 如果是 WebRTC 相关的控制信号（answer, webrtc0, webrtc1 等），让 signaler 处理
+        this.signaler?.handleControlMessage(control as Record<string, unknown>);
         this.options.onControlMessage?.(control);
         for (const listener of this.controlListeners) listener(control);
         if (control.type === 'rtt' && control.time === this.pendingRtt) {
@@ -186,6 +232,7 @@ export class DesktopSession {
     this.stateValue = state;
     if (this.rttTimer) clearInterval(this.rttTimer);
     if (this.rttTimeout) clearTimeout(this.rttTimeout);
+    this.signaler?.dispose();
     for (const remove of this.removeListeners.splice(0)) remove();
     for (const listener of this.stateListeners) listener(state);
   }

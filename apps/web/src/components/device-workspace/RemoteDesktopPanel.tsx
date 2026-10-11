@@ -100,6 +100,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   const [error, setError] = useState<string>();
   const [screen, setScreen] = useState<{ width: number; height: number }>();
   const [recorded, setRecorded] = useState(false);
+  const [transport, setTransport] = useState<'websocket' | 'webrtc'>('websocket');
   const [desktopSession, setDesktopSession] = useState<DesktopSession>();
   const [fullscreen, setFullscreen] = useState(false);
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
@@ -198,11 +199,18 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
       }
 
       const inputAllowed = desktopAccess !== 'view-only';
-      const session = new DesktopSession(relay, { inputAllowed });
+      const session = new DesktopSession(relay, {
+        inputAllowed,
+        webrtc: {
+          enabled: true,
+        },
+      });
       sessionRef.current = session;
       setDesktopSession(session);
+      setTransport(session.transport);
       onSessionActiveChange?.(true);
       setStatus('waiting-screen');
+      session.onTransportChange((nextTransport) => setTransport(nextTransport));
       session.onScreenSize((nextScreen) => {
         setScreen(nextScreen);
         canvasRef.current?.setScreen(nextScreen);
@@ -338,6 +346,13 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             {desktopAccess === 'limited-input' && <Tag color="orange">{t('deviceWorkspace.remoteDesktop.limitedInput')}</Tag>}
             {desktopAccess === undefined && <Tag>{t('deviceWorkspace.remoteDesktop.accessPending')}</Tag>}
             {recorded && <Tag color="blue">{t('deviceWorkspace.remoteDesktop.recorded')}</Tag>}
+            {desktopSession && status === 'connected' && (
+              <Tag color={transport === 'webrtc' ? 'green' : 'cyan'}>
+                {transport === 'webrtc'
+                  ? t('deviceWorkspace.remoteDesktop.webrtcP2p')
+                  : t('deviceWorkspace.remoteDesktop.websocketRelay')}
+              </Tag>
+            )}
           </Space>
         </div>
         <div className="remote-status-row">
