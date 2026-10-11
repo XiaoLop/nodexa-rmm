@@ -79,7 +79,9 @@ describe('chunkuploader plugin', () => {
     it('registers HTTP routes on setupHttpHandlers', () => {
       const plugin = chunkuploader({ parent: mockServer } as MeshCentralPluginHandler);
       const postRoutes: string[] = [];
+      const getRoutes: string[] = [];
       const app = {
+        get: vi.fn((route: string) => getRoutes.push(route)),
         post: vi.fn((route: string) => postRoutes.push(route)),
       };
       plugin.hook_setupHttpHandlers?.(
@@ -87,9 +89,10 @@ describe('chunkuploader plugin', () => {
         mockServer,
       );
 
-      expect(postRoutes).toContain('/plugin/chunkuploader/status');
-      expect(postRoutes).toContain('/plugin/chunkuploader/chunk');
-      expect(postRoutes).toContain('/plugin/chunkuploader/merge');
+      expect(getRoutes).toContain('/chunkuploader/status');
+      expect(postRoutes).toContain('/chunkuploader/status');
+      expect(postRoutes).toContain('/chunkuploader/chunk');
+      expect(postRoutes).toContain('/chunkuploader/merge');
     });
   });
 
@@ -208,11 +211,12 @@ describe('chunkuploader plugin', () => {
 
     it('rejects unauthenticated requests with 401', async () => {
       const plugin = chunkuploader({ parent: mockServer } as MeshCentralPluginHandler);
-      let statusHandler: ((req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => void) | undefined;
+      let statusHandler: ((req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => Promise<void>) | undefined;
 
       const app = {
-        post: vi.fn((route: string, handler: (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => void) => {
-          if (route === '/plugin/chunkuploader/status') statusHandler = handler;
+        get: vi.fn(),
+        post: vi.fn((route: string, handler: (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => Promise<void>) => {
+          if (route === '/chunkuploader/status') statusHandler = handler;
         }),
       };
       plugin.hook_setupHttpHandlers?.({ app } as unknown as MeshCentralWebServer, mockServer);
@@ -231,11 +235,12 @@ describe('chunkuploader plugin', () => {
 
     it('rejects unauthorized access with 403', async () => {
       const plugin = chunkuploader({ parent: mockServer } as MeshCentralPluginHandler);
-      let statusHandler: ((req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => void) | undefined;
+      let statusHandler: ((req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => Promise<void>) | undefined;
 
       const app = {
-        post: vi.fn((route: string, handler: (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => void) => {
-          if (route === '/plugin/chunkuploader/status') statusHandler = handler;
+        get: vi.fn(),
+        post: vi.fn((route: string, handler: (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => Promise<void>) => {
+          if (route === '/chunkuploader/status') statusHandler = handler;
         }),
       };
       plugin.hook_setupHttpHandlers?.({ app } as unknown as MeshCentralWebServer, mockServer);
@@ -259,6 +264,43 @@ describe('chunkuploader plugin', () => {
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ errorCode: 'PERMISSION_DENIED' }),
+      );
+    });
+
+    it('processes GET /chunkuploader/status with query string parameters', async () => {
+      const plugin = chunkuploader({ parent: mockServer } as MeshCentralPluginHandler);
+      let statusGetHandler: ((req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => Promise<void>) | undefined;
+
+      const app = {
+        get: vi.fn((route: string, handler: (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => Promise<void>) => {
+          if (route === '/chunkuploader/status') statusGetHandler = handler;
+        }),
+        post: vi.fn(),
+      };
+      plugin.hook_setupHttpHandlers?.({ app } as unknown as MeshCentralWebServer, mockServer);
+
+      const res = createMockResponse();
+      await statusGetHandler?.(
+        {
+          session: { userid: 'user//alice' },
+          headers: {},
+          query: {
+            fileHash: 'query-hash',
+            fileName: 'test.iso',
+            fileSize: '2048',
+            spaceId: 'user//alice',
+            path: 'folder/sub',
+          },
+        } as unknown as MeshCentralHttpRequest,
+        res,
+      );
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          fileHash: 'query-hash',
+          isExisting: false,
+        }),
       );
     });
   });

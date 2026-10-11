@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { ServerFileSpace } from '@meshcentral/control-client';
 import {
+  canEditServerFile,
+  canPreviewServerFile,
   containsLikelyBinaryData,
   findServerFileEntries,
+  getServerFileCategory,
   hasServerFileNameConflict,
   isEditableServerFile,
+  MAX_PREVIEW_LIMIT_BYTES,
   nearestExistingPath,
   serverFileCommandAvailability,
   sortServerFileEntries,
@@ -69,5 +73,27 @@ describe('serverFileViewModel', () => {
   it('detects destination name conflicts case-insensitively', () => {
     expect(hasServerFileNameConflict(space, ['user//admin'], ['Z.TXT'])).toBe(true);
     expect(hasServerFileNameConflict(space, ['user//admin', 'docs'], ['new.txt'])).toBe(false);
+  });
+
+  it('validates file categories, preview and edit eligibility with size limits', () => {
+    const textEntry = { name: 'app.ts', kind: 'file' as const, path: ['app.ts'], size: 1024 };
+    const largeTextEntry = { name: 'app.ts', kind: 'file' as const, path: ['app.ts'], size: MAX_PREVIEW_LIMIT_BYTES + 1 };
+    const imageEntry = { name: 'banner.png', kind: 'file' as const, path: ['banner.png'], size: 2048 };
+    const largeImageEntry = { name: 'huge.jpg', kind: 'file' as const, path: ['huge.jpg'], size: MAX_PREVIEW_LIMIT_BYTES + 1 };
+    const unsupportedEntry = { name: 'setup.exe', kind: 'file' as const, path: ['setup.exe'], size: 1024 };
+
+    expect(getServerFileCategory(textEntry)).toBe('text');
+    expect(getServerFileCategory(imageEntry)).toBe('image');
+    expect(getServerFileCategory(unsupportedEntry)).toBe('unsupported');
+
+    expect(canPreviewServerFile(textEntry)).toEqual({ allowed: true, category: 'text' });
+    expect(canPreviewServerFile(imageEntry)).toEqual({ allowed: true, category: 'image' });
+    expect(canPreviewServerFile(largeImageEntry)).toEqual({ allowed: false, category: 'image', reason: 'size_exceeded' });
+    expect(canPreviewServerFile(unsupportedEntry)).toEqual({ allowed: false, category: 'unsupported', reason: 'unsupported_type' });
+
+    expect(canEditServerFile(textEntry)).toEqual({ allowed: true, category: 'text' });
+    expect(canEditServerFile(largeTextEntry)).toEqual({ allowed: false, category: 'text', reason: 'size_exceeded' });
+    expect(canEditServerFile(imageEntry)).toEqual({ allowed: false, category: 'image', reason: 'unsupported_type' });
+    expect(canEditServerFile(unsupportedEntry)).toEqual({ allowed: false, category: 'unsupported', reason: 'unsupported_type' });
   });
 });

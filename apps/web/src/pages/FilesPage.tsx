@@ -8,6 +8,7 @@ import {
   DownloadOutlined,
   EditOutlined,
   EllipsisOutlined,
+  EyeOutlined,
   FileImageOutlined,
   FileOutlined,
   FilePdfOutlined,
@@ -56,10 +57,13 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { FilterBar, PageHeader, Panel } from '../components/ui';
 import { ServerFileDestinationDialog } from '../features/server-files/ServerFileDestinationDialog';
-import { ServerFileEditor } from '../features/server-files/ServerFileEditor';
+import { ServerFileViewerModal } from '../features/server-files/ServerFileViewerModal';
+import { ChunkUploadProgressModal } from '../features/server-files/ChunkUploadProgressModal';
+import { uploadFileInChunks, type ChunkUploadProgress } from '../features/server-files/chunkUploadService';
 import {
+  canEditServerFile,
+  canPreviewServerFile,
   formatServerFileSize,
-  isEditableServerFile,
   serverFileCommandAvailability,
   sortServerFileEntries,
 } from '../features/server-files/serverFileViewModel';
@@ -133,7 +137,10 @@ export function FilesPage() {
   const [nameValue, setNameValue] = useState('');
   const [transferDialog, setTransferDialog] = useState<TransferDialog>();
   const [actionTargetEntry, setActionTargetEntry] = useState<ServerFileEntry>();
-  const [editingEntry, setEditingEntry] = useState<ServerFileEntry>();
+  const [viewerEntry, setViewerEntry] = useState<ServerFileEntry>();
+  const [viewerMode, setViewerMode] = useState<'preview' | 'edit'>('preview');
+  const [uploadingFile, setUploadingFile] = useState<string>();
+  const [uploadProgress, setUploadProgress] = useState<ChunkUploadProgress>();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [spacesCollapsed, setSpacesCollapsed] = useState<boolean>(() => {
@@ -281,10 +288,7 @@ export function FilesPage() {
   };
 
   const upload = async (file: File) => {
-    if (file.size >= MAX_SERVER_FILE_BYTES) {
-      modal.error({ title: t('serverFiles.errors.tooLarge') });
-      return;
-    }
+    if (!controller.currentSpace) return;
     const existing = controller.entries.some(
       (entry) => entry.name.toLocaleLowerCase() === file.name.toLocaleLowerCase(),
     );
@@ -297,7 +301,28 @@ export function FilesPage() {
       });
       if (!confirmed) return;
     }
-    await controller.upload(file.name, new Uint8Array(await file.arrayBuffer()));
+
+    setUploadingFile(file.name);
+    try {
+      const relativePath = controller.currentPath.slice(1);
+      await uploadFileInChunks(
+        file,
+        controller.currentSpace.id,
+        relativePath,
+        (progress) => setUploadProgress(progress),
+      );
+      void controller.refresh();
+      message.success(t('serverFiles.upload.success', '文件上传成功'));
+    } catch (uploadError) {
+      modal.error({
+        title: t('serverFiles.upload.failed', '文件上传失败'),
+        content:
+          uploadError instanceof Error ? uploadError.message : String(uploadError),
+      });
+    } finally {
+      setUploadingFile(undefined);
+      setUploadProgress(undefined);
+    }
   };
 
   const confirmRemove = (targetNames = selectedNames) => {
@@ -350,14 +375,46 @@ export function FilesPage() {
     }
   };
 
-  const getRowMenuItems = (entry: ServerFileEntry): MenuProps['items'] => [
-    {
-      key: 'rename',
-      label: t('common.actions.rename'),
-      icon: <FormOutlined />,
-      disabled,
-      onClick: () => openNameDialog('rename', entry),
-    },
+  const getRowMenuItems = (entry: ServerFileEntry): MenuProps['items'] => {
+    const previewEligible = canPreviewServerFile(entry);
+    const editEligible = canEditServerFile(entry);
+
+    return [
+      ...(previewEligible.allowed
+        ? [
+            {
+              key: 'preview',
+              label: t('serverFiles.actions.preview', '预览'),
+              icon: <EyeOutlined />,
+              disabled,
+              onClick: () => {
+                setViewerEntry(entry);
+                setViewerMode('preview');
+              },
+            },
+          ]
+        : []),
+      ...(editEligible.allowed
+        ? [
+            {
+              key: 'edit',
+              label: t('serverFiles.actions.edit'),
+              icon: <EditOutlined />,
+              disabled,
+              onClick: () => {
+                setViewerEntry(entry);
+                setViewerMode('edit');
+              },
+            },
+          ]
+        : []),
+      {
+        key: 'rename',
+        label: t('common.actions.rename'),
+        icon: <FormOutlined />,
+        disabled,
+        onClick: () => openNameDialog('rename', entry),
+      },
     {
       key: 'copy',
       label: t('serverFiles.actions.copy'),
@@ -390,6 +447,7 @@ export function FilesPage() {
       onClick: () => confirmRemove([entry.name]),
     },
   ];
+};
 
   const columns: TableColumnsType<ServerFileEntry> = [
     {
@@ -459,19 +517,32 @@ export function FilesPage() {
     {
       title: t('serverFiles.columns.actions'),
       key: 'actions',
-      width: 110,
+      width: 130,
       align: 'center',
       render: (_, entry) => {
-        const canEdit =
-          entry.kind === 'file' &&
-          isEditableServerFile(entry) &&
-          (entry.size ?? 0) < MAX_SERVER_FILE_BYTES;
+        const previewEligible = canPreviewServerFile(entry);
+        const editEligible = canEditServerFile(entry);
         const canDownload =
           entry.kind === 'file' && (entry.size ?? 0) < MAX_SERVER_FILE_BYTES;
 
         return (
           <Space size={2} className="server-file-row-actions">
-            {canEdit && (
+            {previewEligible.allowed && (
+              <Tooltip title={t('serverFiles.actions.preview', '预览')}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EyeOutlined />}
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setViewerEntry(entry);
+                    setViewerMode('preview');
+                  }}
+                />
+              </Tooltip>
+            )}
+            {editEligible.allowed && (
               <Tooltip title={t('serverFiles.actions.edit')}>
                 <Button
                   type="text"
@@ -480,7 +551,8 @@ export function FilesPage() {
                   disabled={disabled}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditingEntry(entry);
+                    setViewerEntry(entry);
+                    setViewerMode('edit');
                   }}
                 />
               </Tooltip>
@@ -866,9 +938,13 @@ export function FilesPage() {
                         <Button
                           size="small"
                           icon={<EditOutlined />}
-                          onClick={() =>
-                            setEditingEntry(controller.selectedEntries[0])
-                          }
+                          onClick={() => {
+                            const target = controller.selectedEntries[0];
+                            if (target) {
+                              setViewerEntry(target);
+                              setViewerMode('edit');
+                            }
+                          }}
                         />
                       </Tooltip>
                     )}
@@ -960,13 +1036,29 @@ export function FilesPage() {
                     if (record.kind === 'directory') {
                       controller.openDirectory(record);
                       setSearchQuery('');
-                    } else if (
-                      isEditableServerFile(record) &&
-                      (record.size ?? 0) < MAX_SERVER_FILE_BYTES
-                    ) {
-                      setEditingEntry(record);
-                    } else if ((record.size ?? 0) < MAX_SERVER_FILE_BYTES) {
-                      void download(record);
+                      return;
+                    }
+                    const previewCheck = canPreviewServerFile(record);
+                    if (previewCheck.allowed) {
+                      setViewerEntry(record);
+                      setViewerMode('preview');
+                    } else if (previewCheck.reason === 'size_exceeded') {
+                      modal.info({
+                        title: t('serverFiles.viewer.cannotPreview', '文件无法在线预览'),
+                        content: t(
+                          'serverFiles.viewer.sizeExceededDetail',
+                          '该文件大小为 {{size}}，超过在线预览与编辑最大限制（200 KiB），请下载后查看。',
+                          { size: formatServerFileSize(record.size) },
+                        ),
+                      });
+                    } else {
+                      modal.info({
+                        title: t('serverFiles.viewer.notSupported', '不支持在线预览'),
+                        content: t(
+                          'serverFiles.viewer.unsupportedDetail',
+                          '当前文件类型不支持在线预览，仅支持特定图片（PNG、JPG等）或文本、脚本文件。',
+                        ),
+                      });
                     }
                   },
                 })}
@@ -1114,11 +1206,22 @@ export function FilesPage() {
         }}
       />
 
-      <ServerFileEditor
-        entry={editingEntry}
+      <ServerFileViewerModal
+        entry={viewerEntry}
+        initialMode={viewerMode}
         onRead={controller.readFile}
         onSave={(entry, bytes) => controller.upload(entry.name, bytes)}
-        onClose={() => setEditingEntry(undefined)}
+        onClose={() => setViewerEntry(undefined)}
+      />
+
+      <ChunkUploadProgressModal
+        open={Boolean(uploadingFile)}
+        fileName={uploadingFile ?? ''}
+        progress={uploadProgress}
+        onCancel={() => {
+          setUploadingFile(undefined);
+          setUploadProgress(undefined);
+        }}
       />
     </div>
   );

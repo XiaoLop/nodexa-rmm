@@ -18,25 +18,32 @@ export class ChunkUploadController {
   ) {}
 
   public register(webServer: MeshCentralWebServer): void {
-    webServer.app.post(
-      '/plugin/chunkuploader/status',
-      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => {
-        void this.handleStatus(req, res);
-      },
+    const jsonParser = webServer.bodyParser?.json?.({ limit: '10mb' });
+    const postJsonHandlers = jsonParser ? [jsonParser] : [];
+
+    // 1. 状态查询：支持 GET (优先读取 req.query，不受任何 body-parser 影响) 与 POST (兼容)
+    webServer.app.get(
+      '/chunkuploader/status',
+      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => this.handleStatus(req, res),
     );
 
     webServer.app.post(
-      '/plugin/chunkuploader/chunk',
-      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => {
-        void this.handleUploadChunk(req, res);
-      },
+      '/chunkuploader/status',
+      ...postJsonHandlers,
+      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => this.handleStatus(req, res),
     );
 
+    // 2. 切片上传：POST 二进制流
     webServer.app.post(
-      '/plugin/chunkuploader/merge',
-      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => {
-        void this.handleMerge(req, res);
-      },
+      '/chunkuploader/chunk',
+      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => this.handleUploadChunk(req, res),
+    );
+
+    // 3. 切片合并：POST 挂载 jsonParser，并由 Controller 流式兜底
+    webServer.app.post(
+      '/chunkuploader/merge',
+      ...postJsonHandlers,
+      (req: MeshCentralHttpRequest, res: MeshCentralHttpResponse) => this.handleMerge(req, res),
     );
   }
 
@@ -77,6 +84,20 @@ export class ChunkUploadController {
     });
   }
 
+  private async readRequestBodyJson<T>(req: MeshCentralHttpRequest): Promise<Partial<T>> {
+    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+      return req.body as Partial<T>;
+    }
+    try {
+      const buffer = await this.readRequestBodyBuffer(req);
+      if (buffer.length === 0) return {};
+      const text = buffer.toString('utf-8');
+      return JSON.parse(text) as Partial<T>;
+    } catch {
+      return {};
+    }
+  }
+
   public async handleStatus(
     req: MeshCentralHttpRequest,
     res: MeshCentralHttpResponse,
@@ -91,13 +112,23 @@ export class ChunkUploadController {
       return;
     }
 
-    const body = (req.body ?? {}) as Partial<UploadStatusQuery>;
-    const fileHash = body.fileHash;
-    const spaceId = body.spaceId;
-    const fileName = body.fileName;
-    const fileSize = body.fileSize;
+    const query = (req.query ?? {}) as Record<string, unknown>;
+    const body = await this.readRequestBodyJson<UploadStatusQuery>(req);
 
-    if (!fileHash || !spaceId || !fileName || typeof fileSize !== 'number') {
+    const fileHash = (query.fileHash ?? body.fileHash) as string | undefined;
+    const spaceId = (query.spaceId ?? body.spaceId) as string | undefined;
+    const fileName = (query.fileName ?? body.fileName) as string | undefined;
+    const fileSizeRaw = query.fileSize ?? body.fileSize;
+    const fileSize = typeof fileSizeRaw === 'number' ? fileSizeRaw : Number(fileSizeRaw);
+
+    let pathSegments: string[] = [];
+    if (Array.isArray(body.path)) {
+      pathSegments = body.path;
+    } else if (typeof query.path === 'string') {
+      pathSegments = query.path.split('/').filter(Boolean);
+    }
+
+    if (!fileHash || !spaceId || !fileName || Number.isNaN(fileSize)) {
       res.status(400).json({
         success: false,
         errorCode: 'INVALID_PARAMETERS',
@@ -122,7 +153,7 @@ export class ChunkUploadController {
         spaceId,
         fileName,
         fileSize,
-        path: Array.isArray(body.path) ? body.path : [],
+        path: pathSegments,
       });
       res.json(result);
     } catch (error: unknown) {
@@ -215,7 +246,7 @@ export class ChunkUploadController {
       return;
     }
 
-    const body = (req.body ?? {}) as Partial<MergeChunksPayload>;
+    const body = await this.readRequestBodyJson<MergeChunksPayload>(req);
     const { fileHash, fileName, fileSize, totalChunks, spaceId } = body;
 
     if (
@@ -253,7 +284,7 @@ export class ChunkUploadController {
         path: Array.isArray(body.path) ? body.path : [],
       });
 
-      this.service.notifyFileTreeUpdate(user, domainId, spaceId);
+      this.service.notifyFileTreeUpdate(user, spaceId);
       res.json(result);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);

@@ -1,6 +1,5 @@
 import { createReadStream, createWriteStream, promises as fs } from 'node:fs';
 import path from 'node:path';
-import { pipeline } from 'node:stream/promises';
 import type {
   MeshCentralServer,
   MeshCentralUser,
@@ -83,7 +82,8 @@ export class ChunkUploadService {
       path.join(process.cwd(), 'meshcentral-files');
 
     const cleanDomain = this.sanitizeSegment(domainId);
-    return cleanDomain ? path.join(configuredPath, cleanDomain) : configuredPath;
+    const domainFolder = cleanDomain ? `domain-${cleanDomain}` : 'domain';
+    return path.join(configuredPath, domainFolder);
   }
 
   public getTempRoot(): string {
@@ -97,14 +97,14 @@ export class ChunkUploadService {
     const storageRoot = this.getStorageRoot(domainId);
     let spaceFolder: string;
 
-    if (spaceId.startsWith('user//')) {
-      const targetUser = this.sanitizeSegment(spaceId.slice(6));
-      if (!targetUser) throw new Error('INVALID_SPACE');
-      spaceFolder = `user-${targetUser}`;
-    } else if (spaceId.startsWith('mesh//')) {
-      const meshId = this.sanitizeSegment(spaceId.slice(6));
-      if (!meshId) throw new Error('INVALID_SPACE');
-      spaceFolder = `mesh-${meshId}`;
+    const parts = spaceId.split('/').filter(Boolean);
+    const spaceKind = parts[0];
+    const spaceKey = parts[parts.length - 1];
+
+    if (spaceKind === 'user' && spaceKey) {
+      spaceFolder = `user-${this.sanitizeSegment(spaceKey)}`;
+    } else if (spaceKind === 'mesh' && spaceKey) {
+      spaceFolder = `mesh-${this.sanitizeSegment(spaceKey)}`;
     } else {
       throw new Error('INVALID_SPACE');
     }
@@ -235,13 +235,17 @@ export class ChunkUploadService {
       for (let index = 0; index < payload.totalChunks; index++) {
         const chunkPath = path.join(tempDir, `chunk_${index}`);
         const readStream = createReadStream(chunkPath);
-        await pipeline(readStream, writeStream, { end: false });
+        for await (const chunk of readStream) {
+          if (!writeStream.write(chunk)) {
+            await new Promise((resolve) => writeStream.once('drain', resolve));
+          }
+        }
       }
     } finally {
       writeStream.end();
       await new Promise<void>((resolve, reject) => {
-        writeStream.on('finish', () => resolve());
-        writeStream.on('error', (err) => reject(err));
+        writeStream.once('finish', () => resolve());
+        writeStream.once('error', (err) => reject(err));
       });
     }
 
@@ -268,14 +272,14 @@ export class ChunkUploadService {
 
   public notifyFileTreeUpdate(
     user: MeshCentralUser,
-    domainId = '',
     spaceId = '',
   ): void {
     if (!this.meshServer.DispatchEvent) return;
 
     let targets: string[] = [];
-    if (spaceId.startsWith('mesh//')) {
-      const meshId = spaceId.slice(6);
+    if (spaceId.startsWith('mesh//') || spaceId.startsWith('mesh/')) {
+      const parts = spaceId.split('/').filter(Boolean);
+      const meshId = parts[parts.length - 1] ?? '';
       const createTargets =
         this.meshServer.webserver?.CreateMeshDispatchTargets ??
         (this.meshServer['CreateMeshDispatchTargets'] as ((meshId: string) => string[]) | undefined);
@@ -291,11 +295,8 @@ export class ChunkUploadService {
 
     if (targets.length === 0) return;
 
-    this.meshServer.DispatchEvent(targets, this, {
-      etype: 'files',
-      action: 'updatefiles',
-      domain: domainId,
-    });
+    // MeshCentral 的 HandleEvent 精确匹配纯字符串 'updatefiles'，从而触发 updateUserFiles 重新扫描磁盘并广播
+    this.meshServer.DispatchEvent(targets, this, 'updatefiles');
   }
 
   public async cleanExpiredTempChunks(maxAgeMs = 24 * 60 * 60 * 1000): Promise<number> {

@@ -146,7 +146,7 @@ export interface MeshCentralServer {
   DispatchEvent?(
     targets: string[],
     source: unknown,
-    event: Record<string, unknown>,
+    event: Record<string, unknown> | string,
   ): void;
   debug?(category: string, message: string): void;
   [key: string]: unknown;
