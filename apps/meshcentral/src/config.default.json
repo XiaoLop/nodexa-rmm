@@ -45,7 +45,8 @@
             "enabled": true,
             "list": [
                 "jsonauth",
-                "utils"
+                "utils",
+                "chunkuploader"
             ]
         }
     },
