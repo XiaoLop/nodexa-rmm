@@ -220,7 +220,7 @@ export const enUS = {
       interfaces: '{{count}} active interfaces',
       healthTitle: 'Device health and security',
       securityDescription: 'System baseline and Windows Security Center checks',
-      connectionDescription: 'Device and MeshCentral control connection status',
+      connectionDescription: 'Device and Nodexa control connection status',
       pendingReboot:
         'System notice: restart required for {{value}}. Consider restarting the device.',
       deviceSignal: 'Device signaling',
@@ -343,7 +343,7 @@ export const enUS = {
         relay: 'Remote desktop relay connection failed.',
       },
       gatewayDisconnected:
-        'The MeshCentral control connection was lost and the desktop session ended.',
+        'The Nodexa control connection was lost and the desktop session ended.',
       qualityUpdateFailed: 'Failed to update remote desktop quality.',
       permissionDenied: 'The current account does not have remote desktop permission.',
       deviceOffline: 'The device is offline and cannot establish remote desktop.',
@@ -404,13 +404,13 @@ export const enUS = {
       errors: {
         parse: 'The data returned by the device could not be parsed.',
         disconnected:
-          'The MeshCentral control connection was lost. Restore the connection and try again.',
+          'The Nodexa control connection was lost. Restore the connection and try again.',
         timeout: 'The device response timed out. Confirm that the device is online and try again.',
         send: 'The request could not be sent.',
       },
       deviceOffline: 'The device is offline and its data cannot be read.',
       gatewayDisconnected:
-        'The MeshCentral control connection was lost and device data cannot be read.',
+        'The Nodexa control connection was lost and device data cannot be read.',
       loadFailed: 'Failed to load data',
       processColumns: { name: 'Process name', user: 'User', path: 'Executable path' },
       processTitle: 'Process management',
@@ -424,7 +424,7 @@ export const enUS = {
       notUpdated: 'Not updated',
       emptyOffline: 'Device offline',
       emptyProcesses: 'No matching processes',
-      waitingGateway: 'Waiting for MeshCentral control connection',
+      waitingGateway: 'Waiting for Nodexa control connection',
       serviceStates: {
         RUNNING: 'Running',
         STOPPED: 'Stopped',
@@ -542,7 +542,7 @@ export const enUS = {
         relay: 'Terminal relay connection failed.',
       },
       gatewayDisconnected:
-        'The MeshCentral control connection was lost and the terminal session ended.',
+        'The Nodexa control connection was lost and the terminal session ended.',
       permissionDenied: 'The current account does not have terminal permission for this device.',
       deviceOffline: 'The device is offline and cannot establish a terminal relay.',
       gatewayUnavailable: 'The gateway control channel is unavailable.',
@@ -619,9 +619,9 @@ export const enUS = {
       filterAria: 'Log type',
       limitAria: 'Log count',
       countOption: '{{count}} items',
-      disconnectedNotice: 'MeshCentral control is disconnected. Historical events cannot be queried or refreshed.',
+      disconnectedNotice: 'Nodexa control is disconnected. Historical events cannot be queried or refreshed.',
       loadFailed: 'Failed to load device logs',
-      waitingConnection: 'Connect to MeshCentral to query historical events',
+      waitingConnection: 'Connect to Nodexa to query historical events',
       empty: 'No matching device events',
       drawer: { title: 'Device event details', action: 'Action', rawTitle: 'Sanitized raw data' },
     },
@@ -646,7 +646,7 @@ export const enUS = {
     deviceWorkspace: 'Device workspace',
     userDetails: 'User details',
     userGroupDetails: 'User group details',
-    console: 'MeshCentral Console',
+    console: 'Nodexa Console',
     collapseMenu: 'Collapse menu',
   },
   header: {
@@ -735,7 +735,7 @@ export const enUS = {
     productLine: 'Device Management System',
     slogan: 'Secure · Efficient · Controlled',
     introduction:
-      'MeshCentral provides enterprise-grade remote monitoring and management, helping you securely manage and maintain every endpoint.',
+      'Nodexa provides enterprise-grade remote monitoring and management, helping you securely manage and maintain every endpoint.',
     realtimeMonitoring: 'Realtime monitoring',
     realtimeMonitoringDescription: 'Track device health and activity at a glance',
     secureAndReliable: 'Secure and reliable',
@@ -743,7 +743,7 @@ export const enUS = {
     efficientManagement: 'Efficient management',
     efficientManagementDescription: 'Centralized device operations improve support efficiency',
     title: 'Sign in',
-    subtitle: 'Use your local MeshCentral account and password to continue',
+    subtitle: 'Use your local Nodexa account and password to continue',
     username: 'Username or email',
     usernamePlaceholder: 'Enter your username or email',
     usernameRequired: 'Enter your username or email',
@@ -784,7 +784,7 @@ export const enUS = {
     twoFactorExpired: 'The authentication transaction expired. Sign in again.',
     twoFactorUnsupported: 'This account uses a two-factor method that is not supported here.',
     emailNotVerified: 'The account email address has not been verified.',
-    passwordExpired: 'The password has expired. Change it through MeshCentral first.',
+    passwordExpired: 'The password has expired. Change it through Nodexa first.',
     maintenanceMode: 'The server is undergoing maintenance. Try again later.',
     serviceUnavailable: 'The authentication service is unavailable. Try again later.',
   },
@@ -796,7 +796,7 @@ export const enUS = {
       'This is the first account in the domain. It will receive site administrator privileges.',
     securityNotice: 'Passwords are salted and hashed server-side with PBKDF2-SHA384.',
     title: 'Create account',
-    subtitle: 'Enter account details for a local MeshCentral user',
+    subtitle: 'Enter account details for a local Nodexa user',
     firstUserSubtitle: 'Create the first site administrator account',
     username: 'Username',
     usernameRequired: 'Enter a username',
@@ -814,7 +814,7 @@ export const enUS = {
     backToLogin: 'Back to sign in',
     unavailable: 'New account registration is not currently available.',
     captchaUnsupported:
-      'This domain requires CAPTCHA. Contact an administrator to register through the native MeshCentral page.',
+      'This domain requires CAPTCHA. Contact an administrator to register through the native Nodexa page.',
     errors: {
       failed: 'Registration failed. Try again later.',
       closed: 'New account registration is closed for this domain.',
@@ -874,7 +874,7 @@ export const enUS = {
         'Server history could not be loaded. Check the control connection and try again.',
       unavailable: 'Timeline not available',
       unavailableDescription:
-        'Server history will load after the MeshCentral control connection is established.',
+        'Server history will load after the Nodexa control connection is established.',
       noData: 'No historical statistics',
       noDataDescription: 'The server returned no device status data for this time range.',
       singleSample: 'Not enough history',
@@ -895,7 +895,7 @@ export const enUS = {
       title: 'Needs attention',
       description: 'Issues identified from current live state',
       count: '{{count}} items',
-      gatewayTitle: 'MeshCentral control connection issue',
+      gatewayTitle: 'Nodexa control connection issue',
       gatewayDescription: 'Click to reconnect to the gateway now',
       lastSeen: 'Last seen {{time}}',
       offline: 'Device is currently offline',
@@ -910,7 +910,7 @@ export const enUS = {
       connectedUsers: 'Connected users',
     },
     gateway: {
-      title: 'MeshCentral control connection',
+      title: 'Nodexa control connection',
       description: 'Realtime gateway communication status',
       address: 'Gateway address',
       connectedAt: 'Connected at',
@@ -1089,9 +1089,9 @@ export const enUS = {
         '* For Headless servers or SSH remote terminal deployment (Universal binary).',
       powershellDeployNote:
         '* For Windows Server Core or remote silent deployment (PowerShell one-liner, x86-64).',
-      mobileScanTip: 'Scan the QR code with the MeshCentral Android app to pair.',
+      mobileScanTip: 'Scan the QR code with the Nodexa Android app to pair.',
       downloadAndroidApk: 'Download Android APK',
-      assistantTip: 'MeshCentral Assistant is an on-demand user session app.',
+      assistantTip: 'Nodexa Assistant is an on-demand user session app.',
       uninstallTip: 'Download and run the uninstaller as administrator.',
       macosUninstallTip:
         'Run the following command as root in macOS Terminal to uninstall the MeshAgent daemon and service.',
@@ -1153,7 +1153,7 @@ export const enUS = {
   },
   events: {
     title: 'Event records',
-    subtitle: 'Query historical event records stored by MeshCentral.',
+    subtitle: 'Query historical event records stored by Nodexa.',
     disconnectedWarning: 'The control connection is unavailable. Historical events cannot be queried or refreshed.',
     loadFailed: 'Failed to load historical events',
     loadFailedDefault: 'Historical event query failed.',
@@ -1219,7 +1219,7 @@ export const enUS = {
     },
     empty: {
       loading: 'Loading historical events',
-      waitingConnection: 'Waiting for MeshCentral control connection',
+      waitingConnection: 'Waiting for Nodexa control connection',
       empty: 'No events',
     },
     drawer: {
@@ -1272,7 +1272,7 @@ export const enUS = {
     groupBy: { user: 'User', device: 'Device', date: 'Date' },
     actions: { query: 'Query reports', queryAgain: 'Query again' },
     states: {
-      disconnected: 'MeshCentral control is not ready. Reports cannot be queried yet.',
+      disconnected: 'Nodexa control is not ready. Reports cannot be queried yet.',
       failed: 'Report query failed',
       notQueried: 'Set the query filters to generate a report.',
       empty: 'No report data matches the current filters.',
@@ -1396,7 +1396,7 @@ export const enUS = {
   },
   users: {
     title: 'User management',
-    subtitle: 'Manage MeshCentral local accounts and lock statuses',
+    subtitle: 'Manage Nodexa local accounts and lock statuses',
     createUser: 'Create user',
     searchPlaceholder: 'Search username, real name or email',
     countTag: '{{filtered}} / {{total}} users',
@@ -2452,7 +2452,7 @@ export const enUS = {
       },
       serverUpdate: {
         label: 'Server update',
-        description: 'Execute MeshCentral server updates',
+        description: 'Execute Nodexa server updates',
       },
       fileAccess: {
         label: 'Server file access',
