@@ -1,12 +1,14 @@
 import type { MeshCentralClient } from '@meshcentral/control-client';
 import { batchUploadBandwidthConfig, calculateBatchUploadChunkSize } from './bandwidth';
-import type {
-  BatchUploadConfig,
-  BatchUploadDetail,
-  BatchUploadDeviceSnapshot,
-  BatchUploadSnapshot,
-  BatchUploadTask,
-  BatchUploadTaskStatus,
+import { resolveTargetFilePath } from './fileSystem';
+import {
+  normalizeBatchUploadItem,
+  type BatchUploadConfig,
+  type BatchUploadDetail,
+  type BatchUploadDeviceSnapshot,
+  type BatchUploadSnapshot,
+  type BatchUploadTask,
+  type BatchUploadTaskStatus,
 } from './types';
 
 interface WorkerControlRequest {
@@ -146,17 +148,27 @@ export class BatchUploadManager {
     this.baseUrl = baseUrl;
     this.cancellingAll = false;
     const now = Date.now();
+    const normalizedItems = config.files.map(normalizeBatchUploadItem);
     const tasks = this.snapshot.tasks.flatMap((task) =>
-      config.files.map((file) => ({
-        ...task,
-        id: createId('file-task'),
-        file,
-        targetFileName: file.name,
-        status: task.device.online ? ('queued' as const) : ('skipped' as const),
-        totalBytes: file.size,
-        completedAt: task.device.online ? undefined : now,
-        detail: task.device.online ? undefined : { code: 'deviceOffline' },
-      })),
+      normalizedItems.map((item) => {
+        const { targetDirectory, targetFileName } = resolveTargetFilePath(
+          config.targetDirectory,
+          item.relativePath,
+          task.device.platform,
+        );
+        return {
+          ...task,
+          id: createId('file-task'),
+          file: item.file,
+          targetFileName,
+          targetRelativePath: item.relativePath,
+          resolvedTargetDirectory: targetDirectory,
+          status: task.device.online ? ('queued' as const) : ('skipped' as const),
+          totalBytes: item.file.size,
+          completedAt: task.device.online ? undefined : now,
+          detail: task.device.online ? undefined : { code: 'deviceOffline' },
+        };
+      }),
     );
     this.snapshot = {
       ...this.snapshot,
@@ -450,7 +462,7 @@ export class BatchUploadManager {
         type: 'run',
         taskId,
         device: task.device,
-        targetDirectory: config.targetDirectory,
+        targetDirectory: task.resolvedTargetDirectory ?? config.targetDirectory,
         overwritePolicy: config.overwritePolicy,
         file: task.file,
         targetFileName: task.targetFileName,

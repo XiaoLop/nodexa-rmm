@@ -104,8 +104,8 @@
   .users-toolbar > .ant-input-affix-wrapper {
     width: 100%;
   }
-  .batch-upload-form-grid {
-    grid-template-columns: 1fr 1fr;
+  .batch-upload-header-grid {
+    grid-template-columns: 1fr;
   }
   .batch-upload-summary {
     grid-template-columns: repeat(4, 1fr);

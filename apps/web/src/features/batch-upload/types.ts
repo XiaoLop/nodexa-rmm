@@ -23,8 +23,13 @@ export interface BatchUploadDeviceSnapshot {
   online: boolean;
 }
 
+export interface BatchUploadFileItem {
+  file: File;
+  relativePath: string;
+}
+
 export interface BatchUploadConfig {
-  files: File[];
+  files: (File | BatchUploadFileItem)[];
   targetDirectory: string;
   overwritePolicy: BatchUploadOverwritePolicy;
   concurrency: number;
@@ -42,6 +47,8 @@ export interface BatchUploadTask {
   device: BatchUploadDeviceSnapshot;
   file?: File;
   targetFileName?: string;
+  targetRelativePath?: string;
+  resolvedTargetDirectory?: string;
   status: BatchUploadTaskStatus;
   totalBytes: number;
   sentBytes: number;
@@ -110,6 +117,27 @@ export function validateTargetFileName(value: string): BatchUploadValidationErro
     return 'fileNameInvalid';
   }
   return undefined;
+}
+
+export function normalizeBatchUploadItem(item: File | BatchUploadFileItem): BatchUploadFileItem {
+  if ('file' in item && typeof item.relativePath === 'string') {
+    return item;
+  }
+  const file = item as File;
+  return {
+    file,
+    relativePath: file.webkitRelativePath || file.name,
+  };
+}
+
+export function validateRelativeFilePath(relativePath: string): BatchUploadValidationError | undefined {
+  if (!relativePath) return 'fileNameRequired';
+  if (relativePath.includes('\0')) return 'fileNameNullByte';
+  const parts = relativePath.split(/[\\/]+/).filter(Boolean);
+  if (parts.length === 0) return 'fileNameRequired';
+  if (parts.includes('..') || parts.includes('.')) return 'directoryTraversal';
+  const fileName = parts[parts.length - 1];
+  return validateTargetFileName(fileName ?? '');
 }
 
 export function summarizeBatchUpload(tasks: BatchUploadTask[]): BatchUploadSummary {

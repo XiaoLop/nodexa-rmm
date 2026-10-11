@@ -132,7 +132,7 @@ function UploadTaskDetailsSection({ task }: { task: Extract<BatchTask, { kind: '
       title: t('taskCenter.file'),
       dataIndex: 'targetFileName',
       ellipsis: true,
-      render: (val?: string) => val || '—',
+      render: (_, item) => item.targetRelativePath || item.targetFileName || '—',
     },
     {
       title: t('taskCenter.status'),

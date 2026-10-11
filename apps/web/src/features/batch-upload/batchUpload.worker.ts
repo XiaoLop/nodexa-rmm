@@ -9,6 +9,7 @@ import {
   type RelayControlChannel,
   type RelaySession,
 } from '@meshcentral/relay';
+import { getDirectoryHierarchy } from './fileSystem';
 import type {
   BatchUploadDeviceSnapshot,
   BatchUploadOverwritePolicy,
@@ -123,7 +124,8 @@ function findExistingFile(
     .listDirectory(path, { signal, timeoutMs: 20_000 })
     .then((listing) =>
       listing.entries.find((entry) => entry.kind === 'file' && entry.name === fileName),
-    );
+    )
+    .catch(() => undefined);
 }
 
 function errorCode(error: unknown): string {
@@ -160,6 +162,18 @@ async function runTask(message: RunMessage): Promise<void> {
       handshakeTimeoutMs: 20_000,
     });
     currentFiles = new FilesSession(currentRelay);
+
+    try {
+      const hierarchy = getDirectoryHierarchy(message.targetDirectory, message.device.platform);
+      for (const dir of hierarchy) {
+        currentFiles.createDirectory(dir);
+      }
+      if (hierarchy.length > 0 && !signal.aborted) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    } catch {
+      // Ignore if directory exists or cannot be pre-created synchronously
+    }
 
     updateStatus(message.taskId, 'checking');
     const existing = await findExistingFile(

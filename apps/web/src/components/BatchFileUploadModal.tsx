@@ -1,6 +1,11 @@
 import {
+  ClearOutlined,
   CloseCircleOutlined,
+  DeleteOutlined,
+  FileOutlined,
   FolderOpenOutlined,
+  FolderOutlined,
+  InboxOutlined,
   ReloadOutlined,
   StopOutlined,
   UploadOutlined,
@@ -25,13 +30,15 @@ import {
 } from 'antd';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { extractFilesFromDataTransfer } from '../features/batch-upload/fileSystem';
 import type { BatchUploadManager } from '../features/batch-upload/BatchUploadManager';
 import {
   summarizeBatchUpload,
+  validateRelativeFilePath,
   validateTargetDirectory,
-  validateTargetFileName,
   type BatchUploadConfig,
   type BatchUploadDeviceSnapshot,
+  type BatchUploadFileItem,
   type BatchUploadTask,
   type BatchUploadTaskStatus,
 } from '../features/batch-upload/types';
@@ -122,9 +129,11 @@ export function BatchFileUploadModal({
     manager.getSnapshot,
     manager.getSnapshot,
   );
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<BatchUploadFileItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [now, setNow] = useState(Date.now());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const summary = useMemo(() => summarizeBatchUpload(snapshot.tasks), [snapshot.tasks]);
   const running = snapshot.status === 'running' || snapshot.status === 'cancelling';
   const configurable = snapshot.status === 'configuring';
@@ -141,9 +150,66 @@ export function BatchFileUploadModal({
 
   useEffect(() => {
     setSelectedFiles([]);
+    setIsDragging(false);
     form.resetFields();
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (folderInputRef.current) folderInputRef.current.value = '';
   }, [form, snapshot.id]);
+
+  const addFileItems = (newItems: BatchUploadFileItem[]) => {
+    if (!newItems.length) return;
+    setSelectedFiles((prev) => {
+      const existingPaths = new Set(prev.map((item) => item.relativePath.toLowerCase()));
+      const filtered = newItems.filter((item) => !existingPaths.has(item.relativePath.toLowerCase()));
+      return [...prev, ...filtered];
+    });
+  };
+
+  const removeFileItem = (indexToRemove: number) => {
+    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging false if relatedTarget is outside the current target
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (!e.dataTransfer) return;
+    try {
+      const items = await extractFilesFromDataTransfer(e.dataTransfer);
+      if (items.length) {
+        addFileItems(items);
+      }
+    } catch {
+      void messageApi.error(t('batchUpload.messages.selectFilesFirst'));
+    }
+  };
 
   const startUpload = async () => {
     if (!selectedFiles.length || !meshCentralClient || !baseUrl || !connected) {
@@ -157,16 +223,16 @@ export function BatchFileUploadModal({
     try {
       const values = await form.validateFields();
       const directoryError = validateTargetDirectory(values.targetDirectory);
-      const nameError = selectedFiles
-        .map((file) => validateTargetFileName(file.name))
+      const relativePathError = selectedFiles
+        .map((item) => validateRelativeFilePath(item.relativePath))
         .find((error) => error !== undefined);
-      if (directoryError || nameError) {
-        const err = directoryError ?? nameError;
+      if (directoryError || relativePathError) {
+        const err = directoryError ?? relativePathError;
         void messageApi.error(err ? t(`batchUpload.validation.${err}`) : '');
         return;
       }
-      const normalizedNames = selectedFiles.map((file) => file.name.toLocaleLowerCase());
-      if (new Set(normalizedNames).size !== normalizedNames.length) {
+      const normalizedPaths = selectedFiles.map((item) => item.relativePath.toLocaleLowerCase());
+      if (new Set(normalizedPaths).size !== normalizedPaths.length) {
         void messageApi.error(t('batchUpload.messages.duplicateFileNames'));
         return;
       }
@@ -238,9 +304,10 @@ export function BatchFileUploadModal({
       dataIndex: 'targetFileName',
       width: 180,
       ellipsis: { showTitle: false },
-      render: (name?: string) => (
-        <Typography.Text ellipsis={{ tooltip: name }}>{name || '—'}</Typography.Text>
-      ),
+      render: (_, task) => {
+        const displayName = task.targetRelativePath || task.targetFileName || '—';
+        return <Typography.Text ellipsis={{ tooltip: displayName }}>{displayName}</Typography.Text>;
+      },
     },
     {
       title: t('batchUpload.columns.status'),
@@ -379,43 +446,8 @@ export function BatchFileUploadModal({
               initialValues={{ overwritePolicy: 'skip', concurrency: 4 }}
               className="batch-upload-form"
             >
-              <Form.Item label={t('batchUpload.fileLabel')} required>
-                <input
-                  ref={fileInputRef}
-                  hidden
-                  type="file"
-                  multiple
-                  onChange={(event) => {
-                    setSelectedFiles(Array.from(event.target.files ?? []));
-                  }}
-                />
-                <div className="batch-upload-file-picker">
-                  <Button
-                    icon={<FolderOpenOutlined />}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {t('batchUpload.selectFiles')}
-                  </Button>
-                  {selectedFiles.length ? (
-                    <Typography.Text
-                      ellipsis={{ tooltip: selectedFiles.map((file) => file.name).join('、') }}
-                    >
-                      {
-                        t('batchUpload.filesSelectedInfo', {
-                          count: selectedFiles.length,
-                          size: '',
-                        }).split('·')[0]
-                      }{' '}
-                      · {formatBytes(selectedFiles.reduce((total, file) => total + file.size, 0))}
-                    </Typography.Text>
-                  ) : (
-                    <Typography.Text type="secondary">
-                      {t('batchUpload.noFilesSelected')}
-                    </Typography.Text>
-                  )}
-                </div>
-              </Form.Item>
-              <div className="batch-upload-form-grid">
+              {/* Header: Target Directory, Overwrite Policy, Concurrency */}
+              <div className="batch-upload-header-grid">
                 <Form.Item
                   name="targetDirectory"
                   label={t('batchUpload.targetDirectory')}
@@ -423,16 +455,141 @@ export function BatchFileUploadModal({
                 >
                   <Input placeholder={t('batchUpload.targetDirectoryPlaceholder')} />
                 </Form.Item>
+                <Form.Item name="overwritePolicy" label={t('batchUpload.overwritePolicy')}>
+                  <Radio.Group>
+                    <Radio value="skip">{t('batchUpload.policySkip')}</Radio>
+                    <Radio value="overwrite">{t('batchUpload.policyOverwrite')}</Radio>
+                  </Radio.Group>
+                </Form.Item>
                 <Form.Item name="concurrency" label={t('batchUpload.concurrency')}>
                   <InputNumber min={1} max={8} precision={0} style={{ width: '100%' }} />
                 </Form.Item>
               </div>
-              <Form.Item name="overwritePolicy" label={t('batchUpload.overwritePolicy')}>
-                <Radio.Group>
-                  <Radio value="skip">{t('batchUpload.policySkip')}</Radio>
-                  <Radio value="overwrite">{t('batchUpload.policyOverwrite')}</Radio>
-                </Radio.Group>
-              </Form.Item>
+
+              {/* Middle Section: Drag-and-drop Dropzone */}
+              <input
+                ref={fileInputRef}
+                hidden
+                type="file"
+                multiple
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  addFileItems(
+                    files.map((file) => ({
+                      file,
+                      relativePath: file.webkitRelativePath || file.name,
+                    })),
+                  );
+                }}
+              />
+              <input
+                ref={folderInputRef}
+                hidden
+                type="file"
+                multiple
+                {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  addFileItems(
+                    files.map((file) => ({
+                      file,
+                      relativePath: file.webkitRelativePath || file.name,
+                    })),
+                  );
+                }}
+              />
+
+              <div
+                className={`batch-upload-dropzone ${isDragging ? 'is-dragging' : ''}`}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => void handleDrop(e)}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <InboxOutlined className="batch-upload-dropzone-icon" />
+                <div className="batch-upload-dropzone-title">{t('batchUpload.dropzoneTitle')}</div>
+                <div className="batch-upload-dropzone-desc">{t('batchUpload.dropzoneDesc')}</div>
+                <div
+                  className="batch-upload-dropzone-actions"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button
+                    icon={<FileOutlined />}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {t('batchUpload.selectFiles')}
+                  </Button>
+                  <Button
+                    icon={<FolderOpenOutlined />}
+                    onClick={() => folderInputRef.current?.click()}
+                  >
+                    {t('batchUpload.selectFolder')}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Middle Section: Scrollable File List */}
+              {selectedFiles.length > 0 && (
+                <div className="batch-upload-files-section">
+                  <div className="batch-upload-files-header">
+                    <Typography.Text strong>
+                      {t('batchUpload.fileListTitle')} (
+                      {
+                        t('batchUpload.filesSelectedInfo', {
+                          count: selectedFiles.length,
+                          size: '',
+                        }).split('·')[0]
+                      }
+                      · {formatBytes(selectedFiles.reduce((total, item) => total + item.file.size, 0))})
+                    </Typography.Text>
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      icon={<ClearOutlined />}
+                      onClick={clearAllFiles}
+                    >
+                      {t('batchUpload.clearFiles')}
+                    </Button>
+                  </div>
+                  <div className="batch-upload-file-list">
+                    {selectedFiles.map((item, index) => {
+                      const hasSubDir = item.relativePath.includes('/') || item.relativePath.includes('\\');
+                      return (
+                        <div key={`${item.relativePath}-${index}`} className="batch-upload-file-item">
+                          <div className="batch-upload-file-info">
+                            {hasSubDir ? (
+                              <FolderOutlined className="batch-upload-file-icon" />
+                            ) : (
+                              <FileOutlined className="batch-upload-file-icon" />
+                            )}
+                            <Typography.Text
+                              ellipsis={{ tooltip: item.relativePath }}
+                              className="batch-upload-file-name"
+                            >
+                              {item.relativePath}
+                            </Typography.Text>
+                          </div>
+                          <div className="batch-upload-file-meta">
+                            <span className="batch-upload-file-size">
+                              {formatBytes(item.file.size)}
+                            </span>
+                            <Button
+                              type="text"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={() => removeFileItem(index)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <Alert
                 showIcon
                 type="info"
