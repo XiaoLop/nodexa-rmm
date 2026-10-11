@@ -102,4 +102,63 @@ describe('TasksPage', () => {
 
     expect(screen.getByText('暂无批量任务')).toBeDefined();
   });
+
+  it('renders upload task targets accurately as devices and files', () => {
+    const manager = new BatchTaskManager();
+    manager.addTask({
+      kind: 'file-upload',
+      title: 'Batch file upload',
+      status: 'completed',
+      createdAt: Date.now(),
+      progress: 100,
+      totalCount: 7,
+      targetDeviceCount: 1,
+      fileCount: 7,
+      completedCount: 7,
+      succeededCount: 7,
+      failedCount: 0,
+      skippedCount: 0,
+      availableActions: [],
+      upload: {
+        status: 'completed',
+        tasks: [
+          {
+            id: '1',
+            batchId: 'b1',
+            device: { id: 'd1', name: 'Device-1', online: true },
+            status: 'success',
+            totalBytes: 100,
+            sentBytes: 100,
+            acknowledgedBytes: 100,
+            percentage: 100,
+            retryCount: 0,
+          },
+        ],
+      },
+    });
+
+    const contextValue: BatchTaskContextValue = {
+      ...manager.getSnapshot(),
+      manager,
+      createUploadTask: vi.fn(),
+      createCommandTask: vi.fn(),
+      createMoveTask: vi.fn(),
+      createPowerTask: vi.fn(),
+    };
+
+    const i18n = createTestI18n('zh-CN');
+
+    render(
+      <MemoryRouter initialEntries={['/devices/tasks']}>
+        <I18nextProvider i18n={i18n}>
+          <BatchTaskContext.Provider value={contextValue}>
+            <TasksPage />
+          </BatchTaskContext.Provider>
+        </I18nextProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('1 台设备（7 个文件）')).toBeDefined();
+    expect(screen.queryByText('7 台设备')).toBeNull();
+  });
 });

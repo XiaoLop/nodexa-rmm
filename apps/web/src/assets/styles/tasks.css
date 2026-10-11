@@ -85,3 +85,58 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Task Center Popover */
+.task-center-popover-overlay .ant-popover-inner {
+  padding: 12px;
+}
+
+.task-popover-content {
+  width: 310px;
+}
+
+.task-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border, #223147);
+  margin-bottom: 10px;
+}
+
+.task-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-popover-item {
+  padding: 10px 12px;
+  background: var(--component-bg, #0e1825);
+  border: 1px solid var(--border, #223147);
+  border-radius: 6px;
+}
+
+.task-popover-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-popover-item-icon {
+  font-size: 15px;
+  display: inline-flex;
+}
+
+.task-popover-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.task-popover-footer {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #223147);
+}

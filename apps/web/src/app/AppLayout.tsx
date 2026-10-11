@@ -2,7 +2,6 @@ import {
   GlobalOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  ProfileOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
@@ -22,7 +21,7 @@ import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControl } from '../features/gateway';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { NotificationBell } from '../features/notifications/NotificationBell';
-import { useBatchTasks } from '../features/tasks/BatchTaskContext';
+import { TaskCenterPopover } from '../features/tasks/TaskCenterPopover';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { resolveLanguage, type AppLanguage } from '../i18n';
 import { appNavigationGroups, appRoutes, resolvePageMeta } from './appRoutes';
@@ -49,7 +48,6 @@ function AppLayoutContent() {
     gateway.store,
     meshCentralControlSelectors.unreadCount,
   );
-  const { activeCount, unviewedCompletedCount } = useBatchTasks();
   const { username, logout } = gateway;
   const displayName = getUserDisplayName(userInfo, username);
   const capabilities = useApplicationUiCapabilities();
@@ -193,20 +191,7 @@ function AppLayoutContent() {
               unreadLabel={t('notifications.unreadDescription', { count: unreadCount })}
               onOpen={() => setNotificationCenterOpen(true)}
             />
-            <Tooltip title={t('navigation.taskCenter')}>
-              <Badge
-                count={activeCount}
-                dot={!activeCount && unviewedCompletedCount > 0}
-                size="small"
-              >
-                <Button
-                  type="text"
-                  icon={<ProfileOutlined />}
-                  aria-label={t('taskCenter.open')}
-                  onClick={() => navigate('/devices/tasks')}
-                />
-              </Badge>
-            </Tooltip>
+            <TaskCenterPopover />
             <Button type="text" icon={<QuestionCircleOutlined />} aria-label={t('header.help')} />
             <Dropdown
               menu={{

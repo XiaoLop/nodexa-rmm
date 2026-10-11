@@ -41,6 +41,8 @@ interface BatchTaskBase {
 export interface FileUploadBatchTask extends BatchTaskBase {
   kind: 'file-upload';
   upload: BatchUploadSnapshot;
+  targetDeviceCount?: number;
+  fileCount?: number;
 }
 
 export interface CommandBatchTask extends BatchTaskBase {

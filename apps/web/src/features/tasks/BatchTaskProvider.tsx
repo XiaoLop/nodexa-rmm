@@ -57,6 +57,7 @@ export function BatchTaskProvider({ children }: PropsWithChildren) {
     const updateUploadTask = (taskId: string, uploadManager: BatchUploadManager) => {
       const upload = uploadManager.getSnapshot();
       const summary = summarizeBatchUpload(upload.tasks);
+      const uniqueDevices = new Set(upload.tasks.map((item) => item.device.id));
       const status: BatchTaskStatus =
         upload.status === 'running'
           ? 'running'
@@ -81,6 +82,14 @@ export function BatchTaskProvider({ children }: PropsWithChildren) {
             completedAt: upload.completedAt,
             progress: summary.percentage,
             totalCount: summary.total,
+            targetDeviceCount:
+              uniqueDevices.size ||
+              (task.kind === 'file-upload' ? task.targetDeviceCount : undefined) ||
+              1,
+            fileCount:
+              (task.kind === 'file-upload' ? task.fileCount : undefined) ||
+              upload.config?.files.length ||
+              (uniqueDevices.size ? Math.round(summary.total / uniqueDevices.size) : summary.total),
             completedCount: summary.success + summary.failed + summary.skipped + summary.cancelled,
             succeededCount: summary.success,
             failedCount: summary.failed,
@@ -111,7 +120,9 @@ export function BatchTaskProvider({ children }: PropsWithChildren) {
           status: 'queued',
           createdAt: Date.now(),
           progress: 0,
-          totalCount: devices.length,
+          totalCount: devices.length * (config.files.length || 1),
+          targetDeviceCount: devices.length,
+          fileCount: config.files.length,
           completedCount: 0,
           succeededCount: 0,
           failedCount: 0,

@@ -157,19 +157,50 @@ export function TasksPage() {
       {
         title: t('taskCenter.columns.targets'),
         key: 'targets',
-        width: 140,
-        render: (_, task) => (
-          <div>
-            <Typography.Text>
-              {t('taskCenter.targetsCount', { count: task.totalCount })}
-            </Typography.Text>
-            {task.failedCount > 0 && (
-              <span style={{ color: 'var(--danger)', fontSize: 12, marginLeft: 6 }}>
-                ({task.failedCount} {t('common.status.offline')})
-              </span>
-            )}
-          </div>
-        ),
+        width: 170,
+        render: (_, task) => {
+          if (task.kind === 'file-upload') {
+            const deviceCount =
+              task.targetDeviceCount ||
+              (task.upload?.tasks?.length
+                ? new Set(task.upload.tasks.map((item) => item.device.id)).size
+                : 1);
+            const fileCount =
+              task.fileCount ||
+              task.upload?.config?.files?.length ||
+              (task.upload?.tasks?.length && deviceCount
+                ? Math.round(task.upload.tasks.length / deviceCount)
+                : task.totalCount);
+            return (
+              <div>
+                <Typography.Text>
+                  {t('taskCenter.uploadTargets', {
+                    deviceCount,
+                    fileCount,
+                  })}
+                </Typography.Text>
+                {task.failedCount > 0 && (
+                  <span style={{ color: 'var(--danger)', fontSize: 12, marginLeft: 6 }}>
+                    ({task.failedCount} {t('taskCenter.failed')})
+                  </span>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div>
+              <Typography.Text>
+                {t('taskCenter.targetsCount', { count: task.totalCount })}
+              </Typography.Text>
+              {task.failedCount > 0 && (
+                <span style={{ color: 'var(--danger)', fontSize: 12, marginLeft: 6 }}>
+                  ({task.failedCount} {t('common.status.offline')})
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: t('taskCenter.columns.progress'),
