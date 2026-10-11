@@ -10,6 +10,7 @@ import {
   FolderOutlined,
   HddOutlined,
   HomeOutlined,
+  InboxOutlined,
   ReloadOutlined,
   SendOutlined,
   UploadOutlined,
@@ -28,11 +29,15 @@ import {
   Table,
   Tooltip,
   Typography,
+  message,
   type TableColumnsType,
 } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { extractFilesFromDataTransfer } from '../../../features/batch-upload/fileSystem';
+import type { BatchUploadFileItem } from '../../../features/batch-upload/types';
 import { useFormatters } from '../../../i18n/formatters';
+import { DeviceFileUploadModal } from './DeviceFileUploadModal';
 import { fileCommandAvailability, formatFileSize, sortFileEntries } from './fileViewModel';
 import { useDeviceFilesSession } from './useDeviceFilesSession';
 
@@ -56,8 +61,20 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
   const { dateTime } = useFormatters();
   const controller = useDeviceFilesSession(props);
   const [modal, modalContextHolder] = Modal.useModal();
+  const [messageApi, messageContextHolder] = message.useMessage();
   const [dialog, setDialog] = useState<InputDialog>();
   const [dialogValue, setDialogValue] = useState('');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [dragHoverDirectory, setDragHoverDirectory] = useState<string>();
+  const [pendingUploadModal, setPendingUploadModal] = useState<{
+    open: boolean;
+    targetDirectory: string;
+    files: BatchUploadFileItem[];
+  }>({
+    open: false,
+    targetDirectory: '',
+    files: [],
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const entries = useMemo(
     () => sortFileEntries(controller.listing?.entries ?? []),
@@ -70,9 +87,65 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
     Boolean(controller.archiveProgress);
   const parent = parentFilePath(controller.listing?.path ?? '');
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (disabled) return;
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (disabled) return;
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!isDraggingOver) setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setIsDraggingOver(false);
+      setDragHoverDirectory(undefined);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    const targetDir = dragHoverDirectory ?? controller.listing?.path ?? '';
+    setDragHoverDirectory(undefined);
+    if (disabled || !e.dataTransfer) return;
+    if (!targetDir) {
+      void messageApi.warning(t('deviceWorkspace.files.cannotUploadToRoot'));
+      return;
+    }
+
+    try {
+      const items = await extractFilesFromDataTransfer(e.dataTransfer);
+      if (items.length > 0) {
+        setPendingUploadModal({
+          open: true,
+          targetDirectory: targetDir,
+          files: items,
+        });
+      }
+    } catch {
+      // Ignore read errors
+    }
+  };
+
   const openDialog = (type: InputDialog) => {
     const selected = controller.selectedEntries[0];
     const currentPath = controller.listing?.path ?? '';
+    if (type === 'mkdir' && !currentPath) {
+      void messageApi.warning(t('deviceWorkspace.files.cannotUploadToRoot'));
+      return;
+    }
     setDialog(type);
     setDialogValue(
       type === 'rename'
@@ -111,6 +184,17 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
       okButtonProps: { danger: true },
       cancelText: t('common.actions.cancel'),
       onOk: controller.removeSelected,
+    });
+  };
+
+  const confirmRemoveEntry = (entry: FileEntry) => {
+    modal.confirm({
+      title: t('deviceWorkspace.files.deleteFilesTitle'),
+      content: t('deviceWorkspace.files.deleteSingleFileContent', { name: entry.name }),
+      okText: t('common.actions.delete'),
+      okButtonProps: { danger: true },
+      cancelText: t('common.actions.cancel'),
+      onOk: () => controller.removeEntry(entry),
     });
   };
 
@@ -165,19 +249,37 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
     {
       title: t('deviceWorkspace.files.columns.actions'),
       key: 'actions',
-      width: 64,
+      width: 90,
       align: 'center',
       render: (_, entry) =>
         entry.kind === 'file' ? (
-          <Tooltip title={t('deviceWorkspace.files.downloadEntry', { name: entry.name })}>
-            <Button
-              type="text"
-              icon={<DownloadOutlined />}
-              aria-label={t('deviceWorkspace.files.downloadEntry', { name: entry.name })}
-              disabled={disabled}
-              onClick={() => void controller.download(entry)}
-            />
-          </Tooltip>
+          <Space size={0}>
+            <Tooltip title={t('deviceWorkspace.files.downloadEntry', { name: entry.name })}>
+              <Button
+                type="text"
+                icon={<DownloadOutlined />}
+                aria-label={t('deviceWorkspace.files.downloadEntry', { name: entry.name })}
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void controller.download(entry);
+                }}
+              />
+            </Tooltip>
+            <Tooltip title={t('deviceWorkspace.files.deleteEntry', { name: entry.name })}>
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label={t('deviceWorkspace.files.deleteEntry', { name: entry.name })}
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  confirmRemoveEntry(entry);
+                }}
+              />
+            </Tooltip>
+          </Space>
         ) : null,
     },
   ];
@@ -202,10 +304,15 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
 
   return (
     <section
-      className="console-card device-files-panel"
+      className={`console-card device-files-panel ${isDraggingOver ? 'is-dragging-over' : ''}`}
       aria-busy={controller.status === 'connecting' || controller.status === 'busy'}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={(e) => void handleDrop(e)}
     >
       {modalContextHolder}
+      {messageContextHolder}
       <div className="device-files-toolbar">
         <Space size={4} wrap>
           <Tooltip title={t('deviceWorkspace.files.up') }>
@@ -236,7 +343,7 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
             <Button
               icon={<FolderAddOutlined />}
               aria-label={t('deviceWorkspace.files.newDirectory')}
-              disabled={disabled || !controller.listing}
+              disabled={disabled || !controller.listing?.path}
               onClick={() => openDialog('mkdir')}
             />
           </Tooltip>
@@ -244,7 +351,7 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
             <Button
               icon={<UploadOutlined />}
               aria-label={t('deviceWorkspace.files.upload')}
-              disabled={disabled || !controller.listing}
+              disabled={disabled || !controller.listing?.path}
               onClick={() => fileInputRef.current?.click()}
             />
           </Tooltip>
@@ -313,9 +420,19 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
           ref={fileInputRef}
           hidden
           type="file"
+          multiple
           onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void controller.upload(file);
+            const files = Array.from(event.target.files ?? []);
+            if (files.length > 0) {
+              setPendingUploadModal({
+                open: true,
+                targetDirectory: controller.listing?.path ?? '',
+                files: files.map((file) => ({
+                  file,
+                  relativePath: file.webkitRelativePath || file.name,
+                })),
+              });
+            }
             event.target.value = '';
           }}
         />
@@ -372,8 +489,29 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
               if (entry.kind === 'drive' || entry.kind === 'directory')
                 void controller.openDirectory(entry.path);
             },
+            onDragOver: (e) => {
+              if (entry.kind === 'drive' || entry.kind === 'directory') {
+                e.stopPropagation();
+                setDragHoverDirectory(entry.path);
+              }
+            },
           })}
         />
+        {isDraggingOver && (
+          <div className="device-files-drop-overlay">
+            <InboxOutlined className="device-files-drop-icon" />
+            <div className="device-files-drop-text">
+              {t('deviceWorkspace.files.dragDropHint')}
+            </div>
+            <div className="device-files-drop-subtext">
+              {dragHoverDirectory
+                ? `${t('deviceWorkspace.files.targetDirectory')}: ${dragHoverDirectory}`
+                : controller.listing?.path
+                  ? `${t('deviceWorkspace.files.targetDirectory')}: ${controller.listing.path}`
+                  : t('deviceWorkspace.files.cannotUploadToRoot')}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="device-files-statusbar">
@@ -444,6 +582,16 @@ export function DeviceFilesPanel(props: DeviceFilesPanelProps) {
           onPressEnter={() => void submitDialog()}
         />
       </Modal>
+
+      <DeviceFileUploadModal
+        open={pendingUploadModal.open}
+        targetDirectory={pendingUploadModal.targetDirectory}
+        files={pendingUploadModal.files}
+        onClose={() => setPendingUploadModal({ open: false, targetDirectory: '', files: [] })}
+        onConfirm={(confirmedFiles, options) => {
+          void controller.uploadFiles(confirmedFiles, pendingUploadModal.targetDirectory, options);
+        }}
+      />
     </section>
   );
 }

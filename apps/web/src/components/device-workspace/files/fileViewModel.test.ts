@@ -49,6 +49,28 @@ describe('fileViewModel', () => {
     });
   });
 
+  it('disables rename, remove, zip, and file actions on drives', () => {
+    expect(fileCommandAvailability([entry('C:', 'drive')])).toEqual({
+      download: false,
+      rename: false,
+      copy: false,
+      move: false,
+      remove: false,
+      zip: false,
+      unzip: false,
+    });
+    expect(fileCommandAvailability([entry('C:', 'drive'), entry('D:', 'drive')])).toMatchObject({
+      remove: false,
+      zip: false,
+      rename: false,
+    });
+    expect(fileCommandAvailability([entry('C:', 'drive'), entry('file.txt', 'file')])).toMatchObject({
+      remove: false,
+      zip: false,
+      rename: false,
+    });
+  });
+
   it('removes stale paths from selection after refresh', () => {
     expect(retainExistingSelection(['/a', '/missing'], [entry('a', 'file')])).toEqual(['/a']);
   });

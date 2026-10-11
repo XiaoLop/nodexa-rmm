@@ -20,6 +20,11 @@ import {
   batchUploadBandwidthConfig,
   calculateBatchUploadChunkSize,
 } from '../../../features/batch-upload/bandwidth';
+import {
+  getDirectoryHierarchy,
+  resolveTargetFilePath,
+} from '../../../features/batch-upload/fileSystem';
+import type { BatchUploadFileItem } from '../../../features/batch-upload/types';
 import { createBrowserDownload } from '../../../features/files/createBrowserDownload';
 import { retainExistingSelection } from './fileViewModel';
 
@@ -244,6 +249,18 @@ export function useDeviceFilesSession({
     );
   };
 
+  const removeEntry = (entry: FileEntry) => {
+    const current = listingRef.current;
+    if (!current) return Promise.resolve();
+    return runWriteAndRefresh((files) =>
+      files.removeEntries(
+        current.path,
+        [entry.name],
+        { recursive: entry.kind !== 'file' },
+      ),
+    );
+  };
+
   const renameSelected = (name: string) => {
     const current = listingRef.current;
     const entry = selectedEntries[0];
@@ -275,33 +292,94 @@ export function useDeviceFilesSession({
     );
   };
 
-  const upload = async (file: File) => {
+  const uploadFiles = async (
+    items: BatchUploadFileItem[],
+    targetDirectory: string,
+    options?: { overwritePolicy?: 'skip' | 'overwrite' },
+  ) => {
     const files = filesRef.current;
-    const current = listingRef.current;
-    if (!files || !current) return;
+    if (!files || items.length === 0) return;
     const lifecycle = lifecycleRef.current;
     setError(undefined);
     setStatus('busy');
-    setActiveTransfer({
-      kind: 'upload',
-      name: file.name,
-      transferredBytes: 0,
-      totalBytes: file.size,
-      percentage: 0,
-    });
+    const overwritePolicy = options?.overwritePolicy ?? 'overwrite';
+    const totalBatchBytes = items.reduce((acc, item) => acc + item.file.size, 0);
+    let overallTransferredBytes = 0;
+
     try {
-      await files.uploadFile(current.path, browserFileSource(file), {
-        timeoutMs: 60_000,
-        chunkSize: calculateBatchUploadChunkSize(batchUploadBandwidthConfig, 1),
-        onProgress: (progress: FileUploadProgress) =>
-          setActiveTransfer({
-            kind: 'upload',
-            name: file.name,
-            transferredBytes: progress.acknowledgedBytes,
-            totalBytes: progress.totalBytes,
-            percentage: progress.percentage,
-          }),
-      });
+      for (let i = 0; i < items.length; i++) {
+        if (lifecycleRef.current !== lifecycle) break;
+        const item = items[i];
+        if (!item) continue;
+        const { targetDirectory: resolvedTargetDir, targetFileName } = resolveTargetFilePath(
+          targetDirectory,
+          item.relativePath,
+          device.platform,
+        );
+
+        // 递归预创建各级父目录
+        try {
+          const hierarchy = getDirectoryHierarchy(resolvedTargetDir, device.platform);
+          for (const dir of hierarchy) {
+            files.createDirectory(dir);
+          }
+        } catch {
+          // 忽略已存在或同步异常
+        }
+
+        // 如果配置为 skip，检查是否存在同名文件
+        if (overwritePolicy === 'skip') {
+          try {
+            const listing = await files.listDirectory(resolvedTargetDir, { timeoutMs: 15_000 });
+            const exists = listing.entries.some(
+              (entry) => entry.kind === 'file' && entry.name === targetFileName,
+            );
+            if (exists) {
+              overallTransferredBytes += item.file.size;
+              continue;
+            }
+          } catch {
+            // 目录不存在或读取失败，继续尝试上传
+          }
+        }
+
+        const displayName =
+          items.length > 1 ? `(${i + 1}/${items.length}) ${item.relativePath}` : item.relativePath;
+
+        setActiveTransfer({
+          kind: 'upload',
+          name: displayName,
+          transferredBytes: overallTransferredBytes,
+          totalBytes: totalBatchBytes,
+          percentage:
+            totalBatchBytes > 0
+              ? Number(((overallTransferredBytes / totalBatchBytes) * 100).toFixed(1))
+              : 0,
+        });
+
+        await files.uploadFile(resolvedTargetDir, browserFileSource(item.file), {
+          name: targetFileName,
+          timeoutMs: 60_000,
+          chunkSize: calculateBatchUploadChunkSize(batchUploadBandwidthConfig, 1),
+          onProgress: (progress: FileUploadProgress) => {
+            const currentItemAck = progress.acknowledgedBytes;
+            const currentTotalTransferred = overallTransferredBytes + currentItemAck;
+            setActiveTransfer({
+              kind: 'upload',
+              name: displayName,
+              transferredBytes: currentTotalTransferred,
+              totalBytes: totalBatchBytes,
+              percentage:
+                totalBatchBytes > 0
+                  ? Number(((currentTotalTransferred / totalBatchBytes) * 100).toFixed(1))
+                  : 0,
+            });
+          },
+        });
+
+        overallTransferredBytes += item.file.size;
+      }
+
       if (lifecycleRef.current === lifecycle) await refresh();
     } catch (uploadError) {
       if (lifecycleRef.current === lifecycle) setOperationError(uploadError, 'upload');
@@ -311,6 +389,12 @@ export function useDeviceFilesSession({
         setStatus(filesRef.current ? 'ready' : 'disconnected');
       }
     }
+  };
+
+  const upload = async (file: File) => {
+    const current = listingRef.current;
+    if (!current) return;
+    await uploadFiles([{ file, relativePath: file.name }], current.path);
   };
 
   const download = async (entry: FileEntry) => {
@@ -394,10 +478,12 @@ export function useDeviceFilesSession({
     refresh,
     createDirectory,
     removeSelected,
+    removeEntry,
     renameSelected,
     copySelected,
     moveSelected,
     upload,
+    uploadFiles,
     download,
     createZip,
     extractZip,
