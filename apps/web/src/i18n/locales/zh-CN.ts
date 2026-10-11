@@ -1070,6 +1070,7 @@ export const zhCN = {
     },
     actions: {
       viewDevices: '查看设备',
+      sharedFiles: '共享网盘',
       edit: '编辑',
       delete: '删除',
     },
@@ -1274,7 +1275,14 @@ export const zhCN = {
   serverFiles: {
     title: '服务端文件',
     subtitle: '管理个人存储空间与设备组共享文件。',
-    spaces: { title: '存储空间', empty: '没有可用的文件空间' },
+    spaces: {
+      title: '存储空间',
+      empty: '没有可用的文件空间',
+      personal: '个人网盘',
+      deviceGroups: '设备组共享网盘',
+      collapse: '收起侧栏',
+      expand: '展开侧栏',
+    },
     searchPlaceholder: '搜索当前目录文件...',
     clearSearch: '清除搜索',
     dropHint: '释放文件即可上传至当前目录',

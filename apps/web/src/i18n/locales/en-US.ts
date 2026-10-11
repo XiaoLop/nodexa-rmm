@@ -1118,6 +1118,7 @@ export const enUS = {
     },
     actions: {
       viewDevices: 'View devices',
+      sharedFiles: 'Shared files',
       edit: 'Edit',
       delete: 'Delete',
     },
@@ -1323,7 +1324,14 @@ export const enUS = {
   serverFiles: {
     title: 'Server files',
     subtitle: 'Manage personal storage and shared device-group files.',
-    spaces: { title: 'Storage spaces', empty: 'No file spaces are available' },
+    spaces: {
+      title: 'Storage spaces',
+      empty: 'No file spaces are available',
+      personal: 'Personal storage',
+      deviceGroups: 'Device group files',
+      collapse: 'Collapse sidebar',
+      expand: 'Expand sidebar',
+    },
     searchPlaceholder: 'Search files in current folder...',
     clearSearch: 'Clear search',
     dropHint: 'Drop files here to upload to current directory',

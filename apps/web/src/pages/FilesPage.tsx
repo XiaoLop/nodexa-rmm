@@ -19,6 +19,8 @@ import {
   FormOutlined,
   HomeOutlined,
   InboxOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   ReloadOutlined,
   SearchOutlined,
   SendOutlined,
@@ -38,7 +40,6 @@ import {
   Dropdown,
   Empty,
   Input,
-  List,
   Modal,
   Progress,
   Space,
@@ -50,8 +51,10 @@ import {
   type MenuProps,
   type TableColumnsType,
 } from 'antd';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import { ServerFileDestinationDialog } from '../features/server-files/ServerFileDestinationDialog';
 import { ServerFileEditor } from '../features/server-files/ServerFileEditor';
 import {
@@ -67,6 +70,7 @@ import '../assets/styles/server-files.css';
 
 type NameDialog = 'create' | 'rename';
 type TransferDialog = 'copy' | 'move';
+const COLLAPSED_STORAGE_KEY = 'mesh_server_files_spaces_collapsed';
 
 function getFileGlyph(entry: ServerFileEntry) {
   if (entry.kind === 'directory') {
@@ -118,6 +122,7 @@ function getFileGlyph(entry: ServerFileEntry) {
 export function FilesPage() {
   const { t } = useTranslation();
   const { dateTime } = useFormatters();
+  const [searchParams, setSearchParams] = useSearchParams();
   const data = useMeshCentralControlData();
   const controller = useServerFiles({
     client: data.client,
@@ -131,7 +136,53 @@ export function FilesPage() {
   const [editingEntry, setEditingEntry] = useState<ServerFileEntry>();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [spacesCollapsed, setSpacesCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSpacesCollapsed = () => {
+    setSpacesCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  };
+
+  // Synchronize space from URL query parameters (e.g. ?groupId=mesh//xyz or ?spaceId=xyz)
+  useEffect(() => {
+    const targetSpaceId = searchParams.get('spaceId') || searchParams.get('groupId');
+    if (!targetSpaceId || !controller.tree?.spaces?.length) return;
+
+    const matched = controller.tree.spaces.find(
+      (space) =>
+        space.id === targetSpaceId ||
+        space.id === `mesh//${targetSpaceId}` ||
+        `mesh//${space.id}` === targetSpaceId,
+    );
+
+    if (matched && controller.currentSpace?.id !== matched.id) {
+      controller.openSpace(matched.id);
+      setSearchQuery('');
+    }
+  }, [controller, searchParams]);
+
+  const handleSelectSpace = (spaceId: string) => {
+    controller.openSpace(spaceId);
+    setSearchQuery('');
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('spaceId', spaceId);
+    nextParams.delete('groupId');
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const rawSortedEntries = useMemo(
     () => sortServerFileEntries(controller.entries),
@@ -471,40 +522,151 @@ export function FilesPage() {
     ? [actionTargetEntry.name]
     : selectedNames;
 
-  return (
-    <div className="server-files-page">
-      {modalContextHolder}
-      <header className="server-files-heading">
-        <div className="server-files-heading-left">
-          <div className="server-files-title-wrap">
-            <Typography.Title level={2}>{t('serverFiles.title')}</Typography.Title>
-            <Typography.Paragraph>{t('serverFiles.subtitle')}</Typography.Paragraph>
-          </div>
+  const personalSpaces = useMemo(
+    () => controller.tree?.spaces?.filter((space) => space.kind === 'user') ?? [],
+    [controller.tree?.spaces],
+  );
+  const deviceGroupSpaces = useMemo(
+    () => controller.tree?.spaces?.filter((space) => space.kind === 'mesh') ?? [],
+    [controller.tree?.spaces],
+  );
+
+  const renderSpaceItem = (space: (typeof personalSpaces)[number]) => {
+    const selected = space.id === controller.currentSpace?.id;
+    const percent = space.maxBytes
+      ? Math.min(100, Math.round((space.usedBytes / space.maxBytes) * 100))
+      : 0;
+
+    let progressColor = '#3b82f6';
+    if (percent >= 90) progressColor = '#ef4444';
+    else if (percent >= 75) progressColor = '#f59e0b';
+
+    const tooltipContent = (
+      <div>
+        <div style={{ fontWeight: 600 }}>{space.name}</div>
+        <div>
+          {formatServerFileSize(space.usedBytes)}
+          {space.maxBytes ? ` / ${formatServerFileSize(space.maxBytes)}` : ''}
         </div>
-        <div className="server-files-heading-right">
+      </div>
+    );
+
+    if (spacesCollapsed) {
+      return (
+        <Tooltip key={space.id} title={tooltipContent} placement="right">
+          <button
+            type="button"
+            className={`server-file-space-item-collapsed ${selected ? 'is-selected' : ''}`}
+            onClick={() => handleSelectSpace(space.id)}
+            aria-label={space.name}
+          >
+            <span
+              className={`server-file-space-icon-box ${
+                space.kind === 'user' ? 'is-user' : 'is-team'
+              }`}
+            >
+              {space.kind === 'user' ? <UserOutlined /> : <TeamOutlined />}
+            </span>
+          </button>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <div
+        key={space.id}
+        className={`server-file-space-item ${selected ? 'is-selected' : ''}`}
+        onClick={() => handleSelectSpace(space.id)}
+      >
+        <div className="server-file-space-item-content">
           <span
-            className={`server-files-connection-badge ${
-              controller.connected ? 'is-connected' : 'is-disconnected'
+            className={`server-file-space-icon-box ${
+              space.kind === 'user' ? 'is-user' : 'is-team'
             }`}
           >
-            <span className="server-files-pulse-dot" />
-            <span className="server-files-connection-label">
-              {t(
-                controller.connected
-                  ? 'serverFiles.states.connected'
-                  : 'serverFiles.states.disconnected',
-              )}
-            </span>
+            {space.kind === 'user' ? <UserOutlined /> : <TeamOutlined />}
           </span>
+          <div className="server-file-space-details">
+            <Typography.Text
+              className="server-file-space-name"
+              ellipsis={{ tooltip: space.name }}
+            >
+              {space.name}
+            </Typography.Text>
+            <div className="server-file-space-usage">
+              {formatServerFileSize(space.usedBytes)}
+              {space.maxBytes ? ` / ${formatServerFileSize(space.maxBytes)}` : ''}
+            </div>
+          </div>
         </div>
-      </header>
+        {space.maxBytes !== undefined && (
+          <div className="server-file-space-progress-wrap">
+            <Progress
+              percent={percent}
+              showInfo={false}
+              size="small"
+              strokeColor={progressColor}
+              trailColor="var(--color-surface-2, rgba(255, 255, 255, 0.08))"
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="page-stack server-files-page">
+      {modalContextHolder}
+
+      <PageHeader
+        title={t('serverFiles.title')}
+        description={t('serverFiles.subtitle')}
+        actions={
+          <Space>
+            <Tooltip title={t('common.actions.refresh')}>
+              <Button
+                icon={<ReloadOutlined />}
+                disabled={disabled}
+                onClick={() => void controller.refresh()}
+              >
+                {t('common.actions.refresh')}
+              </Button>
+            </Tooltip>
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              disabled={disabled || !controller.currentSpace}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {t('serverFiles.actions.upload')}
+            </Button>
+            <Button
+              icon={<FolderAddOutlined />}
+              disabled={disabled || !controller.currentSpace}
+              onClick={() => openNameDialog('create')}
+            >
+              {t('serverFiles.actions.createFolder')}
+            </Button>
+          </Space>
+        }
+      />
+
+      <input
+        ref={fileInputRef}
+        hidden
+        type="file"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void upload(file);
+          event.target.value = '';
+        }}
+      />
 
       {!controller.connected && (
         <Alert
           type="warning"
           showIcon
           title={t('serverFiles.states.disconnectedNotice')}
-          className="server-files-alert"
         />
       )}
       {controller.error && (
@@ -515,94 +677,94 @@ export function FilesPage() {
           title={t('serverFiles.states.operationUnconfirmed')}
           description={controller.error}
           onClose={controller.clearError}
-          className="server-files-alert"
         />
       )}
 
-      <div className="server-files-workspace">
-        <aside className="server-files-spaces">
-          <div className="server-files-spaces-header">
-            <div className="server-files-spaces-title">
-              <DatabaseOutlined />
-              <span>{t('serverFiles.spaces.title')}</span>
-            </div>
-            {controller.tree?.spaces && controller.tree.spaces.length > 0 && (
-              <Tag bordered={false} className="server-files-spaces-count">
-                {controller.tree.spaces.length}
-              </Tag>
-            )}
-          </div>
-          <List
-            dataSource={controller.tree?.spaces ?? []}
-            locale={{
-              emptyText: (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={t('serverFiles.spaces.empty')}
-                />
-              ),
-            }}
-            renderItem={(space) => {
-              const selected = space.id === controller.currentSpace?.id;
-              const percent = space.maxBytes
-                ? Math.min(100, Math.round((space.usedBytes / space.maxBytes) * 100))
-                : 0;
-
-              let progressColor = '#3b82f6';
-              if (percent >= 90) progressColor = '#ef4444';
-              else if (percent >= 75) progressColor = '#f59e0b';
-
-              return (
-                <div
-                  key={space.id}
-                  className={`server-file-space-item ${selected ? 'is-selected' : ''}`}
-                  onClick={() => {
-                    controller.openSpace(space.id);
-                    setSearchQuery('');
-                  }}
-                >
-                  <div className="server-file-space-item-content">
-                    <span
-                      className={`server-file-space-icon-box ${
-                        space.kind === 'user' ? 'is-user' : 'is-team'
-                      }`}
-                    >
-                      {space.kind === 'user' ? <UserOutlined /> : <TeamOutlined />}
-                    </span>
-                    <div className="server-file-space-details">
-                      <Typography.Text
-                        className="server-file-space-name"
-                        ellipsis={{ tooltip: space.name }}
-                      >
-                        {space.name}
-                      </Typography.Text>
-                      <div className="server-file-space-usage">
-                        {formatServerFileSize(space.usedBytes)}
-                        {space.maxBytes
-                          ? ` / ${formatServerFileSize(space.maxBytes)}`
-                          : ''}
+      <div
+        className={`server-files-layout ${
+          spacesCollapsed ? 'is-spaces-collapsed' : ''
+        }`}
+      >
+        <Panel
+          className="server-files-spaces-panel"
+          title={
+            spacesCollapsed ? undefined : (
+              <span className="server-files-spaces-panel-title">
+                <DatabaseOutlined />
+                <span>{t('serverFiles.spaces.title')}</span>
+                {controller.tree?.spaces && controller.tree.spaces.length > 0 && (
+                  <Tag bordered={false} className="server-files-spaces-count">
+                    {controller.tree.spaces.length}
+                  </Tag>
+                )}
+              </span>
+            )
+          }
+          tools={
+            <Tooltip
+              title={
+                spacesCollapsed
+                  ? t('serverFiles.spaces.expand')
+                  : t('serverFiles.spaces.collapse')
+              }
+              placement="right"
+            >
+              <Button
+                type="text"
+                size="small"
+                className="server-files-collapse-btn"
+                icon={spacesCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={toggleSpacesCollapsed}
+                aria-label={
+                  spacesCollapsed
+                    ? t('serverFiles.spaces.expand')
+                    : t('serverFiles.spaces.collapse')
+                }
+              />
+            </Tooltip>
+          }
+        >
+          <div className="server-files-spaces-body">
+            {!controller.tree?.spaces?.length ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={t('serverFiles.spaces.empty')}
+              />
+            ) : (
+              <>
+                {personalSpaces.length > 0 && (
+                  <div className="server-files-space-group">
+                    {!spacesCollapsed && (
+                      <div className="server-files-space-group-label">
+                        <UserOutlined />
+                        <span>{t('serverFiles.spaces.personal')}</span>
                       </div>
+                    )}
+                    <div className="server-files-space-group-list">
+                      {personalSpaces.map(renderSpaceItem)}
                     </div>
                   </div>
-                  {space.maxBytes !== undefined && (
-                    <div className="server-file-space-progress-wrap">
-                      <Progress
-                        percent={percent}
-                        showInfo={false}
-                        size="small"
-                        strokeColor={progressColor}
-                        trailColor="rgba(255, 255, 255, 0.08)"
-                      />
+                )}
+                {deviceGroupSpaces.length > 0 && (
+                  <div className="server-files-space-group">
+                    {!spacesCollapsed && (
+                      <div className="server-files-space-group-label">
+                        <TeamOutlined />
+                        <span>{t('serverFiles.spaces.deviceGroups')}</span>
+                      </div>
+                    )}
+                    <div className="server-files-space-group-list">
+                      {deviceGroupSpaces.map(renderSpaceItem)}
                     </div>
-                  )}
-                </div>
-              );
-            }}
-          />
-        </aside>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </Panel>
 
-        <section
-          className={`server-files-browser ${isDraggingOver ? 'is-dragging-over' : ''}`}
+        <Panel
+          className={`server-files-browser-panel ${isDraggingOver ? 'is-dragging-over' : ''}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -618,48 +780,149 @@ export function FilesPage() {
             </div>
           )}
 
-          <div className="server-files-toolbar">
-            <div className="server-files-toolbar-left">
-              <Space size={8} wrap>
-                <Tooltip title={t('serverFiles.actions.up')}>
-                  <Button
-                    icon={<ArrowUpOutlined />}
-                    aria-label={t('serverFiles.actions.up')}
-                    disabled={disabled || controller.currentPath.length <= 1}
-                    onClick={() => {
-                      controller.openPath(controller.currentPath.slice(0, -1));
-                      setSearchQuery('');
-                    }}
-                  />
-                </Tooltip>
-                <Tooltip title={t('common.actions.refresh')}>
-                  <Button
-                    icon={<ReloadOutlined />}
-                    aria-label={t('common.actions.refresh')}
-                    disabled={disabled}
-                    onClick={() => void controller.refresh()}
-                  />
-                </Tooltip>
-                <div className="server-files-toolbar-divider" />
+          <FilterBar className="server-files-filter-bar">
+            <div className="server-files-filter-left">
+              <Tooltip title={t('serverFiles.actions.up')}>
                 <Button
-                  type="primary"
-                  icon={<UploadOutlined />}
-                  disabled={disabled || !controller.currentSpace}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {t('serverFiles.actions.upload')}
-                </Button>
+                  size="small"
+                  icon={<ArrowUpOutlined />}
+                  aria-label={t('serverFiles.actions.up')}
+                  disabled={disabled || controller.currentPath.length <= 1}
+                  onClick={() => {
+                    controller.openPath(controller.currentPath.slice(0, -1));
+                    setSearchQuery('');
+                  }}
+                />
+              </Tooltip>
+
+              <Breadcrumb
+                className="server-files-breadcrumb"
+                items={controller.currentPath.map((segment, index) => {
+                  const isFirst = index === 0;
+                  const isLast = index === controller.currentPath.length - 1;
+                  const displayName = isFirst
+                    ? controller.currentSpace?.name ?? segment
+                    : segment;
+
+                  return {
+                    title: (
+                      <button
+                        type="button"
+                        className={`server-files-breadcrumb-btn ${
+                          isLast ? 'is-active' : ''
+                        }`}
+                        onClick={() => {
+                          controller.openPath(
+                            controller.currentPath.slice(0, index + 1),
+                          );
+                          setSearchQuery('');
+                        }}
+                      >
+                        {isFirst ? (
+                          controller.currentSpace?.kind === 'user' ? (
+                            <HomeOutlined className="server-files-breadcrumb-icon" />
+                          ) : (
+                            <TeamOutlined className="server-files-breadcrumb-icon" />
+                          )
+                        ) : (
+                          <FolderOpenOutlined className="server-files-breadcrumb-icon" />
+                        )}
+                        <span>{displayName}</span>
+                      </button>
+                    ),
+                  };
+                })}
+              />
+
+              <Tooltip title={t('serverFiles.copyPath')}>
                 <Button
-                  icon={<FolderAddOutlined />}
-                  disabled={disabled || !controller.currentSpace}
-                  onClick={() => openNameDialog('create')}
-                >
-                  {t('serverFiles.actions.createFolder')}
-                </Button>
-              </Space>
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={copyCurrentPath}
+                />
+              </Tooltip>
             </div>
 
-            <div className="server-files-toolbar-right">
+            <div className="server-files-filter-right">
+              {selectedNames.length > 0 && (
+                <div className="server-files-inline-actions">
+                  <Badge count={selectedNames.length} color="#3b82f6" />
+                  <Space size={4}>
+                    {availability.download && (
+                      <Tooltip title={t('serverFiles.actions.download')}>
+                        <Button
+                          size="small"
+                          icon={<DownloadOutlined />}
+                          onClick={() =>
+                            controller.selectedEntries[0] &&
+                            void download(controller.selectedEntries[0])
+                          }
+                        />
+                      </Tooltip>
+                    )}
+                    {availability.edit && (
+                      <Tooltip title={t('serverFiles.actions.edit')}>
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() =>
+                            setEditingEntry(controller.selectedEntries[0])
+                          }
+                        />
+                      </Tooltip>
+                    )}
+                    {availability.rename && (
+                      <Tooltip title={t('common.actions.rename')}>
+                        <Button
+                          size="small"
+                          icon={<FormOutlined />}
+                          onClick={() => openNameDialog('rename')}
+                        />
+                      </Tooltip>
+                    )}
+                    <Tooltip title={t('serverFiles.actions.copy')}>
+                      <Button
+                        size="small"
+                        icon={<CopyOutlined />}
+                        disabled={disabled || !availability.copy}
+                        onClick={() => {
+                          setActionTargetEntry(undefined);
+                          setTransferDialog('copy');
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t('serverFiles.actions.move')}>
+                      <Button
+                        size="small"
+                        icon={<SendOutlined />}
+                        disabled={disabled || !availability.move}
+                        onClick={() => {
+                          setActionTargetEntry(undefined);
+                          setTransferDialog('move');
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t('common.actions.delete')}>
+                      <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        disabled={disabled || !availability.remove}
+                        onClick={() => confirmRemove()}
+                      />
+                    </Tooltip>
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<CloseOutlined />}
+                      onClick={() => controller.setSelectedPaths([])}
+                    />
+                  </Space>
+                  <div className="server-files-toolbar-divider" />
+                </div>
+              )}
+
               <Input
                 placeholder={t('serverFiles.searchPlaceholder')}
                 prefix={<SearchOutlined className="server-files-search-icon" />}
@@ -669,162 +932,7 @@ export function FilesPage() {
                 className="server-files-search-input"
               />
             </div>
-
-            <input
-              ref={fileInputRef}
-              hidden
-              type="file"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void upload(file);
-                event.target.value = '';
-              }}
-            />
-          </div>
-
-          {selectedNames.length > 0 && (
-            <div className="server-files-selection-bar">
-              <div className="server-files-selection-info">
-                <Badge count={selectedNames.length} color="#3b82f6" />
-                <span>
-                  {t('serverFiles.selectionBar.selected', { count: selectedNames.length })}
-                </span>
-              </div>
-              <Space size={6} wrap>
-                {availability.download && (
-                  <Tooltip title={t('serverFiles.actions.download')}>
-                    <Button
-                      size="small"
-                      icon={<DownloadOutlined />}
-                      onClick={() =>
-                        controller.selectedEntries[0] &&
-                        void download(controller.selectedEntries[0])
-                      }
-                    >
-                      {t('serverFiles.actions.download')}
-                    </Button>
-                  </Tooltip>
-                )}
-                {availability.edit && (
-                  <Tooltip title={t('serverFiles.actions.edit')}>
-                    <Button
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={() => setEditingEntry(controller.selectedEntries[0])}
-                    >
-                      {t('serverFiles.actions.edit')}
-                    </Button>
-                  </Tooltip>
-                )}
-                {availability.rename && (
-                  <Tooltip title={t('common.actions.rename')}>
-                    <Button
-                      size="small"
-                      icon={<FormOutlined />}
-                      onClick={() => openNameDialog('rename')}
-                    >
-                      {t('common.actions.rename')}
-                    </Button>
-                  </Tooltip>
-                )}
-                <Tooltip title={t('serverFiles.actions.copy')}>
-                  <Button
-                    size="small"
-                    icon={<CopyOutlined />}
-                    disabled={disabled || !availability.copy}
-                    onClick={() => {
-                      setActionTargetEntry(undefined);
-                      setTransferDialog('copy');
-                    }}
-                  >
-                    {t('serverFiles.actions.copy')}
-                  </Button>
-                </Tooltip>
-                <Tooltip title={t('serverFiles.actions.move')}>
-                  <Button
-                    size="small"
-                    icon={<SendOutlined />}
-                    disabled={disabled || !availability.move}
-                    onClick={() => {
-                      setActionTargetEntry(undefined);
-                      setTransferDialog('move');
-                    }}
-                  >
-                    {t('serverFiles.actions.move')}
-                  </Button>
-                </Tooltip>
-                <Tooltip title={t('common.actions.delete')}>
-                  <Button
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                    disabled={disabled || !availability.remove}
-                    onClick={() => confirmRemove()}
-                  >
-                    {t('common.actions.delete')}
-                  </Button>
-                </Tooltip>
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<CloseOutlined />}
-                  onClick={() => controller.setSelectedPaths([])}
-                >
-                  {t('serverFiles.selectionBar.clear')}
-                </Button>
-              </Space>
-            </div>
-          )}
-
-          <div className="server-files-nav-bar">
-            <Breadcrumb
-              className="server-files-breadcrumb"
-              items={controller.currentPath.map((segment, index) => {
-                const isFirst = index === 0;
-                const isLast = index === controller.currentPath.length - 1;
-                const displayName = isFirst
-                  ? controller.currentSpace?.name ?? segment
-                  : segment;
-
-                return {
-                  title: (
-                    <button
-                      type="button"
-                      className={`server-files-breadcrumb-btn ${isLast ? 'is-active' : ''}`}
-                      onClick={() => {
-                        controller.openPath(controller.currentPath.slice(0, index + 1));
-                        setSearchQuery('');
-                      }}
-                    >
-                      {isFirst ? (
-                        controller.currentSpace?.kind === 'user' ? (
-                          <HomeOutlined className="server-files-breadcrumb-icon" />
-                        ) : (
-                          <TeamOutlined className="server-files-breadcrumb-icon" />
-                        )
-                      ) : (
-                        <FolderOpenOutlined className="server-files-breadcrumb-icon" />
-                      )}
-                      <span>{displayName}</span>
-                    </button>
-                  ),
-                };
-              })}
-            />
-            <div className="server-files-nav-meta">
-              <Tooltip title={t('serverFiles.copyPath')}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={copyCurrentPath}
-                />
-              </Tooltip>
-              <span className="server-files-nav-counter">
-                {rawSortedEntries.length} {t('serverFiles.columns.name')}
-              </span>
-            </div>
-          </div>
+          </FilterBar>
 
           <div className="server-files-table-wrapper">
             {controller.currentSpace ? (
@@ -937,7 +1045,7 @@ export function FilesPage() {
               </span>
             )}
           </div>
-        </section>
+        </Panel>
       </div>
 
       <Modal

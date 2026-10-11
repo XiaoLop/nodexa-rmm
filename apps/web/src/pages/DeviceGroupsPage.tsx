@@ -2,6 +2,7 @@ import {
   ApartmentOutlined,
   DeleteOutlined,
   EditOutlined,
+  FolderOpenOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
@@ -310,18 +311,28 @@ export function DeviceGroupsPage() {
       title: t('deviceGroups.columns.actions'),
       key: 'actions',
       fixed: 'right',
-      width: 230,
+      width: 290,
       render: (_, group) => {
         const capabilities = groupCapabilities(group);
         return (
           <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            onClick={() => navigate(`/devices?groupId=${encodeURIComponent(group.id)}`)}
-          >
-            {t('deviceGroups.actions.viewDevices')}
-          </Button>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => navigate(`/devices?groupId=${encodeURIComponent(group.id)}`)}
+            >
+              {t('deviceGroups.actions.viewDevices')}
+            </Button>
+            {applicationCapabilities.serverFiles && (
+              <Button
+                type="link"
+                size="small"
+                icon={<FolderOpenOutlined />}
+                onClick={() => navigate(`/files?groupId=${encodeURIComponent(group.id)}`)}
+              >
+                {t('deviceGroups.actions.sharedFiles')}
+              </Button>
+            )}
             <PermissionButton permission={capabilities.edit}>
               <Button
                 type="link"
