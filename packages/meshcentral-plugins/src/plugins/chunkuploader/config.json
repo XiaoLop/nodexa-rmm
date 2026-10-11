@@ -1,0 +1,17 @@
+{
+  "name": "Chunk Uploader",
+  "shortName": "chunkuploader",
+  "version": "0.1.0",
+  "description": "Provides chunked large file upload, status check and streaming merge for MeshCentral server files.",
+  "author": "MeshCentral Web",
+  "homepage": "https://github.com/example/meshcentral-web",
+  "changelogUrl": "https://github.com/example/meshcentral-web/releases",
+  "configUrl": "https://github.com/example/meshcentral-web/blob/main/packages/meshcentral-plugins/src/plugins/chunkuploader/config.json",
+  "downloadUrl": "https://github.com/example/meshcentral-web/archive/refs/heads/main.zip",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/meshcentral-web.git"
+  },
+  "meshCentralCompat": ">=1.1.54 <1.1.55",
+  "hasAdminPanel": false
+}
