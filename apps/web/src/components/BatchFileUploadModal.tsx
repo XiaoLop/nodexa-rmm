@@ -391,9 +391,6 @@ export function BatchFileUploadModal({
         footer={
           configurable
             ? [
-                <Button key="close" onClick={closeModal}>
-                  {t('batchUpload.closeRunningConfirmCancel')}
-                </Button>,
                 <Button
                   key="start"
                   type="primary"
