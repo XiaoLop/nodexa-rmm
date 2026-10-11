@@ -18,6 +18,15 @@
         "webrtcConfig": {
             "iceServers": [
                 {
+                    "urls": "stun:stun.qq.com:3478"
+                },
+                {
+                    "urls": "stun:stun.baidu.com:3478"
+                },
+                {
+                    "urls": "stun:stun.aliyun.com:3478"
+                },
+                {
                     "urls": "stun:stun.cloudflare.com:3478"
                 },
                 {
