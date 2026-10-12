@@ -2344,6 +2344,7 @@ export const enUS = {
         remove: 'Remove',
         editPermissions: 'Edit permissions',
         confirmRemove: 'Confirm removal',
+        editProfile: 'Edit profile',
         addMember: 'Add member',
         addMemberNow: 'Add a member now',
         addGroupGrant: 'Add device group grant',

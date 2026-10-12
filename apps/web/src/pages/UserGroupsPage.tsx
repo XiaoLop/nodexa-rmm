@@ -38,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMeshCentralControlData } from '../features/gateway';
 import { createCollator } from '../i18n';
 import { useFormatters } from '../i18n/formatters';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/users.css';
 
 type EditorMode = 'create' | 'edit' | 'clone';
@@ -346,19 +347,20 @@ export function UserGroupsPage() {
   return (
     <div className="page-stack users-page">
       {messageContextHolder}
-      <div className="page-heading">
-        <div>
-          <h1>{t('userGroups.title')}</h1>
-          <p>{t('userGroups.subtitle')}</p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          disabled={!canWrite}
-          onClick={() => openEditor('create')}
-        >{t('userGroups.createGroup')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('userGroups.title')}
+        description={t('userGroups.subtitle')}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={!canWrite}
+            onClick={() => openEditor('create')}
+          >
+            {t('userGroups.createGroup')}
+          </Button>
+        }
+      />
 
       {!connected ? (
         <Alert
@@ -391,8 +393,8 @@ export function UserGroupsPage() {
       ) : null}
 
       {/* 用户组主列表卡片 */}
-      <section className="console-card devices-table-card">
-        <div className="table-toolbar users-toolbar">
+      <Panel className="devices-table-card">
+        <FilterBar className="users-toolbar">
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -421,9 +423,10 @@ export function UserGroupsPage() {
             disabled={!connected}
             loading={loading}
             onClick={() => void loadGroups()}
-          >{t('common.actions.refresh')}
+          >
+            {t('common.actions.refresh')}
           </Button>
-        </div>
+        </FilterBar>
 
         <Table
           rowKey="id"
@@ -447,7 +450,7 @@ export function UserGroupsPage() {
             ),
           }}
         />
-      </section>
+      </Panel>
 
       {/* 创建 / 编辑 / 复制 Modal */}
       <Modal

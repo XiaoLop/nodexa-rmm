@@ -1,46 +1,46 @@
 /* Dashboard Main Styles */
 @keyframes pulse-ring {
   0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(45, 204, 112, 0.5);
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(53, 199, 131, 0.4);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 8px rgba(45, 204, 112, 0);
+    box-shadow: 0 0 0 6px rgba(53, 199, 131, 0);
   }
   100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(45, 204, 112, 0);
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(53, 199, 131, 0);
   }
 }
 
 @keyframes pulse-ring-warning {
   0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(244, 180, 60, 0.5);
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(231, 173, 69, 0.4);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 8px rgba(244, 180, 60, 0);
+    box-shadow: 0 0 0 6px rgba(231, 173, 69, 0);
   }
   100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(244, 180, 60, 0);
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(231, 173, 69, 0);
   }
 }
 
 @keyframes pulse-ring-danger {
   0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(255, 83, 100, 0.5);
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(239, 99, 114, 0.4);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 8px rgba(255, 83, 100, 0);
+    box-shadow: 0 0 0 6px rgba(239, 99, 114, 0);
   }
   100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(255, 83, 100, 0);
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(239, 99, 114, 0);
   }
 }
 
@@ -116,17 +116,17 @@
 }
 
 .dashboard-welcome-status i {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   display: inline-block;
   border-radius: 50%;
-  background: #8499b8;
+  background: var(--color-text-disabled);
 }
 
-.dashboard-welcome-status i.success { background: #21df94; box-shadow: 0 0 10px rgba(33, 223, 148, 0.75); }
-.dashboard-welcome-status i.warning { background: #f4b43c; }
-.dashboard-welcome-status i.danger { background: #ff5364; }
-.dashboard-welcome-status b { color: #6880a4; font-weight: 400; }
+.dashboard-welcome-status i.success { background: var(--color-success); box-shadow: 0 0 6px var(--color-success-soft); }
+.dashboard-welcome-status i.warning { background: var(--color-warning); }
+.dashboard-welcome-status i.danger { background: var(--color-danger); }
+.dashboard-welcome-status b { color: var(--color-text-tertiary); font-weight: 400; }
 
 .dashboard-quick-actions {
   display: flex;
@@ -178,14 +178,14 @@
   align-items: center;
   gap: 18px;
   padding: 16px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border-subtle);
   border-left-width: 4px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #111e30 0%, #0c1421 100%);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-feature);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-panel);
   position: relative;
   overflow: hidden;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color var(--motion-normal) ease, box-shadow var(--motion-normal) ease;
 }
 
 .dashboard-status::before {
@@ -196,38 +196,38 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
-  opacity: 0.04;
+  opacity: 0.02;
   background: radial-gradient(circle at 10% 50%, #ffffff 0%, transparent 60%);
 }
 
 .dashboard-status-success {
-  border-left-color: var(--success);
+  border-left-color: var(--color-success);
 }
 .dashboard-status-success .dashboard-status-mark {
-  color: var(--success);
-  background: rgba(45, 204, 112, 0.12);
-  border: 1px solid rgba(45, 204, 112, 0.25);
-  animation: pulse-ring 2.8s infinite;
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid rgba(53, 199, 131, 0.25);
+  animation: pulse-ring 3s infinite;
 }
 
 .dashboard-status-warning {
-  border-left-color: var(--warning);
+  border-left-color: var(--color-warning);
 }
 .dashboard-status-warning .dashboard-status-mark {
-  color: var(--warning);
-  background: rgba(244, 180, 60, 0.12);
-  border: 1px solid rgba(244, 180, 60, 0.25);
-  animation: pulse-ring-warning 2.8s infinite;
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border: 1px solid rgba(231, 173, 69, 0.25);
+  animation: pulse-ring-warning 3s infinite;
 }
 
 .dashboard-status-danger {
-  border-left-color: var(--danger);
+  border-left-color: var(--color-danger);
 }
 .dashboard-status-danger .dashboard-status-mark {
-  color: var(--danger);
-  background: rgba(255, 83, 100, 0.12);
-  border: 1px solid rgba(255, 83, 100, 0.25);
-  animation: pulse-ring-danger 2.8s infinite;
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border: 1px solid rgba(239, 99, 114, 0.25);
+  animation: pulse-ring-danger 3s infinite;
 }
 
 .dashboard-status-mark {

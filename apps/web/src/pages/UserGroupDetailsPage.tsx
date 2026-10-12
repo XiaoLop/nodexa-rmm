@@ -47,6 +47,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FilterBar, Panel } from '../components/ui';
 import { DeviceGroupPermissionModal } from '../components/users/DeviceGroupPermissionModal';
 import { DevicePermissionModal } from '../components/users/DevicePermissionModal';
 import { useMeshCentralControlData } from '../features/gateway';
@@ -832,14 +833,14 @@ export function UserGroupDetailsPage() {
                     gap: 14,
                   }}
                 >
-                  <section className="console-card">
-                    <div className="table-toolbar">
+                  <Panel>
+                    <FilterBar>
                       <strong>{t('userGroups.details.preview.members')}</strong>
                       <div className="toolbar-spacer" />
                       <Button type="link" size="small" onClick={() => setActiveTab('members')}>
                         {t('userGroups.details.viewAllCount', { count: memberLinks.length })}
                       </Button>
-                    </div>
+                    </FilterBar>
                     {memberLinks.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {memberLinks.slice(0, 5).map((link) => {
@@ -878,16 +879,16 @@ export function UserGroupDetailsPage() {
                     ) : (
                       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('userGroups.details.empty.members')} />
                     )}
-                  </section>
+                  </Panel>
 
-                  <section className="console-card">
-                    <div className="table-toolbar">
+                  <Panel>
+                    <FilterBar>
                       <strong>{t('userGroups.details.preview.resources')}</strong>
                       <div className="toolbar-spacer" />
                       <Button type="link" size="small" onClick={() => setActiveTab('groups')}>
                         {t('userGroups.details.viewAllCount', { count: groupLinks.length + deviceLinks.length })}
                       </Button>
-                    </div>
+                    </FilterBar>
                     {groupLinks.length + deviceLinks.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {groupLinks.slice(0, 3).map((link) => {
@@ -940,7 +941,7 @@ export function UserGroupDetailsPage() {
                     ) : (
                       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('userGroups.details.empty.resources')} />
                     )}
-                  </section>
+                  </Panel>
                 </div>
               </div>
             ),
@@ -953,8 +954,8 @@ export function UserGroupDetailsPage() {
               </span>
             ),
             children: (
-              <section className="console-card">
-                <div className="table-toolbar">
+              <Panel>
+                <FilterBar>
                   <Input
                     className="user-group-tab-search"
                     placeholder={t('userGroups.details.search.members')}
@@ -975,7 +976,7 @@ export function UserGroupDetailsPage() {
                   >
                     {t('userGroups.details.actions.addMember')}
                   </Button>
-                </div>
+                </FilterBar>
                 <Table
                   rowKey="id"
                   columns={memberColumns}
@@ -1005,7 +1006,7 @@ export function UserGroupDetailsPage() {
                     ),
                   }}
                 />
-              </section>
+              </Panel>
             ),
           },
           {
@@ -1016,8 +1017,8 @@ export function UserGroupDetailsPage() {
               </span>
             ),
             children: (
-              <section className="console-card">
-                <div className="table-toolbar">
+              <Panel>
+                <FilterBar>
                   <Input
                     className="user-group-tab-search"
                     placeholder={t('userGroups.details.search.groups')}
@@ -1038,7 +1039,7 @@ export function UserGroupDetailsPage() {
                   >
                     {t('userGroups.details.actions.addGroupGrant')}
                   </Button>
-                </div>
+                </FilterBar>
                 <Table
                   rowKey="id"
                   columns={permissionColumns('device-group')}
@@ -1068,7 +1069,7 @@ export function UserGroupDetailsPage() {
                     ),
                   }}
                 />
-              </section>
+              </Panel>
             ),
           },
           {
@@ -1079,8 +1080,8 @@ export function UserGroupDetailsPage() {
               </span>
             ),
             children: (
-              <section className="console-card">
-                <div className="table-toolbar">
+              <Panel>
+                <FilterBar>
                   <Input
                     className="user-group-tab-search"
                     placeholder={t('userGroups.details.search.devices')}
@@ -1101,7 +1102,7 @@ export function UserGroupDetailsPage() {
                   >
                     {t('userGroups.details.actions.addDeviceGrant')}
                   </Button>
-                </div>
+                </FilterBar>
                 <Table
                   rowKey="id"
                   columns={permissionColumns('device')}
@@ -1131,7 +1132,7 @@ export function UserGroupDetailsPage() {
                     ),
                   }}
                 />
-              </section>
+              </Panel>
             ),
           },
         ]}

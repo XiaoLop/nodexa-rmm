@@ -8,8 +8,8 @@
   gap: 18px;
   margin: 0 -24px 22px;
   padding: 28px 50px 24px 24px;
-  border-bottom: 1px solid #233247;
-  background: linear-gradient(135deg, rgba(20, 39, 61, 0.94), rgba(12, 25, 40, 0.72));
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-2);
 }
 .device-detail-device-icon {
   width: 70px;
@@ -17,17 +17,17 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border: 1px solid #33445a;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 20px;
-  color: #8fa0b5;
-  background: #172436;
+  color: var(--color-text-muted);
+  background: var(--color-surface-1);
   font-size: 32px;
 }
 .device-detail-device-icon.is-online {
-  color: #fff;
-  border-color: rgba(47, 128, 255, 0.6);
-  background: linear-gradient(145deg, #3e91ff, #1760d2);
-  box-shadow: 0 12px 30px rgba(35, 112, 224, 0.28);
+  color: var(--color-brand);
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  box-shadow: none;
 }
 .device-detail-title {
   min-width: 0;
@@ -148,9 +148,9 @@
   grid-template-rows: 1fr auto;
   gap: 10px 12px;
   padding: 14px;
-  border: 1px solid #25364b;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
-  background: linear-gradient(145deg, rgba(20, 32, 48, 0.96), rgba(15, 26, 40, 0.96));
+  background: var(--color-surface-1);
 }
 .device-detail-metric-icon {
   width: 42px;

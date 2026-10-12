@@ -201,56 +201,52 @@
 .online-trend-card {
   min-height: 380px;
   position: relative;
-  background:
-    radial-gradient(ellipse at 90% 0%, rgba(37, 217, 144, 0.04), transparent 50%),
-    radial-gradient(ellipse at 10% 100%, rgba(47, 128, 255, 0.03), transparent 45%),
-    linear-gradient(145deg, rgba(18, 29, 43, 0.98), rgba(14, 24, 37, 0.98));
-  border: 1px solid rgba(83, 139, 255, 0.14);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
+  transition: border-color var(--motion-normal) ease, box-shadow var(--motion-normal) ease;
 }
 
 .online-trend-card:hover {
-  border-color: rgba(83, 139, 255, 0.25);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  border-color: var(--color-border-default);
+  box-shadow: var(--shadow-panel);
 }
 
 .trend-title-icon {
-  color: #25d990;
+  color: var(--color-success);
   font-size: 15px;
-  filter: drop-shadow(0 0 6px rgba(37, 217, 144, 0.45));
 }
 
 .trend-range-switcher {
   display: inline-flex;
-  padding: 3px;
-  border-radius: 8px;
-  background: rgba(14, 25, 41, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
 }
 
 .trend-range-switcher button {
-  min-width: 54px;
-  padding: 5px 12px;
+  min-width: 50px;
+  padding: 4px 10px;
   border: 0;
-  border-radius: 6px;
-  color: #7d91aa;
+  border-radius: var(--radius-control);
+  color: var(--color-text-tertiary);
   background: transparent;
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--motion-fast) ease;
 }
 
 .trend-range-switcher button:hover:not(.active) {
-  color: #d2e4f7;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
 }
 
 .trend-range-switcher button.active {
   color: #ffffff;
-  background: linear-gradient(135deg, #2b7bf5, #1b63da);
-  box-shadow: 0 2px 8px rgba(40, 119, 237, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: var(--color-brand);
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.3);
   font-weight: 600;
 }
 

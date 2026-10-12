@@ -34,6 +34,7 @@ import { TaskDetailsView } from '../features/tasks/TaskDetailsView';
 import type { BatchTask, BatchTaskKind, BatchTaskStatus } from '../features/tasks/types';
 import { isActiveBatchTaskStatus } from '../features/tasks/types';
 import { useFormatters } from '../i18n';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/devices.css';
 import '../assets/styles/tasks.css';
 
@@ -291,24 +292,24 @@ export function TasksPage() {
 
   return (
     <div className="page-stack tasks-page">
-      <div className="page-heading">
-        <div>
-          <h1>{t('taskCenter.title')}</h1>
-          <p>{t('taskCenter.subtitle')}</p>
-        </div>
-        <Space>
-          <Button icon={<DesktopOutlined />} onClick={() => navigate('/devices')}>
-            {t('taskCenter.backToDevices')}
-          </Button>
-          <Button
-            icon={<DeleteOutlined />}
-            disabled={!tasks.some((task) => !isActiveBatchTaskStatus(task.status))}
-            onClick={() => manager.clearCompleted()}
-          >
-            {t('taskCenter.clearCompleted')}
-          </Button>
-        </Space>
-      </div>
+      <PageHeader
+        title={t('taskCenter.title')}
+        description={t('taskCenter.subtitle')}
+        actions={
+          <Space>
+            <Button icon={<DesktopOutlined />} onClick={() => navigate('/devices')}>
+              {t('taskCenter.backToDevices')}
+            </Button>
+            <Button
+              icon={<DeleteOutlined />}
+              disabled={!tasks.some((task) => !isActiveBatchTaskStatus(task.status))}
+              onClick={() => manager.clearCompleted()}
+            >
+              {t('taskCenter.clearCompleted')}
+            </Button>
+          </Space>
+        }
+      />
 
       {/* Metrics summary cards */}
       <div className="tasks-metrics-grid">
@@ -354,8 +355,8 @@ export function TasksPage() {
       </div>
 
       {/* Main Table Card */}
-      <section className="console-card devices-table-card">
-        <div className="table-toolbar devices-toolbar">
+      <Panel className="devices-table-card">
+        <FilterBar className="devices-toolbar">
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -388,7 +389,7 @@ export function TasksPage() {
           <Tag>
             {filteredTasks.length} / {tasks.length}
           </Tag>
-        </div>
+        </FilterBar>
 
         <Table
           rowKey="id"
@@ -400,7 +401,7 @@ export function TasksPage() {
             emptyText: <Empty description={t('taskCenter.empty')} />,
           }}
         />
-      </section>
+      </Panel>
 
       {/* Task Details Drawer */}
       <Drawer

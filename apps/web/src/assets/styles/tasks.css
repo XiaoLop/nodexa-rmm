@@ -7,41 +7,42 @@
 
 .tasks-metric-card {
   padding: 16px 20px;
-  background: #0e1825;
-  border: 1px solid #223147;
-  border-radius: 6px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
   display: flex;
   align-items: center;
   gap: 16px;
+  box-shadow: var(--shadow-panel);
 }
 
 .tasks-metric-icon {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-feature);
   display: grid;
   place-items: center;
   font-size: 20px;
 }
 
 .tasks-metric-icon.total {
-  background: rgba(47, 128, 255, 0.15);
-  color: #2f80ff;
+  background: var(--color-brand-soft);
+  color: var(--color-brand-hover);
 }
 
 .tasks-metric-icon.running {
-  background: rgba(24, 144, 255, 0.15);
-  color: #1890ff;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 
 .tasks-metric-icon.completed {
-  background: rgba(45, 204, 112, 0.15);
-  color: #2dcc70;
+  background: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 .tasks-metric-icon.failed {
-  background: rgba(255, 83, 100, 0.15);
-  color: #ff5364;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 .tasks-metric-content {
@@ -51,20 +52,20 @@
 
 .tasks-metric-label {
   font-size: 12px;
-  color: #8c9bb0;
+  color: var(--color-text-tertiary);
 }
 
 .tasks-metric-value {
   font-size: 24px;
   font-weight: 700;
-  color: #f1f5fb;
+  color: var(--color-text-primary);
   line-height: 1.2;
 }
 
 .task-command-output-box {
-  background: #080f1a;
-  border: 1px solid #243348;
-  border-radius: 6px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
   padding: 12px 14px;
 }
 
@@ -75,7 +76,7 @@
   font-family: monospace;
   font-size: 12px;
   line-height: 1.5;
-  color: #d1dbe8;
+  color: var(--color-text-primary);
   white-space: pre-wrap;
   word-break: break-all;
 }

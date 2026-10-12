@@ -60,13 +60,18 @@
   --motion-fast: 140ms;
   --motion-normal: 220ms;
 
-  /* Compatibility aliases for pages awaiting migration. */
+  /* Standard console palette aliases */
   --bg: var(--color-canvas);
-  --surface: var(--color-surface-2);
-  --surface-2: var(--color-surface-1);
-  --border: var(--color-border-default);
+  --surface: var(--color-surface-1);
+  --surface-2: var(--color-surface-2);
+  --surface-3: var(--color-surface-3);
+  --border: var(--color-border-subtle);
+  --border-strong: var(--color-border-default);
   --muted: var(--color-text-tertiary);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
   --primary: var(--color-brand);
+  --primary-hover: var(--color-brand-hover);
   --success: var(--color-success);
   --warning: var(--color-warning);
   --danger: var(--color-danger);

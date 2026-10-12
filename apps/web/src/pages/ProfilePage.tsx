@@ -34,6 +34,7 @@ import {
 import type { UploadProps } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PageHeader } from '../components/ui';
 import { UserAvatar } from '../components/users/UserAvatar';
 import { useMeshCentralControlData } from '../features/gateway';
 import { BackupCodesModal } from '../features/profile/BackupCodesModal';
@@ -741,12 +742,10 @@ export function ProfilePage() {
       {modalContextHolder}
 
       {/* Page Title & Subtitle */}
-      <div className="profile-heading">
-        <div className="profile-heading-title">
-          <h1>个人资料</h1>
-          <p>管理您的个人信息，确保账户安全和使用体验。</p>
-        </div>
-      </div>
+      <PageHeader
+        title={t('profile.title', '个人资料')}
+        description={t('profile.subtitle', '管理您的个人信息，确保账户安全和使用体验。')}
+      />
 
       {!userInfo ? (
         <Alert type="warning" showIcon message={t('profile.unavailable')} />

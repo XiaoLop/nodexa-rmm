@@ -727,13 +727,13 @@
 }
 
 .server-file-space-icon-box.is-user {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.1));
-  color: #60a5fa;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .server-file-space-icon-box.is-team {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(126, 34, 206, 0.1));
+  background: rgba(168, 85, 247, 0.15);
   color: #c084fc;
   border: 1px solid rgba(168, 85, 247, 0.3);
 }

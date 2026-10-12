@@ -27,6 +27,20 @@ export const appTheme: ThemeConfig = {
     Card: { colorBgContainer: '#0d141e' },
     Drawer: { colorBgElevated: '#111a26' },
     Input: { activeBorderColor: '#3b82f6', hoverBorderColor: '#60a5fa' },
+    Select: {
+      optionSelectedBg: 'rgba(59, 130, 246, 0.16)',
+      optionActiveBg: '#172230',
+    },
+    Dropdown: {
+      colorBgElevated: '#111a26',
+    },
+    Tag: {
+      borderRadiusSM: 4,
+    },
+    Tooltip: {
+      colorBgSpotlight: '#172230',
+      colorTextLightSolid: '#edf2f7',
+    },
     Layout: { bodyBg: '#080d14', headerBg: '#0b111a', siderBg: '#0d141e' },
     Menu: {
       darkItemBg: '#0d141e',

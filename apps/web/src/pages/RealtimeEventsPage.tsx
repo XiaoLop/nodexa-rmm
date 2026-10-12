@@ -26,6 +26,7 @@ import {
 } from '../features/events/eventPresentation';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
@@ -288,58 +289,60 @@ export function RealtimeEventsPage() {
 
   return (
     <div className="page-stack realtime-events-page">
-      <section className="console-card">
-        <div className="card-header realtime-events-toolbar">
-          <div>
-            <h2>{t('events.title')}</h2>
-            <span>{t('events.subtitle')}</span>
-          </div>
-          <Space wrap>
-            <Tag
-              color={
-                data.status === 'connected'
-                  ? 'success'
-                  : data.status === 'reconnecting'
-                    ? 'warning'
-                    : 'default'
-              }
-            >
-              {data.status === 'connected'
-                ? t('common.status.connected')
-                : data.status === 'connecting'
-                  ? t('common.status.connecting')
-                  : data.status === 'reconnecting'
-                    ? t('common.status.reconnecting')
-                    : t('common.status.disconnected')}
-            </Tag>
-            <Select
-              aria-label={t('events.columns.action')}
-              value={eventFilter ?? allEventFilter}
-              options={eventFilters}
-              style={{ width: 132 }}
-              onChange={(value) =>
-                setEventFilter(value === allEventFilter ? undefined : value)
-              }
-            />
-            <Select
-              aria-label={t('events.countOption', { count: historyLimit })}
-              value={historyLimit}
-              options={[30, 60, 100, 200].map((value) => ({
-                label: t('events.countOption', { count: value }),
-                value,
-              }))}
-              style={{ width: 100 }}
-              onChange={(value) => setHistoryLimit(value)}
-            />
-            <Button
-              disabled={waitingForConnection}
-              loading={loading}
-              onClick={() => void loadHistory()}
-            >
-              {t('common.actions.refresh')}
-            </Button>
-          </Space>
-        </div>
+      <PageHeader
+        title={t('events.title')}
+        description={t('events.subtitle')}
+        status={
+          <Tag
+            color={
+              data.status === 'connected'
+                ? 'success'
+                : data.status === 'reconnecting'
+                  ? 'warning'
+                  : 'default'
+            }
+          >
+            {data.status === 'connected'
+              ? t('common.status.connected')
+              : data.status === 'connecting'
+                ? t('common.status.connecting')
+                : data.status === 'reconnecting'
+                  ? t('common.status.reconnecting')
+                  : t('common.status.disconnected')}
+          </Tag>
+        }
+      />
+
+      <Panel>
+        <FilterBar className="realtime-events-toolbar">
+          <Select
+            aria-label={t('events.columns.action')}
+            value={eventFilter ?? allEventFilter}
+            options={eventFilters}
+            style={{ width: 140 }}
+            onChange={(value) =>
+              setEventFilter(value === allEventFilter ? undefined : value)
+            }
+          />
+          <Select
+            aria-label={t('events.countOption', { count: historyLimit })}
+            value={historyLimit}
+            options={[30, 60, 100, 200].map((value) => ({
+              label: t('events.countOption', { count: value }),
+              value,
+            }))}
+            style={{ width: 110 }}
+            onChange={(value) => setHistoryLimit(value)}
+          />
+          <div className="toolbar-spacer" />
+          <Button
+            disabled={waitingForConnection}
+            loading={loading}
+            onClick={() => void loadHistory()}
+          >
+            {t('common.actions.refresh')}
+          </Button>
+        </FilterBar>
         {data.status !== 'connected' && (
           <Alert banner type="warning" title={t('events.disconnectedWarning')} />
         )}
@@ -385,7 +388,7 @@ export function RealtimeEventsPage() {
           scroll={{ x: 1200 }}
           onRow={(event) => ({ onClick: () => setSelectedEvent(event) })}
         />
-      </section>
+      </Panel>
       <EventDetailsDrawer
         event={selectedEvent}
         onClose={() => setSelectedEvent(undefined)}

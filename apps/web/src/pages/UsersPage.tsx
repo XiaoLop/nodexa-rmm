@@ -34,6 +34,7 @@ import { filterManagedUsers, type UserFilter } from '../features/users/userFilte
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/users.css';
 
 export function UsersPage() {
@@ -339,20 +340,20 @@ export function UsersPage() {
     <div className="page-stack users-page">
       {messageContextHolder}
       {modalContextHolder}
-      <div className="page-heading">
-        <div>
-          <h1>{t('users.title')}</h1>
-          <p>{t('users.subtitle')}</p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          disabled={!connected}
-          onClick={() => setCreateOpen(true)}
-        >
-          {t('users.createUser')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('users.title')}
+        description={t('users.subtitle')}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={!connected}
+            onClick={() => setCreateOpen(true)}
+          >
+            {t('users.createUser')}
+          </Button>
+        }
+      />
 
       {!connected ? (
         <Alert
@@ -376,8 +377,8 @@ export function UsersPage() {
         />
       ) : null}
 
-      <section className="console-card devices-table-card">
-        <div className="table-toolbar users-toolbar">
+      <Panel className="devices-table-card">
+        <FilterBar className="users-toolbar">
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -408,7 +409,7 @@ export function UsersPage() {
           >
             {t('common.actions.refresh')}
           </Button>
-        </div>
+        </FilterBar>
         <Table
           className="users-table"
           rowKey="id"
@@ -440,7 +441,7 @@ export function UsersPage() {
             ),
           }}
         />
-      </section>
+      </Panel>
 
       <UserCreateModal
         open={createOpen}

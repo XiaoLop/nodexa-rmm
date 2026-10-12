@@ -35,6 +35,7 @@ import {
   type UiPermission,
 } from '@meshcentral/control-client';
 import { createCollator, useFormatters } from '../i18n';
+import { FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/devices.css';
 
 function nameCategory(name: string) {
@@ -366,24 +367,24 @@ export function DeviceGroupsPage() {
     <div className="page-stack devices-page">
       {messageContextHolder}
       {modalContextHolder}
-      <div className="page-heading">
-        <div>
-          <h1>{t('deviceGroups.title')}</h1>
-          <p>{t('deviceGroups.subtitle')}</p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          disabled={
-            !applicationCapabilities.createDeviceGroups || !client || status !== 'connected'
-          }
-          onClick={() => openGroupEditor()}
-        >
-          {t('deviceGroups.createGroup')}
-        </Button>
-      </div>
-      <section className="console-card devices-table-card">
-        <div className="table-toolbar devices-toolbar">
+      <PageHeader
+        title={t('deviceGroups.title')}
+        description={t('deviceGroups.subtitle')}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={
+              !applicationCapabilities.createDeviceGroups || !client || status !== 'connected'
+            }
+            onClick={() => openGroupEditor()}
+          >
+            {t('deviceGroups.createGroup')}
+          </Button>
+        }
+      />
+      <Panel className="devices-table-card">
+        <FilterBar className="devices-toolbar">
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -405,7 +406,7 @@ export function DeviceGroupsPage() {
           >
             {t('common.actions.refresh')}
           </Button>
-        </div>
+        </FilterBar>
         <Table
           rowKey="id"
           columns={columns}
@@ -429,7 +430,7 @@ export function DeviceGroupsPage() {
             ),
           }}
         />
-      </section>
+      </Panel>
       <Modal
         title={
           editingGroup === 'new'

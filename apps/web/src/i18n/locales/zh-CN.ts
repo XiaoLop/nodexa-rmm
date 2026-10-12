@@ -2241,6 +2241,7 @@ export const zhCN = {
         remove: '移除',
         editPermissions: '编辑权限',
         confirmRemove: '确认移除',
+        editProfile: '编辑资料',
         addMember: '添加成员',
         addMemberNow: '立即添加成员',
         addGroupGrant: '添加设备组授权',
