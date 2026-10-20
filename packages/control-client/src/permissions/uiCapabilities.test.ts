@@ -35,7 +35,6 @@ describe('getDeviceUiCapabilities', () => {
       visible: true,
       enabled: false,
       reason: 'device-offline',
-      message: '设备当前离线',
     });
     expect(capabilities.power.enabled).toBe(false);
   });
@@ -102,7 +101,6 @@ describe('getDeviceUiCapabilities', () => {
       visible: true,
       enabled: false,
       reason: 'feature-disabled',
-      message: '服务器未启用访客分享',
     });
   });
 });

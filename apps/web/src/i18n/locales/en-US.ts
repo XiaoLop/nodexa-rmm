@@ -122,6 +122,8 @@ export const enUS = {
     ariaLabel: 'Device workspace functions',
     loading: 'Loading device workspace',
     loadingAnnouncement: 'Connecting to the gateway and loading device information...',
+    loadingPanel: 'Loading workspace…',
+    comingSoon: 'This workspace is not available yet',
     loadFailed: 'Failed to load device details',
     notFound: 'Device not found',
     backToList: 'Back to device list',
@@ -650,7 +652,7 @@ export const enUS = {
     collapseMenu: 'Collapse menu',
   },
   header: {
-    searchPlaceholder: 'Search devices, users, or IDs...',
+    searchPlaceholder: 'Search devices…',
     controlConnected: 'Gateway connected',
     gatewayDisconnected: 'Gateway disconnected',
     notifications: 'Notifications',

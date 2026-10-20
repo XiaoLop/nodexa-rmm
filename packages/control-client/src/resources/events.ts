@@ -1,4 +1,4 @@
-import { MeshCentralRequestTimeoutError, MeshCentralValidationError } from '../errors';
+import { MeshCentralValidationError } from '../errors';
 import { isRecord, normalizeEvent } from '../protocol/normalizers';
 import type { EventListOptions, MeshCentralEvent } from '../types';
 
@@ -27,13 +27,7 @@ export class EventsResource {
     return { limit, ...(options.filter ? { filter: options.filter } : {}) };
   }
   private async fetch(filter: Record<string, unknown>): Promise<MeshCentralEvent[]> {
-    let response: unknown;
-    try {
-      response = await this.client.request<unknown>({ action: 'events', ...filter });
-    } catch (error) {
-      if (error instanceof MeshCentralRequestTimeoutError) return [];
-      throw error;
-    }
+    const response = await this.client.request<unknown>({ action: 'events', ...filter });
     const events = isRecord(response) && Array.isArray(response.events) ? response.events : [];
     return events.map(normalizeEvent).filter((event): event is MeshCentralEvent => Boolean(event));
   }

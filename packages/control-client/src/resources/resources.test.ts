@@ -787,9 +787,9 @@ describe('resources', () => {
     const client = new ControllableClient();
     const events = new EventsResource(client);
 
-    const emptyResult = events.list({ limit: 60 });
+    const timedOutResult = events.list({ limit: 60 });
     client.pending.at(-1)?.reject(new MeshCentralRequestTimeoutError('No event response.'));
-    await expect(emptyResult).resolves.toEqual([]);
+    await expect(timedOutResult).rejects.toBeInstanceOf(MeshCentralRequestTimeoutError);
 
     const failedResult = events.list({ limit: 60 });
     client.pending.at(-1)?.reject(new MeshCentralServerError('Access denied.'));

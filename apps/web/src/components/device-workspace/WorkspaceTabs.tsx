@@ -104,9 +104,9 @@ export function WorkspaceTabs({
             <span>{t(tab.labelKey)}</span>
           </button>
         );
-        const permissionMessage = permission?.message ?? (permission?.reason
+        const permissionMessage = permission?.reason
           ? t(`deviceWorkspace.tabs.reasons.${permission.reason}`)
-          : undefined);
+                  : undefined;
         return permissionMessage ? (
           <Tooltip key={tab.key} title={permissionMessage}>
             <span>{button}</span>

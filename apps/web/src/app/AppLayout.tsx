@@ -2,10 +2,9 @@ import {
   GlobalOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  QuestionCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Dropdown, Input, Layout, Menu, Tooltip } from 'antd';
+import { Button, Dropdown, Layout, Menu, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -152,10 +151,15 @@ function AppLayoutContent() {
             <span className="breadcrumb-title">{pageMeta.title}</span>
           </div>
           <div className="header-actions">
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder={t('header.searchPlaceholder')}
+            <Button
+              type="text"
+              icon={<SearchOutlined />}
               className="global-search"
+              aria-label={t('header.searchPlaceholder')}
+              onClick={() => {
+                navigate('/devices');
+                setMobileMenuOpen(false);
+              }}
             />
             <Tooltip
               title={connected ? t('header.controlConnected') : t('header.gatewayDisconnected')}
@@ -192,7 +196,6 @@ function AppLayoutContent() {
               onOpen={() => setNotificationCenterOpen(true)}
             />
             <TaskCenterPopover />
-            <Button type="text" icon={<QuestionCircleOutlined />} aria-label={t('header.help')} />
             <Dropdown
               menu={{
                 items: [

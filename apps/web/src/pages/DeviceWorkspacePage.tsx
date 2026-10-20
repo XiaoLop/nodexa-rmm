@@ -451,9 +451,9 @@ export function DeviceWorkspacePage() {
           />
         ) : (
           <section className="console-card workspace-tab-empty">
-            <Empty description="该工作区将在后续版本接入">
+            <Empty description={t('deviceWorkspace.comingSoon')}>
               <Button type="primary" onClick={() => setActiveTab('overview')}>
-                回到概览
+                {t('common.actions.backToOverview')}
               </Button>
             </Empty>
           </section>
@@ -464,10 +464,11 @@ export function DeviceWorkspacePage() {
 }
 
 function WorkspacePanelLoading() {
+  const { t } = useTranslation();
   return (
     <section className="console-card workspace-tab-empty" aria-busy="true">
       <span className="boot-spinner" />
-      <span>正在加载工作区...</span>
+      <span>{t('deviceWorkspace.loadingPanel')}</span>
     </section>
   );
 }

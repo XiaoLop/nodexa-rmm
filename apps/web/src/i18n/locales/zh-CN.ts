@@ -122,6 +122,8 @@ export const zhCN = {
     ariaLabel: '设备工作台功能',
     loading: '正在加载设备工作区',
     loadingAnnouncement: '正在连接网关并加载设备信息...',
+    loadingPanel: '正在加载工作区…',
+    comingSoon: '该工作区将在后续版本接入',
     loadFailed: '设备信息加载失败',
     notFound: '未找到该设备',
     backToList: '返回设备列表',
@@ -626,7 +628,7 @@ export const zhCN = {
     collapseMenu: '收起菜单',
   },
   header: {
-    searchPlaceholder: '搜索设备、用户、ID...',
+    searchPlaceholder: '搜索设备…',
     controlConnected: '业务网关已连接',
     gatewayDisconnected: '业务网关未连接',
     notifications: '通知',

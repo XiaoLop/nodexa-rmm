@@ -6,6 +6,7 @@ import { hasSiteRight, isSiteAdministrator, SiteRight } from './siteRights';
 export interface UiPermission {
   visible: boolean;
   enabled: boolean;
+  message?: string;
   reason?:
     | 'permission-denied'
     | 'permission-unknown'
@@ -13,7 +14,6 @@ export interface UiPermission {
     | 'device-offline'
     | 'feature-disabled'
     | 'agent-unsupported';
-  message?: string;
 }
 
 export interface ServerRuntimeCapabilities {
@@ -69,22 +69,17 @@ export interface ApplicationUiCapabilities {
 
 const hidden = (): UiPermission => ({ visible: false, enabled: false });
 
-function available(
-  enabled: boolean,
-  reason?: UiPermission['reason'],
-  message?: string,
-): UiPermission {
+function available(enabled: boolean, reason?: UiPermission['reason']): UiPermission {
   return {
     visible: true,
     enabled,
     reason: enabled ? undefined : reason,
-    message: enabled ? undefined : message,
   };
 }
 
 function gatewayPermission(permitted: boolean, controlConnected: boolean): UiPermission {
   if (!permitted) return hidden();
-  return available(controlConnected, 'gateway-disconnected', '控制通道未连接');
+  return available(controlConnected, 'gateway-disconnected');
 }
 
 function runtimePermission(
@@ -95,9 +90,9 @@ function runtimePermission(
 ): UiPermission {
   if (!permitted) return hidden();
   if (!runtime.controlConnected)
-    return available(false, 'gateway-disconnected', '控制通道未连接');
-  if (!online) return available(false, 'device-offline', '设备当前离线');
-  if (!supported) return available(false, 'agent-unsupported', '设备 Agent 不支持此功能');
+    return available(false, 'gateway-disconnected');
+  if (!online) return available(false, 'device-offline');
+  if (!supported) return available(false, 'agent-unsupported');
   return available(true);
 }
 
@@ -118,7 +113,7 @@ export function getDeviceUiCapabilities(
   server: ServerRuntimeCapabilities = {},
 ): DeviceUiCapabilities {
   if (rights === undefined) {
-    const unknown = available(false, 'permission-unknown', '正在确认设备权限');
+    const unknown = available(false, 'permission-unknown');
     return {
       desktop: unknown,
       desktopInput: unknown,
@@ -211,7 +206,7 @@ export function getDeviceUiCapabilities(
     ),
     guestShare:
       server.guestDeviceSharing === false
-        ? available(false, 'feature-disabled', '服务器未启用访客分享')
+        ? available(false, 'feature-disabled')
         : gatewayPermission(
             administrator || hasMeshRight(normalized, MeshRight.GuestSharing),
             runtime.controlConnected,
@@ -233,7 +228,7 @@ export function getDeviceGroupUiCapabilities(
   controlConnected: boolean,
 ): DeviceGroupUiCapabilities {
   if (rights === undefined) {
-    const unknown = available(false, 'permission-unknown', '正在确认设备组权限');
+    const unknown = available(false, 'permission-unknown');
     return {
       edit: unknown,
       remove: unknown,

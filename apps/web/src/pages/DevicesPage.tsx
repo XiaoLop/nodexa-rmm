@@ -1,4 +1,4 @@
-import {
+﻿import {
   EllipsisOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -277,7 +277,7 @@ export function DevicesPage() {
       const permission = action === 'wake' ? capabilities.wake : capabilities.power;
       if (!client || !permission.enabled) {
         void messageApi.error(
-          permission.message ??
+          (permission.reason ? t(`deviceWorkspace.tabs.reasons.${permission.reason}`) : undefined) ??
             (action === 'wake'
               ? t('devices.messages.permissionWakeDenied')
               : t('devices.messages.permissionPowerDenied')),
@@ -356,7 +356,7 @@ export function DevicesPage() {
     (device: Device) => {
       const permission = deviceCapabilities(device).edit;
       if (!permission.enabled) {
-        void messageApi.warning(permission.message ?? t('devices.messages.permissionEditDenied'));
+        void messageApi.warning((permission.reason ? t(`deviceWorkspace.tabs.reasons.${permission.reason}`) : undefined) ?? t('devices.messages.permissionEditDenied'));
         return;
       }
       setEditingDevice(device);
@@ -368,7 +368,7 @@ export function DevicesPage() {
     (device: Device) => {
       const permission = deviceCapabilities(device).uninstall;
       if (!client || !permission.enabled) {
-        void messageApi.warning(permission.message ?? t('devices.messages.permissionDeleteDenied'));
+        void messageApi.warning((permission.reason ? t(`deviceWorkspace.tabs.reasons.${permission.reason}`) : undefined) ?? t('devices.messages.permissionDeleteDenied'));
         return;
       }
       modal.confirm({
@@ -404,7 +404,8 @@ export function DevicesPage() {
       const permission = deviceCapabilities(device).uninstall;
       if (!client || !permission.enabled) {
         void messageApi.warning(
-          permission.message ?? t('devices.messages.permissionUninstallDenied'),
+          (permission.reason ? t(`deviceWorkspace.tabs.reasons.${permission.reason}`) : undefined) ??
+            t('devices.messages.permissionUninstallDenied'),
         );
         return;
       }

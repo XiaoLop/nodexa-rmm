@@ -49,13 +49,15 @@ function nameCategory(name: string) {
 function PermissionButton({
   permission,
   children,
+  t,
 }: {
   permission: UiPermission;
   children: React.ReactElement;
+  t: (key: string) => string;
 }) {
   if (!permission.visible) return null;
-  return permission.message ? (
-    <Tooltip title={permission.message}>
+  return permission.reason ? (
+    <Tooltip title={t(`deviceWorkspace.tabs.reasons.${permission.reason}`)}>
       <span>{children}</span>
     </Tooltip>
   ) : (
@@ -334,7 +336,7 @@ export function DeviceGroupsPage() {
                 {t('deviceGroups.actions.sharedFiles')}
               </Button>
             )}
-            <PermissionButton permission={capabilities.edit}>
+            <PermissionButton permission={capabilities.edit} t={t}>
               <Button
                 type="link"
                 size="small"
@@ -345,7 +347,7 @@ export function DeviceGroupsPage() {
                 {t('common.actions.edit')}
               </Button>
             </PermissionButton>
-            <PermissionButton permission={capabilities.remove}>
+            <PermissionButton permission={capabilities.remove} t={t}>
               <Button
                 type="link"
                 danger
