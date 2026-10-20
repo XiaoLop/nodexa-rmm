@@ -23,10 +23,7 @@ import {
   DeviceProcessesPanel,
   DeviceServicesPanel,
 } from '../components/device-workspace/SystemManagementPanels';
-import {
-  WorkspaceSettings,
-  type WorkspaceSettingsValue,
-} from '../components/device-workspace/WorkspaceSettings';
+import type { WorkspaceSettingsValue } from '../components/device-workspace/WorkspaceSettings';
 import {
   WorkspaceTabs,
   workspaceTabPermission,
@@ -87,7 +84,6 @@ export function DeviceWorkspacePage() {
   const desktopPanelRef = useRef<RemoteDesktopPanelHandle>(null);
   const activeTab = workspaceTab(searchParams.get('tab'));
   const [scale, setScale] = useState('fit');
-  const [desktopSessionActive, setDesktopSessionActive] = useState(false);
   const [deviceDetails, setDeviceDetails] =
     useState<Awaited<ReturnType<NonNullable<typeof data.client>['devices']['details']>>>();
   const [fetchedDevice, setFetchedDevice] = useState<Device>();
@@ -100,9 +96,6 @@ export function DeviceWorkspacePage() {
   const [failedDeviceId, setFailedDeviceId] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
   const requestSequence = useRef(0);
-  const [desktopLatency, setDesktopLatency] = useState<number>();
-  const [desktopLatencyTrend, setDesktopLatencyTrend] = useState<number[]>([]);
-  const [desktopLatencyTimedOut, setDesktopLatencyTimedOut] = useState(false);
   const [settings, setSettings] = useState<WorkspaceSettingsValue>({
     keyboard: true,
     mouse: true,
@@ -198,21 +191,6 @@ export function DeviceWorkspacePage() {
     else next.set('tab', tab);
     setSearchParams(next, { replace: true });
   };
-  const handleDesktopLatencyChange = (latencyMs: number | undefined) => {
-    setDesktopLatency(latencyMs);
-    setDesktopLatencyTimedOut(latencyMs === undefined);
-    if (latencyMs !== undefined)
-      setDesktopLatencyTrend((current) => [...current.slice(-19), latencyMs]);
-  };
-  const handleDesktopSessionActiveChange = (active: boolean) => {
-    setDesktopSessionActive(active);
-    if (!active) {
-      setDesktopLatency(undefined);
-      setDesktopLatencyTrend([]);
-      setDesktopLatencyTimedOut(false);
-    }
-  };
-
   useEffect(() => {
     if (!capabilities || !model) return;
     const permission = workspaceTabPermission(
@@ -429,8 +407,6 @@ export function DeviceWorkspacePage() {
               onSettingsChange={setSettings}
               scale={scale}
               onScaleChange={setScale}
-              onSessionActiveChange={handleDesktopSessionActiveChange}
-              onLatencyChange={handleDesktopLatencyChange}
             />
           </div>
         ) : activeTab === 'terminal' ? (
