@@ -52,7 +52,7 @@
 
 ## 二、可以优化的地方
 
-### 1. 正确性与体验
+### 1. 正确性与体验 [已完成]
 
 - **Vite 代理地址写死**：已从 `MESHCENTRAL_PROXY_TARGET` 环境变量读取，未配置时保留 `https://mesh.xiaonext.com` 作为默认值。
 - **SDK 返回本地化中文**：权限能力对象仅保留 `reason`，Web UI 按当前语言翻译，覆盖工作区、设备列表及设备组的权限提示。
@@ -61,7 +61,7 @@
 - **事件查询超时被吞掉**：超时错误现在向上抛出，实时事件页展示错误状态并提供重试，与空结果区分。
 - **报表、事件缺少导出**：报表没有 CSV/打印，实时事件没有暂停、清空、导出；对审计场景不够用。
 
-### 2. 架构与可维护性
+### 2. 架构与可维护性 [已完成]
 
 - **超大页面文件**：`UserGroupDetailsPage`（原 1334 行）、`DevicesPage`（原 1180 行）、`UserDetailsPage`（原 902 行）已按“数据 Hook + 纯函数 + 子组件 + 弹窗”拆分，页面只保留装配；`ProfilePage`（1217 行）、`FilesPage`（1331 行）、`DashboardPage`（812 行）仍待处理。
 - **SDK 字符串和 UI 耦合**：`shared-state` 已删除中文事件文案，新增 `redactEventMessage()` 只返回事件分类和去 ID 后的文本，`apps/web` 通过 `events.messages.*` 翻译；`formatEventMessage` / `getGreetingTime` 保留为 `@deprecated` 兼容层供 `apps/app` 使用。ESLint 已禁止 `control-client`、`shared-state`、`relay` 的源码出现汉字字面量，并加入中英字典一致性测试。
