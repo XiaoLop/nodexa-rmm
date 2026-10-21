@@ -1,14 +1,17 @@
 import {
+  AppstoreOutlined,
   CameraOutlined,
-  CaretDownOutlined,
+  CodeOutlined,
   CopyOutlined,
   DesktopOutlined,
   DisconnectOutlined,
+  FolderOpenOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
-  KeyOutlined,
   LoadingOutlined,
   PlayCircleOutlined,
+  ReloadOutlined,
+  SettingOutlined,
   SnippetsOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
@@ -25,8 +28,6 @@ import type { Device } from '@meshcentral/shared-state';
 import {
   Alert,
   Button,
-  Divider,
-  Dropdown,
   Input,
   Modal,
   Select,
@@ -34,7 +35,6 @@ import {
   Switch,
   Tooltip,
   message,
-  type MenuProps,
 } from 'antd';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -367,105 +367,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   const canDisconnect = Boolean(sessionRef.current) || isConnecting;
   const inputAllowed = settings.keyboard && desktopAccess !== 'denied' && desktopAccess !== 'view-only';
 
-  const shortcutMenuItems: MenuProps['items'] = [
-    {
-      key: 'cad',
-      label: 'Ctrl + Alt + Del',
-      disabled: !desktopSession || !inputAllowed,
-      onClick: () => desktopSession?.sendCad(),
-    },
-    {
-      key: 'win',
-      icon: <WindowsOutlined />,
-      label: t('deviceWorkspace.remoteDesktop.winKey'),
-      disabled: !desktopSession || !inputAllowed,
-      onClick: () => sendKeyCombo([{ keyCode: 91, extended: true }]),
-    },
-    {
-      key: 'taskmgr',
-      label: t('deviceWorkspace.remoteDesktop.taskManager'),
-      disabled: !desktopSession || !inputAllowed,
-      onClick: () =>
-        sendKeyCombo([
-          { keyCode: 17 }, // Ctrl
-          { keyCode: 16 }, // Shift
-          { keyCode: 27 }, // Esc
-        ]),
-    },
-    {
-      key: 'explorer',
-      label: t('deviceWorkspace.remoteDesktop.fileExplorer'),
-      disabled: !desktopSession || !inputAllowed,
-      onClick: () =>
-        sendKeyCombo([
-          { keyCode: 91, extended: true }, // Win
-          { keyCode: 69 }, // E
-        ]),
-    },
-    {
-      key: 'run',
-      label: t('deviceWorkspace.remoteDesktop.runDialog'),
-      disabled: !desktopSession || !inputAllowed,
-      onClick: () =>
-        sendKeyCombo([
-          { keyCode: 91, extended: true }, // Win
-          { keyCode: 82 }, // R
-        ]),
-    },
-  ];
-
   const getPopupContainer = () => shellRef.current ?? document.body;
-
-  const settingsContent = (
-    <div className="remote-settings-popover">
-      <div className="setting-row">
-        <span>{t('deviceWorkspace.remoteDesktop.keyboardInput')}</span>
-        <Switch
-          size="small"
-          checked={settings.keyboard}
-          disabled={desktopAccess === 'denied' || desktopAccess === 'view-only'}
-          onChange={(checked) => onSettingsChange({ ...settings, keyboard: checked })}
-        />
-      </div>
-      <div className="setting-row">
-        <span>{t('deviceWorkspace.remoteDesktop.mouseInput')}</span>
-        <Switch
-          size="small"
-          checked={settings.mouse}
-          disabled={desktopAccess === 'denied' || desktopAccess === 'view-only'}
-          onChange={(checked) => onSettingsChange({ ...settings, mouse: checked })}
-        />
-      </div>
-      <div className="setting-row">
-        <span>{t('deviceWorkspace.remoteDesktop.scaleMode')}</span>
-        <Select
-          size="small"
-          value={scale}
-          style={{ width: 110 }}
-          getPopupContainer={getPopupContainer}
-          onChange={onScaleChange}
-          options={[
-            { value: 'fit', label: t('deviceWorkspace.remoteDesktop.fitWindow') },
-            { value: '100', label: t('deviceWorkspace.remoteDesktop.originalSize') },
-            { value: 'stretch', label: t('deviceWorkspace.remoteDesktop.stretch') },
-            { value: '75', label: '75%' },
-          ]}
-        />
-      </div>
-      <div className="setting-slider-row">
-        <div className="slider-label">
-          <span>{t('deviceWorkspace.remoteDesktop.quality')}</span>
-          <span style={{ color: '#8da4be', fontSize: 11 }}>{settings.quality}%</span>
-        </div>
-        <Slider
-          min={10}
-          max={100}
-          value={settings.quality}
-          onChange={(val) => onSettingsChange({ ...settings, quality: val })}
-        />
-      </div>
-    </div>
-  );
 
   const statusTooltip = (
     <div>
@@ -482,92 +384,278 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
       {messageContextHolder}
       <section className="console-card remote-desktop-card" ref={shellRef}>
         <aside className="remote-desktop-toolbar" aria-label={t('deviceWorkspace.remoteDesktop.settings')}>
-          {!isConnected && !isConnecting ? (
-            <Button
-              type="primary"
-              size="small"
-              icon={<PlayCircleOutlined />}
-              onClick={() => void connect()}
-              disabled={unavailable}
-            >
-              {t('deviceWorkspace.remoteDesktop.connect')}
-            </Button>
-          ) : (
-            <Button
-              danger
-              size="small"
-              icon={<DisconnectOutlined />}
-              onClick={() => disconnect()}
-              disabled={!canDisconnect}
-            >
-              {isConnecting ? t('common.actions.cancel') : t('deviceWorkspace.remoteDesktop.endSession')}
-            </Button>
-          )}
-
-          <Divider />
-
-          <Tooltip title={statusTooltip} getPopupContainer={getPopupContainer}>
-            <div className="remote-desktop-status">
-              <i className={`status-dot ${isConnected ? 'connected' : isConnecting ? 'connecting' : status === 'error' ? 'error' : ''}`} />
-              <span>
-                {isConnecting ? (
-                  <>
-                    <LoadingOutlined spin style={{ marginRight: 4 }} />
-                    {t('deviceWorkspace.remoteDesktop.connecting')}
-                  </>
-                ) : isConnected ? (
-                  currentLatency !== undefined ? (
-                    <span className={`remote-desktop-latency ${currentLatency > 200 ? 'high' : ''}`}>
-                      {currentLatency} ms
-                    </span>
-                  ) : (
-                    t('deviceWorkspace.remoteDesktop.status.connected')
-                  )
-                ) : (
-                  t(`deviceWorkspace.remoteDesktop.status.${STATUS_KEYS[status]}`)
-                )}
-              </span>
-              {screen && <span style={{ opacity: 0.65 }}>({screen.width}×{screen.height})</span>}
+          {/* 1. 会话状态与主连接操作卡片 */}
+          <div className="remote-status-card">
+            <div className="remote-status-main">
+              <Tooltip title={statusTooltip} getPopupContainer={getPopupContainer}>
+                <div className="remote-desktop-status">
+                  <i className={`status-dot ${isConnected ? 'connected' : isConnecting ? 'connecting' : status === 'error' ? 'error' : ''}`} />
+                  <span>
+                    {isConnecting ? (
+                      <>
+                        <LoadingOutlined spin style={{ marginRight: 4 }} />
+                        {t('deviceWorkspace.remoteDesktop.connecting')}
+                      </>
+                    ) : (
+                      t(`deviceWorkspace.remoteDesktop.status.${STATUS_KEYS[status]}`)
+                    )}
+                  </span>
+                </div>
+              </Tooltip>
+              {currentLatency !== undefined && (
+                <span className={`remote-desktop-latency ${currentLatency > 200 ? 'high' : ''}`}>
+                  {currentLatency} ms
+                </span>
+              )}
             </div>
-          </Tooltip>
 
-          <Divider />
+            {screen && (
+              <div className="remote-status-tags">
+                <span className="remote-status-resolution">{screen.width} × {screen.height}</span>
+                <span className="remote-status-resolution">{transport === 'webrtc' ? 'WebRTC' : 'WS Relay'}</span>
+              </div>
+            )}
 
-          <Dropdown
-            menu={{ items: shortcutMenuItems }}
-            trigger={['click']}
-            getPopupContainer={getPopupContainer}
-            disabled={!isConnected || !inputAllowed}
-          >
-            <Button size="small" icon={<KeyOutlined />}>
-              {t('deviceWorkspace.remoteDesktop.quickKeys')} <CaretDownOutlined style={{ fontSize: 9 }} />
-            </Button>
-          </Dropdown>
+            {!isConnected && !isConnecting ? (
+              <Button
+                type="primary"
+                size="middle"
+                className="remote-primary-action-btn"
+                icon={<PlayCircleOutlined />}
+                onClick={() => void connect()}
+                disabled={unavailable}
+              >
+                {t('deviceWorkspace.remoteDesktop.connect')}
+              </Button>
+            ) : (
+              <Button
+                danger
+                size="middle"
+                className="remote-primary-action-btn"
+                icon={<DisconnectOutlined />}
+                onClick={() => disconnect()}
+                disabled={!canDisconnect}
+              >
+                {isConnecting ? t('common.actions.cancel') : t('deviceWorkspace.remoteDesktop.endSession')}
+              </Button>
+            )}
+          </div>
 
-          {settingsContent}
-          <Divider />
-          <Button size="small" icon={<SnippetsOutlined />} disabled={!desktopSession || !meshCentralClient || !inputAllowed} onClick={() => void pasteLocalClipboardToRemote()}>
-            {t('deviceWorkspace.remoteDesktop.pasteRemote')}
-          </Button>
-          <Button size="small" icon={<CopyOutlined />} disabled={!desktopSession || !meshCentralClient} onClick={() => void copyRemoteClipboardToLocal()}>
-            {t('deviceWorkspace.remoteDesktop.copyLocal')}
-          </Button>
-          <Button size="small" icon={<CameraOutlined />} disabled={!screen} onClick={saveScreenshot}>
-            {t('deviceWorkspace.remoteDesktop.screenshot')}
-          </Button>
-          <Divider />
-          <Tooltip title={fullscreen ? t('deviceWorkspace.remoteDesktop.exitFullscreen') : t('deviceWorkspace.remoteDesktop.fullscreen')} getPopupContainer={getPopupContainer}>
+          {/* 2. 快捷指令矩阵 */}
+          <div className="remote-toolbar-card">
+            <div className="remote-toolbar-card-header">{t('deviceWorkspace.remoteDesktop.shortcutsCardTitle')}</div>
+            <div className="remote-shortcuts-grid">
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.winKey')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<WindowsOutlined />}
+                  disabled={!desktopSession || !inputAllowed}
+                  onClick={() => sendKeyCombo([{ keyCode: 91, extended: true }])}
+                >
+                  Win 键
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.taskManager')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<AppstoreOutlined />}
+                  disabled={!desktopSession || !inputAllowed}
+                  onClick={() =>
+                    sendKeyCombo([
+                      { keyCode: 17 }, // Ctrl
+                      { keyCode: 16 }, // Shift
+                      { keyCode: 27 }, // Esc
+                    ])
+                  }
+                >
+                  任务管理
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.fileExplorer')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<FolderOpenOutlined />}
+                  disabled={!desktopSession || !inputAllowed}
+                  onClick={() =>
+                    sendKeyCombo([
+                      { keyCode: 91, extended: true }, // Win
+                      { keyCode: 69 }, // E
+                    ])
+                  }
+                >
+                  资源管理
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.windowsSettings')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<SettingOutlined />}
+                  disabled={!desktopSession || !inputAllowed}
+                  onClick={() =>
+                    sendKeyCombo([
+                      { keyCode: 91, extended: true }, // Win
+                      { keyCode: 73 }, // I
+                    ])
+                  }
+                >
+                  系统设置
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.runDialog')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<CodeOutlined />}
+                  disabled={!desktopSession || !inputAllowed}
+                  onClick={() =>
+                    sendKeyCombo([
+                      { keyCode: 91, extended: true }, // Win
+                      { keyCode: 82 }, // R
+                    ])
+                  }
+                >
+                  运行窗口
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.showDesktop')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<DesktopOutlined />}
+                  disabled={!desktopSession || !inputAllowed}
+                  onClick={() =>
+                    sendKeyCombo([
+                      { keyCode: 91, extended: true }, // Win
+                      { keyCode: 68 }, // D
+                    ])
+                  }
+                >
+                  显示桌面
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('deviceWorkspace.remoteDesktop.qualityUpdateFailed', '重新请求远端全屏画面')} getPopupContainer={getPopupContainer}>
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  disabled={!desktopSession}
+                  style={{ gridColumn: 'span 2' }}
+                  onClick={() => {
+                    try {
+                      desktopSession?.setCompression({ quality: settings.quality });
+                      void messageApi.success(t('deviceWorkspace.remoteDesktop.qualityUpdateFailed', '画面刷新指令已发送'));
+                    } catch (e) {
+                      void messageApi.error(e instanceof Error ? e.message : '刷新失败');
+                    }
+                  }}
+                >
+                  刷新画面
+                </Button>
+              </Tooltip>
+            </div>
+          </div>
+
+          {/* 3. 输入控制配置 */}
+          <div className="remote-toolbar-card">
+            <div className="remote-toolbar-card-header">{t('deviceWorkspace.remoteDesktop.inputCardTitle')}</div>
+            <div className="remote-settings-compact">
+              <div className="remote-setting-item">
+                <span>{t('deviceWorkspace.remoteDesktop.keyboardInput')}</span>
+                <Switch
+                  size="small"
+                  checked={settings.keyboard}
+                  disabled={desktopAccess === 'denied' || desktopAccess === 'view-only'}
+                  onChange={(checked) => onSettingsChange({ ...settings, keyboard: checked })}
+                />
+              </div>
+              <div className="remote-setting-item">
+                <span>{t('deviceWorkspace.remoteDesktop.mouseInput')}</span>
+                <Switch
+                  size="small"
+                  checked={settings.mouse}
+                  disabled={desktopAccess === 'denied' || desktopAccess === 'view-only'}
+                  onChange={(checked) => onSettingsChange({ ...settings, mouse: checked })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. 显示与画质配置 */}
+          <div className="remote-toolbar-card">
+            <div className="remote-toolbar-card-header">{t('deviceWorkspace.remoteDesktop.displayCardTitle')}</div>
+            <div className="remote-settings-compact">
+              <div className="remote-setting-item">
+                <span>{t('deviceWorkspace.remoteDesktop.scaleMode')}</span>
+                <Select
+                  size="small"
+                  value={scale}
+                  style={{ width: 110 }}
+                  getPopupContainer={getPopupContainer}
+                  onChange={onScaleChange}
+                  options={[
+                    { value: 'fit', label: t('deviceWorkspace.remoteDesktop.fitWindow') },
+                    { value: '100', label: t('deviceWorkspace.remoteDesktop.originalSize') },
+                    { value: 'stretch', label: t('deviceWorkspace.remoteDesktop.stretch') },
+                    { value: '75', label: '75%' },
+                  ]}
+                />
+              </div>
+              <div className="remote-slider-group">
+                <div className="remote-slider-label">
+                  <span>{t('deviceWorkspace.remoteDesktop.quality')}</span>
+                  <span style={{ color: '#8da4be', fontSize: 11 }}>{settings.quality}%</span>
+                </div>
+                <Slider
+                  min={10}
+                  max={100}
+                  value={settings.quality}
+                  onChange={(val) => onSettingsChange({ ...settings, quality: val })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 5. 常用工具（剪贴板、截图） */}
+          <div className="remote-toolbar-card">
+            <div className="remote-toolbar-card-header">{t('deviceWorkspace.remoteDesktop.actionsCardTitle')}</div>
+            <div className="remote-shortcuts-grid">
+              <Button
+                size="small"
+                icon={<SnippetsOutlined />}
+                disabled={!desktopSession || !meshCentralClient || !inputAllowed}
+                onClick={() => void pasteLocalClipboardToRemote()}
+              >
+                {t('deviceWorkspace.remoteDesktop.pasteRemote')}
+              </Button>
+              <Button
+                size="small"
+                icon={<CopyOutlined />}
+                disabled={!desktopSession || !meshCentralClient}
+                onClick={() => void copyRemoteClipboardToLocal()}
+              >
+                {t('deviceWorkspace.remoteDesktop.copyLocal')}
+              </Button>
+              <Button
+                size="small"
+                icon={<CameraOutlined />}
+                disabled={!screen}
+                onClick={saveScreenshot}
+                style={{ gridColumn: 'span 2' }}
+              >
+                {t('deviceWorkspace.remoteDesktop.screenshot')}
+              </Button>
+            </div>
+          </div>
+
+          {/* 6. 底部常驻全屏操作 */}
+          <div className="remote-footer-actions">
             <Button
-              type="text"
-              size="small"
-              style={{ color: '#c4d6ec' }}
+              size="middle"
               icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
               onClick={() => void toggleFullscreen()}
               disabled={!screen && !fullscreen}
             >
               {fullscreen ? t('deviceWorkspace.remoteDesktop.exitFullscreen') : t('deviceWorkspace.remoteDesktop.fullscreen')}
             </Button>
-          </Tooltip>
+          </div>
+
           {error && (
             <div className="remote-desktop-error">
               <Alert
