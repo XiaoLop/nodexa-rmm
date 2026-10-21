@@ -78,7 +78,7 @@ function applyScale(
   if (!container) return;
 
   if (scale === 'fit') {
-    // 保持被控端原始屏幕的真实纵横比，在当前 4:3 容器内最大化居中呈现，不变形
+    // 保持被控端原始屏幕的真实纵横比，在画面容器内最大化居中呈现，不变形
     const factor = Math.min(
       container.clientWidth / screen.width,
       container.clientHeight / screen.height,
@@ -387,7 +387,6 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
       if (!session || !mouseEnabled) return;
       const point = pointFromEvent(event);
       if (!point) return;
-      event.preventDefault();
       session.sendMouseWheel(point, event.deltaY < 0 ? 120 : -120);
     };
 

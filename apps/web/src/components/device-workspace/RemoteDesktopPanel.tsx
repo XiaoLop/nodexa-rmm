@@ -8,9 +8,7 @@ import {
   FullscreenOutlined,
   KeyOutlined,
   LoadingOutlined,
-  MoreOutlined,
   PlayCircleOutlined,
-  SettingOutlined,
   SnippetsOutlined,
   WindowsOutlined,
 } from '@ant-design/icons';
@@ -31,7 +29,6 @@ import {
   Dropdown,
   Input,
   Modal,
-  Popover,
   Select,
   Slider,
   Switch,
@@ -41,7 +38,6 @@ import {
 } from 'antd';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import logoImage from '../../assets/image/logo.png';
 import { MESH_CENTRAL_RELAY_URL } from '../../config/gateway';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
 import type { WorkspaceSettingsValue } from './WorkspaceSettings';
@@ -137,21 +133,11 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   const [manualPasteRequired, setManualPasteRequired] = useState(false);
   const [pasteSubmitting, setPasteSubmitting] = useState(false);
   const [currentLatency, setCurrentLatency] = useState<number>();
-  const [capsuleExpanded, setCapsuleExpanded] = useState(true);
-  const [triggerPos, setTriggerPos] = useState<{ x: number; y: number } | undefined>(undefined);
-  const [isDraggingTrigger, setIsDraggingTrigger] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-
   const shellRef = useRef<HTMLDivElement>(null);
-  const capsuleRef = useRef<HTMLDivElement>(null);
+  const screenContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<DesktopCanvasHandle>(null);
   const sessionRef = useRef<DesktopSession | undefined>(undefined);
   const abortRef = useRef<AbortController | undefined>(undefined);
-  const collapseTimerRef = useRef<number | undefined>(undefined);
-  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number; moved: boolean } | undefined>(undefined);
-
   const disconnect = (reason = 'Desktop session closed.') => {
     abortRef.current?.abort();
     abortRef.current = undefined;
@@ -167,6 +153,15 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   };
 
   useImperativeHandle(ref, () => ({ disconnect: () => disconnect('Desktop session ended by user.') }));
+
+  useEffect(() => {
+    const container = screenContainerRef.current;
+    if (!container) return;
+    // React wheel listeners are passive; use a native listener to prevent page scrolling.
+    const preventOuterScroll = (event: WheelEvent) => event.preventDefault();
+    container.addEventListener('wheel', preventOuterScroll, { passive: false });
+    return () => container.removeEventListener('wheel', preventOuterScroll);
+  }, []);
 
   useEffect(() => () => disconnect('Desktop panel unmounted.'), []);
   useEffect(() => {
@@ -187,74 +182,6 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     handleFullscreenChange();
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  const anyPopupOpen = dropdownOpen || popoverOpen || moreMenuOpen;
-
-  const handleCapsuleMouseEnter = () => {
-    if (collapseTimerRef.current !== undefined) {
-      window.clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = undefined;
-    }
-  };
-
-  const handleCapsuleMouseLeave = () => {
-    if (anyPopupOpen) return;
-    if (collapseTimerRef.current !== undefined) {
-      window.clearTimeout(collapseTimerRef.current);
-    }
-    collapseTimerRef.current = window.setTimeout(() => {
-      setCapsuleExpanded(false);
-    }, 400);
-  };
-
-  const handleTriggerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const container = shellRef.current;
-    const parentRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
-    const currentX = triggerPos ? triggerPos.x : rect.left - parentRect.left;
-    const currentY = triggerPos ? triggerPos.y : rect.top - parentRect.top;
-
-    dragStartRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initX: currentX,
-      initY: currentY,
-      moved: false,
-    };
-    setIsDraggingTrigger(false);
-  };
-
-  const handleTriggerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current) return;
-    const dx = e.clientX - dragStartRef.current.startX;
-    const dy = e.clientY - dragStartRef.current.startY;
-    if (!dragStartRef.current.moved && Math.hypot(dx, dy) > 4) {
-      dragStartRef.current.moved = true;
-      setIsDraggingTrigger(true);
-    }
-    if (dragStartRef.current.moved) {
-      const container = shellRef.current;
-      const maxX = container ? container.clientWidth - 46 : window.innerWidth - 46;
-      const maxY = container ? container.clientHeight - 46 : window.innerHeight - 46;
-      setTriggerPos({
-        x: Math.max(12, Math.min(maxX, dragStartRef.current.initX + dx)),
-        y: Math.max(12, Math.min(maxY, dragStartRef.current.initY + dy)),
-      });
-    }
-  };
-
-  const handleTriggerPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    const hadMoved = dragStartRef.current?.moved;
-    dragStartRef.current = undefined;
-    setIsDraggingTrigger(false);
-    if (!hadMoved) {
-      setCapsuleExpanded(true);
-    }
-  };
 
   useEffect(() => {
     if (!desktopSession || !screen) return;
@@ -487,33 +414,9 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     },
   ];
 
-  const moreMenuItems: MenuProps['items'] = [
-    {
-      key: 'paste',
-      icon: <SnippetsOutlined />,
-      label: t('deviceWorkspace.remoteDesktop.pasteRemote'),
-      disabled: !desktopSession || !meshCentralClient || !inputAllowed,
-      onClick: () => void pasteLocalClipboardToRemote(),
-    },
-    {
-      key: 'copy',
-      icon: <CopyOutlined />,
-      label: t('deviceWorkspace.remoteDesktop.copyLocal'),
-      disabled: !desktopSession || !meshCentralClient,
-      onClick: () => void copyRemoteClipboardToLocal(),
-    },
-    {
-      key: 'screenshot',
-      icon: <CameraOutlined />,
-      label: t('deviceWorkspace.remoteDesktop.screenshot'),
-      disabled: !screen,
-      onClick: saveScreenshot,
-    },
-  ];
-
   const getPopupContainer = () => shellRef.current ?? document.body;
 
-  const settingsPopoverContent = (
+  const settingsContent = (
     <div className="remote-settings-popover">
       <div className="setting-row">
         <span>{t('deviceWorkspace.remoteDesktop.keyboardInput')}</span>
@@ -578,29 +481,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     <div className="workspace-center-column">
       {messageContextHolder}
       <section className="console-card remote-desktop-card" ref={shellRef}>
-        {/* 当胶囊折叠隐藏时展示的可拖动小图标 */}
-        {!capsuleExpanded && (
-          <div
-            className={`remote-capsule-trigger ${isDraggingTrigger ? 'is-dragging' : ''} ${!triggerPos ? 'default-bottom-right' : ''}`}
-            style={triggerPos ? { left: triggerPos.x, top: triggerPos.y } : undefined}
-            onPointerDown={handleTriggerPointerDown}
-            onPointerMove={handleTriggerPointerMove}
-            onPointerUp={handleTriggerPointerUp}
-            onPointerCancel={handleTriggerPointerUp}
-          >
-            <img src={logoImage} alt="Logo" className="trigger-logo-image" draggable={false} />
-            <i className={`trigger-status-indicator ${isConnected ? 'connected' : isConnecting ? 'connecting' : status === 'error' ? 'error' : ''}`} />
-          </div>
-        )}
-
-        {/* 顶部悬浮胶囊工具栏 */}
-        <div
-          ref={capsuleRef}
-          className={`remote-floating-capsule ${!capsuleExpanded ? 'capsule-hidden' : ''}`}
-          onMouseEnter={handleCapsuleMouseEnter}
-          onMouseLeave={handleCapsuleMouseLeave}
-        >
-          {/* 连接/断开状态 */}
+        <aside className="remote-desktop-toolbar" aria-label={t('deviceWorkspace.remoteDesktop.settings')}>
           {!isConnected && !isConnecting ? (
             <Button
               type="primary"
@@ -623,11 +504,10 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             </Button>
           )}
 
-          <Divider type="vertical" />
+          <Divider />
 
-          {/* 状态与延迟指示 */}
           <Tooltip title={statusTooltip} getPopupContainer={getPopupContainer}>
-            <div className="remote-capsule-status-pill">
+            <div className="remote-desktop-status">
               <i className={`status-dot ${isConnected ? 'connected' : isConnecting ? 'connecting' : status === 'error' ? 'error' : ''}`} />
               <span>
                 {isConnecting ? (
@@ -637,7 +517,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                   </>
                 ) : isConnected ? (
                   currentLatency !== undefined ? (
-                    <span className={`remote-capsule-latency ${currentLatency > 200 ? 'high' : ''}`}>
+                    <span className={`remote-desktop-latency ${currentLatency > 200 ? 'high' : ''}`}>
                       {currentLatency} ms
                     </span>
                   ) : (
@@ -651,14 +531,11 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             </div>
           </Tooltip>
 
-          <Divider type="vertical" />
+          <Divider />
 
-          {/* 快捷键菜单 */}
           <Dropdown
             menu={{ items: shortcutMenuItems }}
             trigger={['click']}
-            open={dropdownOpen}
-            onOpenChange={setDropdownOpen}
             getPopupContainer={getPopupContainer}
             disabled={!isConnected || !inputAllowed}
           >
@@ -667,36 +544,18 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             </Button>
           </Dropdown>
 
-          {/* 控制设置弹出框 */}
-          <Popover
-            content={settingsPopoverContent}
-            title={t('deviceWorkspace.remoteDesktop.settings')}
-            trigger="click"
-            open={popoverOpen}
-            onOpenChange={setPopoverOpen}
-            getPopupContainer={getPopupContainer}
-            placement="bottom"
-          >
-            <Button size="small" icon={<SettingOutlined />}>
-              <CaretDownOutlined style={{ fontSize: 9 }} />
-            </Button>
-          </Popover>
-
-          {/* 更多菜单 (截图、剪贴板等) */}
-          <Dropdown
-            menu={{ items: moreMenuItems }}
-            trigger={['click']}
-            open={moreMenuOpen}
-            onOpenChange={setMoreMenuOpen}
-            getPopupContainer={getPopupContainer}
-            disabled={!desktopSession}
-          >
-            <Button size="small" icon={<MoreOutlined />} />
-          </Dropdown>
-
-          <Divider type="vertical" />
-
-          {/* 全屏切换 */}
+          {settingsContent}
+          <Divider />
+          <Button size="small" icon={<SnippetsOutlined />} disabled={!desktopSession || !meshCentralClient || !inputAllowed} onClick={() => void pasteLocalClipboardToRemote()}>
+            {t('deviceWorkspace.remoteDesktop.pasteRemote')}
+          </Button>
+          <Button size="small" icon={<CopyOutlined />} disabled={!desktopSession || !meshCentralClient} onClick={() => void copyRemoteClipboardToLocal()}>
+            {t('deviceWorkspace.remoteDesktop.copyLocal')}
+          </Button>
+          <Button size="small" icon={<CameraOutlined />} disabled={!screen} onClick={saveScreenshot}>
+            {t('deviceWorkspace.remoteDesktop.screenshot')}
+          </Button>
+          <Divider />
           <Tooltip title={fullscreen ? t('deviceWorkspace.remoteDesktop.exitFullscreen') : t('deviceWorkspace.remoteDesktop.fullscreen')} getPopupContainer={getPopupContainer}>
             <Button
               type="text"
@@ -704,26 +563,27 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
               style={{ color: '#c4d6ec' }}
               icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
               onClick={() => void toggleFullscreen()}
-              disabled={!screen}
-            />
+              disabled={!screen && !fullscreen}
+            >
+              {fullscreen ? t('deviceWorkspace.remoteDesktop.exitFullscreen') : t('deviceWorkspace.remoteDesktop.fullscreen')}
+            </Button>
           </Tooltip>
-        </div>
-
-        {error && (
-          <div style={{ position: 'absolute', top: 58, left: '50%', transform: 'translateX(-50%)', zIndex: 40, width: '90%', maxWidth: 600 }}>
-            <Alert
-              type="error"
-              showIcon
-              closable
-              onClose={() => setError(undefined)}
-              title={error}
-              action={<Button size="small" onClick={() => void connect()}>{t('common.actions.retry')}</Button>}
-            />
-          </div>
-        )}
+          {error && (
+            <div className="remote-desktop-error">
+              <Alert
+                type="error"
+                showIcon
+                closable
+                onClose={() => setError(undefined)}
+                title={error}
+                action={<Button size="small" onClick={() => void connect()}>{t('common.actions.retry')}</Button>}
+              />
+            </div>
+          )}
+        </aside>
 
         <div className="remote-screen-shell">
-          <div className="remote-screen" data-scale={scale}>
+          <div className="remote-screen" data-scale={scale} ref={screenContainerRef}>
             <DesktopCanvas
               ref={canvasRef}
               scale={scale}
