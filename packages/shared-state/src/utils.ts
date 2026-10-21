@@ -1,6 +1,36 @@
 import type { Device, DeviceGroup, MeshCentralEvent } from './types';
 
 /**
+ * Semantic category of a normalized event message.
+ *
+ * The category is language-neutral: presentation layers decide how to render it,
+ * including any wording and interpolation parameters.
+ */
+export type EventMessageKind =
+  | 'deviceOnline'
+  | 'deviceOffline'
+  | 'deviceChanged'
+  | 'deviceRemoved'
+  | 'unknown'
+  | 'raw';
+
+export interface RedactedEventMessage {
+  kind: EventMessageKind;
+  /**
+   * Server message with `node//`, `mesh//` and `user//` identifiers replaced.
+   *
+   * Known identifiers become display names; unknown ones become {@link REDACTED_ID}.
+   * This keeps identifiers out of the UI without introducing presentation text.
+   */
+  text: string;
+  /** Original event type, useful when {@link RedactedEventMessage.kind} is `unknown`. */
+  eventType: MeshCentralEvent['type'];
+}
+
+/** Language-neutral placeholder used when an identifier cannot be resolved to a name. */
+export const REDACTED_ID = '…';
+
+/**
  * 判断字符串是否看起来像 Node/Mesh/User 的 ID
  * 例如: node//..., mesh//..., user//...
  */
@@ -36,101 +66,99 @@ export function getEventTargetName(
   return undefined;
 }
 
+function toDeviceMap(devices?: Device[] | Record<string, Device>): Record<string, Device> {
+  if (!devices) return {};
+  return Array.isArray(devices) ? Object.fromEntries(devices.map((d) => [d.id, d])) : devices;
+}
+
+function toGroupMap(
+  groups?: DeviceGroup[] | Record<string, DeviceGroup>,
+): Record<string, DeviceGroup> {
+  if (!groups) return {};
+  return Array.isArray(groups)
+    ? Object.fromEntries(groups.map((g) => [g.id, g]))
+    : groups;
+}
+
+function detectEventMessageKind(
+  event: MeshCentralEvent,
+  rawMessage: string,
+): EventMessageKind {
+  if (event.type === 'deviceOnline' || /^(nodeconnect|connected)$/i.test(rawMessage)) {
+    return 'deviceOnline';
+  }
+  if (event.type === 'deviceOffline' || /^(nodedisconnect|disconnected)$/i.test(rawMessage)) {
+    return 'deviceOffline';
+  }
+  if (event.type === 'deviceChanged' || /^changenode$/i.test(rawMessage)) {
+    return 'deviceChanged';
+  }
+  if (event.type === 'deviceRemoved' || /^(removenode|deletenode)$/i.test(rawMessage)) {
+    return 'deviceRemoved';
+  }
+  return rawMessage ? 'raw' : 'unknown';
+}
+
 /**
- * 格式化事件消息，隐藏/替换其中的节点 ID 或分组 ID，并对所有消息进行中文语义映射
- * 1. 对所有消息（不论原本是否有值）进行类型与动作词汇的中文化映射
- * 2. 替换消息中的 node//... 为节点名称（如无对应节点名则替换为“设备”）
- * 3. 替换消息中的 mesh//... 为设备组名称（如无对应组名则替换为“设备组”）
- * 4. 替换消息中的 user//... 为用户名
+ * Normalizes an event message for display without embedding any localized wording.
+ *
+ * 1. Classifies the message (`deviceOnline`, `raw`, `unknown`, …).
+ * 2. Replaces `node//…` with the device name, `mesh//…` with the device group name,
+ *    and `user//…` with the user name.
+ * 3. Falls back to {@link REDACTED_ID} so raw identifiers never reach the UI.
+ *
+ * Presentation layers (web, mobile) map {@link RedactedEventMessage.kind} to their own
+ * translation keys and interpolate the resolved name.
+ */
+export function redactEventMessage(
+  event: MeshCentralEvent,
+  devices?: Device[] | Record<string, Device>,
+  groups?: DeviceGroup[] | Record<string, DeviceGroup>,
+): RedactedEventMessage {
+  const rawMessage = (event.message || '').trim();
+  const deviceMap = toDeviceMap(devices);
+  const groupMap = toGroupMap(groups);
+
+  const text = rawMessage
+    .replace(/node\/\/([a-zA-Z0-9_\-./]+)/gi, (fullMatch) => {
+      const device = deviceMap[fullMatch];
+      if (device?.name && !isIdString(device.name)) {
+        return device.name;
+      }
+      if (
+        event.deviceId === fullMatch &&
+        event.deviceName &&
+        !isIdString(event.deviceName)
+      ) {
+        return event.deviceName;
+      }
+      return REDACTED_ID;
+    })
+    .replace(/mesh\/\/([a-zA-Z0-9_\-./]+)/gi, (fullMatch) => {
+      const group = groupMap[fullMatch];
+      if (group?.name && !isIdString(group.name)) {
+        return group.name;
+      }
+      return REDACTED_ID;
+    })
+    .replace(/user\/\/([a-zA-Z0-9_\-./]+)/gi, '$1');
+
+  return {
+    kind: detectEventMessageKind(event, rawMessage),
+    text,
+    eventType: event.type,
+  };
+}
+
+/**
+ * @deprecated Use {@link redactEventMessage} and localize the `kind` in the presentation
+ * layer. This compatibility shim returns the redacted server message without any
+ * Chinese wording and will be removed in a future major version.
  */
 export function formatEventMessage(
   event: MeshCentralEvent,
   devices?: Device[] | Record<string, Device>,
   groups?: DeviceGroup[] | Record<string, DeviceGroup>,
 ): string {
-  const rawMsg = (event.message || '').trim();
-
-  // 1. 对所有的 message 进行语义/动作中文化映射
-  let message: string;
-
-  const isOnline = event.type === 'deviceOnline' || /^(nodeconnect|connected)$/i.test(rawMsg);
-  const isOffline =
-    event.type === 'deviceOffline' || /^(nodedisconnect|disconnected)$/i.test(rawMsg);
-  const isChanged = event.type === 'deviceChanged' || /^changenode$/i.test(rawMsg);
-  const isRemoved = event.type === 'deviceRemoved' || /^(removenode|deletenode)$/i.test(rawMsg);
-
-  if (isOnline) {
-    message = '设备已上线';
-  } else if (isOffline) {
-    message = '设备已离线';
-  } else if (isChanged) {
-    message = '设备信息变更';
-  } else if (isRemoved) {
-    message = '设备已移除';
-  } else if (!rawMsg || rawMsg === 'unknown') {
-    message = `[${event.type}]事件记录`;
-  } else {
-    // 处理特定的详细操作日志消息，进行短语映射
-    message = rawMsg
-      .replace(/^Node\s+node\/\/\S+\s+connected/i, '设备已上线')
-      .replace(/^Node\s+node\/\/\S+\s+disconnected/i, '设备已离线')
-      .replace(/Upload:\s*/gi, '上传文件: ')
-      .replace(/Download:\s*/gi, '下载文件: ')
-      .replace(/Started file management session/gi, '开始文件管理会话')
-      .replace(/Started file management/gi, '开始文件管理')
-      .replace(/Started remote desktop session/gi, '开始远程桌面会话')
-      .replace(/Started remote desktop/gi, '开始远程桌面')
-      .replace(/Started desktop session/gi, '开始远程桌面会话')
-      .replace(/Started terminal session/gi, '开始命令行会话')
-      .replace(/Ended file management session/gi, '结束文件管理会话')
-      .replace(/Ended file management/gi, '结束文件管理')
-      .replace(/Ended remote desktop session/gi, '结束远程桌面会话')
-      .replace(/Ended remote desktop/gi, '结束远程桌面')
-      .replace(/Ended desktop session/gi, '结束远程桌面会话')
-      .replace(/Ended terminal session/gi, '结束命令行会话')
-      .replace(/Size:\s*/gi, '大小: ')
-      .replace(/second\(s\)/gi, '秒')
-      .replace(/\bwithout prompt\b/gi, '无提示')
-      .replace(/\bwithout\b/gi, '无')
-      .replace(/\bfrom\b/gi, '来自')
-      .replace(/\bto\b/gi, '至');
-  }
-
-  const devMap = devices
-    ? Array.isArray(devices)
-      ? Object.fromEntries(devices.map((d) => [d.id, d]))
-      : devices
-    : {};
-
-  const groupMap = groups
-    ? Array.isArray(groups)
-      ? Object.fromEntries(groups.map((g) => [g.id, g]))
-      : groups
-    : {};
-
-  // 替换 node//... 为节点名称或“设备”
-  message = message.replace(/node\/\/([a-zA-Z0-9_\-./]+)/gi, (fullMatch) => {
-    const dev = devMap[fullMatch];
-    if (dev?.name && !isIdString(dev.name)) {
-      return dev.name;
-    }
-    if (event.deviceId === fullMatch && event.deviceName && !isIdString(event.deviceName)) {
-      return event.deviceName;
-    }
-    return '设备';
-  });
-
-  // 替换 mesh//... 为设备组名称或“设备组”
-  message = message.replace(/mesh\/\/([a-zA-Z0-9_\-./]+)/gi, (fullMatch) => {
-    const group = groupMap[fullMatch];
-    if (group?.name && !isIdString(group.name)) {
-      return group.name;
-    }
-    return '设备组';
-  });
-
-  // 替换 user//... 为用户名
-  message = message.replace(/user\/\/([a-zA-Z0-9_\-./]+)/gi, '$1');
-
-  return message;
+  return redactEventMessage(event, devices, groups).text || '—';
 }

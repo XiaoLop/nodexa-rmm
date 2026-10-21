@@ -22,7 +22,7 @@
     "dev:meshcentral:status": "docker compose -f deploy/compose/compose.meshcentral.dev.yaml ps",
     "dev:meshcentral:logs": "docker compose -f deploy/compose/compose.meshcentral.dev.yaml logs -f meshcentral",
     "dev:meshcentral:restart-with-plugins": "pnpm dev:meshcentral:rebuild",
-    "prod:meshcentral:build": "docker build -f apps/meshcentral/Dockerfile --build-arg MESHCENTRAL_VERSION=1.1.54 -t nodexa-rmm:production .",
+    "prod:meshcentral:build": "docker build -f apps/meshcentral/Dockerfile -t nodexa-rmm:production .",
     "prod:meshcentral:save": "docker save -o ./deploy/generated/nodexa-rmm-production.tar nodexa-rmm:production",
     "prod:meshcentral:package": "pnpm prod:meshcentral:build && pnpm prod:meshcentral:save",
     "plugins:build": "pnpm --filter @meshcentral/plugins build",
@@ -36,16 +36,16 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/node": "^26.5.0",
-    "@types/ws": "^8.18.1",
-    "eslint": "^10.0.0",
-    "globals": "^17.11.0",
-    "prettier": "^3.9.0",
-    "tsx": "^4.23.13",
-    "turbo": "^2.10.10",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0",
-    "ws": "^8.21.3"
+    "@eslint/js": "catalog:",
+    "@types/node": "catalog:",
+    "@types/ws": "catalog:",
+    "eslint": "catalog:",
+    "globals": "catalog:",
+    "prettier": "catalog:",
+    "tsx": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "ws": "catalog:"
   }
 }

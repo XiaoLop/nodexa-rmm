@@ -175,13 +175,17 @@ export class DesktopWebRtcSignaler {
     if (this.dataChannel) {
       try {
         this.dataChannel.close();
-      } catch {}
+      } catch {
+        // Ignore errors while closing an already-invalid data channel.
+      }
       this.dataChannel = undefined;
     }
     if (this.pc) {
       try {
         this.pc.close();
-      } catch {}
+      } catch {
+        // Ignore errors while closing an already-invalid peer connection.
+      }
       this.pc = undefined;
     }
     this.transition('closed');

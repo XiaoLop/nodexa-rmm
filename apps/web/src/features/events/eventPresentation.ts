@@ -1,4 +1,10 @@
-import type { HistoricalEventFilter, MeshCentralEvent } from '@meshcentral/control-client';
+import type {
+  Device,
+  DeviceGroup,
+  HistoricalEventFilter,
+  MeshCentralEvent,
+} from '@meshcentral/control-client';
+import { redactEventMessage } from '@meshcentral/shared-state';
 import type { TFunction } from 'i18next';
 
 const entityTypeKeys: Record<string, string> = {
@@ -66,8 +72,41 @@ export function eventActionLabel(event: MeshCentralEvent, t: TFunction) {
   return key ? t(key) : event.action;
 }
 
-export function eventMessage(event: MeshCentralEvent) {
-  return event.message || '—';
+export interface EventMessageContext {
+  devices?: Device[] | Record<string, Device>;
+  groups?: DeviceGroup[] | Record<string, DeviceGroup>;
+}
+
+/**
+ * Renders an event message for the current locale.
+ *
+ * Identifier redaction lives in `@meshcentral/shared-state`; the wording lives here so the
+ * shared packages stay free of presentation text.
+ */
+export function eventMessage(
+  event: MeshCentralEvent,
+  t?: TFunction,
+  context?: EventMessageContext,
+): string {
+  const redacted = redactEventMessage(event, context?.devices, context?.groups);
+  const fallback = redacted.text || '—';
+
+  if (!t) return fallback;
+
+  switch (redacted.kind) {
+    case 'deviceOnline':
+      return t('events.messages.deviceOnline');
+    case 'deviceOffline':
+      return t('events.messages.deviceOffline');
+    case 'deviceChanged':
+      return t('events.messages.deviceChanged');
+    case 'deviceRemoved':
+      return t('events.messages.deviceRemoved');
+    case 'unknown':
+      return t('events.messages.unknown', { type: t(`events.types.${redacted.eventType}`) });
+    default:
+      return fallback;
+  }
 }
 
 export function isHistoricalEventVisible(event: MeshCentralEvent) {

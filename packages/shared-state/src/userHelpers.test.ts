@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { getGreetingTime, getUserDisplayName } from './userHelpers';
+import { getGreetingPeriod, getGreetingTime, getUserDisplayName } from './userHelpers';
 
 describe('useUiData user helpers', () => {
-  it('returns correct greeting time', () => {
-    expect(getGreetingTime(new Date('2026-08-18T08:00:00'))).toBe('早上好');
-    expect(getGreetingTime(new Date('2026-08-18T12:00:00'))).toBe('中午好');
-    expect(getGreetingTime(new Date('2026-08-18T15:00:00'))).toBe('下午好');
-    expect(getGreetingTime(new Date('2026-08-18T20:00:00'))).toBe('晚上好');
+  it('classifies greeting periods', () => {
+    expect(getGreetingPeriod(new Date('2026-08-18T08:00:00'))).toBe('morning');
+    expect(getGreetingPeriod(new Date('2026-08-18T12:00:00'))).toBe('noon');
+    expect(getGreetingPeriod(new Date('2026-08-18T15:00:00'))).toBe('afternoon');
+    expect(getGreetingPeriod(new Date('2026-08-18T20:00:00'))).toBe('evening');
+  });
+
+  it('keeps the deprecated greeting helper language-neutral', () => {
+    expect(getGreetingTime(new Date('2026-08-18T08:00:00'))).toBe('Good morning');
+    expect(getGreetingTime(new Date('2026-08-18T20:00:00'))).toBe('Good evening');
   });
 
   it('resolves user display name in priority order', () => {
@@ -20,6 +25,6 @@ describe('useUiData user helpers', () => {
       ),
     ).toBe('admin');
     expect(getUserDisplayName(undefined, 'administrator')).toBe('administrator');
-    expect(getUserDisplayName(undefined, undefined)).toBe('林默');
+    expect(getUserDisplayName(undefined, undefined)).toBe('—');
   });
 });

@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import type { Device, DeviceGroup, MeshCentralEvent } from './types';
-import { formatEventMessage, getEventTargetName, isIdString } from './utils';
+import {
+  REDACTED_ID,
+  formatEventMessage,
+  getEventTargetName,
+  isIdString,
+  redactEventMessage,
+} from './utils';
+
+function event(overrides: Partial<MeshCentralEvent> = {}): MeshCentralEvent {
+  return {
+    id: 'event-1',
+    type: 'unknown',
+    occurredAt: '2026-10-09T00:00:00.000Z',
+    ...overrides,
+  };
+}
 
 describe('utils: event formatting and ID masking', () => {
   it('identifies node, mesh, and user ID strings correctly', () => {
@@ -18,86 +33,76 @@ describe('utils: event formatting and ID masking', () => {
       { id: 'node//222', name: 'node//222', online: false },
     ];
 
-    const eventWithName: MeshCentralEvent = {
-      id: 'e1',
+    const eventWithName = event({
       type: 'deviceOnline',
       deviceId: 'node//111',
       deviceName: '机房53号节点',
-      occurredAt: new Date().toISOString(),
-    };
-
-    const eventWithRawIdName: MeshCentralEvent = {
-      id: 'e2',
+    });
+    const eventWithRawIdName = event({
       type: 'deviceOffline',
       deviceId: 'node//111',
       deviceName: 'node//111',
-      occurredAt: new Date().toISOString(),
-    };
-
-    const eventUnknownDev: MeshCentralEvent = {
-      id: 'e3',
-      type: 'deviceOffline',
-      deviceId: 'node//999',
-      occurredAt: new Date().toISOString(),
-    };
+    });
+    const eventUnknownDev = event({ type: 'deviceOffline', deviceId: 'node//999' });
 
     expect(getEventTargetName(eventWithName, devices)).toBe('机房53号节点');
     expect(getEventTargetName(eventWithRawIdName, devices)).toBe('机房53号节点');
     expect(getEventTargetName(eventUnknownDev, devices)).toBeUndefined();
   });
 
-  it('formats event messages replacing node// and mesh// IDs with names or fallback terms', () => {
+  it('classifies known device events without embedding presentation text', () => {
+    expect(redactEventMessage(event({ type: 'deviceOnline' })).kind).toBe('deviceOnline');
+    expect(redactEventMessage(event({ type: 'deviceOffline' })).kind).toBe('deviceOffline');
+    expect(redactEventMessage(event({ type: 'deviceChanged' })).kind).toBe('deviceChanged');
+    expect(redactEventMessage(event({ type: 'deviceRemoved' })).kind).toBe('deviceRemoved');
+    expect(redactEventMessage(event({ type: 'agentLog', message: 'hello' })).kind).toBe('raw');
+    expect(redactEventMessage(event({ type: 'unknown' })).kind).toBe('unknown');
+  });
+
+  it('classifies message-only events the same way for backwards compatibility', () => {
+    expect(redactEventMessage(event({ message: 'nodeconnect' })).kind).toBe('deviceOnline');
+    expect(redactEventMessage(event({ message: 'nodedisconnect' })).kind).toBe('deviceOffline');
+    expect(redactEventMessage(event({ message: 'changenode' })).kind).toBe('deviceChanged');
+    expect(redactEventMessage(event({ message: 'deletenode' })).kind).toBe('deviceRemoved');
+  });
+
+  it('replaces identifiers with names and a neutral placeholder', () => {
     const devices: Device[] = [{ id: 'node//111', name: 'Web Server A', online: true }];
     const groups: DeviceGroup[] = [{ id: 'mesh//100', name: '华东服务器组' }];
 
-    const event1: MeshCentralEvent = {
-      id: 'e1',
-      type: 'deviceOnline',
-      deviceId: 'node//111',
-      message: 'Node node//111 connected to mesh//100',
-      occurredAt: new Date().toISOString(),
-    };
-
-    const event2: MeshCentralEvent = {
-      id: 'e2',
-      type: 'unknown',
-      deviceId: 'node//999',
-      message: 'Upload: "C:/app.exe", Size: 1000 to mesh//999',
-      occurredAt: new Date().toISOString(),
-    };
-
-    const eventEmpty: MeshCentralEvent = {
-      id: 'e3',
-      type: 'deviceOnline',
-      occurredAt: new Date().toISOString(),
-    };
-
-    const eventStarted: MeshCentralEvent = {
-      id: 'e4',
-      type: 'relayLog',
-      deviceId: 'node//111',
-      message: 'Started desktop session "r1fj8y9yd58" from 172.18.0.1 to 172.18.0.1',
-      occurredAt: new Date().toISOString(),
-    };
-
-    const eventStartedWithoutPrompt: MeshCentralEvent = {
-      id: 'e5',
-      type: 'relayLog',
-      deviceId: 'node//111',
-      message: 'Started remote desktop without prompt "r1fj8y9yd58" from 172.18.0.1 to 172.18.0.1',
-      occurredAt: new Date().toISOString(),
-    };
-
-    expect(formatEventMessage(event1, devices, groups)).toBe('设备已上线');
-    expect(formatEventMessage(event2, devices, groups)).toBe(
-      '上传文件: "C:/app.exe", 大小: 1000 至 设备组',
+    const known = redactEventMessage(
+      event({
+        type: 'unknown',
+        deviceId: 'node//111',
+        message: 'Node node//111 connected to mesh//100',
+      }),
+      devices,
+      groups,
     );
-    expect(formatEventMessage(eventEmpty, devices, groups)).toBe('设备已上线');
-    expect(formatEventMessage(eventStarted, devices, groups)).toBe(
-      '开始远程桌面会话 "r1fj8y9yd58" 来自 172.18.0.1 至 172.18.0.1',
+    expect(known.text).toBe('Node Web Server A connected to 华东服务器组');
+
+    const unresolved = redactEventMessage(
+      event({
+        type: 'unknown',
+        deviceId: 'node//999',
+        message: 'Node node//999 connected to mesh//999 by user//domain/admin',
+      }),
+      devices,
+      groups,
     );
-    expect(formatEventMessage(eventStartedWithoutPrompt, devices, groups)).toBe(
-      '开始远程桌面 无提示 "r1fj8y9yd58" 来自 172.18.0.1 至 172.18.0.1',
+    expect(unresolved.text).toBe(
+      `Node ${REDACTED_ID} connected to ${REDACTED_ID} by domain/admin`,
     );
+  });
+
+  it('keeps the deprecated formatter free of localized wording', () => {
+    const devices: Device[] = [{ id: 'node//111', name: 'Web Server A', online: true }];
+    expect(
+      formatEventMessage(event({ type: 'deviceOnline', deviceId: 'node//111' }), devices),
+    ).toBe('—');
+    expect(formatEventMessage(event({ message: 'Download: C:\\test.txt' }))).toBe(
+      'Download: C:\\test.txt',
+    );
+    expect(formatEventMessage(event())).toBe('—');
   });
 });

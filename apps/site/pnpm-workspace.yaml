@@ -1,3 +1,6 @@
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+# DEPRECATED — delete this file with `git rm apps/site/pnpm-workspace.yaml`.
+#
+# A nested pnpm-workspace.yaml creates a second configuration root: running pnpm from
+# apps/site silently stops inheriting the repository catalog, overrides and build policy.
+# The `sharp` / `unrs-resolver` install-script policy now lives in the root
+# pnpm-workspace.yaml (`allowBuilds`), which applies to every workspace package.

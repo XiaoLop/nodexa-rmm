@@ -1144,6 +1144,13 @@ export const zhCN = {
       userSessionCount: '会话统计',
       unknown: '其他事件',
     },
+    messages: {
+      deviceOnline: '设备已上线',
+      deviceOffline: '设备已离线',
+      deviceChanged: '设备信息变更',
+      deviceRemoved: '设备已移除',
+      unknown: '{{type}}事件',
+    },
     entityTypes: {
       node: '设备',
       user: '用户',

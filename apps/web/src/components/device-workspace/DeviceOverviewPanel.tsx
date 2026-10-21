@@ -280,7 +280,7 @@ export function DeviceOverviewPanel({
               <div key={event.id}>
                 <i className={event.type === 'deviceOffline' ? 'is-danger' : ''} />
                 <span>
-                  <strong>{eventMessage(event)}</strong>
+                  <strong>{eventMessage(event, t)}</strong>
                   <small>{event.user ?? t('common.status.systemEvent')}</small>
                 </span>
                 <time>{time(event.occurredAt)}</time>

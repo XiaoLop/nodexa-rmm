@@ -120,7 +120,7 @@ export function DeviceLogsPanel({
           event.action,
           event.user,
           event.ip,
-          eventMessage(event),
+          eventMessage(event, t, { devices: deviceList }),
         ];
         return searchable.some((value) => value?.toLocaleLowerCase().includes(query));
       })
@@ -138,7 +138,8 @@ export function DeviceLogsPanel({
     { title: t('deviceWorkspace.logs.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
       title: t('deviceWorkspace.logs.columns.content'),
-      render: (_: unknown, event: MeshCentralEvent) => eventMessage(event),
+      render: (_: unknown, event: MeshCentralEvent) =>
+        eventMessage(event, t, { devices: deviceList }),
     },
     {
       title: t('deviceWorkspace.logs.columns.actions'),
@@ -242,7 +243,7 @@ export function DeviceLogsPanel({
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.user')}>{selectedEvent.user || t('common.status.systemEvent')}</Descriptions.Item>
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.ip')}>{selectedEvent.ip || '—'}</Descriptions.Item>
               <Descriptions.Item label={t('deviceWorkspace.logs.columns.content')}>
-                {eventMessage(selectedEvent)}
+                {eventMessage(selectedEvent, t, { devices: deviceList })}
               </Descriptions.Item>
             </Descriptions>
             <section>

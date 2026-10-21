@@ -1,7 +1,13 @@
 export { bindMeshCentralClient, type MeshCentralClientBinding } from './binding';
 export { useMeshCentralControlStore } from './react';
 export { createMeshCentralControlStore, meshCentralControlSelectors, type MeshCentralControlStore } from './store';
-export { getGreetingTime, getUserDisplayName } from './userHelpers';
+export {
+  getGreetingPeriod,
+  getGreetingTime,
+  getUserDisplayName,
+  UNKNOWN_DISPLAY_NAME,
+  type GreetingPeriod,
+} from './userHelpers';
 export * from './utils';
 export type {
   ConnectionStatus,

@@ -41,7 +41,7 @@ class FakeRTCPeerConnection {
   localDescription: RTCSessionDescriptionInit | null = null;
   remoteDescription: RTCSessionDescriptionInit | null = null;
 
-  createDataChannel(label: string, _options?: unknown) {
+  createDataChannel() {
     const dc = new FakeRTCDataChannel();
     this.dataChannel = dc;
     return dc as unknown as RTCDataChannel;

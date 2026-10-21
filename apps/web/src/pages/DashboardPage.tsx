@@ -655,7 +655,7 @@ export function DashboardPage() {
             )}
 
             {dashboardEvents.slice(0, 10).map((event) => {
-              const message = eventMessage(event);
+              const message = eventMessage(event, t, { devices: data.devices });
               const action = eventActionLabel(event, t);
               const tone =
                 event.type === 'deviceOnline'

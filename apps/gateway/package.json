@@ -28,6 +28,6 @@
     "@types/set-cookie-parser": "^2.4.10",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.4",
-    "vitest": "^4.1.0"
+    "vitest": "catalog:"
   }
 }

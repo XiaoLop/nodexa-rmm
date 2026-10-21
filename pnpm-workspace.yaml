@@ -2,11 +2,45 @@ packages:
   - apps/*
   - packages/*
   - test
+# Packages that must not run install scripts. Keep every workspace package aligned here:
+# a nested pnpm-workspace.yaml silently creates a second configuration root.
 allowBuilds:
   esbuild: false
+  sharp: false
   unrs-resolver: false
 
 disallowWorkspaceCycles: true
+
+# Single source of truth for dependency ranges shared by every workspace package.
+# Use `"<dep>": "catalog:"` in package.json. `apps/site` pins the Next.js platform on its
+# own named catalog because it tracks a different React/TypeScript/ESLint line.
+catalog:
+  '@eslint/js': ^10.0.1
+  '@types/node': ^26.5.0
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
+  '@types/ws': ^8.18.1
+  eslint: ^10.0.0
+  globals: ^17.11.0
+  prettier: ^3.9.0
+  react: 19.2.3
+  react-dom: 19.2.3
+  tsx: ^4.23.13
+  turbo: ^2.10.10
+  typescript: ^6.0.3
+  typescript-eslint: ^8.67.0
+  vitest: ^4.1.0
+  ws: ^8.21.3
+
+catalogs:
+  next:
+    '@types/node': ^20
+    '@types/react': ^19
+    '@types/react-dom': ^19
+    eslint: ^9
+    react: 19.2.8
+    react-dom: 19.2.8
+    typescript: ^5
 
 overrides:
   '@react-native/metro-config': 0.86.2

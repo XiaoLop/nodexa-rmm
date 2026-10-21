@@ -47,3 +47,5 @@ timeline
 2. **状态绑定层**：在 [packages/shared-state](packages/shared-state) 中通过 Zustand 管理数据流与会话生命周期，提供标准化 React Hook。
 3. **前端呈现层**：在 [apps/web](apps/web) 中遵循 Ant Design 设计规范，按能力（Capability）进行路由守护与鉴权展示。
 4. **移动端适配**：在 [apps/app](apps/app) 复用核心状态逻辑，针对移动设备交互特性提供精简的管理与协助界面。
+
+上述分层由根 `eslint.config.mjs` 的 `no-restricted-imports` 与汉字字面量规则强制执行；页面拆分、资源 API 增补模板与版本策略见 [架构与可维护性护栏](architecture-guardrails.md)。

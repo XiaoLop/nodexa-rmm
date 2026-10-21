@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useBatchTasks } from './BatchTaskContext';
 import type { BatchTask, BatchTaskKind, BatchTaskStatus } from './types';
-import { isActiveBatchTaskStatus } from './types';
 
 const kindIcons: Record<BatchTaskKind, React.ReactNode> = {
   'file-upload': <CloudUploadOutlined style={{ color: '#2f80ff' }} />,
@@ -68,9 +67,7 @@ export function TaskCenterPopover() {
           />
         ) : (
           <div className="task-popover-list">
-            {recentTasks.map((task: BatchTask) => {
-              const active = isActiveBatchTaskStatus(task.status);
-              return (
+            {recentTasks.map((task: BatchTask) => (
                 <div key={task.id} className="task-popover-item">
                   <div className="task-popover-item-header">
                     <Space size="small" style={{ overflow: 'hidden' }}>
@@ -120,8 +117,7 @@ export function TaskCenterPopover() {
                     )}
                   </div>
                 </div>
-              );
-            })}
+            ))}
           </div>
         )}
       </div>

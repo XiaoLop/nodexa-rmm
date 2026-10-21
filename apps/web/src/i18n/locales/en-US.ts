@@ -1193,6 +1193,13 @@ export const enUS = {
       userSessionCount: 'Session stats',
       unknown: 'Other event',
     },
+    messages: {
+      deviceOnline: 'Device online',
+      deviceOffline: 'Device offline',
+      deviceChanged: 'Device changed',
+      deviceRemoved: 'Device removed',
+      unknown: '{{type}} event',
+    },
     entityTypes: {
       node: 'Device',
       user: 'User',

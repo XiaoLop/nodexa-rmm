@@ -14,8 +14,14 @@ const labels: Record<string, string> = {
   'events.entityTypes.unclassified': '通用/未分类',
   'events.actions.agentlog': 'Agent 日志',
   'events.actions.undefined': '未定义',
+  'events.messages.deviceOnline': '设备已上线',
+  'events.messages.unknown': '{{type}}事件',
+  'events.types.agentLog': 'Agent 日志',
 };
-const t = ((key: string) => labels[key] ?? key) as TFunction;
+const t = ((key: string, options?: Record<string, unknown>) =>
+  (labels[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+    String(options?.[name] ?? ''),
+  )) as TFunction;
 
 function event(overrides: Partial<MeshCentralEvent> = {}): MeshCentralEvent {
   return {
@@ -39,9 +45,29 @@ describe('event presentation', () => {
     expect(eventActionLabel(event(), t)).toBe('未定义');
   });
 
-  it('returns the server event message without localization', () => {
+  it('falls back to the server message when no translator is provided', () => {
     expect(eventMessage(event({ message: 'Download: C:\\test.txt' }))).toBe('Download: C:\\test.txt');
     expect(eventMessage(event())).toBe('—');
+  });
+
+  it('localizes known event kinds and falls back to the raw message', () => {
+    expect(eventMessage(event({ type: 'deviceOnline', message: 'node//1 connected' }), t)).toBe(
+      '设备已上线',
+    );
+    expect(eventMessage(event({ message: 'Download: C:\\test.txt' }), t)).toBe(
+      'Download: C:\\test.txt',
+    );
+    expect(eventMessage(event(), t)).toBe('Agent 日志事件');
+  });
+
+  it('redacts identifiers when device context is available', () => {
+    expect(
+      eventMessage(
+        event({ type: 'agentLog', message: 'Node node//1 connected' }),
+        undefined,
+        { devices: [{ id: 'node//1', name: 'Web Server A', online: true }] },
+      ),
+    ).toBe('Node Web Server A connected');
   });
 
   it('hides offline history and preserves server action filters', () => {

@@ -63,11 +63,11 @@
 
 ### 2. 架构与可维护性
 
-- **超大页面文件**：`UserGroupDetailsPage` 约 1300 行，`DevicesPage`、`UserDetailsPage` 也都超过千行。建议按“数据 Hook + 子组件 + 弹窗”拆分，降低回归风险。
-- **SDK 字符串和 UI 耦合**：`control-client`/`shared-state` 中出现中文错误信息和事件格式化逻辑，建议把展示层文案全部上移到 `apps/web`。
-- **资源 API 覆盖不均**：部分操作仍靠 `client.request()` / `send()` 原始消息，建议按“服务器运维、录像、共享、部署、AMT”逐步补齐强类型资源。
-- **Monorepo 版本漂移**：`apps/site` 的 React、TypeScript、ESLint 版本与 Web 不一致，且 `apps/site/pnpm-workspace.yaml` 形成了嵌套 workspace 配置。建议用 pnpm catalog 统一版本，并把 `ignoredBuiltDependencies` 收敛到根配置。
-- **MeshCentral 版本**：`package.json` 使用 `^1.1.54`，Dockerfile 却按精确版本断言，建议改为精确版本，避免依赖漂移；Dockerfile 从远程 URL 拉取 `exeHandler.js`，建议增加校验或本地归档。
+- **超大页面文件**：`UserGroupDetailsPage`（原 1334 行）、`DevicesPage`（原 1180 行）、`UserDetailsPage`（原 902 行）已按“数据 Hook + 纯函数 + 子组件 + 弹窗”拆分，页面只保留装配；`ProfilePage`（1217 行）、`FilesPage`（1331 行）、`DashboardPage`（812 行）仍待处理。
+- **SDK 字符串和 UI 耦合**：`shared-state` 已删除中文事件文案，新增 `redactEventMessage()` 只返回事件分类和去 ID 后的文本，`apps/web` 通过 `events.messages.*` 翻译；`formatEventMessage` / `getGreetingTime` 保留为 `@deprecated` 兼容层供 `apps/app` 使用。ESLint 已禁止 `control-client`、`shared-state`、`relay` 的源码出现汉字字面量，并加入中英字典一致性测试。
+- **资源 API 覆盖不均**：Server 资源仍只有时间线统计和统计订阅，console / trace / errorLog / 录像 / 共享 / AMT 尚未封装；已补充“先 SDK 后 UI”的增补模板与分层约束（`docs/plan/architecture-guardrails.md`），并用 ESLint `no-restricted-imports` 固化包边界。
+- **Monorepo 版本漂移**：已引入 pnpm catalog 统一共享依赖声明，`apps/site` 单独使用 `catalogs.next`；构建脚本白名单收敛到根 `allowBuilds`，`apps/site/pnpm-workspace.yaml` 标记废弃待 `git rm`，`apps/site` 也纳入 `turbo test`。catalog 目前只统一声明点，React/TypeScript/ESLint 版本真正合并仍需一次 `pnpm install` 验证。
+- **MeshCentral 版本**：依赖已改为精确 `1.1.54`；Dockerfile 从 `apps/meshcentral/package.json` 读取版本并与已安装包断言，`exeHandler.js` 改用 npm 包内文件，删除远程 `ADD`，构建不再依赖网络且可复现。
 
 ### 3. 性能
 

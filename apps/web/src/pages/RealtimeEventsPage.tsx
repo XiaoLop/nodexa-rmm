@@ -101,7 +101,7 @@ function EventDetailsDrawer({
             <Descriptions.Item label={t('events.drawer.user')}>{event.user || '—'}</Descriptions.Item>
             <Descriptions.Item label={t('events.drawer.ip')}>{event.ip || '—'}</Descriptions.Item>
             <Descriptions.Item label={t('events.drawer.content')}>
-              {eventMessage(event)}
+              {eventMessage(event, t)}
             </Descriptions.Item>
           </Descriptions>
           {(relayDetails || agentDetails) && (
@@ -273,7 +273,8 @@ export function RealtimeEventsPage() {
     { title: t('events.columns.ip'), dataIndex: 'ip', width: 135, render: (value?: string) => value || '—' },
     {
       title: t('events.columns.content'),
-      render: (_: unknown, event: MeshCentralEvent) => eventMessage(event),
+      render: (_: unknown, event: MeshCentralEvent) =>
+        eventMessage(event, t, { devices: data.devices }),
     },
     {
       title: t('events.columns.actions'),
