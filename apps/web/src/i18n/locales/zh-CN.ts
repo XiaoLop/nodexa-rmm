@@ -392,6 +392,8 @@ export const zhCN = {
       keyboardInput: '键盘输入',
       mouseInput: '鼠标输入',
       quality: '画质清晰度',
+      encoding: '编码格式',
+      frameRate: '帧率上限',
       scaleMode: '画面比例',
       originalSize: '1:1 原始尺寸',
       stretch: '拉伸铺满',

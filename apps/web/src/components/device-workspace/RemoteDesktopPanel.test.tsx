@@ -39,7 +39,7 @@ function renderPanel(access: 'control' | 'view-only' = 'control') {
         device={model.device}
         controlConnected
         desktopAccess={access}
-        settings={{ keyboard: true, mouse: true, screenInput: false, resolution: '1280 × 720', colorDepth: 32, quality: 58 }}
+        settings={{ keyboard: true, mouse: true, screenInput: false, resolution: '1280 × 720', colorDepth: 32, quality: 58, imageFormat: 'webp', frameTimer: 100 }}
         onSettingsChange={onSettingsChange}
         scale="fit"
         onScaleChange={vi.fn()}
@@ -58,7 +58,7 @@ describe('RemoteDesktopPanel layout', () => {
     expect(toolbar.parentElement).toBe(canvas.closest('.remote-desktop-card'));
     expect(container.querySelector('.remote-floating-capsule')).toBeNull();
     expect(within(toolbar).getAllByRole('switch')).toHaveLength(2);
-    expect(within(toolbar).getByRole('combobox')).toBeDefined();
+    expect(within(toolbar).getAllByRole('combobox')).toHaveLength(3);
     expect(within(toolbar).getByRole('slider')).toBeDefined();
     fireEvent.mouseLeave(toolbar);
     expect(toolbar.hidden).toBe(false);

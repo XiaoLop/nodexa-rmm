@@ -9,6 +9,8 @@ export interface WorkspaceSettingsValue {
   resolution: string;
   colorDepth: number;
   quality: number;
+  imageFormat: 'jpeg' | 'png' | 'webp';
+  frameTimer: number;
 }
 
 export function WorkspaceSettings({

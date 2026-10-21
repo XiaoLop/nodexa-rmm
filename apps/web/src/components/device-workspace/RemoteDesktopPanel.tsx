@@ -187,7 +187,12 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     if (!desktopSession || !screen) return;
     const timeout = window.setTimeout(() => {
       try {
-        desktopSession.setCompression({ quality: settings.quality });
+        desktopSession.setCompression({
+          imageFormat: settings.imageFormat,
+          quality: settings.quality,
+          scaling: Math.round((Number(scale) || 100) * 10.24),
+          frameTimer: settings.frameTimer,
+        });
       } catch (compressionError) {
         if (sessionRef.current === desktopSession) {
           void messageApi.error(compressionError instanceof Error ? compressionError.message : t('deviceWorkspace.remoteDesktop.qualityUpdateFailed'));
@@ -195,7 +200,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
       }
     }, 150);
     return () => window.clearTimeout(timeout);
-  }, [desktopSession, messageApi, settings.quality, screen]);
+  }, [desktopSession, messageApi, settings.quality, settings.imageFormat, settings.frameTimer, scale, screen]);
 
   const connect = async () => {
     if (CONNECTING_STATES.has(status) || status === 'connected') return;
@@ -539,7 +544,12 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                   style={{ gridColumn: 'span 2' }}
                   onClick={() => {
                     try {
-                      desktopSession?.setCompression({ quality: settings.quality });
+                      desktopSession?.setCompression({
+                        imageFormat: settings.imageFormat,
+                        quality: settings.quality,
+                        scaling: Math.round((Number(scale) || 100) * 10.24),
+                        frameTimer: settings.frameTimer,
+                      });
                       void messageApi.success(t('deviceWorkspace.remoteDesktop.qualityUpdateFailed', '画面刷新指令已发送'));
                     } catch (e) {
                       void messageApi.error(e instanceof Error ? e.message : '刷新失败');
@@ -594,6 +604,37 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                     { value: '100', label: t('deviceWorkspace.remoteDesktop.originalSize') },
                     { value: 'stretch', label: t('deviceWorkspace.remoteDesktop.stretch') },
                     { value: '75', label: '75%' },
+                  ]}
+                />
+              </div>
+              <div className="remote-setting-item">
+                <span>{t('deviceWorkspace.remoteDesktop.encoding')}</span>
+                <Select
+                  size="small"
+                  value={settings.imageFormat}
+                  style={{ width: 110 }}
+                  onChange={(imageFormat: WorkspaceSettingsValue['imageFormat']) =>
+                    onSettingsChange({ ...settings, imageFormat })
+                  }
+                  options={[
+                    { value: 'webp', label: 'WebP' },
+                    { value: 'jpeg', label: 'JPEG' },
+                    { value: 'png', label: 'PNG' },
+                  ]}
+                />
+              </div>
+              <div className="remote-setting-item">
+                <span>{t('deviceWorkspace.remoteDesktop.frameRate')}</span>
+                <Select
+                  size="small"
+                  value={settings.frameTimer}
+                  style={{ width: 110 }}
+                  onChange={(frameTimer: number) => onSettingsChange({ ...settings, frameTimer })}
+                  options={[
+                    { value: 17, label: '60 FPS' },
+                    { value: 33, label: '30 FPS' },
+                    { value: 50, label: '20 FPS' },
+                    { value: 100, label: '10 FPS' },
                   ]}
                 />
               </div>

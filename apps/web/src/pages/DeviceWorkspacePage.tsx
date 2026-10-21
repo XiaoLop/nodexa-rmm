@@ -103,6 +103,8 @@ export function DeviceWorkspacePage() {
     resolution: '1280 × 720',
     colorDepth: 32,
     quality: 58,
+    imageFormat: 'webp',
+    frameTimer: 100,
   });
 
   const loadDetails = useCallback(async () => {

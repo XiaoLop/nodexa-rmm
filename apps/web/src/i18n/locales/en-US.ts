@@ -402,6 +402,8 @@ export const enUS = {
       keyboardInput: 'Keyboard input',
       mouseInput: 'Mouse input',
       quality: 'Image Quality',
+      encoding: 'Encoding',
+      frameRate: 'Frame Rate Limit',
       scaleMode: 'Display Scale',
       originalSize: '1:1 Original Size',
       stretch: 'Stretch to fill',
