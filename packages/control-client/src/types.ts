@@ -334,7 +334,26 @@ export interface MeshCentralDiagnostic {
   error?: Error;
 }
 
+export interface ServerConsoleOutput {
+  text: string;
+  tag?: string;
+  receivedAt: number;
+}
+
+export interface ServerTrace {
+  source: string;
+  args: unknown[];
+  time: number;
+}
+
+export interface ServerErrorLog {
+  content?: string;
+}
+
 export interface MeshCentralClientEvents {
+  serverConsole: ServerConsoleOutput;
+  traceSources: readonly string[];
+  trace: ServerTrace;
   connection: ConnectionStateChange;
   event: MeshCentralEvent;
   notification: MeshCentralNotification;

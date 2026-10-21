@@ -1,0 +1,25 @@
+{
+  "version": "1.1.54",
+  "evidence": "Source-verified synthetic, redacted examples; not a live capture.",
+  "console": {
+    "request": { "action": "serverconsole", "value": "help", "tag": "console-001" },
+    "responses": [
+      { "action": "serverconsole", "value": "Available commands: ...", "tag": "console-001" },
+      { "action": "serverconsole", "value": "Unknown command \"version\", type \"help\" for list of available commands." }
+    ]
+  },
+  "trace": {
+    "initial": { "action": "traceinfo", "traceSources": null },
+    "enable": { "action": "traceinfo", "traceSources": ["relay"] },
+    "change": { "action": "event", "event": { "action": "traceinfo", "traceSources": ["relay"], "userid": "user//admin", "username": "admin", "nolog": 1, "domain": "" } },
+    "entry": { "action": "trace", "source": "relay", "args": ["Example diagnostic message", { "example": true }], "time": 1773302400123 },
+    "disable": { "action": "traceinfo", "traceSources": [] }
+  },
+  "errorLog": {
+    "request": { "action": "servererrors" },
+    "content": { "action": "servererrors", "data": "Example error\n    at <redacted>\n" },
+    "empty": { "action": "servererrors", "data": "" },
+    "unavailable": { "action": "servererrors" },
+    "clear": { "action": "serverclearerrorlog" }
+  }
+}

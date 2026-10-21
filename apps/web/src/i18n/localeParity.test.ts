@@ -40,6 +40,16 @@ describe('i18n locale parity', () => {
     expect(emptyEnglish, 'empty en-US translations').toEqual([]);
   });
 
+  it('ships server administration warnings and sent-only wording in both languages', () => {
+    for (const key of ['console', 'trace', 'logs', 'consoleHint', 'globalWarning', 'clearSent', 'absent', 'empty']) {
+      const path = `serverAdmin.${key}`;
+      expect(enEntries.get(path)).toBeTruthy();
+      expect(zhEntries.get(path)).toBeTruthy();
+      expect(zhEntries.get(path)).not.toBe(enEntries.get(path));
+      expect(zhEntries.get(path)).not.toMatch(/^\?+$/);
+    }
+  });
+
   it('ships localized event message wording', () => {
     const requiredKeys = [
       'events.messages.deviceOnline',

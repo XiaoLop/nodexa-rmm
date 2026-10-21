@@ -26,6 +26,7 @@ const RESPONSE_ID_OPTIONAL_ACTIONS = new Set([
   'previousLogins',
   'report',
   'servertimelinestats',
+  'servererrors',
   'usergroups',
   'users',
   'wakedevices',
@@ -41,6 +42,7 @@ function isSuccessfulResult(action: string | undefined, result: string) {
 export class RequestManager {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly responseIdOptionalChains = new Map<string, Promise<void>>();
+  private connectionGeneration = 0;
 
   constructor(
     private readonly send: (payload: unknown) => void,
@@ -56,6 +58,8 @@ export class RequestManager {
 
   consume(payload: unknown): boolean {
     if (!isRecord(payload)) return false;
+    if (payload.action === 'serverconsole' || payload.action === 'trace' || payload.action === 'traceinfo')
+      return false;
     const nested = [payload.data, payload.payload, payload.message, payload.event].find(isRecord);
     const isEventEnvelope = payload.action === 'event' && nested !== undefined;
     const record =
@@ -125,6 +129,8 @@ export class RequestManager {
   }
 
   rejectAll(reason = 'MeshCentral control connection closed.'): void {
+    this.connectionGeneration++;
+    this.responseIdOptionalChains.clear();
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(
@@ -142,7 +148,15 @@ export class RequestManager {
   private requestSequentially<T>(payload: Record<string, unknown>, timeoutMs: number): Promise<T> {
     const action = String(payload.action);
     const previous = this.responseIdOptionalChains.get(action) ?? Promise.resolve();
-    const request = previous.then(() => this.requestNow<T>(payload, timeoutMs));
+    const generation = this.connectionGeneration;
+    const request = previous.then(() => {
+      if (generation !== this.connectionGeneration) {
+        throw new MeshCentralConnectionClosedError('MeshCentral control connection closed.', {
+          action, retryable: true,
+        });
+      }
+      return this.requestNow<T>(payload, timeoutMs);
+    });
     this.responseIdOptionalChains.set(
       action,
       request.then(

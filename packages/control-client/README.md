@@ -98,7 +98,7 @@ client.destroy();
 | `client.commands`   | 命令提交和带输出跟踪的命令执行                         | 脚本执行、批量诊断   |
 | `client.groups`     | 设备组增删改查、用户权限                               | 分组管理、授权       |
 | `client.events`     | 全局、设备或用户历史事件                               | 审计记录、活动时间线 |
-| `client.server`     | 服务器统计信息订阅                                     | 运行状态监控         |
+| `client.server`     | 服务器统计、管理控制台、全局跟踪、错误日志               | 运行状态监控与管理   |
 | `client.userGroups` | 用户组列表                                             | 权限配置界面         |
 | `client.users`      | 用户、锁定状态、会话数和账号维护                       | 管理员用户管理       |
 
@@ -136,7 +136,17 @@ const unsubscribeStats = client.server.subscribeStats((stats) => {
 unsubscribeStats();
 ```
 
+### 服务器管理（MC 1.1.54）
+
+`client.server.sendConsoleCommand(value, tag?)` 返回的 `Promise<void>` 只表示已发送。先用 `subscribeConsole(listener)` 订阅 `{ text, tag?, receivedAt }`；输出可有多条、可无 tag，没有通用完成消息。
+
+`getTraceSources()` 读取初始/变更缓存（未知为 `undefined`，关闭为 `[]`）；`subscribeTraceSources(listener)` 监听后续设置，`subscribeTrace(listener)` 监听 `{ source, args, time }`。`setTraceSources(categories)` 修改**服务器全局**设置。断线/重连清空缓存，不自动重设；取消订阅只影响本地。
+
+`fetchErrorLog()` 顺序请求无关联 ID 的 `servererrors`，返回 `{ content?: string }`，保留无内容与空字符串差异，拒绝格式错误。`clearErrorLog()` 只发送、不等待 ACK。暂不提供可能暴露原始秘密的 `fetchServerConfig`。方法与消息详见 [资源清单](docs/messages-and-resources.md)。
+
 ## 权限判断
+
+`getApplicationUiCapabilities(siteRights).siteAdmin` 使用 `isSiteAdministrator` 判断完整站点管理员权限，可用于服务器管理界面守卫；未知权限返回 `false`，实际授权仍由服务端执行。
 
 ```ts
 import {
@@ -197,6 +207,9 @@ const unsubscribeDiagnostic = client.on('diagnostic', (diagnostic) => {
 | `userInfo`    | 当前登录用户信息                 | 初始化身份、权限和个人资料       |
 | `serverInfo`  | 服务器能力和功能开关             | 初始化功能可用性                 |
 | `serverStats` | 标准化后的服务器运行统计         | 更新服务器监控界面               |
+| `serverConsole` | `{ text, tag?, receivedAt }` | 持续消费服务器控制台输出 |
+| `traceSources` | `readonly string[]` | 全局跟踪设置变更 |
+| `trace` | `{ source, args, time }` | 跟踪数据 |
 | `message`     | 每一条已解析的原始控制通道消息   | 调试协议、实现尚未标准化的功能   |
 | `error`       | 连接、请求、协议和服务端错误     | 统一错误提示和日志上报           |
 | `diagnostic`  | 无效、未知、歧义响应和监听器异常 | 开发期排错和兼容性监控           |

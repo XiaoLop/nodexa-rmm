@@ -3,6 +3,20 @@ import type { MeshCentralServerError } from '../errors';
 import { RequestManager } from './requestManager';
 
 describe('RequestManager', () => {
+  it('never consumes console or trace streams as unrelated tagged request responses', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const manager = new RequestManager(
+      (payload) => sent.push(payload as Record<string, unknown>),
+      1_000,
+      () => undefined,
+    );
+    const request = manager.request({ action: 'test', tag: 'shared' });
+    for (const action of ['serverconsole', 'trace', 'traceinfo']) {
+      expect(manager.consume({ action, tag: 'shared', responseid: sent[0]?.responseid, value: 'output' })).toBe(false);
+    }
+    expect(manager.consume({ action: 'test', responseid: sent[0]?.responseid, result: 'ok' })).toBe(true);
+    await expect(request).resolves.toMatchObject({ action: 'test' });
+  });
   it('rejects matched responses with a non-success result', async () => {
     const sent: Record<string, unknown>[] = [];
     const manager = new RequestManager(

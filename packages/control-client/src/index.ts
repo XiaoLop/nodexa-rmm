@@ -41,6 +41,12 @@ export {
 export { normalizeCommandMessage } from './protocol/commandMessages';
 export { normalizeServerFileTree } from './protocol/serverFilesNormalizers';
 export {
+  normalizeServerConsoleOutput,
+  normalizeTraceSources,
+  normalizeServerTrace,
+  normalizeServerErrorLog,
+} from './protocol/serverNormalizers';
+export {
   normalizeDeviceSessions,
   normalizeNotification,
   normalizeRecordingReady,

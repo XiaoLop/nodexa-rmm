@@ -136,6 +136,17 @@ describe('getDeviceGroupUiCapabilities', () => {
 });
 
 describe('getApplicationUiCapabilities', () => {
+  it.each([
+    [undefined, false],
+    [0, false],
+    [SiteRight.ManageUsers, false],
+    [SiteRight.ServerBackup | SiteRight.ServerRestore | SiteRight.ServerUpdate, false],
+    [0xfffffffe, false],
+    [SiteRight.Administrator, true],
+    [-1, true],
+  ])('derives siteAdmin from full administrator rights %s', (rights, expected) => {
+    expect(getApplicationUiCapabilities(rights as number | undefined).siteAdmin).toBe(expected);
+  });
   it('fails closed while site rights are unknown', () => {
     expect(Object.values(getApplicationUiCapabilities(undefined))).not.toContain(true);
   });

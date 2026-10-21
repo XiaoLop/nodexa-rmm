@@ -284,6 +284,9 @@ export class MeshCentralClient {
         if (decoded.recordingReady) this.dispatcher.emit('recordingReady', decoded.recordingReady);
         if (decoded.serverInfo) this.dispatcher.emit('serverInfo', decoded.serverInfo);
         if (decoded.serverStats) this.dispatcher.emit('serverStats', decoded.serverStats);
+        if (decoded.serverConsole) this.dispatcher.emit('serverConsole', decoded.serverConsole);
+        if (decoded.traceSources) this.dispatcher.emit('traceSources', decoded.traceSources);
+        if (decoded.trace) this.dispatcher.emit('trace', decoded.trace);
         if (decoded.userInfo) this.dispatcher.emit('userInfo', decoded.userInfo);
         if (decoded.event) this.dispatcher.emit('event', decoded.event);
         if (!consumed && !filesMessage && decoded.unknown && inspection.status === 'pending' && !inspection.signal)

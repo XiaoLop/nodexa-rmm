@@ -55,6 +55,7 @@ export interface DeviceGroupUiCapabilities {
 }
 
 export interface ApplicationUiCapabilities {
+  siteAdmin: boolean;
   serverFiles: boolean;
   viewServerStats: boolean;
   manageUsers: boolean;
@@ -264,6 +265,7 @@ export function getApplicationUiCapabilities(
 ): ApplicationUiCapabilities {
   if (siteRights === undefined) {
     return {
+      siteAdmin: false,
       serverFiles: false,
       viewServerStats: false,
       manageUsers: false,
@@ -281,6 +283,7 @@ export function getApplicationUiCapabilities(
   const serverStatsRights =
     SiteRight.ServerBackup | SiteRight.ServerRestore | SiteRight.ServerUpdate;
   return {
+    siteAdmin: administrator,
     serverFiles: administrator || hasSiteRight(normalized, SiteRight.FileAccess),
     viewServerStats: administrator || (normalized & serverStatsRights) !== 0,
     manageUsers: administrator || hasSiteRight(normalized, SiteRight.ManageUsers),

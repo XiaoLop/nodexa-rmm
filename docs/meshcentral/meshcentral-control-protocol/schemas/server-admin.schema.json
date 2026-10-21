@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MeshCentral 1.1.54 server administration wire messages",
+  "description": "Wire shapes only. Console request/output share a shape; direction and completion cannot be inferred from action. See plan for permissions and global Trace semantics.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["action", "value"],
+      "properties": {
+        "action": { "const": "serverconsole" },
+        "value": { "type": "string" },
+        "tag": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["action", "traceSources"],
+      "properties": {
+        "action": { "const": "traceinfo" },
+        "traceSources": { "$ref": "#/$defs/sources" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["action", "event"],
+      "properties": {
+        "action": { "const": "event" },
+        "event": {
+          "type": "object",
+          "required": ["action", "traceSources"],
+          "properties": {
+            "action": { "const": "traceinfo" },
+            "traceSources": { "$ref": "#/$defs/sources" }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["action", "source", "args", "time"],
+      "properties": {
+        "action": { "const": "trace" },
+        "source": { "type": "string" },
+        "args": { "type": "array" },
+        "time": { "type": "number" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": { "const": "servererrors" },
+        "data": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["action"],
+      "properties": { "action": { "const": "serverclearerrorlog" } }
+    }
+  ],
+  "$defs": {
+    "sources": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    }
+  }
+}

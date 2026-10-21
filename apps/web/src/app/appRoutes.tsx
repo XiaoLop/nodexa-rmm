@@ -45,6 +45,27 @@ function lazyPage<TModule, TKey extends keyof TModule>(
 
 export const appRoutes: readonly AppRouteDefinition[] = [
   {
+    path: '/admin/server/console',
+    component: lazyPage(() => import('../pages/ServerConsolePage'), 'ServerConsolePage'),
+    titleKeys: ['navigation.administration', 'serverAdmin.console'],
+    capability: 'siteAdmin',
+    navigation: { labelKey: 'serverAdmin.console', icon: <AuditOutlined />, group: 'navigation.administration' },
+  },
+  {
+    path: '/admin/server/trace',
+    component: lazyPage(() => import('../pages/ServerTracePage'), 'ServerTracePage'),
+    titleKeys: ['navigation.administration', 'serverAdmin.trace'],
+    capability: 'siteAdmin',
+    navigation: { labelKey: 'serverAdmin.trace', icon: <AuditOutlined />, group: 'navigation.administration' },
+  },
+  {
+    path: '/admin/server/logs',
+    component: lazyPage(() => import('../pages/ServerLogsPage'), 'ServerLogsPage'),
+    titleKeys: ['navigation.administration', 'serverAdmin.logs'],
+    capability: 'siteAdmin',
+    navigation: { labelKey: 'serverAdmin.logs', icon: <AuditOutlined />, group: 'navigation.administration' },
+  },
+  {
     path: '/dashboard',
     component: lazyPage(() => import('../pages/DashboardPage'), 'DashboardPage'),
     titleKeys: ['navigation.dashboard', 'navigation.overview'],

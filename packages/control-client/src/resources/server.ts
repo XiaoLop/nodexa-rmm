@@ -1,5 +1,7 @@
 import { MeshCentralValidationError } from '../errors';
 import { isRecord, normalizeServerTimelineStats } from '../protocol/normalizers';
+import { normalizeServerErrorLog } from '../protocol/serverNormalizers';
+import type { ServerConsoleOutput, ServerErrorLog, ServerTrace } from '../types';
 import type {
   MeshCentralClientEvents,
   MeshCentralEventChannel,
@@ -18,7 +20,52 @@ interface ResourceClient {
 }
 
 export class ServerResource {
-  constructor(private readonly client: ResourceClient) {}
+  private traceSources?: readonly string[];
+
+  constructor(private readonly client: ResourceClient) {
+    client.on('traceSources', (sources) => { this.traceSources = Object.freeze([...sources]); });
+    client.on('connection', ({ current }) => {
+      if (current !== 'connected' && current !== 'authenticating') this.traceSources = undefined;
+    });
+  }
+
+  async sendConsoleCommand(value: string, tag?: string): Promise<void> {
+    if (typeof value !== 'string' || (tag !== undefined && typeof tag !== 'string')) {
+      throw new MeshCentralValidationError('Console command and optional tag must be strings.');
+    }
+    this.client.send({ action: 'serverconsole', value, ...(tag === undefined ? {} : { tag }) });
+  }
+
+  subscribeConsole(listener: MeshCentralListener<ServerConsoleOutput>): () => void {
+    return this.client.on('serverConsole', listener);
+  }
+
+  getTraceSources(): readonly string[] | undefined {
+    return this.traceSources;
+  }
+
+  async setTraceSources(categories: readonly string[]): Promise<void> {
+    if (!Array.isArray(categories) || !categories.every((category) => typeof category === 'string')) {
+      throw new MeshCentralValidationError('Trace sources must be an array of strings.');
+    }
+    this.client.send({ action: 'traceinfo', traceSources: [...categories] });
+  }
+
+  subscribeTraceSources(listener: MeshCentralListener<readonly string[]>): () => void {
+    return this.client.on('traceSources', listener);
+  }
+
+  subscribeTrace(listener: MeshCentralListener<ServerTrace>): () => void {
+    return this.client.on('trace', listener);
+  }
+
+  async fetchErrorLog(): Promise<ServerErrorLog> {
+    return normalizeServerErrorLog(await this.client.request({ action: 'servererrors' }));
+  }
+
+  async clearErrorLog(): Promise<void> {
+    this.client.send({ action: 'serverclearerrorlog' });
+  }
 
   async getTimelineStats(hours: number): Promise<ServerTimelineStats[]> {
     if (!Number.isInteger(hours) || hours < 0 || hours > 720) {

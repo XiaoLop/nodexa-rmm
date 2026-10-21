@@ -1,4 +1,5 @@
-import type { MeshCentralEvent, ServerInfo, ServerStats, UserInfo } from '../types';
+import type { MeshCentralEvent, ServerInfo, ServerStats, UserInfo, ServerConsoleOutput, ServerTrace } from '../types';
+import { normalizeServerConsoleOutput, normalizeServerTrace, normalizeTraceSources } from './serverNormalizers';
 import { normalizeConnectionTermination } from '../lifecycle/termination';
 import {
   normalizeDeviceSessions,
@@ -28,6 +29,9 @@ export type ConnectionInspection =
   | { status: 'rejected'; error: string };
 
 export interface DecodedPush {
+  serverConsole?: ServerConsoleOutput;
+  traceSources?: readonly string[];
+  trace?: ServerTrace;
   event?: MeshCentralEvent;
   notification?: MeshCentralNotification;
   serverWarnings?: ServerWarning[];
@@ -61,6 +65,12 @@ export function inspectConnectionMessage(payload: unknown): ConnectionInspection
 
 export function decodePush(payload: unknown): DecodedPush {
   if (!isRecord(payload)) return { unknown: true };
+  const serverConsole = normalizeServerConsoleOutput(payload);
+  if (serverConsole) return { serverConsole };
+  const traceSources = normalizeTraceSources(payload);
+  if (traceSources) return { traceSources };
+  const trace = normalizeServerTrace(payload);
+  if (trace) return { trace };
   const termination = normalizeConnectionTermination(payload);
   if (termination) return { termination };
   const notification = normalizeNotification(payload);

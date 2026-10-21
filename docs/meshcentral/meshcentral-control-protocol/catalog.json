@@ -93,7 +93,7 @@
         "evidenceType": "web-client-source"
       }
     ],
-    "notes": "Pushed on connect to site administrators if tracing is enabled on the domain. Enumerates debug logging sources."
+    "notes": "Pushed on connect when domain tracing is allowed. traceSources is null or the currently enabled source array, not an available-source catalog. A client traceinfo request replaces instance-global settings; changes are broadcast as event/traceinfo."
   },
   {
     "action": "serverwarnings",
@@ -293,16 +293,16 @@
     "direction": "client-to-server",
     "delivery": "request",
     "domain": "server",
-    "responseId": "optional",
-    "requestCorrelation": "responseid",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
     "cardinality": "single",
     "requiredPermission": "SITERIGHT_ADMIN (0xFFFFFFFF)",
     "confidence": "confirmed",
     "sourceLocations": [
       {
         "file": "meshuser.js",
-        "lineStart": 5815,
-        "lineEnd": 5815,
+        "lineStart": 6787,
+        "lineEnd": 6808,
         "symbol": "serverCommandServerConsole",
         "evidenceType": "server-source"
       }
@@ -312,17 +312,17 @@
   {
     "action": "serverconsole",
     "direction": "server-to-client",
-    "delivery": "response",
+    "delivery": "stream",
     "domain": "server",
-    "responseId": "optional",
-    "requestCorrelation": "responseid",
-    "cardinality": "single",
+    "responseId": "absent",
+    "requestCorrelation": "tag",
+    "cardinality": "continuous",
     "confidence": "confirmed",
     "sourceLocations": [
       {
         "file": "meshuser.js",
-        "lineStart": 7175,
-        "lineEnd": 7220,
+        "lineStart": 6787,
+        "lineEnd": 6808,
         "symbol": "serverCommandServerConsole",
         "evidenceType": "server-source"
       },
@@ -334,7 +334,7 @@
         "evidenceType": "web-client-source"
       }
     ],
-    "notes": "Returns console output string in value field, echoing responseid and tag."
+    "notes": "Verified against installed 1.1.54: value is output text, optional tag is echoed by normal and some async branches; responseid is not echoed. Multiple outputs or no output are possible; no universal completion marker."
   },
   {
     "action": "nodes",

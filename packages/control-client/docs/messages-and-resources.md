@@ -152,6 +152,25 @@ await client.users.setSiteRights('user//test', 4);
 
 ## 服务器 `client.server`
 
+### 管理控制台、全局跟踪与错误日志（MC 1.1.54）
+
+| 方法 | 协议 / 返回值 |
+| --- | --- |
+| `sendConsoleCommand(value: string, tag?: string): Promise<void>` | 单向发送 `{ action: 'serverconsole', value, tag? }`；Promise 只表示已发送，不代表执行完成 |
+| `subscribeConsole(listener): () => void` | 输出 `ServerConsoleOutput { text: string, tag?: string, receivedAt: number }`；接收时间为本地 Unix 毫秒 |
+| `getTraceSources(): readonly string[] \| undefined` | 读取缓存；未知为 `undefined`，服务端 `null` 归一化为 `[]` |
+| `setTraceSources(categories: readonly string[]): Promise<void>` | 单向发送 `{ action: 'traceinfo', traceSources: [...categories] }`，修改服务器全局设置 |
+| `subscribeTraceSources(listener): () => void` | 后续有效设置更新通过 `readonly string[]` 通知；初始状态使用 getter 读取 |
+| `subscribeTrace(listener): () => void` | 输出 `ServerTrace { source: string, args: unknown[], time: number }`，保留服务端时间 |
+| `fetchErrorLog(): Promise<ServerErrorLog>` | 请求 `servererrors`；响应没有 `data` 时返回 `{}`，空字符串返回 `{ content: '' }`，非字符串拒绝为协议错误 |
+| `clearErrorLog(): Promise<void>` | 仅发送 `{ action: 'serverclearerrorlog' }`，不等待 ACK |
+
+控制台可异步产生多条 `{ action: 'serverconsole', value: string, tag? }`，没有通用完成标记；请先订阅再发送，不要把第一条输出当作完成。
+
+`traceinfo` 初始消息及 `{ action: 'event', event: { action: 'traceinfo', traceSources, ... } }` 更新缓存，独立于页面监听器。断线、重连会清空缓存；不会自动重新应用全局设置。所有取消订阅操作只移除本地监听器，绝不关闭全局跟踪。`trace` 数据来自 `{ action: 'trace', source, args, time }`。
+
+`servererrors` 无可靠关联 ID，由 RequestManager 顺序发送同类请求；断线时拒绝排队请求，不跨连接重发。读取日志与控制台输出可能包含敏感信息，调用方应限制展示权限。`fetchServerConfig` 因原始配置含秘密信息而暂不提供。应用权限中的 `siteAdmin: boolean` 由 `isSiteAdministrator` 判断完整管理员权限，不能以某个管理权限位代替；服务端仍负责实际授权。
+
 `getTimelineStats(hours)` 查询服务端保存的时间线快照，`hours` 必须是 `0` 到 `720` 的整数：
 
 ```ts

@@ -23,12 +23,15 @@
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `serverinfo` | S -> C | push | server | none | 无 (连接即推) | `meshuser.js:661`, `views/default.handlebars:2682` | 连接建立后服务端主动推送首包，包含域标识、公网 FQDN、TLS 指纹、端口、功能特性位 |
 | `userinfo` | S -> C | push | user | none | 无 (连接即推) | `meshuser.js:664`, `views/default.handlebars:2716` | 连接建立后紧随 `serverinfo` 推送，包含当前用户 ID、姓名、站点权限位、组关联与订阅 |
-| `traceinfo` | S -> C | push | server | none | `SITERIGHT_ADMIN` | `meshuser.js:670`, `views/default.handlebars:2609` | 管理员连线时若域开启调试跟踪，推送可追踪的模块列表（web, agent, amt, relay 等） |
+| `traceinfo` | C -> S / S -> C | 全局设置 / 初始化快照 | server | none | `SITERIGHT_ADMIN` | `meshuser.js:648, 4566-4574`（1.1.54） | `traceSources: string[] / null` 是当前启用来源，不是全部可用来源；修改完整替换实例全局设置，另通过 `event/traceinfo` 广播变更 |
+| `trace` | S -> C | stream | server | none | `SITERIGHT_ADMIN` | `meshcentral.js:3952-3963`（1.1.54） | `source: string`、`args: unknown[]`、`time: number`（毫秒）；本地取消监听不修改全局设置 |
+| `servererrors` | C -> S / S -> C | request / response | server | action（串行） | 站点更新权限及域错误日志开关 | `meshuser.js:6811-6814`（1.1.54） | `data?: string`；缺失无法区分文件不存在和读取失败，权限拒绝可静默 |
+| `serverclearerrorlog` | C -> S | fire-and-forget | server | none | 站点更新权限 | `meshuser.js:6782-6785`（1.1.54） | 异步删除 `mesherrors.txt`，无 ACK；回读不构成删除成功证明 |
 | `serverwarnings` | S -> C | push | server | none | `SITERIGHT_ADMIN` | `meshuser.js:675`, `views/default.handlebars:2625` | 管理员连线时若存在配置风险或告警，推送完整快照数组 |
 | `serverstats` | S -> C | push / response | server | responseid | `user.siteadmin & 21` | `meshuser.js:545, 5819`, `views/default.handlebars:2621` | 定时或按需拉取服务器运行时状态（CPU/内存、连接客户端数、Agent 错误计数器） |
 | `servertimelinestats` | C -> S / S -> C | request / response | server | action | `user.siteadmin & 21` | `meshuser.js:7136`, `views/default.handlebars:2672` | 拉取服务器历史时间线统计数据，**不返回 responseid 或 tag** |
 | `serverversion` | C -> S / S -> C | request / response | server | responseid | `SITERIGHT_SERVERUPDATE` | `meshuser.js:7153`, `views/default.handlebars:3089`, `meshctrl.js:1398` | 检查 MeshCentral 最新版本与稳定版本号，原样回传 `responseid` |
-| `serverconsole` | C -> S / S -> C | request / response | server | responseid | `SITERIGHT_ADMIN` | `meshuser.js:5815, 7175`, `views/default.handlebars:3141` | 执行服务端控制台命令，禁止通过 loginToken 建立的会话调用 |
+| `serverconsole` | C -> S / S -> C | command / output stream | server | 可选 tag，无通用完成标记 | `SITERIGHT_ADMIN` | `meshuser.js:6787-6808`（1.1.54） | `value` 为命令或输出；不回传 responseid，部分异步输出不保留 tag；禁止 loginToken 会话调用 |
 | `ping` / `pong` | 双向 | stream / push | connection | none | 无 | `meshuser.js:145-150`, `meshuser.js:5806-5807` | 控制通道心跳维持与双向保活检测 |
 | `close` | 双向 | request / push | connection | none | 无 | `meshuser.js:5791`, `webserver.js:7442-9365` | 主动断开连接，服务端推流时附带 `cause` 与 `msg` |
 | `stopped` | S -> C | push | connection | none | 无 | `meshuser.js:398, 8028`, `meshcentral.js:2403` | 服务端关闭、管理员强制踢出或并发会话超限时发送的阻断性消息 |
