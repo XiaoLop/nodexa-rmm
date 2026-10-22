@@ -5,11 +5,10 @@ packages:
 # Packages that must not run install scripts. Keep every workspace package aligned here:
 # a nested pnpm-workspace.yaml silently creates a second configuration root.
 allowBuilds:
-  esbuild: false
+  '@scarf/scarf': true
+  esbuild: true
   sharp: false
-  unrs-resolver: false
-
-disallowWorkspaceCycles: true
+  unrs-resolver: true
 
 # Single source of truth for dependency ranges shared by every workspace package.
 # Use `"<dep>": "catalog:"` in package.json. `apps/site` pins the Next.js platform on its
@@ -41,6 +40,8 @@ catalogs:
     react: 19.2.8
     react-dom: 19.2.8
     typescript: ^5
+
+disallowWorkspaceCycles: true
 
 overrides:
   '@react-native/metro-config': 0.86.2
