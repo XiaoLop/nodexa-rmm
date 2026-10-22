@@ -1,0 +1,732 @@
+/* ==========================================================================
+   Server Diagnostics & Operations (Studio Theme)
+   Integrated with design tokens and responsive breakpoints
+   ========================================================================== */
+
+.server-diagnostics-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Server Operations Summary Cards (Top Metrics Strip)
+   -------------------------------------------------------------------------- */
+.server-ops-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.server-ops-metric-card {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: var(--shadow-panel);
+  transition: border-color var(--motion-fast) ease;
+}
+
+.server-ops-metric-card:hover {
+  border-color: var(--color-border-default);
+}
+
+.server-ops-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.server-ops-metric-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.server-ops-metric-title .anticon {
+  font-size: 14px;
+  color: var(--color-brand);
+}
+
+.server-ops-metric-sub {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.server-ops-metric-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-ops-metric-value {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.server-ops-metric-hint {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.server-ops-metric-placeholder {
+  color: var(--color-text-disabled);
+  font-size: 14px;
+}
+
+/* CPU Load Average Pills */
+.server-ops-cpu-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.server-ops-cpu-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-subtle);
+  font-variant-numeric: tabular-nums;
+  transition: all var(--motion-fast) ease;
+}
+
+.server-ops-cpu-pill.is-high {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(231, 173, 69, 0.3);
+}
+
+/* Memory Tag & Progress */
+.server-ops-percent-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-hover);
+}
+
+.server-ops-percent-tag.is-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.server-ops-percent-tag.is-high {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.server-ops-progress {
+  margin: 0 !important;
+}
+
+.server-ops-progress .ant-progress-inner {
+  background-color: var(--color-surface-3) !important;
+}
+
+/* Sessions Column Split */
+.server-ops-sessions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.server-ops-session-col {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.server-ops-session-label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.server-ops-session-value {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.server-ops-session-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--color-border-subtle);
+}
+
+/* --------------------------------------------------------------------------
+   Panel Outer Shell & Workspace Tabs
+   -------------------------------------------------------------------------- */
+.server-ops-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.server-ops-workspace-tabs {
+  height: 43px;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding-inline: 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+  scrollbar-width: thin;
+}
+
+.server-ops-workspace-tabs button {
+  flex: 0 0 auto;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 15px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--motion-fast) ease;
+}
+
+.server-ops-workspace-tabs button span {
+  font-size: 11px;
+}
+
+.server-ops-workspace-tabs button:hover,
+.server-ops-workspace-tabs button.is-active {
+  color: var(--color-text-primary);
+  background: var(--color-brand-soft);
+}
+
+.server-ops-workspace-tabs button.is-active {
+  border-bottom-color: var(--color-brand);
+  font-weight: 600;
+}
+
+.server-ops-tab-content {
+  padding: 16px;
+  background: var(--color-surface-1);
+}
+
+.server-ops-tab-pane[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 620px) {
+  .server-ops-workspace-tabs {
+    padding-inline: 8px;
+  }
+
+  .server-ops-workspace-tabs button {
+    padding-inline: 11px;
+  }
+
+  .server-ops-tab-content {
+    padding: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Server Console
+   -------------------------------------------------------------------------- */
+.server-console-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.server-console-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
+}
+
+.server-console-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.server-console-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 12px;
+  align-items: start;
+}
+
+.terminal-wrapper-dark {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  padding: 8px 12px;
+  position: relative;
+  min-height: 440px;
+}
+
+.terminal-wrapper-dark .xterm {
+  padding: 6px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+}
+
+.server-console-sidebar {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.server-console-sidebar-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.server-console-sidebar-desc {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--color-text-tertiary);
+  line-height: 1.45;
+}
+
+.server-console-command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-console-command-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+}
+
+.server-console-command-item code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--color-brand-hover);
+  font-weight: 600;
+}
+
+.server-console-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 11.5px;
+  color: var(--color-text-tertiary);
+}
+
+.server-console-tips kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   Server Trace Panel
+   -------------------------------------------------------------------------- */
+.server-trace-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.server-trace-overview {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  min-height: 52px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+}
+
+.server-trace-overview-status,
+.server-trace-overview-stat {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-right: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.server-trace-overview-status { font-weight: 600; }
+.server-trace-overview-stat strong { color: var(--color-text-primary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.server-trace-overview-stat.is-warning strong { color: var(--color-warning); }
+.server-trace-overview-stat.is-error strong { color: var(--color-danger); }
+
+.server-trace-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+}
+.server-trace-live-dot.is-connected { background: var(--color-success); box-shadow: 0 0 7px var(--color-success-soft); }
+
+.server-trace-global-config {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+}
+
+.server-trace-global-config > summary { list-style: none; cursor: pointer; padding: 9px 12px; }
+.server-trace-global-config > summary::-webkit-details-marker { display: none; }
+.server-trace-global-config > summary::after { content: '+'; color: var(--color-text-tertiary); font-weight: 700; }
+.server-trace-global-config[open] > summary::after { content: '−'; }
+.server-trace-global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.server-trace-global-body { display: grid; gap: 10px; padding: 0 12px 12px; }
+
+.server-trace-global-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-warning);
+}
+
+.server-trace-global-status {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.server-trace-global-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.server-trace-global-select {
+  flex: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Unified Ops Toolbar (Filter / Actions)
+   -------------------------------------------------------------------------- */
+.server-ops-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+}
+
+.server-ops-toolbar-left,
+.server-ops-toolbar-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.server-ops-toolbar-right {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.server-trace-toolbar { border-radius: var(--radius-control); }
+.server-trace-toolbar .server-ops-toolbar-left { flex: 1 1 520px; }
+.server-trace-toolbar .server-ops-toolbar-left > .ant-input-affix-wrapper { flex: 1 1 260px; min-width: 220px; }
+.server-trace-toolbar .server-ops-toolbar-left > .ant-select { min-width: 170px; }
+.server-trace-toolbar .server-ops-toolbar-left > .server-trace-category-filter { width: 190px; min-width: 190px; flex: 0 0 190px; }
+.server-trace-category-filter .ant-select-selector { flex-wrap: nowrap !important; overflow: hidden; }
+.server-trace-category-filter .ant-select-selection-overflow { flex-wrap: nowrap !important; min-width: 0; overflow: hidden; }
+.server-trace-category-filter .ant-select-selection-overflow-item-suffix { flex: 0 0 auto; }
+.server-trace-toolbar .server-ops-toolbar-right { justify-content: flex-end; }
+.server-trace-switch-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.server-trace-new-events { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 32px; color: var(--color-brand-hover); font-size: 12px; }
+
+/* --------------------------------------------------------------------------
+   Unified Ops Viewport (Trace / Error Logs)
+   -------------------------------------------------------------------------- */
+.server-ops-viewport {
+  position: relative;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  overflow: hidden;
+  height: clamp(380px, calc(100vh - 430px), 720px);
+  display: flex;
+  flex-direction: column;
+}
+
+.trace-viewport-header {
+  display: grid;
+  grid-template-columns: 90px 190px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--color-surface-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.server-ops-viewport-scrollable {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+}
+
+/* Trace Log Rows */
+.trace-log-line {
+  display: grid;
+  grid-template-columns: 90px 190px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
+  font-variant-numeric: tabular-nums;
+}
+
+.trace-log-line:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.server-trace-row {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  cursor: pointer;
+}
+.server-trace-row:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
+.server-trace-level-source { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.server-trace-level-tag { margin: 0; font-size: 10px; text-transform: uppercase; }
+.server-trace-level-tag.is-info { color: var(--color-brand-hover); background: var(--color-brand-soft); border-color: rgba(59, 130, 246, .28); }
+.server-trace-level-tag.is-warning { color: var(--color-warning); background: var(--color-warning-soft); border-color: rgba(231, 173, 69, .28); }
+.server-trace-level-tag.is-error { color: var(--color-danger); background: var(--color-danger-soft); border-color: rgba(239, 99, 114, .28); }
+.server-trace-details { display: grid; gap: 16px; }
+.server-trace-details-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.server-trace-json { max-height: 55vh; overflow: auto; margin: 0; padding: 12px; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-canvas); color: var(--color-text-secondary); font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.trace-timestamp {
+  color: var(--color-text-tertiary);
+  font-size: 11.5px;
+  user-select: none;
+}
+
+.trace-tag {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: var(--radius-control);
+  user-select: none;
+  font-weight: 550;
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+  width: fit-content;
+  text-align: center;
+}
+
+.trace-tag[data-source="web"],
+.trace-tag[data-source="webrequest"] {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+.trace-tag[data-source="agent"],
+.trace-tag[data-source="agentupdate"] {
+  background: rgba(53, 199, 131, 0.12);
+  color: #34d399;
+  border-color: rgba(53, 199, 131, 0.28);
+}
+
+.trace-tag[data-source="relay"],
+.trace-tag[data-source="webrelay"] {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.28);
+}
+
+.trace-tag[data-source="main"],
+.trace-tag[data-source="dispatch"] {
+  background: rgba(231, 173, 69, 0.12);
+  color: #fbbf24;
+  border-color: rgba(231, 173, 69, 0.28);
+}
+
+.trace-tag[data-source="cert"],
+.trace-tag[data-source="authlog"] {
+  background: rgba(239, 99, 114, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 99, 114, 0.28);
+}
+
+.trace-content {
+  color: var(--color-text-primary);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Error Log Viewer
+   -------------------------------------------------------------------------- */
+.error-log-code {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+/* Highlighting in both trace and error logs */
+.server-ops-viewport mark {
+  background: #fef08a;
+  color: #0f172a;
+  border-radius: 2px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+/* Empty State Box in Viewport */
+.server-ops-empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Design
+   -------------------------------------------------------------------------- */
+@media (max-width: 1080px) {
+  .server-ops-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .server-console-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .server-console-sidebar {
+    order: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .server-ops-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .server-ops-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .server-ops-toolbar-left,
+  .server-ops-toolbar-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .server-trace-global-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .server-trace-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .server-trace-overview-status,
+  .server-trace-overview-stat { border-bottom: 1px solid var(--color-border-subtle); }
+  .server-trace-toolbar .server-ops-toolbar-left > .ant-select,
+  .server-trace-toolbar .server-ops-toolbar-left > .ant-input-affix-wrapper,
+  .server-trace-toolbar .server-ops-toolbar-left > .server-trace-category-filter { width: 100%; min-width: 0; flex: 1 1 100%; }
+  .server-trace-toolbar .server-ops-toolbar-right { justify-content: flex-start; }
+  .trace-viewport-header,
+  .trace-log-line {
+    grid-template-columns: 72px 120px minmax(0, 1fr);
+    gap: 7px;
+  }
+  .server-trace-level-source { flex-wrap: wrap; }
+
+  .server-ops-viewport {
+    height: 420px;
+  }
+}
+

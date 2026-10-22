@@ -64,6 +64,18 @@ export function AppRouter() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/admin/server/console"
+            element={<Navigate to="/admin/server?tab=console" replace />}
+          />
+          <Route
+            path="/admin/server/trace"
+            element={<Navigate to="/admin/server?tab=trace" replace />}
+          />
+          <Route
+            path="/admin/server/logs"
+            element={<Navigate to="/admin/server?tab=logs" replace />}
+          />
           {appRoutes.map(({ path, component: Page, capability }) => (
             <Route
               key={path}

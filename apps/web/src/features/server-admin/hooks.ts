@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ServerStats } from '@meshcentral/control-client';
 import { useMeshCentralControl } from '../gateway';
 import { boundedAppend } from './model';
 
 export function useServerConnection() {
+
   const { client } = useMeshCentralControl();
   const [status, setStatus] = useState(client?.connectionStatus);
   const [generation, setGeneration] = useState(0);
@@ -106,3 +108,27 @@ export function useServerErrorLog() {
   };
   return { ...connection, content, busy, error, clearSent, refresh, clear };
 }
+
+export function useServerStats(intervalMs = 10_000) {
+  const connection = useServerConnection();
+  const { client, connected } = connection;
+  const [stats, setStats] = useState<ServerStats | undefined>();
+
+  useEffect(() => {
+    if (!client || !connected || client.connectionStatus !== 'connected') {
+      setStats(undefined);
+      return;
+    }
+    setStats(undefined);
+    try {
+      return client.server.subscribeStats((next) => {
+        setStats(next);
+      }, intervalMs);
+    } catch {
+      setStats(undefined);
+    }
+  }, [client, connected, intervalMs]);
+
+  return { ...connection, stats };
+}
+

@@ -5,7 +5,7 @@ import { ErrorLogPanel } from './ErrorLogPanel';
 import { Highlight, TracePanel } from './TracePanel';
 
 const state = vi.hoisted(() => ({
-  trace: { connected: true, sources: ['web'], records: [], paused: false, setPaused: vi.fn(), clearRecords: vi.fn(), client: { connectionStatus: 'connected', server: { setTraceSources: vi.fn(async (values: string[]) => { void values; }) } } },
+  trace: { connected: true, sources: ['web'], records: [] as Array<{ source: string; args: unknown[]; time: number }>, paused: false, setPaused: vi.fn(), clearRecords: vi.fn(), client: { connectionStatus: 'connected', server: { setTraceSources: vi.fn(async (values: string[]) => { void values; }) } } },
   log: { connected: true, busy: false, error: false, clearSent: false, content: undefined as string | undefined, clear: vi.fn(), refresh: vi.fn() },
 }));
 vi.mock('../../features/server-admin/hooks', () => ({ useServerTrace: () => state.trace, useServerErrorLog: () => state.log }));
@@ -15,7 +15,7 @@ beforeAll(() => {
   window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   window.getComputedStyle = (() => ({ getPropertyValue: () => '' })) as any;
 });
-afterEach(() => { cleanup(); vi.clearAllMocks(); state.log.connected = true; state.log.content = undefined; state.log.clearSent = false; });
+afterEach(() => { cleanup(); vi.clearAllMocks(); state.trace.records = []; state.log.connected = true; state.log.content = undefined; state.log.clearSent = false; });
 
 describe('server administration components', () => {
   it('renders and highlights untrusted text without interpreting markup', () => {
@@ -53,24 +53,42 @@ describe('server administration components', () => {
     await waitFor(() => expect(state.trace.client.server.setTraceSources).toHaveBeenCalledWith([]));
     expect(screen.getByText('serverAdmin.sent')).toBeTruthy();
   });
-  it('pauses scrolling without hiding collected records or disabling export', () => {
+  it('auto-scrolls live records and stops while the stream is paused', () => {
     const scroll = vi.fn();
     HTMLElement.prototype.scrollIntoView = scroll;
-    state.trace.paused = true;
+    state.trace.paused = false;
     const { rerender } = render(<TracePanel />);
+    expect(scroll).toHaveBeenCalled();
+    scroll.mockClear();
+    state.trace.paused = true;
+    rerender(<TracePanel />);
     expect(scroll).not.toHaveBeenCalled();
     expect((screen.getByRole('button', { name: 'serverAdmin.export' }) as HTMLButtonElement).disabled).toBe(false);
-    state.trace.paused = false;
-    rerender(<TracePanel />);
-    expect(scroll).toHaveBeenCalled();
   });
-  it('shows live global settings and never writes them merely by rendering or unmounting', () => {
+  it('keeps advanced settings separate and never writes them merely by rendering or unmounting', () => {
     const { unmount } = render(<TracePanel />);
-    expect(screen.getByText('serverAdmin.globalWarning')).toBeTruthy();
-    expect(screen.getByText(/serverAdmin.enabled/).textContent).toContain('web');
+    expect(screen.getByRole('combobox', { name: 'serverAdmin.globalCategories' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'serverAdmin.clearLocal' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'serverAdmin.clearLocal' }));
     expect(state.trace.clearRecords).toHaveBeenCalledTimes(1);
     unmount();
     expect(state.trace.client.server.setTraceSources).not.toHaveBeenCalled();
+  });
+
+  it('displays event details without presenting inferred severity levels', async () => {
+    state.trace.records = [
+      { source: 'webrequest', args: ['connection established'], time: Date.now() },
+      { source: 'dispatch', args: ['Warning: dispatch updated'], time: Date.now() },
+      { source: 'dispatch', args: ['Error: request failed'], time: Date.now() },
+    ];
+    render(<TracePanel />);
+    expect(screen.getByText('serverAdmin.totalEvents').parentElement?.textContent).toContain('3');
+    expect(screen.queryByRole('combobox', { name: 'serverAdmin.levelFilter' })).toBeNull();
+    expect(screen.getByRole('button', { name: /request failed/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /request failed/ }));
+    expect(await screen.findByText('serverAdmin.sanitizedPayload')).toBeTruthy();
+    expect(screen.getAllByText('serverAdmin.source').length).toBeGreaterThan(0);
+    expect(screen.queryByText('serverAdmin.levelError')).toBeNull();
+    state.trace.records = [];
   });
 });

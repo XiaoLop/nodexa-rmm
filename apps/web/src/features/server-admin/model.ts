@@ -62,3 +62,30 @@ export function editLine(line: LineState, input: string): LineState {
   const text = input.replace(/[\x00-\x1f\x7f-\x9f]/g, '').slice(0, 4096 - line.text.length);
   return { text: line.text.slice(0, line.cursor) + text + line.text.slice(line.cursor), cursor: line.cursor + text.length };
 }
+
+export function formatBytes(bytes?: number): string {
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+export function calcMemoryUsage(
+  total?: number,
+  free?: number,
+  available?: number,
+): { used?: number; total?: number; percent?: number } {
+  if (total === undefined || !Number.isFinite(total) || total <= 0) {
+    return {};
+  }
+  const unused = available ?? free ?? total;
+  const used = Math.max(0, Math.min(total, total - unused));
+  const percent = Math.min(100, Math.max(0, Math.round((used / total) * 100)));
+  return { used, total, percent };
+}
+

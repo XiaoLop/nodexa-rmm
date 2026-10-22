@@ -1,21 +1,38 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { Alert } from 'antd';
+import { ClearOutlined, CodeOutlined } from '@ant-design/icons';
+import { Alert, Button } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useServerConnection } from '../../features/server-admin/hooks';
-import { boundedAppend, editLine, safeTerminalText, type LineState } from '../../features/server-admin/model';
+import {
+  boundedAppend,
+  editLine,
+  safeTerminalText,
+  VERIFIED_COMMANDS,
+  type LineState,
+} from '../../features/server-admin/model';
 import '@xterm/xterm/css/xterm.css';
 
-export function ServerConsole() {
+export function ServerConsole({ active: visible = true }: { active?: boolean } = {}) {
   const { t } = useTranslation();
   const { client, connected, generation } = useServerConnection();
   const container = useRef<HTMLDivElement>(null);
+  const fitRef = useRef<FitAddon | null>(null);
+  const termHandle = useRef<{ terminal: Terminal; prompt: () => void } | null>(null);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (visible && fitRef.current) {
+      try { fitRef.current.fit(); } catch { /* ignore */ }
+    }
+  }, [visible]);
+
   useEffect(() => {
     if (!container.current) return;
     const terminal = new Terminal({ scrollback: 2000, convertEol: false, cursorBlink: true });
     const fit = new FitAddon();
+    fitRef.current = fit;
     terminal.loadAddon(fit);
     terminal.open(container.current);
     const resize = new ResizeObserver(() => fit.fit());
@@ -34,6 +51,7 @@ export function ServerConsole() {
       terminal.write('\r\x1b[2K> ' + safeTerminalText(line.text.slice(start, start + width)));
       terminal.write('\r' + `\x1b[${2 + line.cursor - start}C`);
     };
+    termHandle.current = { terminal, prompt };
     prompt();
     const output = client?.server.subscribeConsole(packet => {
       pending = (pending + safeTerminalText(packet.text.slice(-65536)) + '\r\n').slice(-131072);
@@ -70,6 +88,7 @@ export function ServerConsole() {
     });
     return () => {
       active = false;
+      termHandle.current = null;
       clearInterval(timer);
       output?.();
       input.dispose();
@@ -77,9 +96,60 @@ export function ServerConsole() {
       terminal.dispose();
     };
   }, [client, connected, generation]);
-  return <>
-    <Alert type={connected ? 'info' : 'warning'} showIcon title={t(connected ? 'serverAdmin.consoleHint' : 'serverAdmin.disconnected')} />
-    {failed && <Alert type="error" title={t('serverAdmin.failed')} />}
-    <div ref={container} aria-label={t('serverAdmin.console')} style={{ height: 460, marginTop: 16 }} />
-  </>;
+
+  const handleClear = () => {
+    if (termHandle.current) {
+      termHandle.current.terminal.clear();
+      termHandle.current.prompt();
+    }
+  };
+
+  return (
+    <div className="server-console-container">
+      <Alert
+        type={connected ? 'info' : 'warning'}
+        showIcon
+        title={t(connected ? 'serverAdmin.consoleHint' : 'serverAdmin.disconnected')}
+      />
+      {failed && <Alert type="error" title={t('serverAdmin.failed')} />}
+
+      <div className="server-console-grid">
+        <div className="terminal-wrapper-dark">
+          <div
+            ref={container}
+            aria-label={t('serverAdmin.console')}
+            style={{ height: 'clamp(380px, calc(100vh - 440px), 640px)' }}
+          />
+        </div>
+
+        <aside className="server-console-sidebar" aria-label={t('serverAdmin.quickCommands')}>
+          <div className="server-console-sidebar-header">
+            <CodeOutlined /> <span>{t('serverAdmin.quickCommands')}</span>
+          </div>
+          <p className="server-console-sidebar-desc">{t('serverAdmin.quickCommandsDesc')}</p>
+          <div className="server-console-command-list">
+            {VERIFIED_COMMANDS.map((cmd) => (
+              <div key={cmd} className="server-console-command-item">
+                <code>{cmd}</code>
+              </div>
+            ))}
+          </div>
+          <div className="server-console-tips">
+            <div><kbd>Tab</kbd> 自动补全命令</div>
+            <div><kbd>↑</kbd> <kbd>↓</kbd> 翻阅历史命令</div>
+            <div><kbd>Ctrl+C</kbd> 取消当前输入</div>
+          </div>
+          <Button
+            size="small"
+            icon={<ClearOutlined />}
+            onClick={handleClear}
+            style={{ marginTop: 6 }}
+          >
+            {t('serverAdmin.clearScreen')}
+          </Button>
+        </aside>
+      </div>
+    </div>
+  );
 }
+

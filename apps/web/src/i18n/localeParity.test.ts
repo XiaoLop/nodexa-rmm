@@ -41,7 +41,7 @@ describe('i18n locale parity', () => {
   });
 
   it('ships server administration warnings and sent-only wording in both languages', () => {
-    for (const key of ['console', 'trace', 'logs', 'consoleHint', 'globalWarning', 'clearSent', 'absent', 'empty']) {
+    for (const key of ['diagnostics', 'console', 'trace', 'logs', 'consoleHint', 'globalWarning', 'clearSent', 'absent', 'empty', 'eventSearch', 'eventDetails', 'redactionNotice']) {
       const path = `serverAdmin.${key}`;
       expect(enEntries.get(path)).toBeTruthy();
       expect(zhEntries.get(path)).toBeTruthy();

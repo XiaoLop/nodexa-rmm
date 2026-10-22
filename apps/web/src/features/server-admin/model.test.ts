@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { boundedAppend, editLine, printable, safeTerminalText, KNOWN_TRACE_SOURCES, TRACE_SOURCE_CATALOG_VERSION, traceSourceOptions } from './model';
+import {
+  boundedAppend,
+  calcMemoryUsage,
+  editLine,
+  formatBytes,
+  printable,
+  safeTerminalText,
+  KNOWN_TRACE_SOURCES,
+  TRACE_SOURCE_CATALOG_VERSION,
+  traceSourceOptions,
+} from './model';
 
 describe('server administration models', () => {
   it('offers all 21 versioned sources without waiting for traffic and preserves unknown categories', () => {
@@ -39,5 +49,19 @@ describe('server administration models', () => {
     circular.push(circular);
     expect(printable(circular)).toBe('[unserializable]');
     expect(printable({ html: '<script>' })).toBe('{"html":"<script>"}');
+  });
+  it('formats byte numbers into human readable units safely', () => {
+    expect(formatBytes(undefined)).toBe('—');
+    expect(formatBytes(-100)).toBe('—');
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(1024)).toBe('1.0 KB');
+    expect(formatBytes(1024 * 1024 * 1536)).toBe('1.5 GB');
+  });
+  it('calculates memory usage and clamp percent', () => {
+    expect(calcMemoryUsage(undefined)).toEqual({});
+    expect(calcMemoryUsage(0)).toEqual({});
+    expect(calcMemoryUsage(1000, 400)).toEqual({ used: 600, total: 1000, percent: 60 });
+    // available takes precedence over free
+    expect(calcMemoryUsage(1000, 600, 200)).toEqual({ used: 800, total: 1000, percent: 80 });
   });
 });

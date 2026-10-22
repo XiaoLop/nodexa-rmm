@@ -15,17 +15,15 @@ describe('app route metadata', () => {
     });
   });
 
-  it('lazily registers all server admin pages with siteAdmin-gated navigation', () => {
-    for (const name of ['console', 'trace', 'logs']) {
-      const route = appRoutes.find(candidate => candidate.path === `/admin/server/${name}`);
-      expect(route).toMatchObject({
-        capability: 'siteAdmin',
-        navigation: { labelKey: `serverAdmin.${name}`, group: 'navigation.administration' },
-      });
-      expect(route?.component.$$typeof).toBe(Symbol.for('react.lazy'));
-      expect(resolvePageMeta(`/admin/server/${name}`, translate as never).title)
-        .toBe(`navigation.administration / serverAdmin.${name}`);
-    }
+  it('lazily registers server diagnostics page with siteAdmin-gated navigation', () => {
+    const route = appRoutes.find((candidate) => candidate.path === '/admin/server');
+    expect(route).toMatchObject({
+      capability: 'siteAdmin',
+      navigation: { labelKey: 'serverAdmin.diagnostics', group: 'navigation.administration' },
+    });
+    expect(route?.component.$$typeof).toBe(Symbol.for('react.lazy'));
+    expect(resolvePageMeta('/admin/server', translate as never).title)
+      .toBe('navigation.administration / serverAdmin.diagnostics');
   });
 
   it('resolves dynamic route titles and their parent navigation selection', () => {

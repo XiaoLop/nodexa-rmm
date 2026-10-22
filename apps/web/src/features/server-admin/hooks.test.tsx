@@ -1,15 +1,17 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useServerErrorLog, useServerTrace } from './hooks';
+import { useServerErrorLog, useServerStats, useServerTrace } from './hooks';
 
 const state = vi.hoisted(() => ({ client: undefined as any }));
 vi.mock('../gateway', () => ({ useMeshCentralControl: () => ({ client: state.client }) }));
 let connection: (event: { current: string }) => void;
 let packet: (value: { source: string; args: unknown[]; time: number }) => void;
 let sources: (value: readonly string[]) => void;
+let statsListener: (stats: any) => void;
 const unsubscribeTrace = vi.fn();
 const unsubscribeSources = vi.fn();
+const unsubscribeStats = vi.fn();
 const settle = async () => { await act(async () => { await Promise.resolve(); }); };
 
 beforeEach(() => {
@@ -19,8 +21,9 @@ beforeEach(() => {
     on: vi.fn((_event, listener) => { connection = listener; return vi.fn(); }),
     server: {
       getTraceSources: vi.fn(() => ['web']),
-      subscribeTraceSources: vi.fn(listener => { sources = listener;       return unsubscribeSources; }),
-            subscribeTrace: vi.fn(listener => { packet = listener; return unsubscribeTrace; }),
+      subscribeTraceSources: vi.fn(listener => { sources = listener; return unsubscribeSources; }),
+      subscribeTrace: vi.fn(listener => { packet = listener; return unsubscribeTrace; }),
+      subscribeStats: vi.fn(listener => { statsListener = listener; return unsubscribeStats; }),
       setTraceSources: vi.fn(async () => {}),
       fetchErrorLog: vi.fn(async () => ({ content: 'errors' })),
       clearErrorLog: vi.fn(async () => {}),
@@ -105,3 +108,24 @@ describe('error log hook', () => {
     expect(state.client.server.fetchErrorLog).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('server stats hook', () => {
+  it('subscribes when connected and clears stats on disconnect', () => {
+    const { result, unmount } = renderHook(() => useServerStats(5000));
+    expect(state.client.server.subscribeStats).toHaveBeenCalledWith(expect.any(Function), 5000);
+    act(() => {
+      statsListener({ cpuAverage: [0.5, 0.4, 0.3], totalMemory: 1000, freeMemory: 400 });
+    });
+    expect(result.current.stats?.totalMemory).toBe(1000);
+
+    act(() => {
+      state.client.connectionStatus = 'disconnected';
+      connection({ current: 'disconnected' });
+    });
+    expect(result.current.stats).toBeUndefined();
+
+    unmount();
+    expect(unsubscribeStats).toHaveBeenCalled();
+  });
+});
+

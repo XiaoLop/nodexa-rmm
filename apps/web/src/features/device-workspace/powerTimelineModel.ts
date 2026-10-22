@@ -165,7 +165,9 @@ export function parsePowerTimeline(
 export function buildSevenDaysTimeline(
   rawTimeline: number[] | undefined,
   now = Date.now(),
+  _isCurrentConnected?: boolean,
 ): PowerTimelineSummary {
+  void _isCurrentConnected;
   const intervals = parsePowerTimeline(rawTimeline, now);
 
   const nowDate = new Date(now);
