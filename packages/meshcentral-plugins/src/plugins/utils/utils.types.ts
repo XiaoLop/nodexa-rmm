@@ -10,15 +10,12 @@ export interface GeoIpLocation {
   latitude?: number;
   longitude?: number;
   timezone?: string;
-  source: 'geoip-mmdb';
-  databaseVersion: string;
+  source: 'iploc-db';
   resolvedAt: number;
 }
 
 export interface GeoIpLocationLookup {
-  readonly databaseVersion?: string;
-  initialize(): Promise<void>;
-  lookup(ip: string): GeoIpLocation | undefined;
+  lookup(ip: string): Promise<GeoIpLocation | undefined>;
 }
 
 export interface MeshCentralNodeDocument extends Record<string, unknown> {

@@ -26,4 +26,3 @@ deploy/generated/*
 !deploy/generated/.gitkeep
 deploy/secrets/*
 !deploy/secrets/README.md
-deploy/assets/*.mmdb

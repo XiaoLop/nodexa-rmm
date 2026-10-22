@@ -31,7 +31,7 @@ function localizedCountryName(location: DeviceLocation, language: string): strin
     try {
       return new Intl.DisplayNames([language], { type: 'region' }).of(location.countryCode);
     } catch {
-      // Fall through to the MMDB-provided names.
+      // Fall through to the location-provided names.
     }
   }
   return localizedLocationName(location.countryNames, language);

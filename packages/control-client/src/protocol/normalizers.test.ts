@@ -81,17 +81,17 @@ describe('protocol normalizers', () => {
     });
   });
 
-  it('normalizes plugin GeoIP location data from the node', () => {
+  it('normalizes plugin IP location data from the node', () => {
     const device = normalizeDevices({ group: [{
       _id: 'located-device',
       nodexa: { location: {
         lookupIp: '8.8.8.8', countryCode: 'US', cityNames: { en: 'Mountain View' },
-        source: 'geoip-mmdb', databaseVersion: '2026-10', resolvedAt: 1_791_468_682,
+        source: 'iploc-db', resolvedAt: 1_791_468_682,
       } },
     }] })[0];
     expect(device?.location).toMatchObject({
       lookupIp: '8.8.8.8', countryCode: 'US', cityNames: { en: 'Mountain View' },
-      source: 'geoip-mmdb', databaseVersion: '2026-10',
+      source: 'iploc-db',
       resolvedAt: '2026-10-08T14:11:22.000Z',
     });
   });

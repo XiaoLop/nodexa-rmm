@@ -90,8 +90,7 @@ describe('device presentation helpers', () => {
         lookupIp: '10.0.0.42',
         countryCode: 'US',
         countryNames: { en: 'United States' },
-        source: 'geoip-mmdb',
-        databaseVersion: '2026-10',
+        source: 'iploc-db',
       },
     });
     const defaults = { query: '', groupId: '', online: 'all', platform: 'all' } as const;

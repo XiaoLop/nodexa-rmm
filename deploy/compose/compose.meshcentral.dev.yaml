@@ -39,7 +39,6 @@ services:
     restart: unless-stopped
     environment:
       MESHCENTRAL_SYNC_BUILTIN_PLUGINS: 'true'
-      NODEXA_GEOIP_MMDB_PATH: /data/GeoLite2-City.mmdb
     command:
       - --config-yaml
       - /run/config/config.yaml

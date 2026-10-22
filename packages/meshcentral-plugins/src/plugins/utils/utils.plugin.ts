@@ -13,9 +13,28 @@ import type {
   MeshCentralUser,
 } from '../../types/meshcentral.types.js';
 import { publicIp } from './services/geo-ip-location.service.js';
-import type { GeoIpLocationLookup, MeshCentralNodeDocument } from './utils.types.js';
+import type { GeoIpLocation, GeoIpLocationLookup, MeshCentralNodeDocument } from './utils.types.js';
 
 const SETTINGS_LOCKED = 0x00000400;
+const LOCATION_COMPARE_FIELDS = [
+  'lookupIp',
+  'countryCode',
+  'subdivisionCode',
+  'countryNames',
+  'regionNames',
+  'cityNames',
+  'latitude',
+  'longitude',
+  'timezone',
+  'source',
+] as const satisfies readonly (keyof GeoIpLocation)[];
+
+function sameLocation(current: Partial<GeoIpLocation> | undefined, next: GeoIpLocation): boolean {
+  if (!current) return false;
+  return LOCATION_COMPARE_FIELDS.every(
+    (field) => JSON.stringify(current[field]) === JSON.stringify(next[field]),
+  );
+}
 
 export interface TwoFactorMethodCapability {
   enabled: boolean;
@@ -63,7 +82,6 @@ export class UtilsPlugin {
   @PluginHook('server_startup')
   serverStartup(): void {
     console.log('[utils] Plugin started');
-    void this.geoIpLocation.initialize();
   }
 
   @PluginHook('hook_agentCoreIsStable')
@@ -73,28 +91,25 @@ export class UtilsPlugin {
     const update = this.updateNodeLocation(nodeId, agentServer)
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
-        this.meshServer.debug?.('utils', `GeoIP update failed for ${nodeId}: ${message}`);
+        this.meshServer.debug?.('utils', `IP location update failed for ${nodeId}: ${message}`);
       })
       .finally(() => this.pendingLocationUpdates.delete(nodeId));
     this.pendingLocationUpdates.set(nodeId, update);
   }
 
   private async updateNodeLocation(nodeId: string, agentServer: MeshCentralAgentServer): Promise<void> {
-    await this.geoIpLocation.initialize();
-    const databaseVersion = this.geoIpLocation.databaseVersion;
     const node = await this.getNode(nodeId);
-    if (!databaseVersion || !node) return;
+    if (!node) return;
     const lookupIp = publicIp(node.publicip) ?? publicIp(node.ip);
     if (!lookupIp) return;
-    const cached = node.nodexa?.location;
-    if (cached?.lookupIp === lookupIp && cached.databaseVersion === databaseVersion) return;
 
-    const location = this.geoIpLocation.lookup(lookupIp);
+    const location = await this.geoIpLocation.lookup(lookupIp);
     if (!location) return;
     const latestNode = await this.getNode(nodeId);
     if (!latestNode) return;
     const latestIp = publicIp(latestNode.publicip) ?? publicIp(latestNode.ip);
     if (latestIp !== lookupIp) return;
+    if (sameLocation(latestNode.nodexa?.location, location)) return;
 
     latestNode.nodexa = { ...(latestNode.nodexa ?? {}), location };
     this.meshServer.db?.Set?.(latestNode);

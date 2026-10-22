@@ -104,10 +104,9 @@ function localizedNames(value: unknown): Record<string, string> | undefined {
 function normalizeDeviceLocation(value: UnknownRecord): DeviceLocation | undefined {
   const nodexa = isRecord(value.nodexa) ? value.nodexa : undefined;
   const location = isRecord(nodexa?.location) ? nodexa.location : undefined;
-  if (!location || location.source !== 'geoip-mmdb') return undefined;
+  if (!location || location.source !== 'iploc-db') return undefined;
   const lookupIp = stringValue(location.lookupIp);
-  const databaseVersion = stringValue(location.databaseVersion);
-  if (!lookupIp || !databaseVersion) return undefined;
+  if (!lookupIp) return undefined;
   const number = (field: unknown) =>
     typeof field === 'number' && Number.isFinite(field) ? field : undefined;
   return {
@@ -120,8 +119,7 @@ function normalizeDeviceLocation(value: UnknownRecord): DeviceLocation | undefin
     latitude: number(location.latitude),
     longitude: number(location.longitude),
     timezone: stringValue(location.timezone),
-    source: 'geoip-mmdb',
-    databaseVersion,
+    source: 'iploc-db',
     resolvedAt: timestampValue(location.resolvedAt),
   };
 }

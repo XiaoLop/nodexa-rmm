@@ -29,8 +29,7 @@ export interface DeviceLocation {
   latitude?: number;
   longitude?: number;
   timezone?: string;
-  source: 'geoip-mmdb';
-  databaseVersion: string;
+  source: 'iploc-db';
   resolvedAt?: string;
 }
 

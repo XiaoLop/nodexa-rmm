@@ -7,8 +7,7 @@ const location = {
   countryNames: { en: 'United States', 'zh-CN': '美国' },
   regionNames: { en: 'California', 'zh-CN': '加利福尼亚州' },
   cityNames: { en: 'Mountain View', 'zh-CN': '山景城' },
-  source: 'geoip-mmdb' as const,
-  databaseVersion: '2026-10',
+  source: 'iploc-db' as const,
 };
 
 describe('formatDeviceLocation', () => {

@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "ipaddr.js": "^2.5.0",
-    "maxmind": "^5.0.7",
     "otplib": "12.0.1"
   },
   "devDependencies": {

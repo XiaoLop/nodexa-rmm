@@ -180,8 +180,8 @@ describe('utils two-factor capabilities', () => {
   });
 });
 
-describe('utils GeoIP location', () => {
-  it('writes the public IP location and broadcasts a safe node change', async () => {
+describe('utils IP location', () => {
+  it('writes the ip location record and broadcasts a safe node change', async () => {
     const node = { _id: 'node//one', domain: '', meshid: 'mesh//one', publicip: '8.8.8.8' };
     const set = vi.fn();
     const dispatchEvent = vi.fn();
@@ -190,11 +190,9 @@ describe('utils GeoIP location', () => {
       DispatchEvent: dispatchEvent,
     };
     const geoIpLocation: GeoIpLocationLookup = {
-      databaseVersion: '2026-10',
-      initialize: vi.fn(async () => undefined),
-      lookup: vi.fn((lookupIp) => ({
-        lookupIp, countryCode: 'US', source: 'geoip-mmdb' as const,
-        databaseVersion: '2026-10', resolvedAt: 1_791_468_682,
+      lookup: vi.fn(async (lookupIp) => ({
+        lookupIp, countryCode: 'US', source: 'iploc-db' as const,
+        resolvedAt: 1_791_468_682,
       })),
     };
     const plugin = new UtilsPlugin(meshServer, geoIpLocation);
@@ -211,5 +209,40 @@ describe('utils GeoIP location', () => {
       ['*', 'mesh//one'], plugin,
       expect.objectContaining({ action: 'changenode', nodeid: 'node//one', nolog: 1 }),
     );
+  });
+
+  it('does not rewrite or broadcast an unchanged location', async () => {
+    const node = {
+      _id: 'node//one', domain: '', meshid: 'mesh//one', publicip: '8.8.8.8',
+      nodexa: { location: {
+        lookupIp: '8.8.8.8', countryCode: 'US', source: 'iploc-db', resolvedAt: 1_791_400_000,
+      } },
+    };
+    const set = vi.fn();
+    const dispatchEvent = vi.fn();
+    const meshServer: MeshCentralServer = {
+      db: { Get: (_id, callback) => callback(undefined, [{ ...node }]), Set: set },
+      DispatchEvent: dispatchEvent,
+    };
+    const geoIpLocation: GeoIpLocationLookup = {
+      lookup: vi.fn(async (lookupIp) => ({
+        lookupIp, countryCode: 'US', source: 'iploc-db' as const,
+        resolvedAt: 1_791_468_682,
+      })),
+    };
+    const plugin = new UtilsPlugin(meshServer, geoIpLocation);
+
+    plugin.agentCoreIsStable(
+      { dbNodeKey: 'node//one', send: vi.fn() },
+      {
+        CloneSafeNode: (value) => ({ ...value }),
+        CreateMeshDispatchTargets: () => ['*', 'mesh//one'],
+      },
+    );
+
+    await vi.waitFor(() => expect(geoIpLocation.lookup).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(set).not.toHaveBeenCalled();
+    expect(dispatchEvent).not.toHaveBeenCalled();
   });
 });
