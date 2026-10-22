@@ -7,6 +7,7 @@ import {
   ArrowRight,
   BellRing,
   Boxes,
+  ChartColumn,
   Check,
   ChevronRight,
   CircleCheck,
@@ -14,6 +15,7 @@ import {
   Command,
   FileUp,
   Fingerprint,
+  FolderSync,
   Gauge,
   Laptop,
   Layers,
@@ -21,6 +23,7 @@ import {
   Monitor,
   MonitorSmartphone,
   Network,
+  PackagePlus,
   Play,
   Radar,
   ServerCog,
@@ -28,7 +31,6 @@ import {
   ShieldCheck,
   Sparkles,
   TerminalSquare,
-  Users,
   Workflow,
   Zap,
 } from "lucide-react";
@@ -37,14 +39,17 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import type { ContactInfo } from "@/config/contact";
 import { SiteHeader } from "@/components/SiteHeader";
 
-const capabilityIcons = [Radar, MonitorSmartphone, Workflow, ShieldCheck];
-const capabilityAccents = ["blue", "cyan", "violet", "green"];
+const capabilityIcons = [Radar, MonitorSmartphone, FolderSync, Workflow, PackagePlus, ShieldCheck, ChartColumn, ServerCog];
+const capabilityAccents = ["blue", "cyan", "violet", "green", "blue", "violet", "green", "cyan"];
 
 const workflowIcons = [BellRing, Sparkles, TerminalSquare, CircleCheck];
 const mobileIcons = [Laptop, BellRing, Network];
 const deploymentIcons = [Boxes, CloudCog, Command, FileUp];
 
-const showcaseIcons = [Monitor, Gauge, Layers, Users];
+const showcaseIcons = [Monitor, Gauge, Layers, FolderSync, ChartColumn, ShieldCheck];
+
+// 能力卡没有一一对应的 showcase 面板，显式映射避免跳错标签页
+const capabilityShowcaseTarget = [1, 0, 3, 3, 2, 5, 4, 1];
 
 // Animation variants
 const fadeInUp: Variants = {
@@ -71,7 +76,9 @@ export function ProductHome({ locale, dictionary, contact, consoleUrl }: { local
     workspace: `/product/device-workspace-${imgLocale}.png`,
     dashboard: `/product/dashboard-${imgLocale}.png`,
     devices: `/product/devices-${imgLocale}.png`,
-    security: `/product/user-management-${imgLocale}.png`,
+    files: `/product/files-${imgLocale}.png`,
+    report: `/product/report-${imgLocale}.png`,
+    users: `/product/user-management-${imgLocale}.png`,
     login: `/product/login-${imgLocale}.png`,
   };
 
@@ -87,7 +94,7 @@ export function ProductHome({ locale, dictionary, contact, consoleUrl }: { local
   const showcaseTabs = dictionary.showcase.tabs;
   const currentShowcase = showcaseTabs[activeShowcaseIndex] || showcaseTabs[0];
 
-  const showcaseImageKeys = ["workspace", "dashboard", "devices", "security"] as const;
+  const showcaseImageKeys = ["workspace", "dashboard", "devices", "files", "report", "users"] as const;
   const currentShowcaseImg = productImages[showcaseImageKeys[activeShowcaseIndex] || "workspace"];
 
   const heroQuickTabs: Array<{ id: "workspace" | "dashboard" | "devices"; label: string; icon: typeof Monitor }> = [
@@ -316,7 +323,7 @@ export function ProductHome({ locale, dictionary, contact, consoleUrl }: { local
                 <span className={`capability-icon ${capabilityAccents[index]}`}><Icon size={23} /></span>
                 <span className="capability-index">0{index + 1}</span>
                 <h3>{title}</h3><p>{description}</p>
-                <a href="#showcase" onClick={() => setActiveShowcaseIndex(index)}>
+                <a href="#showcase" onClick={() => setActiveShowcaseIndex(capabilityShowcaseTarget[index] ?? 0)}>
                   {dictionary.capabilities.learnMore} <ChevronRight size={15} />
                 </a>
               </motion.article>

@@ -76,7 +76,7 @@ export function SiteHeader({
       <nav className="site-nav" aria-label={dictionary.header.navigationLabel}>
         {navigationItems.map(([href, key]) => (
           <a href={href} key={href}>
-        inert={!menuOpen}
+        {!menuOpen}
             {dictionary.header[key]}
           </a>
         ))}
