@@ -10,6 +10,7 @@ const LANGUAGE_NEUTRAL_PACKAGE_SOURCES = [
   'packages/control-client/src/**/*.{ts,tsx}',
   'packages/shared-state/src/**/*.{ts,tsx}',
   'packages/relay/src/**/*.{ts,tsx}',
+  'packages/mcp-core/src/**/*.{ts,tsx}',
 ];
 
 const CJK_LITERAL_MESSAGE =
@@ -125,6 +126,54 @@ export default tseslint.config(
           'antd',
         ],
         '`@meshcentral/relay` must remain independent from app state and UI frameworks.',
+      ),
+    },
+  },
+  {
+    // mcp-core is transport-agnostic: it must never know about the MCP SDK or a UI stack.
+    files: ['packages/mcp-core/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': noRestrictedImport(
+        [
+          '@modelcontextprotocol/sdk',
+          '@modelcontextprotocol/sdk/*',
+          '@meshcentral/shared-state',
+          '@meshcentral/relay',
+          'react',
+          'react/*',
+          'react-dom',
+          'react-dom/*',
+          'antd',
+          'antd/*',
+          'expo',
+          'expo/*',
+          'react-native',
+          'react-native/*',
+        ],
+        '`@meshcentral/mcp-core` must stay free of transport, UI and app-level dependencies.',
+      ),
+    },
+  },
+  {
+    // The MCP app owns transport only; protocol access belongs to mcp-core.
+    files: ['apps/mcp/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': noRestrictedImport(
+        [
+          '@meshcentral/control-client',
+          '@meshcentral/shared-state',
+          'react',
+          'react/*',
+          'react-dom',
+          'react-dom/*',
+          'antd',
+          'antd/*',
+          'expo',
+          'expo/*',
+          'react-native',
+          'react-native/*',
+        ],
+        '`apps/mcp` must not talk to the control protocol directly; go through @meshcentral/mcp-core.',
       ),
     },
   },

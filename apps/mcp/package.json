@@ -1,0 +1,29 @@
+{
+  "name": "@meshcentral/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "meshcentral-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts serve",
+    "login": "tsx --env-file-if-exists=.env src/main.ts login",
+    "build": "tsx scripts/build.ts",
+    "start": "node dist/main.js serve",
+    "lint": "eslint src scripts --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@meshcentral/mcp-core": "workspace:*",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "esbuild": "^0.27.0",
+    "tsx": "catalog:",
+    "vitest": "catalog:"
+  }
+}

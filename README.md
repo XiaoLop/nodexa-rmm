@@ -24,7 +24,9 @@
 apps/
   web/                  Vite + React + React Router + Ant Design
   app/                  React Native + Expo + Expo Router
+  mcp/                  stdio MCP Server（只读工具、CLI 子命令）
 packages/
+  mcp-core/             MCP 能力层：会话、连接、查询投影、审计与只读工具
   control-client/       无框架依赖的控制 WebSocket SDK 与资源 API
   shared-state/         Zustand store、React Hook 与 Client-Store Binding
   relay/                远程会话中继 SDK
@@ -53,6 +55,9 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm format
+pnpm mcp:login
+pnpm dev:mcp
+pnpm build:mcp
 ```
 
 ## 配置 MeshCentral 连接
