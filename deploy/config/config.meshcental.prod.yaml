@@ -1,9 +1,13 @@
 settings:
   cert: mesh.xiaonext.com
-  port: 443
-  redirPort: 80
+  port: 8443
+  redirPort: 0
   aliasPort: 443
+  tlsOffload: false
   mongoDbName: meshcentral
+  agentPing: 30
+  agentPong: 60
+  webRTC: true
 
 domains:
   '':
