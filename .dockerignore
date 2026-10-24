@@ -2,3 +2,8 @@
 **/dist
 **/.turbo
 .git
+**/.next
+**/*.tsbuildinfo
+apps/site/.env
+apps/site/.env.*
+!apps/site/.env.example
