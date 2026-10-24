@@ -139,7 +139,7 @@ jobs:
             set -eu
             cd "$DEPLOY_PATH"
             export SITE_IMAGE="$IMAGE"
-            export SITE_PORT="${SITE_PORT:-3000}"
+            export SITE_PORT="${SITE_PORT:-5099}"
 
             if [ -n "${GHCR_READ_TOKEN:-}" ]; then
               printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:-$USER}" --password-stdin

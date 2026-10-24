@@ -5,7 +5,7 @@ services:
     image: ${SITE_IMAGE:?Set SITE_IMAGE}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${SITE_PORT:-3000}:3000"
+      - "127.0.0.1:${SITE_PORT:-5099}:3000"
     environment:
       NODE_ENV: production
       PORT: '3000'
