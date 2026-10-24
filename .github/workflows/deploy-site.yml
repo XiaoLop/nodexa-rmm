@@ -126,7 +126,7 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
           IMAGE: ${{ env.REGISTRY }}/${{ needs.images.outputs.namespace }}/site:${{ needs.images.outputs.tag }}
           SITE_PORT: ${{ vars.SITE_PORT }}
-          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
@@ -134,7 +134,7 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script_stop: true
-          envs: DEPLOY_PATH,IMAGE,SITE_PORT,GHCR_USER,GHCR_READ_TOKEN
+          envs: DEPLOY_PATH,IMAGE,SITE_PORT,GHCR_USERNAME,GHCR_READ_TOKEN
           script: |
             set -eu
             cd "$DEPLOY_PATH"
@@ -142,7 +142,7 @@ jobs:
             export SITE_PORT="${SITE_PORT:-3000}"
 
             if [ -n "${GHCR_READ_TOKEN:-}" ]; then
-              printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-$USER}" --password-stdin
+              printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:-$USER}" --password-stdin
             fi
 
             docker compose -f compose.site.prod.yaml config --quiet
