@@ -54,6 +54,7 @@ export function configOverridesFromArgs(args: ParsedArgs): McpConfigOverrides {
   const authPath = flagString(args, 'auth-path');
   const tlsCaPath = flagString(args, 'ca');
   const sessionFile = flagString(args, 'session-file');
+  const oauthTokenFile = flagString(args, 'token-file');
   const auditFile = flagString(args, 'audit-file');
 
   return {
@@ -61,6 +62,7 @@ export function configOverridesFromArgs(args: ParsedArgs): McpConfigOverrides {
     ...(authPath === undefined ? {} : { authPath }),
     ...(tlsCaPath === undefined ? {} : { tlsCaPath }),
     ...(sessionFile === undefined ? {} : { sessionFile }),
+    ...(oauthTokenFile === undefined ? {} : { oauthTokenFile }),
     ...(auditFile === undefined ? {} : { auditFile }),
     ...(flagBoolean(args, 'insecure-tls') ? { allowInsecureTls: true } : {}),
   };

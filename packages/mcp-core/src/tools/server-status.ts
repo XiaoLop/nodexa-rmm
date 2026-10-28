@@ -22,9 +22,22 @@ export const serverStatusTool: ToolDefinition = {
     const connection = context.connection;
 
     let counts: { total: number; online: number } | undefined;
+    let pluginStatus:
+      | {
+          status: string;
+          version: string | null;
+          domainCount: number;
+          uptimeSeconds: number | null;
+        }
+      | undefined;
+    if (context.plugin) {
+      pluginStatus = await context.plugin.serverStatus();
+    }
     if (input.includeDeviceCounts !== false) {
       try {
-        const devices = await context.devices.get(() => context.client.devices.list());
+        const devices = context.plugin
+          ? await context.pluginDevices()
+          : await context.devices.get(() => context.client.devices.list());
         counts = {
           total: devices.length,
           online: devices.filter((device) => device.online).length,
@@ -48,6 +61,7 @@ export const serverStatusTool: ToolDefinition = {
         },
         server: {
           ...(connection.features === undefined ? {} : { features: connection.features }),
+          ...(pluginStatus === undefined ? {} : { plugin: pluginStatus }),
         },
         ...(counts === undefined ? {} : { devices: counts }),
         serverUrl: context.config.serverUrl,

@@ -1,4 +1,5 @@
 import type { Device, DeviceGroup, MeshCentralClient } from '@meshcentral/control-client';
+import type { McpPluginClient } from './plugin/plugin-client';
 
 import { createAuditWriter, type AuditWriter } from './audit/audit-log';
 import type { McpConfig } from './config/mcp-config';
@@ -36,6 +37,7 @@ export interface CreateToolRuntimeOptions {
   readonly audit?: AuditWriter;
   readonly session?: SessionManager;
   readonly provider?: ClientProvider;
+  readonly plugin?: McpPluginClient;
   readonly connection?: Partial<ConnectionManagerOptions>;
   readonly tools?: readonly ToolDefinition[];
   readonly now?: () => number;
@@ -63,8 +65,14 @@ export function createToolRuntime(options: CreateToolRuntimeOptions): ToolRuntim
   const devices = new SnapshotCache<readonly Device[]>({ ttlMs: DEVICE_SNAPSHOT_TTL_MS, now });
   const groups = new SnapshotCache<readonly DeviceGroup[]>({ ttlMs: GROUP_SNAPSHOT_TTL_MS, now });
 
+  const plugin = options.plugin;
   const createContext = (client: MeshCentralClient): ToolContext => ({
     client,
+    ...(plugin === undefined ? {} : { plugin }),
+    pluginDevices: () =>
+      plugin?.devicesList() ?? Promise.reject(new Error('MCP plugin is not configured.')),
+    pluginGroups: () =>
+      plugin?.groupsList() ?? Promise.reject(new Error('MCP plugin is not configured.')),
     config,
     audit,
     connection: connection.info,
@@ -129,9 +137,9 @@ export function createToolRuntime(options: CreateToolRuntimeOptions): ToolRuntim
       const startedAt = now();
 
       try {
-        const result = await connection.withClient((client) =>
-          tool.execute(args, createContext(client)),
-        );
+        const result = options.plugin
+          ? await tool.execute(args, createContext(undefined as unknown as MeshCentralClient))
+          : await connection.withClient((client) => tool.execute(args, createContext(client)));
         const durationMs = now() - startedAt;
         const budget = fitToBudget(result.data, config.limits.maxResponseBytes);
 

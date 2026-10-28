@@ -7,7 +7,7 @@
     "meshcentral-mcp": "./dist/main.js"
   },
   "scripts": {
-    "dev": "tsx src/main.ts serve",
+    "dev": "tsx --env-file-if-exists=.env src/main.ts serve",
     "login": "tsx --env-file-if-exists=.env src/main.ts login",
     "build": "tsx scripts/build.ts",
     "start": "node dist/main.js serve",

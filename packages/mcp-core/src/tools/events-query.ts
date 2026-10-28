@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import type { MeshCentralEvent } from '@meshcentral/control-client';
 
 import { McpToolError } from '../errors';
+import type { PluginEvent } from '../plugin/plugin-client';
 import { projectEvent, type EventSummary } from '../query/projection';
 import { READ_ONLY_ANNOTATIONS, type ToolDefinition, type ToolResult } from './tool-definition';
 
@@ -18,7 +20,9 @@ const inputSchema = z.object({
   scope: z
     .enum(['all', 'device', 'user'])
     .optional()
-    .describe('Event scope. "device" requires deviceId, "user" requires userId. Defaults to "all".'),
+    .describe(
+      'Event scope. "device" requires deviceId, "user" requires userId. Defaults to "all".',
+    ),
   deviceId: z.string().min(1).max(256).optional().describe('Device ID when scope is "device".'),
   userId: z.string().min(1).max(256).optional().describe('User ID when scope is "user".'),
   limit: z
@@ -62,8 +66,13 @@ export const eventsQueryTool: ToolDefinition = {
       ...(input.filter === undefined ? {} : { filter: input.filter }),
     };
 
-    const events =
-      scope === 'device'
+    const events: readonly (PluginEvent | MeshCentralEvent)[] = context.plugin
+      ? await context.plugin.eventsQuery({
+          ...(scope === 'device' ? { deviceId: input.deviceId } : {}),
+          ...(scope === 'user' ? { userId: input.userId } : {}),
+          limit,
+        })
+      : scope === 'device'
         ? await context.client.events.listByDevice(input.deviceId as string, options)
         : scope === 'user'
           ? await context.client.events.listByUser(input.userId as string, options)
@@ -76,15 +85,27 @@ export const eventsQueryTool: ToolDefinition = {
       });
     }
 
+    const normalizedEvents: readonly MeshCentralEvent[] = context.plugin
+      ? events.map((event) => {
+          const pluginEvent = event as PluginEvent;
+          return {
+            id: pluginEvent.id ?? '',
+            type: (pluginEvent.type ?? 'unknown') as MeshCentralEvent['type'],
+            occurredAt: pluginEvent.timestamp ?? '',
+            ...(pluginEvent.deviceId === null ? {} : { deviceId: pluginEvent.deviceId }),
+            ...(pluginEvent.message === null ? {} : { message: pluginEvent.message }),
+          } as MeshCentralEvent;
+        })
+      : (events as readonly MeshCentralEvent[]);
     const filtered =
       since === undefined
-        ? events
-        : events.filter((event) => {
+        ? normalizedEvents
+        : normalizedEvents.filter((event) => {
             const occurredAt = Date.parse(event.occurredAt);
             return Number.isFinite(occurredAt) && occurredAt >= since;
           });
 
-    const items: EventSummary[] = filtered.map(projectEvent);
+    const items: EventSummary[] = filtered.map((event) => projectEvent(event));
 
     return {
       data: {

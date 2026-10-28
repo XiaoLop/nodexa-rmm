@@ -5,6 +5,7 @@ import type { AuditWriter } from '../audit/audit-log';
 import type { McpConfig } from '../config/mcp-config';
 import type { ConnectionInfo } from '../connection/connection-manager';
 import type { SnapshotCache } from '../query/snapshot-cache';
+import type { McpPluginClient, PluginDevice, PluginGroup } from '../plugin/plugin-client';
 
 export type ToolScope = 'devices:read' | 'groups:read' | 'events:read' | 'server:read';
 
@@ -22,6 +23,9 @@ export interface ToolResult {
 
 export interface ToolContext {
   readonly client: MeshCentralClient;
+  readonly plugin?: McpPluginClient;
+  pluginDevices(): Promise<readonly PluginDevice[]>;
+  pluginGroups(): Promise<readonly PluginGroup[]>;
   readonly config: McpConfig;
   readonly audit: AuditWriter;
   readonly connection: ConnectionInfo;
@@ -38,6 +42,22 @@ export interface ToolDefinition {
   readonly annotations: ToolAnnotations;
   readonly scope: ToolScope;
   execute(input: unknown, context: ToolContext): Promise<ToolResult>;
+}
+
+export function pluginDeviceToDevice(device: PluginDevice): Device {
+  return {
+    id: device.id,
+    name: device.name ?? device.id,
+    online: device.connected ?? device.state === 'online',
+    ...(device.groupId === null ? {} : { groupId: device.groupId }),
+  };
+}
+
+export function pluginGroupToGroup(group: PluginGroup): DeviceGroup {
+  return {
+    id: group.id,
+    name: group.name ?? group.id,
+  };
 }
 
 export const READ_ONLY_ANNOTATIONS: ToolAnnotations = {

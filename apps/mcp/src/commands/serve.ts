@@ -1,4 +1,9 @@
-import { createToolRuntime, loadMcpConfig } from '@meshcentral/mcp-core';
+import {
+  createToolRuntime,
+  loadMcpConfig,
+  McpPluginTransport,
+  OAuthTokenManager,
+} from '@meshcentral/mcp-core';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { configOverridesFromArgs, type ParsedArgs } from '../cli/args';
@@ -6,7 +11,9 @@ import { createMcpServer } from '../mcp/server';
 
 export async function runServe(args: ParsedArgs): Promise<void> {
   const config = loadMcpConfig(process.env, configOverridesFromArgs(args));
-  const runtime = createToolRuntime({ config });
+  const tokenManager = new OAuthTokenManager(config);
+  const plugin = new McpPluginTransport(config, tokenManager);
+  const runtime = createToolRuntime({ config, plugin });
   const server = createMcpServer(runtime);
   const transport = new StdioServerTransport();
 

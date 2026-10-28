@@ -46,7 +46,8 @@
             "list": [
                 "jsonauth",
                 "utils",
-                "chunkuploader"
+                "chunkuploader",
+                "mcp"
             ]
         }
     },

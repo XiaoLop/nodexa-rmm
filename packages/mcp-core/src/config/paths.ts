@@ -13,7 +13,10 @@ export function defaultConfigDirectory(
 ): string {
   if (platform === 'win32') {
     const appData = env.APPDATA?.trim();
-    return path.join(appData ? appData : path.join(homedir(), 'AppData', 'Roaming'), 'meshcentral-mcp');
+    return path.join(
+      appData ? appData : path.join(homedir(), 'AppData', 'Roaming'),
+      'meshcentral-mcp',
+    );
   }
   const xdg = env.XDG_CONFIG_HOME?.trim();
   const base = xdg ? xdg : path.join(env.HOME?.trim() ? env.HOME.trim() : homedir(), '.config');
@@ -25,6 +28,13 @@ export function defaultSessionFile(
   env: PathEnvironment = process.env,
 ): string {
   return path.join(defaultConfigDirectory(platform, env), 'session.json');
+}
+
+export function defaultOAuthTokenFile(
+  platform: string = process.platform,
+  env: PathEnvironment = process.env,
+): string {
+  return path.join(defaultConfigDirectory(platform, env), 'oauth-tokens.json');
 }
 
 export function defaultAuditFile(

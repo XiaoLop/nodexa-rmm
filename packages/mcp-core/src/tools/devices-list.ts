@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { filterDevices } from '../authz/scope';
 import { paginate } from '../query/pagination';
 import { projectDevice, type DeviceSummary } from '../query/projection';
-import { READ_ONLY_ANNOTATIONS, type ToolDefinition, type ToolResult } from './tool-definition';
+import {
+  pluginDeviceToDevice,
+  READ_ONLY_ANNOTATIONS,
+  type ToolDefinition,
+  type ToolResult,
+} from './tool-definition';
 
 const inputSchema = z.object({
   groupId: z
@@ -46,7 +51,9 @@ export const devicesListTool: ToolDefinition = {
   scope: 'devices:read',
   async execute(rawInput, context): Promise<ToolResult> {
     const input = inputSchema.parse(rawInput ?? {});
-    const devices = await context.devices.get(() => context.client.devices.list());
+    const devices = context.plugin
+      ? (await context.pluginDevices()).map(pluginDeviceToDevice)
+      : await context.devices.get(() => context.client.devices.list());
     const scoped = filterDevices(devices, context.config.scope);
     const filtered = scoped.filter((device) => matches(device, input));
     const page = paginate(filtered, {

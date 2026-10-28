@@ -1,0 +1,8 @@
+{
+  "name": "MeshCentral MCP OAuth",
+  "shortName": "mcp",
+  "version": "0.1.0",
+  "description": "OAuth 2.1 PKCE foundation and protected route registration for MCP.",
+  "meshCentralCompat": ">=1.1.54 <1.1.55",
+  "hasAdminPanel": false
+}

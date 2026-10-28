@@ -83,6 +83,7 @@ export interface MeshCentralHttpRequest {
   connection?: { remotePort?: number };
   headers: Record<string, string | string[] | undefined>;
   query: Record<string, unknown>;
+  params?: Record<string, string | undefined>;
   session: MeshCentralSession;
   xdomain?: MeshCentralDomain;
 }
@@ -90,6 +91,7 @@ export interface MeshCentralHttpRequest {
 export interface MeshCentralHttpResponse {
   cookie?(name: string, value: string, options: Record<string, unknown>): void;
   clearCookie?(name: string, options?: Record<string, unknown>): void;
+  end?(chunk?: string): void;
   json(body: unknown): unknown;
   set(headers: Record<string, string>): unknown;
   status(code: number): MeshCentralHttpResponse;
@@ -143,11 +145,7 @@ export interface MeshCentralServer {
   ): Record<string, unknown> | null;
   encodeCookie?(value: Record<string, unknown>, key: unknown): string;
   authLog?(category: string, message: string, details?: Record<string, unknown>): void;
-  DispatchEvent?(
-    targets: string[],
-    source: unknown,
-    event: Record<string, unknown> | string,
-  ): void;
+  DispatchEvent?(targets: string[], source: unknown, event: Record<string, unknown> | string): void;
   debug?(category: string, message: string): void;
   [key: string]: unknown;
 }
@@ -216,9 +214,7 @@ export interface MeshCentralUserServer {
   [key: string]: unknown;
 }
 
-export type MeshCentralServerActionContext =
-  | MeshCentralAgentServer
-  | MeshCentralUserServer;
+export type MeshCentralServerActionContext = MeshCentralAgentServer | MeshCentralUserServer;
 
 export interface MeshCentralPluginTabRegistration {
   tabId: string;
@@ -239,10 +235,7 @@ export interface MeshCentralPluginHandler {
 export interface MeshCentralPlugin {
   exports: string[];
   server_startup?: () => void;
-  hook_setupHttpHandlers?: (
-    webServer: MeshCentralWebServer,
-    meshServer: MeshCentralServer,
-  ) => void;
+  hook_setupHttpHandlers?: (webServer: MeshCentralWebServer, meshServer: MeshCentralServer) => void;
   hook_userLoggedIn?: (user: MeshCentralUser) => void;
   hook_agentCoreIsStable?: (
     agent: MeshCentralAgentConnection,
@@ -258,10 +251,7 @@ export interface MeshCentralPlugin {
     connection: MeshCentralConnection,
     server: MeshCentralServerActionContext,
   ) => void;
-  uiCustomEvent?: (
-    command: MeshCentralCommand,
-    connection: MeshCentralConnection,
-  ) => void;
+  uiCustomEvent?: (command: MeshCentralCommand, connection: MeshCentralConnection) => void;
   on_device_header?: () => string;
   on_device_page?: () => string;
   onWebUIStartupEnd?: () => void;

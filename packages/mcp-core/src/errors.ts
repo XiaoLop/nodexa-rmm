@@ -10,7 +10,9 @@ export type McpErrorCode =
   | 'FORBIDDEN'
   | 'INVALID_ARGUMENT'
   | 'UNKNOWN_TOOL'
-  | 'INTERNAL';
+  | 'INTERNAL'
+  | 'PLUGIN_UNAVAILABLE'
+  | 'PLUGIN_PROTOCOL_ERROR';
 
 export interface McpToolErrorOptions {
   hint?: string;

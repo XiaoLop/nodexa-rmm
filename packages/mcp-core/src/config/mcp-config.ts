@@ -1,5 +1,5 @@
 import { McpToolError } from '../errors';
-import { defaultAuditFile, defaultSessionFile } from './paths';
+import { defaultAuditFile, defaultOAuthTokenFile, defaultSessionFile } from './paths';
 
 export interface McpLimits {
   readonly defaultPageSize: number;
@@ -33,6 +33,9 @@ export interface McpConfig {
   readonly allowInsecureTls: boolean;
   readonly tlsCaPath?: string;
   readonly sessionFile: string;
+  readonly oauthTokenFile: string;
+  readonly mcpPluginPath: string;
+  readonly oauthClientId: string;
   readonly auditFile?: string;
   readonly connectTimeoutMs: number;
   readonly requestTimeoutMs: number;
@@ -48,6 +51,9 @@ export interface McpConfigOverrides {
   readonly serverUrl?: string;
   readonly authPath?: string;
   readonly sessionFile?: string;
+  readonly oauthTokenFile?: string;
+  readonly mcpPluginPath?: string;
+  readonly oauthClientId?: string;
   readonly auditFile?: string;
   readonly allowInsecureTls?: boolean;
   readonly tlsCaPath?: string;
@@ -87,12 +93,11 @@ export function parseServerUrl(raw: string): ParsedServerUrl {
   }
 
   const webSocketProtocol = parsed.protocol === 'ws:' || parsed.protocol === 'wss:';
-  if (
-    !webSocketProtocol &&
-    parsed.protocol !== 'http:' &&
-    parsed.protocol !== 'https:'
-  ) {
-    throw new McpToolError('INVALID_ARGUMENT', 'MeshCentral server URL must use http, https, ws or wss.');
+  if (!webSocketProtocol && parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new McpToolError(
+      'INVALID_ARGUMENT',
+      'MeshCentral server URL must use http, https, ws or wss.',
+    );
   }
 
   const secure = parsed.protocol === 'https:' || parsed.protocol === 'wss:';
@@ -137,9 +142,16 @@ export function loadMcpConfig(
   }
 
   const parsed = parseServerUrl(serverUrl);
-  const authPath = normalizeAuthPath(overrides.authPath ?? env.MESHCENTRAL_AUTH_PATH ?? DEFAULT_AUTH_PATH);
+  const authPath = normalizeAuthPath(
+    overrides.authPath ?? env.MESHCENTRAL_AUTH_PATH ?? DEFAULT_AUTH_PATH,
+  );
   const limits: McpLimits = {
-    defaultPageSize: readInteger(env.MESHCENTRAL_MCP_PAGE_SIZE, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE),
+    defaultPageSize: readInteger(
+      env.MESHCENTRAL_MCP_PAGE_SIZE,
+      DEFAULT_PAGE_SIZE,
+      1,
+      MAX_PAGE_SIZE,
+    ),
     maxPageSize: MAX_PAGE_SIZE,
     maxResponseBytes: readInteger(
       env.MESHCENTRAL_MCP_MAX_RESPONSE_BYTES,
@@ -150,17 +162,24 @@ export function loadMcpConfig(
   };
 
   const tlsCaPath = overrides.tlsCaPath ?? env.MESHCENTRAL_MCP_CA;
-  const auditFile =
-    overrides.auditFile ?? env.MESHCENTRAL_MCP_AUDIT_FILE ?? defaultAuditFile();
+  const auditFile = overrides.auditFile ?? env.MESHCENTRAL_MCP_AUDIT_FILE ?? defaultAuditFile();
+  const oauthTokenFile =
+    overrides.oauthTokenFile ?? env.MESHCENTRAL_MCP_TOKEN_FILE ?? defaultOAuthTokenFile();
+  const mcpPluginPath = normalizePluginPath(env.MESHCENTRAL_MCP_PLUGIN_PATH ?? '/plugin/mcp/v1');
+  const oauthClientId = (env.MESHCENTRAL_MCP_CLIENT_ID ?? 'meshcentral-mcp-cli').trim();
 
   const config: McpConfig = {
     serverUrl,
     httpBaseUrl: parsed.httpBaseUrl,
     controlUrl: resolveControlUrl(serverUrl),
     authPath,
-    allowInsecureTls: overrides.allowInsecureTls ?? readBoolean(env.MESHCENTRAL_MCP_ALLOW_INSECURE_TLS),
+    allowInsecureTls:
+      overrides.allowInsecureTls ?? readBoolean(env.MESHCENTRAL_MCP_ALLOW_INSECURE_TLS),
     ...(tlsCaPath ? { tlsCaPath } : {}),
     sessionFile: overrides.sessionFile ?? env.MESHCENTRAL_MCP_SESSION_FILE ?? defaultSessionFile(),
+    oauthTokenFile,
+    mcpPluginPath,
+    oauthClientId,
     ...(auditFile ? { auditFile } : {}),
     connectTimeoutMs: readInteger(
       env.MESHCENTRAL_MCP_CONNECT_TIMEOUT_MS,
@@ -221,10 +240,7 @@ function resolveAuth(env: McpEnvironment): McpAuthConfig {
   return { kind: 'meshauth', username, password, ...(token ? { token } : {}) };
 }
 
-function buildScope(
-  env: McpEnvironment,
-  override: McpScope | undefined,
-): { scope?: McpScope } {
+function buildScope(env: McpEnvironment, override: McpScope | undefined): { scope?: McpScope } {
   if (override) return { scope: override };
   const deviceGroups = splitList(env.MESHCENTRAL_MCP_SCOPE_DEVICE_GROUPS);
   const devices = splitList(env.MESHCENTRAL_MCP_SCOPE_DEVICES);
@@ -238,6 +254,12 @@ function splitList(value: string | undefined): string[] {
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+function normalizePluginPath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '/plugin/mcp/v1';
+  return `/${trimmed.replace(/^\/+|\/+$/g, '')}`;
 }
 
 function normalizeAuthPath(value: string): string {

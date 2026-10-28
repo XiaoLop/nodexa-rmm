@@ -1,4 +1,9 @@
-export { McpToolError, isMcpToolError, type McpErrorCode, type McpToolErrorOptions } from './errors';
+export {
+  McpToolError,
+  isMcpToolError,
+  type McpErrorCode,
+  type McpToolErrorOptions,
+} from './errors';
 
 export {
   loadMcpConfig,
@@ -15,6 +20,7 @@ export {
   defaultAuditFile,
   defaultConfigDirectory,
   defaultSessionFile,
+  defaultOAuthTokenFile,
   type PathEnvironment,
 } from './config/paths';
 
@@ -27,6 +33,28 @@ export {
   type TwoFactorVerification,
 } from './session/login-client';
 export { SessionManager, type ResolvedCredentials } from './session/session-manager';
+export { createCodeChallenge, createCodeVerifier, createOAuthState } from './oauth/pkce';
+export {
+  readStoredOAuthTokens,
+  writeStoredOAuthTokens,
+  removeStoredOAuthTokens,
+  type OAuthTokenStoreOptions,
+} from './oauth/token-store';
+export type { OAuthMetadata, OAuthTokenSet, StoredOAuthTokens } from './oauth/oauth-types';
+export { OAuthClient, type OAuthClientOptions } from './oauth/oauth-client';
+export { OAuthTokenManager } from './oauth/token-manager';
+export {
+  McpPluginTransport,
+  type McpPluginClient,
+  type PluginCapabilities,
+  type PluginDevice,
+  type PluginEvent,
+  type PluginEventsQuery,
+  type PluginFetchOptions,
+  type PluginGroup,
+  type PluginHealth,
+  type PluginServerStatus,
+} from './plugin/plugin-client';
 export {
   readStoredSession,
   removeStoredSession,
@@ -61,7 +89,13 @@ export {
   type EventSummary,
   type GroupSummary,
 } from './query/projection';
-export { decodeCursor, encodeCursor, paginate, type Page, type PageOptions } from './query/pagination';
+export {
+  decodeCursor,
+  encodeCursor,
+  paginate,
+  type Page,
+  type PageOptions,
+} from './query/pagination';
 export { SnapshotCache, type SnapshotCacheOptions } from './query/snapshot-cache';
 
 export {
@@ -72,7 +106,12 @@ export {
   isDeviceAllowed,
 } from './authz/scope';
 
-export { createAuditWriter, type AuditEvent, type AuditWriter, type ToolCallAudit } from './audit/audit-log';
+export {
+  createAuditWriter,
+  type AuditEvent,
+  type AuditWriter,
+  type ToolCallAudit,
+} from './audit/audit-log';
 export { redactSensitive } from './audit/redact';
 
 export {

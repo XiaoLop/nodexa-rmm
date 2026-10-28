@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { assertDeviceAllowed, hasScope } from '../authz/scope';
 import { McpToolError } from '../errors';
 import { pickFields, projectDevice } from '../query/projection';
-import { READ_ONLY_ANNOTATIONS, type ToolDefinition, type ToolResult } from './tool-definition';
+import {
+  pluginDeviceToDevice,
+  READ_ONLY_ANNOTATIONS,
+  type ToolDefinition,
+  type ToolResult,
+} from './tool-definition';
 
 const SYSTEM_FIELDS = [
   'hostname',
@@ -23,7 +28,15 @@ const SYSTEM_FIELDS = [
   'volumes',
 ] as const;
 
-const NETWORK_FIELDS = ['addresses', 'dns', 'gateway', 'hostname', 'netmask', 'mac', 'routing'] as const;
+const NETWORK_FIELDS = [
+  'addresses',
+  'dns',
+  'gateway',
+  'hostname',
+  'netmask',
+  'mac',
+  'routing',
+] as const;
 const LAST_CONNECT_FIELDS = ['time', 'addr', 'connectTime', 'event', 'os'] as const;
 
 const inputSchema = z.object({
@@ -50,6 +63,13 @@ export const devicesGetTool: ToolDefinition = {
   scope: 'devices:read',
   async execute(rawInput, context): Promise<ToolResult> {
     const input = inputSchema.parse(rawInput ?? {});
+    if (context.plugin) {
+      const details = await context.plugin.devicesGet(input.deviceId);
+      const device = pluginDeviceToDevice(details.device);
+      assertDeviceAllowed(device, context.config.scope);
+      return { data: { device: projectDevice(device) } };
+    }
+
     const details = await context.client.devices.details(input.deviceId);
 
     if (details.device) {
@@ -68,8 +88,12 @@ export const devicesGetTool: ToolDefinition = {
     }
 
     const include = new Set(input.include ?? ['system', 'network', 'lastConnect']);
-    const system = include.has('system') ? pickFields(details.systemInfo, SYSTEM_FIELDS) : undefined;
-    const network = include.has('network') ? pickFields(details.networkInfo, NETWORK_FIELDS) : undefined;
+    const system = include.has('system')
+      ? pickFields(details.systemInfo, SYSTEM_FIELDS)
+      : undefined;
+    const network = include.has('network')
+      ? pickFields(details.networkInfo, NETWORK_FIELDS)
+      : undefined;
     const lastConnect = include.has('lastConnect')
       ? pickFields(details.lastConnect, LAST_CONNECT_FIELDS)
       : undefined;
