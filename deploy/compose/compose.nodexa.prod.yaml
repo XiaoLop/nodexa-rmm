@@ -8,7 +8,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-meshcentral}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:?Set MONGODB_ROOT_PASSWORD}
     volumes:
-      - mongodb-data:/data/db
+      - ./mongodb:/data/db 
     healthcheck:
       test:
         [
@@ -73,7 +73,4 @@ services:
       - "127.0.0.1:8080:80"
     depends_on:
       - meshcentral
-
-volumes:
-  mongodb-data:
 
