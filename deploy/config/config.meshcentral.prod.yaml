@@ -11,7 +11,7 @@ settings:
 
 domains:
   '':
-    certUrl: file:///data/fullchain.pem
+    certUrl: "https://mesh.xiaonext.com"
     title: MeshCentral
     title2: Device management
     newAccounts: false
