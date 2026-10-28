@@ -18,10 +18,6 @@ test/captures/
 .env.*
 !.env.example
 deploy/*.env
-deploy/config/*.yaml
-!deploy/config/*.example.yaml
-!deploy/config/config.meshcental.dev.yaml
-!deploy/config/config.meshcental.prod.yaml
 deploy/generated/*
 !deploy/generated/.gitkeep
 deploy/secrets/*

@@ -11,6 +11,7 @@ settings:
 
 domains:
   '':
+    certUrl: file:///data/fullchain.pem
     title: MeshCentral
     title2: Device management
     newAccounts: false

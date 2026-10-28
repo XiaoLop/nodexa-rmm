@@ -1,0 +1,181 @@
+name: Deploy Nodexa RMM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/meshcentral/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'deploy/compose/compose.nodexa.prod.yaml'
+      - 'deploy/config/config.meshcentral.prod.yaml'
+      - 'deploy/assets/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-nodexa.yml'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 复用已有镜像标签（留空则基于当前提交构建）
+        type: string
+        default: ''
+
+concurrency:
+  group: deploy-nodexa
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  checks:
+    if: inputs.image_tag == ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @meshcentral/plugins typecheck
+      - run: pnpm --filter @meshcentral/server typecheck
+      - run: pnpm --filter @meshcentral/web typecheck
+      - run: pnpm --filter @meshcentral/server lint
+      - run: pnpm --filter @meshcentral/web lint
+
+  images:
+    needs: checks
+    if: always() && (needs.checks.result == 'success' || needs.checks.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      namespace: ${{ steps.vars.outputs.namespace }}
+      tag: ${{ steps.vars.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve namespace and tag
+        id: vars
+        run: |
+          echo "namespace=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: inputs.image_tag == ''
+
+      - uses: docker/login-action@v3
+        if: inputs.image_tag == ''
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push meshcentral image
+        if: inputs.image_tag == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/meshcentral/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.namespace }}/meshcentral:${{ steps.vars.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.namespace }}/meshcentral:latest
+          cache-from: type=gha,scope=meshcentral
+          cache-to: type=gha,scope=meshcentral,mode=max
+
+      - name: Build and push web image
+        if: inputs.image_tag == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.namespace }}/web:${{ steps.vars.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.namespace }}/web:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+  deploy:
+    needs: images
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. 复制 Compose 编排文件到 /opt/nodexa-rmm/compose.nodexa.prod.yaml
+      - name: Upload compose file
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: deploy/compose/compose.nodexa.prod.yaml
+          target: ${{ vars.NODEXA_DEPLOY_PATH || '/opt/nodexa-rmm' }}
+          strip_components: 2
+          overwrite: true
+
+      # 2. 复制配置与资产至对应子目录：
+      #    deploy/config/config.meshcentral.prod.yaml -> /opt/nodexa-rmm/config/config.meshcentral.prod.yaml
+      #    deploy/assets/* -> /opt/nodexa-rmm/assets/*
+      - name: Upload config and assets
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: 'deploy/config/config.meshcentral.prod.yaml,deploy/assets/logo.png,deploy/assets/favicon.ico'
+          target: ${{ vars.NODEXA_DEPLOY_PATH || '/opt/nodexa-rmm' }}
+          strip_components: 1
+          overwrite: true
+
+      # 3. 进入 /opt/nodexa-rmm 拉取镜像并启动
+      - name: Roll out services
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ vars.NODEXA_DEPLOY_PATH || '/opt/nodexa-rmm' }}
+          MESHCENTRAL_IMAGE: ${{ env.REGISTRY }}/${{ needs.images.outputs.namespace }}/meshcentral:${{ needs.images.outputs.tag }}
+          WEB_IMAGE: ${{ env.REGISTRY }}/${{ needs.images.outputs.namespace }}/web:${{ needs.images.outputs.tag }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          envs: DEPLOY_PATH,MESHCENTRAL_IMAGE,WEB_IMAGE,GHCR_USERNAME,GHCR_READ_TOKEN
+          script: |
+            set -eu
+            cd "$DEPLOY_PATH"
+
+            mkdir -p data files backups recordings config assets
+
+            export MESHCENTRAL_IMAGE="$MESHCENTRAL_IMAGE"
+            export WEB_IMAGE="$WEB_IMAGE"
+
+            if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+              printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:-$USER}" --password-stdin
+            fi
+
+            docker compose -f compose.nodexa.prod.yaml config --quiet
+            docker compose -f compose.nodexa.prod.yaml pull
+            docker compose -f compose.nodexa.prod.yaml up -d
+            docker compose -f compose.nodexa.prod.yaml ps
+            docker image prune -f

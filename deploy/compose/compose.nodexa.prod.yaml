@@ -40,7 +40,7 @@ services:
       - "8443"
     volumes:
       - type: bind
-        source: ${MESHCENTRAL_CONFIG_FILE:-./config/config.meshcental.prod.yaml}
+        source: ${MESHCENTRAL_CONFIG_FILE:-./config/config.meshcentral.prod.yaml}
         target: /run/config/config.yaml
         read_only: true
         bind:
