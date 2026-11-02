@@ -1,8 +1,8 @@
-import { SettingOutlined } from '@ant-design/icons';
 import type { ManagedUser } from '@meshcentral/control-client';
-import { Alert, Button, Checkbox, Modal, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Checkbox, Space, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from '../ui/ConsoleModal';
 import {
   FEATURE_RESTRICTION_CATEGORIES,
   USER_FEATURE_RESTRICTIONS,
@@ -50,16 +50,10 @@ export function UserFeatureRestrictionModal({
   };
 
   return (
-    <Modal
-      title={
-        <Space size={8}>
-          <SettingOutlined style={{ color: '#2f80ff' }} />
-          <span>{t('featureRestrictions.title')}</span>
-        </Space>
-      }
+    <ConsoleModal
+      title={t('featureRestrictions.title')}
       open={open}
-      width={680}
-      centered
+      variant="details"
       okText={t('common.actions.save')}
       cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
@@ -73,7 +67,7 @@ export function UserFeatureRestrictionModal({
         </Typography.Text>
 
         <div className="mesh-permission-toolbar">
-          <Space size={8}>
+          <Space size={8} wrap>
             {selectedFlags.length === 0 ? (
               <Tag color="success" bordered={false}>
                 {t('featureRestrictions.status.unrestricted')}
@@ -122,21 +116,14 @@ export function UserFeatureRestrictionModal({
                         : t('featureRestrictions.selectGroup')}
                     </Button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
+                  <div className="mesh-permission-restrictions">
                     {restrictions.map((restriction) => (
                       <div
                         key={restriction.flag}
-                        className="mesh-permission-item"
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          padding: '6px 8px',
-                          borderRadius: 6,
-                        }}
+                        className="mesh-permission-item mesh-permission-restriction"
                       >
                         <Checkbox value={restriction.flag} style={{ width: '100%' }}>
-                          <span style={{ fontWeight: 500, color: '#dce5f2' }}>
+                          <span className="mesh-permission-label">
                             {t(`featureRestrictions.items.${restriction.key}.label`)}
                           </span>
                           {restriction.broadImpact ? (
@@ -154,15 +141,7 @@ export function UserFeatureRestrictionModal({
                             </Tag>
                           ) : null}
                         </Checkbox>
-                        <div
-                          style={{
-                            paddingLeft: 24,
-                            paddingTop: 2,
-                            fontSize: 12,
-                            color: '#7f93ad',
-                            lineHeight: 1.4,
-                          }}
-                        >
+                        <div className="mesh-permission-description">
                           {t(`featureRestrictions.items.${restriction.key}.description`)}
                         </div>
                       </div>
@@ -174,6 +153,6 @@ export function UserFeatureRestrictionModal({
           </Checkbox.Group>
         </div>
       </div>
-    </Modal>
+    </ConsoleModal>
   );
 }

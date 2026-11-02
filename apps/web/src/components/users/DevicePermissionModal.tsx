@@ -1,13 +1,14 @@
-import { DesktopOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { SafetyCertificateOutlined } from '@ant-design/icons';
 import {
   DEVICE_USER_ASSIGNABLE_RIGHTS_MASK,
   DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK,
   type Device,
   type DeviceGroup,
 } from '@meshcentral/control-client';
-import { Alert, Button, Checkbox, Modal, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Checkbox, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from '../ui/ConsoleModal';
 import {
   DEVICE_PERMISSION_CATEGORIES,
   DEVICE_USER_GROUP_PERMISSIONS,
@@ -56,7 +57,9 @@ export function DevicePermissionModal({
       : DEVICE_USER_GROUP_ASSIGNABLE_RIGHTS_MASK;
   const permissions =
     subjectType === 'user' ? DEVICE_USER_PERMISSIONS : DEVICE_USER_GROUP_PERMISSIONS;
-  const unsupportedRights = editing ? (normalizeMeshRights(editing.rights) & ~assignableMask) >>> 0 : 0;
+  const unsupportedRights = editing
+    ? (normalizeMeshRights(editing.rights) & ~assignableMask) >>> 0
+    : 0;
 
   useEffect(() => {
     if (!open) return;
@@ -69,7 +72,14 @@ export function DevicePermissionModal({
         ? []
         : permissions.filter(({ flag }) => (rights & flag) === flag).map(({ flag }) => flag),
     );
-  }, [assignableMask, editing?.deviceId, editing?.rights, editingDevice?.groupId, open, permissions]);
+  }, [
+    assignableMask,
+    editing?.deviceId,
+    editing?.rights,
+    editingDevice?.groupId,
+    open,
+    permissions,
+  ]);
 
   const selectableDevices = useMemo(
     () =>
@@ -86,17 +96,15 @@ export function DevicePermissionModal({
       new Map(
         DEVICE_PERMISSION_CATEGORIES.map((category) => [
           category.key,
-          permissions.filter((permission) => permission.category === category.key).map(
-            (permission) => permission.flag,
-          ),
+          permissions
+            .filter((permission) => permission.category === category.key)
+            .map((permission) => permission.flag),
         ]),
       ),
     [permissions],
   );
 
-  const toggleCategory = (
-    categoryKey: (typeof DEVICE_PERMISSION_CATEGORIES)[number]['key'],
-  ) => {
+  const toggleCategory = (categoryKey: (typeof DEVICE_PERMISSION_CATEGORIES)[number]['key']) => {
     const flags = categoryFlags.get(categoryKey) ?? [];
     const allSelected = flags.every((flag) => selectedFlags.includes(flag));
     setSelectedFlags((current) =>
@@ -109,16 +117,12 @@ export function DevicePermissionModal({
   const rights = fullAccess ? assignableMask : composeMeshRights(selectedFlags);
 
   return (
-    <Modal
+    <ConsoleModal
       title={
-        <Space size={8}>
-          <DesktopOutlined style={{ color: '#2f80ff' }} />
-          <span>{editing ? t('permissions.deviceModal.editTitle') : t('permissions.deviceModal.addTitle')}</span>
-        </Space>
+        editing ? t('permissions.deviceModal.editTitle') : t('permissions.deviceModal.addTitle')
       }
       open={open}
-      width={680}
-      centered
+      variant="details"
       okText={editing ? t('common.actions.save') : t('permissions.deviceModal.addOk')}
       cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
@@ -129,9 +133,11 @@ export function DevicePermissionModal({
     >
       <div className="mesh-permission-modal">
         <div className="mesh-permission-field">
-          <span className="mesh-permission-field-label">{t('permissions.meshModal.deviceGroup')}</span>
+          <span className="mesh-permission-field-label">
+            {t('permissions.meshModal.deviceGroup')}
+          </span>
           <Select
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: 0 }}
             showSearch
             value={groupId}
             disabled={Boolean(editing)}
@@ -147,11 +153,15 @@ export function DevicePermissionModal({
         <div className="mesh-permission-field">
           <span className="mesh-permission-field-label">{t('permissions.deviceModal.device')}</span>
           <Select
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: 0 }}
             showSearch
             value={deviceId}
             disabled={!groupId || Boolean(editing)}
-            placeholder={groupId ? t('permissions.deviceModal.selectDevicePlaceholder') : t('permissions.deviceModal.selectGroupFirst')}
+            placeholder={
+              groupId
+                ? t('permissions.deviceModal.selectDevicePlaceholder')
+                : t('permissions.deviceModal.selectGroupFirst')
+            }
             optionFilterProp="label"
             options={selectableDevices.map((device) => ({ value: device.id, label: device.name }))}
             onChange={setDeviceId}
@@ -160,13 +170,13 @@ export function DevicePermissionModal({
         </div>
 
         <div className="mesh-permission-toolbar">
-          <Space size={8}>
+          <Space size={8} wrap>
             <SafetyCertificateOutlined />
             <Switch size="small" checked={fullAccess} onChange={setFullAccess} />
             <Typography.Text strong>{t('permissions.deviceModal.allDeviceRights')}</Typography.Text>
           </Space>
           {!fullAccess ? (
-            <Space size={4}>
+            <Space size={4} wrap>
               <Button
                 type="link"
                 size="small"
@@ -185,7 +195,7 @@ export function DevicePermissionModal({
           <div className="mesh-permission-field">
             <span className="mesh-permission-field-label">{t('permissions.actions.presets')}</span>
             <Select
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 0 }}
               placeholder={t('permissions.actions.selectPresetPlaceholder')}
               options={MESH_PERMISSION_PRESETS.map((preset) => ({
                 value: preset.key,
@@ -195,16 +205,18 @@ export function DevicePermissionModal({
                 const preset = MESH_PERMISSION_PRESETS.find((item) => item.key === key);
                 if (!preset) return;
                 setSelectedFlags(
-                  permissions.filter(({ flag }) => (preset.rights & flag) === flag).map(
-                    ({ flag }) => flag,
-                  ),
+                  permissions
+                    .filter(({ flag }) => (preset.rights & flag) === flag)
+                    .map(({ flag }) => flag),
                 );
               }}
             />
           </div>
         ) : null}
 
-        {fullAccess ? <Alert showIcon type="warning" title={t('permissions.deviceModal.fullRightsNotice')} /> : null}
+        {fullAccess ? (
+          <Alert showIcon type="warning" title={t('permissions.deviceModal.fullRightsNotice')} />
+        ) : null}
         {unsupportedRights !== 0 ? (
           <Alert
             showIcon
@@ -234,11 +246,15 @@ export function DevicePermissionModal({
                   <div className="mesh-permission-section-header">
                     <Space size={6}>
                       <span className="mesh-permission-section-title">{t(category.labelKey)}</span>
-                      <span className="mesh-permission-section-count">({selectedCount}/{categoryPermissions.length})</span>
+                      <span className="mesh-permission-section-count">
+                        ({selectedCount}/{categoryPermissions.length})
+                      </span>
                     </Space>
                     {!fullAccess ? (
                       <Button type="link" size="small" onClick={() => toggleCategory(category.key)}>
-                        {selectedCount === categoryPermissions.length ? t('permissions.actions.deselectGroup') : t('permissions.actions.selectGroup')}
+                        {selectedCount === categoryPermissions.length
+                          ? t('permissions.actions.deselectGroup')
+                          : t('permissions.actions.selectGroup')}
                       </Button>
                     ) : null}
                   </div>
@@ -249,7 +265,11 @@ export function DevicePermissionModal({
                           <Checkbox value={permission.flag}>
                             <span className="mesh-permission-label">{t(permission.labelKey)}</span>
                             {permission.risk ? (
-                              <Tag color="warning" bordered={false} className="mesh-permission-risk-tag">
+                              <Tag
+                                color="warning"
+                                bordered={false}
+                                className="mesh-permission-risk-tag"
+                              >
                                 {t('permissions.riskTag')}
                               </Tag>
                             ) : null}
@@ -264,6 +284,6 @@ export function DevicePermissionModal({
           </Checkbox.Group>
         </div>
       </div>
-    </Modal>
+    </ConsoleModal>
   );
 }

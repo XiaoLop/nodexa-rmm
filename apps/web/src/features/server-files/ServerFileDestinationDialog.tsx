@@ -1,9 +1,10 @@
 import type { ServerFileEntry, ServerFileSpace } from '@meshcentral/control-client';
 import { FolderFilled, TeamOutlined, UserOutlined } from '@ant-design/icons';
-import { Alert, Modal, Tree } from 'antd';
+import { Alert, Tree } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from '../../components/ui/ConsoleModal';
 import { hasServerFileNameConflict } from './serverFileViewModel';
 
 interface ServerFileDestinationDialogProps {
@@ -60,12 +61,15 @@ export function ServerFileDestinationDialog({
   );
 
   return (
-    <Modal
+    <ConsoleModal
       open={open}
       title={t('serverFiles.destination.title')}
       okText={t('serverFiles.destination.confirm')}
       cancelText={t('common.actions.cancel')}
-      okButtonProps={{ disabled: !selectedKey || sameDirectory || hasConflict, loading: submitting }}
+      okButtonProps={{
+        disabled: !selectedKey || sameDirectory || hasConflict,
+        loading: submitting,
+      }}
       onCancel={onCancel}
       onOk={async () => {
         if (!selectedKey) return;
@@ -105,6 +109,6 @@ export function ServerFileDestinationDialog({
         onSelect={(keys) => setSelectedKey(keys[0] ? String(keys[0]) : undefined)}
         className="server-files-destination-tree"
       />
-    </Modal>
+    </ConsoleModal>
   );
 }

@@ -1,7 +1,7 @@
-import { UserAddOutlined } from '@ant-design/icons';
 import type { ManagedUser } from '@meshcentral/control-client';
-import { Button, Modal, Select, Space } from 'antd';
+import { Button, Select, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from '../ui/ConsoleModal';
 
 interface AddMembersModalProps {
   open: boolean;
@@ -27,13 +27,9 @@ export function AddMembersModal({
   const { t } = useTranslation();
 
   return (
-    <Modal
-      title={
-        <Space>
-          <UserAddOutlined style={{ color: '#818cf8' }} />
-          <span>{t('userGroups.details.modals.addMemberTitle', { name: groupName })}</span>
-        </Space>
-      }
+    <ConsoleModal
+      title={t('userGroups.details.modals.addMemberTitle', { name: groupName })}
+      description={t('userGroups.details.modals.addMemberDescription')}
       open={open}
       onCancel={onClose}
       onOk={() => void onSubmit()}
@@ -41,27 +37,15 @@ export function AddMembersModal({
       okText={t('userGroups.details.modals.addMemberOk', { count: selectedUsernames.length })}
       okButtonProps={{ disabled: selectedUsernames.length === 0 }}
       destroyOnHidden
-      width={560}
     >
-      <p style={{ color: '#94a3b8', fontSize: 13 }}>
-        {t('userGroups.details.modals.addMemberDescription')}
-      </p>
-
-      <div
-        style={{
-          marginBottom: 12,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <span style={{ fontSize: 12, color: '#728cad' }}>
+      <div className="console-member-selection-toolbar">
+        <span className="console-member-selection-count">
           {t('userGroups.details.modals.availableSelected', {
             available: availableUsers.length,
             selected: selectedUsernames.length,
           })}
         </span>
-        <Space size="small">
+        <Space size="small" wrap>
           <Button
             size="small"
             onClick={() => onSelectionChange(availableUsers.map((u) => u.name))}
@@ -95,6 +79,6 @@ export function AddMembersModal({
           };
         })}
       />
-    </Modal>
+    </ConsoleModal>
   );
 }

@@ -1,8 +1,8 @@
-import { SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ManagedUser } from '@meshcentral/control-client';
-import { Alert, Button, Checkbox, Modal, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Checkbox, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from '../ui/ConsoleModal';
 import {
   SITE_PERMISSION_CATEGORIES,
   SITE_PERMISSIONS,
@@ -19,7 +19,6 @@ interface SitePermissionModalProps {
 }
 
 export function SitePermissionModal({
-
   open,
   user,
   submitting = false,
@@ -49,9 +48,7 @@ export function SitePermissionModal({
     [],
   );
 
-  const toggleCategory = (
-    categoryKey: (typeof SITE_PERMISSION_CATEGORIES)[number]['key'],
-  ) => {
+  const toggleCategory = (categoryKey: (typeof SITE_PERMISSION_CATEGORIES)[number]['key']) => {
     const flags = categoryFlags.get(categoryKey) ?? [];
     const allSelected = flags.every((flag) => selectedFlags.includes(flag));
     setSelectedFlags((current) =>
@@ -66,16 +63,10 @@ export function SitePermissionModal({
     : 0;
 
   return (
-    <Modal
-      title={
-        <Space size={8}>
-          <SafetyCertificateOutlined style={{ color: '#2f80ff' }} />
-          <span>{t('permissions.siteModal.title')}</span>
-        </Space>
-      }
+    <ConsoleModal
+      title={t('permissions.siteModal.title')}
       open={open}
-      width={660}
-      centered
+      variant="details"
       okText={t('common.actions.save')}
       cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
@@ -89,17 +80,13 @@ export function SitePermissionModal({
         </Typography.Text>
 
         <div className="mesh-permission-toolbar">
-          <Space size={8}>
-            <Switch
-              size="small"
-              checked={fullAdministrator}
-              onChange={setFullAdministrator}
-            />
+          <Space size={8} wrap>
+            <Switch size="small" checked={fullAdministrator} onChange={setFullAdministrator} />
             <Typography.Text strong>{t('permissions.summary.siteAdmin')}</Typography.Text>
             <Typography.Text type="secondary">0xFFFFFFFF</Typography.Text>
           </Space>
           {!fullAdministrator ? (
-            <Space size={4}>
+            <Space size={4} wrap>
               <Button
                 type="link"
                 size="small"
@@ -142,7 +129,9 @@ export function SitePermissionModal({
                     </Space>
                     {!fullAdministrator ? (
                       <Button type="link" size="small" onClick={() => toggleCategory(category.key)}>
-                        {selectedCount === permissions.length ? t('permissions.actions.deselectGroup') : t('permissions.actions.selectGroup')}
+                        {selectedCount === permissions.length
+                          ? t('permissions.actions.deselectGroup')
+                          : t('permissions.actions.selectGroup')}
                       </Button>
                     ) : null}
                   </div>
@@ -153,7 +142,11 @@ export function SitePermissionModal({
                           <Checkbox value={permission.flag}>
                             <span className="mesh-permission-label">{t(permission.labelKey)}</span>
                             {permission.risk ? (
-                              <Tag color="warning" bordered={false} className="mesh-permission-risk-tag">
+                              <Tag
+                                color="warning"
+                                bordered={false}
+                                className="mesh-permission-risk-tag"
+                              >
                                 {t('permissions.riskTag')}
                               </Tag>
                             ) : null}
@@ -168,6 +161,6 @@ export function SitePermissionModal({
           </Checkbox.Group>
         </div>
       </div>
-    </Modal>
+    </ConsoleModal>
   );
 }

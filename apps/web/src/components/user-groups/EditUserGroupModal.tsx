@@ -1,7 +1,8 @@
 import type { UserGroup } from '@meshcentral/control-client';
-import { Form, Input, Modal } from 'antd';
+import { Form, Input } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from '../ui/ConsoleModal';
 
 export interface EditUserGroupValues {
   name: string;
@@ -32,7 +33,7 @@ export function EditUserGroupModal({
   }, [form, group, open]);
 
   return (
-    <Modal
+    <ConsoleModal
       title={t('userGroups.details.modals.editTitle')}
       open={open}
       onCancel={onClose}
@@ -42,6 +43,8 @@ export function EditUserGroupModal({
           if (succeeded) onClose();
         })
       }
+      okText={t('common.actions.save')}
+      cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
       destroyOnHidden
     >
@@ -69,6 +72,6 @@ export function EditUserGroupModal({
           />
         </Form.Item>
       </Form>
-    </Modal>
+    </ConsoleModal>
   );
 }

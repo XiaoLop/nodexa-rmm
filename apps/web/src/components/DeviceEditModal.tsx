@@ -1,8 +1,9 @@
 import type { MeshCentralClient, ServerInfo, UserInfo } from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
-import { Form, Input, Modal, Select, message } from 'antd';
+import { Form, Input, Select, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConsoleModal } from './ui/ConsoleModal';
 import {
   classifyDeviceGroupMoves,
   manageableTargetGroups,
@@ -80,9 +81,9 @@ export function DeviceEditModal({
           userInfo,
           serverInfo,
         });
-        const canManageSource = sourceCheck.sameTarget.length === 1 && targetGroups.some(
-          (group) => group.id === device.groupId,
-        );
+        const canManageSource =
+          sourceCheck.sameTarget.length === 1 &&
+          targetGroups.some((group) => group.id === device.groupId);
         if (!canManageSource) {
           void messageApi.error(t('devices.editModal.permissionDenied'));
           return;
@@ -122,7 +123,7 @@ export function DeviceEditModal({
   return (
     <>
       {messageContextHolder}
-      <Modal
+      <ConsoleModal
         title={t('devices.editModal.title')}
         open={Boolean(device)}
         onCancel={onClose}
@@ -136,7 +137,9 @@ export function DeviceEditModal({
           <Form.Item
             name="name"
             label={t('devices.editModal.name')}
-            rules={[{ required: true, whitespace: true, message: t('devices.editModal.nameRequired') }]}
+            rules={[
+              { required: true, whitespace: true, message: t('devices.editModal.nameRequired') },
+            ]}
           >
             <Input maxLength={128} />
           </Form.Item>
@@ -144,7 +147,11 @@ export function DeviceEditModal({
             <Input.TextArea rows={3} maxLength={500} />
           </Form.Item>
           <Form.Item name="tags" label={t('devices.editModal.tags')}>
-            <Select mode="tags" tokenSeparators={[',']} placeholder={t('devices.editModal.tagsPlaceholder')} />
+            <Select
+              mode="tags"
+              tokenSeparators={[',']}
+              placeholder={t('devices.editModal.tagsPlaceholder')}
+            />
           </Form.Item>
           <Form.Item name="groupId" label={t('devices.editModal.group')}>
             <Select
@@ -154,7 +161,7 @@ export function DeviceEditModal({
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </ConsoleModal>
     </>
   );
 }
