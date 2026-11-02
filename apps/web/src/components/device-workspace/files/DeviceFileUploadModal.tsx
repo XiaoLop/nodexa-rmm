@@ -1,3 +1,4 @@
+import { ConsoleModal } from '../../ui';
 import {
   ClearOutlined,
   DeleteOutlined,
@@ -5,7 +6,7 @@ import {
   FolderOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Button, Modal, Radio, Space, Typography } from 'antd';
+import { Button, Radio, Space, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BatchUploadFileItem } from '../../../features/batch-upload/types';
@@ -57,7 +58,7 @@ export function DeviceFileUploadModal({
   };
 
   return (
-    <Modal
+    <ConsoleModal
       open={open}
       title={
         <Space>
@@ -65,7 +66,7 @@ export function DeviceFileUploadModal({
           <span>{t('deviceWorkspace.files.uploadModalTitle')}</span>
         </Space>
       }
-      width={640}
+      variant="details"
       onCancel={onClose}
       footer={[
         <Button key="cancel" onClick={onClose}>
@@ -160,6 +161,7 @@ export function DeviceFileUploadModal({
                         danger
                         size="small"
                         icon={<DeleteOutlined />}
+                        aria-label={t('common.actions.remove', '移除')}
                         onClick={() => removeFile(index)}
                       />
                     </div>
@@ -170,6 +172,6 @@ export function DeviceFileUploadModal({
           </div>
         </div>
       </div>
-    </Modal>
+    </ConsoleModal>
   );
 }

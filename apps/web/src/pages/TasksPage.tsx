@@ -20,7 +20,6 @@ import {
   Progress,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
   type TableColumnsType,
@@ -33,7 +32,7 @@ import { TaskDetailsView } from '../features/tasks/TaskDetailsView';
 import type { BatchTask, BatchTaskKind, BatchTaskStatus } from '../features/tasks/types';
 import { isActiveBatchTaskStatus } from '../features/tasks/types';
 import { useFormatters } from '../i18n';
-import { ConsoleDrawer, FilterBar, MetricCard, PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, ConsoleDrawer, FilterBar, MetricCard, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/devices.css';
 import '../assets/styles/tasks.css';
 
@@ -372,11 +371,11 @@ export function TasksPage() {
           </Tag>
         </FilterBar>
 
-        <Table
+        <ConsoleTable
           rowKey="id"
           columns={columns}
           dataSource={filteredTasks}
-          pagination={{ pageSize: 15, hideOnSinglePage: true }}
+          pagination={{ defaultPageSize: 20 }}
           scroll={{ x: 1040 }}
           locale={{
             emptyText: <Empty description={t('taskCenter.empty')} />,

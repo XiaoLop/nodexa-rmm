@@ -1,0 +1,92 @@
+/* Keep dialog actions visible while long forms and file lists scroll. */
+.console-modal .ant-modal .ant-modal-container {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 64px);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-feature);
+}
+
+.console-modal .ant-modal .ant-modal-header {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--space-4) 52px var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.console-modal .ant-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.console-modal .ant-modal .ant-modal-close {
+  top: 16px;
+  inset-inline-end: 16px;
+}
+.console-modal-heading p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.console-modal .ant-modal .ant-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.console-modal .ant-modal .ant-modal-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+}
+
+.console-modal .ant-modal .ant-modal-footer > .ant-btn + .ant-btn {
+  margin-inline-start: 0;
+}
+.console-modal .ant-modal .ant-modal-footer > .console-drawer-actions {
+  width: 100%;
+}
+.console-form-section-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: 13px;
+}
+.console-form-section-icon {
+  display: inline-flex;
+  color: var(--color-brand-hover);
+}
+.console-form-field-icon {
+  color: var(--color-text-tertiary);
+}
+.console-form-notice {
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 620px) {
+  .console-modal .ant-modal .ant-modal-container {
+    max-height: calc(100dvh - 32px);
+  }
+  .console-modal .ant-modal .ant-modal-header {
+    padding-inline-start: var(--space-4);
+  }
+  .console-modal .ant-modal .ant-modal-body,
+  .console-modal .ant-modal .ant-modal-footer {
+    padding-inline: var(--space-4);
+  }
+}

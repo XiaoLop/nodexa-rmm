@@ -15,12 +15,13 @@
    -------------------------------------------------------------------------- */
 .server-ops-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
   width: 100%;
 }
 
 .server-ops-metric-card {
+  min-width: 0;
   background: var(--color-surface-1);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-panel);
@@ -471,9 +472,9 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--color-surface-2);
+  gap: var(--space-2);
+  padding: 10px var(--space-4);
+  background: var(--color-surface-1);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 }
@@ -523,13 +524,12 @@
   grid-template-columns: 90px 190px minmax(0, 1fr);
   gap: 12px;
   padding: 8px 16px;
-  background: var(--color-surface-3);
+  background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border-subtle);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: normal;
   user-select: none;
 }
 
@@ -678,7 +678,7 @@
    -------------------------------------------------------------------------- */
 @media (max-width: 1080px) {
   .server-ops-summary {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .server-console-grid {

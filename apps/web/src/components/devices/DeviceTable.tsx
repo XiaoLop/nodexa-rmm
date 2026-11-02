@@ -1,6 +1,7 @@
+import { ConsoleTable } from '../ui';
 import type { DeviceUiCapabilities } from '@meshcentral/control-client';
 import type { Device } from '@meshcentral/shared-state';
-import { Empty, Table, theme, type TablePaginationConfig } from 'antd';
+import { Empty, theme, type TablePaginationConfig } from 'antd';
 import { useMemo, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '../../i18n';
@@ -98,7 +99,7 @@ export function DeviceTable({
   );
 
   return (
-    <Table
+    <ConsoleTable
       rowKey="id"
       rowSelection={rowSelection}
       columns={columns}

@@ -43,8 +43,14 @@
 }
 
 .page-heading-actions {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.page-heading-actions > .ant-space {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .page-heading h1 {
@@ -159,28 +165,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-.server-upload-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.server-upload-destination {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface-1);
-  font-size: 12px;
-}
-
-.server-upload-destination code {
-  color: var(--color-text-primary);
-  overflow-wrap: anywhere;
 }
 
 .card-header {
@@ -319,4 +303,32 @@
   .toolbar-spacer {
     display: none;
   }
+}
+
+/* Table layout and pagination shared by management pages and detail panels. */
+.console-table .ant-table-cell { font-size: 13px; }
+.console-table .ant-table-small .ant-table-cell { font-size: 12px; }
+.console-table .ant-table-thead > tr > th { font-weight: 600; }
+.console-table .ant-table-pagination {
+  margin: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.console-table .ant-table-placeholder .ant-empty { margin-block: var(--space-6); }
+.console-table .ant-table-cell .ant-tag { margin-inline-end: var(--space-1); }
+.console-table .ant-table-body { scrollbar-width: thin; scrollbar-color: var(--color-border-strong) transparent; }
+.panel-item-count { color: var(--color-text-tertiary); font-size: 12px; }
+.console-tabs { min-width: 0; }
+.console-tabs > .ant-tabs-nav { margin-bottom: var(--space-4); min-height: 48px; }
+.console-tabs > .ant-tabs-nav .ant-tabs-tab { padding-block: var(--space-3); font-size: 13px; }
+.console-tabs .ant-tabs-tabpane { min-width: 0; }
+
+@media (max-width: 620px) {
+  .table-toolbar > .ant-input-affix-wrapper,
+  .table-toolbar > .ant-select { width: 100%; flex: 1 1 100%; min-width: 0; }
+  .page-heading-actions > .ant-space { justify-content: flex-start; }
+  .console-drawer .ant-drawer-header,
+  .console-drawer .ant-drawer-body,
+  .console-drawer .ant-drawer-footer { padding-inline: var(--space-4); }
+  .card-header { flex-wrap: wrap; }
 }

@@ -1468,6 +1468,11 @@ export const enUS = {
       nameConflict: 'The destination already contains an item with this name.',
     },
     upload: {
+      fileList: 'File list',
+      statuses: {
+        queued: 'Queued', hashing: 'Hashing', uploading: 'Uploading', merging: 'Merging',
+        completed: 'Completed', skipped: 'Skipped', error: 'Failed', canceled: 'Canceled',
+      },
       drawerTitle: 'Upload files and folders',
       destination: 'Destination path',
       startUploadWithCount: 'Start upload ({{count}})',

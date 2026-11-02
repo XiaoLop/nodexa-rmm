@@ -12,7 +12,6 @@ import {
   Select,
   Space,
   Spin,
-  Table,
   Tag,
   Typography,
 } from 'antd';
@@ -26,7 +25,7 @@ import {
 } from '../features/events/eventPresentation';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n';
-import { FilterBar, PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/realtime-events.css';
 
 const allEventFilter = 'all' as const;
@@ -365,7 +364,7 @@ export function RealtimeEventsPage() {
             }
           />
         )}
-        <Table<MeshCentralEvent>
+        <ConsoleTable<MeshCentralEvent>
           rowKey="id"
           className="realtime-events-table"
           columns={columns}

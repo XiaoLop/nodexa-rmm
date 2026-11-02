@@ -1,3 +1,4 @@
+import '../../assets/styles/server-file-upload.css';
 import { ConsoleDrawer } from '../../components/ui';
 import { useRef, useState } from 'react';
 import {
@@ -10,24 +11,10 @@ import {
   StopOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import {
-  Button,
-  Empty,
-  List,
-  Progress,
-  Space,
-  Spin,
-  Tag,
-  Typography,
-  message,
-  theme,
-} from 'antd';
+import { Button, Empty, List, Progress, Spin, Tooltip, Tag, Typography, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { formatServerFileSize } from './serverFileViewModel';
-import type {
-  BatchUploadItem,
-  BatchUploadSummary,
-} from './chunkUploadService';
+import type { BatchUploadItem, BatchUploadSummary } from './chunkUploadService';
 import {
   parseFilesFromInput,
   scanFilesFromDataTransfer,
@@ -62,7 +49,6 @@ export function ServerFileUploadDrawer({
   isScanning = false,
 }: ServerFileUploadDrawerProps) {
   const { t } = useTranslation();
-  const { token } = theme.useToken();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOverBox, setIsDraggingOverBox] = useState(false);
   const [internalScanning, setInternalScanning] = useState(false);
@@ -109,9 +95,7 @@ export function ServerFileUploadDrawer({
     if (event.dataTransfer) {
       setInternalScanning(true);
       try {
-        const { files, exceededMaxLimit } = await scanFilesFromDataTransfer(
-          event.dataTransfer,
-        );
+        const { files, exceededMaxLimit } = await scanFilesFromDataTransfer(event.dataTransfer);
         if (exceededMaxLimit) {
           message.warning(
             t(
@@ -135,16 +119,25 @@ export function ServerFileUploadDrawer({
     onStagedFilesChange([]);
   };
 
+  const statusLabels = {
+    queued: t('serverFiles.upload.statuses.queued'),
+    hashing: t('serverFiles.upload.statuses.hashing'),
+    uploading: t('serverFiles.upload.statuses.uploading'),
+    merging: t('serverFiles.upload.statuses.merging'),
+    completed: t('serverFiles.upload.statuses.completed'),
+    skipped: t('serverFiles.upload.statuses.skipped'),
+    error: t('serverFiles.upload.statuses.error'),
+    canceled: t('serverFiles.upload.statuses.canceled'),
+  };
+
   return (
     <ConsoleDrawer
       open={open}
       title={t('serverFiles.upload.drawerTitle', '上传文件与文件夹')}
-      placement="right"
       onClose={onClose}
-      destroyOnHidden={false}
       footer={
         <div className="console-drawer-actions">
-          <Button onClick={onClose}>{t('common.actions.cancel', '取消')}</Button>
+          <Button onClick={onClose}>{t('common.actions.close')}</Button>
           <Button
             type="primary"
             icon={<UploadOutlined />}
@@ -167,332 +160,243 @@ export function ServerFileUploadDrawer({
           </Typography.Text>
           <code title={targetPathDisplay}>{targetPathDisplay}</code>
         </div>
-        {/* 隐藏的 input 输入控件 */}
-        <input
-          ref={fileInputRef}
-          hidden
-          type="file"
-          multiple
-          onChange={handleFileInputChange}
-        />
-
-        {/* 拖拽投放卡片区域 */}
+        <input ref={fileInputRef} hidden type="file" multiple onChange={handleFileInputChange} />
         <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!isDraggingOverBox) setIsDraggingOverBox(true);
+          className={`server-upload-dropzone${isDraggingOverBox ? ' is-dragging' : ''}`}
+          aria-busy={scanning}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDraggingOverBox(true);
           }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setIsDraggingOverBox(false);
+          onDragLeave={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!event.currentTarget.contains(event.relatedTarget as Node))
+              setIsDraggingOverBox(false);
           }}
           onDrop={handleDropOnBox}
-          style={{
-            border: `1.5px dashed ${isDraggingOverBox ? token.colorPrimary : token.colorBorderSecondary}`,
-            borderRadius: token.borderRadiusLG,
-            padding: '24px 16px',
-            textAlign: 'center',
-            backgroundColor: isDraggingOverBox ? token.colorPrimaryBg : token.colorFillAlter,
-            boxShadow: isDraggingOverBox ? `0 0 0 3px ${token.colorPrimaryBorder}` : 'none',
-            transition: 'all 0.2s ease',
-            cursor: 'pointer',
-          }}
         >
-          {scanning ? (
-            <div style={{ padding: '24px 0' }}>
-              <Spin tip={t('serverFiles.upload.scanningFiles', '正在递归解析文件与文件夹...')} />
-            </div>
-          ) : (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  margin: '0 auto',
-                  borderRadius: '50%',
-                  backgroundColor: token.colorPrimaryBg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <InboxOutlined style={{ fontSize: 28, color: token.colorPrimary }} />
-              </div>
+          <Spin spinning={scanning}>
+            <div className="server-upload-dropzone-content">
+              <span className="server-upload-dropzone-icon">
+                <InboxOutlined />
+              </span>
               <div>
-                <Typography.Text strong style={{ fontSize: 15 }}>
+                <Typography.Text strong>
                   {t('serverFiles.upload.dragPrompt', '拖拽文件或文件夹到此处')}
                 </Typography.Text>
-                <div style={{ marginTop: 2 }}>
-                  <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                    {t(
-                      'serverFiles.upload.dragPromptSub',
-                      '支持批量拖入任意多个文件或多层嵌套文件夹',
-                    )}
-                  </Typography.Text>
-                </div>
+                <p>
+                  {scanning
+                    ? t('serverFiles.upload.scanningFiles', '正在递归解析文件与文件夹...')
+                    : t(
+                        'serverFiles.upload.dragPromptSub',
+                        '支持批量拖入任意多个文件或多层嵌套文件夹',
+                      )}
+                </p>
               </div>
-
-              <div style={{ marginTop: 4 }}>
-                <Space size={12}>
-                  <Button
-                    type="primary"
-                    ghost
-                    icon={<FileOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                  >
-                    {t('serverFiles.upload.selectFiles', '选择文件')}
-                  </Button>
-                </Space>
-              </div>
-            </Space>
-          )}
+              <Button
+                icon={<FileOutlined />}
+                disabled={scanning}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {t('serverFiles.upload.selectFiles', '选择文件')}
+              </Button>
+            </div>
+          </Spin>
         </div>
 
-        {/* 1Panel 风格的文件面板：统计栏与文件列表合并 */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            minHeight: 360,
-            minWidth: 0,
-            borderRadius: token.borderRadius,
-            border: `1px solid ${token.colorBorderSecondary}`,
-            backgroundColor: token.colorFillAlter,
-            overflow: 'hidden',
-          }}
-        >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            minHeight: 46,
-            padding: '10px 14px',
-            background: token.colorFillQuaternary,
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {isUploading && uploadSummary ? (
-              <Typography.Text style={{ fontSize: 13, fontWeight: 500 }}>
-                {t('serverFiles.upload.overallProgress', '上传进度')}：
-                {uploadSummary.completedFiles} / {uploadSummary.totalFiles}
-                <span style={{ color: token.colorPrimary, marginLeft: 8 }}>
-                  {uploadSummary.overallPercent}%
-                </span>
-              </Typography.Text>
-            ) : totalFiles > 0 ? (
-              <>
-                <Typography.Text style={{ fontSize: 13, fontWeight: 500 }}>
-                  {t('serverFiles.upload.stagedSummary', '待上传：{{count}} 个文件', {
-                    count: totalFiles,
-                  })}
+        <section className="server-upload-panel" aria-label={t('serverFiles.upload.fileList')}>
+          <div className="server-upload-panel-header">
+            <div className="server-upload-summary" aria-live="polite">
+              {isUploading && uploadSummary ? (
+                <Typography.Text strong>
+                  {t('serverFiles.upload.overallProgress', '上传进度')}：
+                  {uploadSummary.completedFiles} / {uploadSummary.totalFiles}
                 </Typography.Text>
-                {directoryCount > 0 && (
-                  <Tag
-                    bordered={false}
-                    color="blue"
-                    style={{ margin: 0, fontSize: 11, padding: '0 6px' }}
-                  >
-                    {t('serverFiles.upload.directoryCount', '涉及 {{count}} 个子目录', {
-                      count: directoryCount,
+              ) : totalFiles > 0 ? (
+                <>
+                  <Typography.Text strong>
+                    {t('serverFiles.upload.stagedSummary', '待上传：{{count}} 个文件', {
+                      count: totalFiles,
                     })}
-                  </Tag>
-                )}
-                <span
-                  style={{
-                    color: token.colorPrimary,
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  · {formatServerFileSize(totalBytes)}
-                </span>
-              </>
-            ) : (
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                {t('serverFiles.upload.noFilesStaged', '暂无待上传文件')}
-              </Typography.Text>
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    {formatServerFileSize(totalBytes)}
+                  </Typography.Text>
+                  {directoryCount > 0 && (
+                    <Tag>
+                      {t('serverFiles.upload.directoryCount', '涉及 {{count}} 个子目录', {
+                        count: directoryCount,
+                      })}
+                    </Tag>
+                  )}
+                </>
+              ) : (
+                <Typography.Text type="secondary">
+                  {t('serverFiles.upload.noFilesStaged', '暂无待上传文件')}
+                </Typography.Text>
+              )}
+            </div>
+            {!isUploading && totalFiles > 0 && (
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<ClearOutlined />}
+                onClick={handleClearAll}
+              >
+                {t('common.actions.clearAll', '清空清单')}
+              </Button>
             )}
           </div>
-
-          {!isUploading && totalFiles > 0 && (
-            <Button
-              type="link"
-              danger
-              size="small"
-              icon={<ClearOutlined />}
-              onClick={handleClearAll}
-              style={{ padding: '0 4px', height: 'auto', fontSize: 12 }}
-            >
-              {t('common.actions.clearAll', '清空清单')}
-            </Button>
+          {isUploading && uploadSummary && (
+            <div className="server-upload-overall-progress">
+              <Progress
+                percent={uploadSummary.overallPercent}
+                size="small"
+                status={uploadSummary.failedFiles > 0 ? 'exception' : undefined}
+              />
+            </div>
           )}
-        </div>
-
-        {/* 待上传文件列表 */}
-        {isUploading ? (
-          <List
-            size="small"
-            dataSource={uploadItems}
-            style={{
-              flex: 1,
-              minHeight: 0,
-              maxHeight: 'none',
-              overflowY: 'auto',
-              border: 0,
-              backgroundColor: token.colorFillAlter,
-            }}
-            renderItem={(item) => {
-              const canCancel = ['queued', 'hashing', 'uploading', 'merging'].includes(item.status);
-              const canRetry = item.status === 'error' || item.status === 'canceled';
-              return (
-                <List.Item style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Typography.Text strong ellipsis style={{ minWidth: 0, flex: 1 }} title={item.relativePath ?? item.file.name}>
-                      {item.relativePath ?? item.file.name}
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-                      {item.progressPercent}%
-                    </Typography.Text>
-                    {canCancel && (
-                      <Button type="text" danger size="small" icon={<StopOutlined />} onClick={() => onCancelUploadItem?.(item.id)} />
-                    )}
-                    {canRetry && (
-                      <Button type="text" size="small" icon={<RedoOutlined />} onClick={() => onRetryUploadItem?.(item.id)} />
-                    )}
-                  </div>
-                  <Progress
-                    percent={item.progressPercent}
-                    size="small"
-                    status={item.status === 'completed' ? 'success' : item.status === 'error' ? 'exception' : item.status === 'canceled' ? 'normal' : 'active'}
-                    showInfo={false}
-                  />
-                </List.Item>
-              );
-            }}
-          />
-        ) : totalFiles === 0 ? (
-          <div
-            style={{
-              padding: '36px 16px',
-              flex: 1,
-              textAlign: 'center',
-              backgroundColor: 'transparent',
-            }}
-          >
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                  {t(
-                    'serverFiles.upload.emptyStagedHint',
-                    '请拖拽或选择要上传的文件/文件夹',
-                  )}
-                </Typography.Text>
-              }
-              style={{ margin: 0 }}
-            />
-          </div>
-        ) : (
-          <List
-            size="small"
-            dataSource={stagedFiles}
-            style={{
-              flex: 1,
-              minHeight: 0,
-              maxHeight: 'none',
-              overflowY: 'auto',
-              border: 0,
-              backgroundColor: token.colorFillAlter,
-            }}
-            renderItem={(item) => {
-              const isNested = item.subPath && item.subPath.length > 0;
-              return (
-                <List.Item
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: token.borderRadiusSM,
-                        backgroundColor: isNested ? 'rgba(231, 173, 69, 0.12)' : token.colorPrimaryBg,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
+          {isUploading ? (
+            <List
+              className="server-upload-list"
+              rowKey="id"
+              dataSource={uploadItems}
+              renderItem={(item) => {
+                const canCancel = ['queued', 'hashing', 'uploading', 'merging'].includes(
+                  item.status,
+                );
+                const canRetry = item.status === 'error' || item.status === 'canceled';
+                return (
+                  <List.Item className="server-upload-progress-item">
+                    <div className="server-upload-file-heading">
+                      <Typography.Text
+                        strong
+                        ellipsis
+                        className="server-upload-file-name"
+                        title={item.relativePath ?? item.file.name}
+                      >
+                        {item.relativePath ?? item.file.name}
+                      </Typography.Text>
+                      <Tag
+                        color={
+                          item.status === 'error'
+                            ? 'error'
+                            : item.status === 'completed'
+                              ? 'success'
+                              : canCancel
+                                ? 'processing'
+                                : 'default'
+                        }
+                      >
+                        {statusLabels[item.status]}
+                      </Tag>
+                      {canCancel && onCancelUploadItem && (
+                        <Tooltip title={t('common.actions.cancel')}>
+                          <Button
+                            type="text"
+                            danger
+                            size="small"
+                            icon={<StopOutlined />}
+                            aria-label={t('common.actions.cancel')}
+                            onClick={() => onCancelUploadItem(item.id)}
+                          />
+                        </Tooltip>
+                      )}
+                      {canRetry && onRetryUploadItem && (
+                        <Tooltip title={t('common.actions.retry')}>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<RedoOutlined />}
+                            aria-label={t('common.actions.retry')}
+                            onClick={() => onRetryUploadItem(item.id)}
+                          />
+                        </Tooltip>
+                      )}
+                    </div>
+                    <Progress
+                      percent={item.progressPercent}
+                      size="small"
+                      status={
+                        item.status === 'completed'
+                          ? 'success'
+                          : item.status === 'error'
+                            ? 'exception'
+                            : 'normal'
+                      }
+                    />
+                    <Typography.Text
+                      type={item.error ? 'danger' : 'secondary'}
+                      className="server-upload-file-detail"
                     >
-                      {isNested ? (
-                        <FolderOpenOutlined style={{ color: token.colorWarning, fontSize: 15 }} />
-                      ) : (
-                        <FileOutlined style={{ color: token.colorPrimary, fontSize: 15 }} />
-                      )}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Typography.Text strong ellipsis style={{ maxWidth: 280, fontSize: 13 }}>
-                          {item.file.name}
-                        </Typography.Text>
-                        <Typography.Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-                          ({formatServerFileSize(item.file.size)})
-                        </Typography.Text>
-                      </div>
-                      {isNested && (
-                        <div style={{ marginTop: 2 }}>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: token.colorTextTertiary,
-                              backgroundColor: token.colorFillTertiary,
-                              padding: '1px 6px',
-                              borderRadius: token.borderRadiusSM,
-                              display: 'inline-block',
-                              maxWidth: 320,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={item.subPath.join('/')}
-                          >
-                            {item.subPath.join('/')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleRemoveItem(item.id)}
-                    title={t('common.actions.remove', '移除')}
+                      {item.error ||
+                        `${formatServerFileSize(item.uploadedBytes)} / ${formatServerFileSize(item.totalBytes)}`}
+                    </Typography.Text>
+                  </List.Item>
+                );
+              }}
+            />
+          ) : (
+            <List
+              className="server-upload-list"
+              rowKey="id"
+              dataSource={stagedFiles}
+              locale={{
+                emptyText: (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={t(
+                      'serverFiles.upload.emptyStagedHint',
+                      '请拖拽或选择要上传的文件/文件夹',
+                    )}
                   />
+                ),
+              }}
+              renderItem={(item) => (
+                <List.Item>
+                  <span
+                    className={`server-upload-file-icon${item.subPath?.length ? ' is-directory' : ''}`}
+                  >
+                    {item.subPath?.length ? <FolderOpenOutlined /> : <FileOutlined />}
+                  </span>
+                  <div className="server-upload-file-copy">
+                    <div className="server-upload-file-heading">
+                      <Typography.Text
+                        strong
+                        ellipsis
+                        className="server-upload-file-name"
+                        title={item.file.name}
+                      >
+                        {item.file.name}
+                      </Typography.Text>
+                      <Typography.Text type="secondary" className="server-upload-file-size">
+                        {formatServerFileSize(item.file.size)}
+                      </Typography.Text>
+                    </div>
+                    {Boolean(item.subPath?.length) && (
+                      <span className="server-upload-file-path" title={item.subPath.join('/')}>
+                        {item.subPath.join('/')}
+                      </span>
+                    )}
+                  </div>
+                  <Tooltip title={t('common.actions.remove', '移除')}>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      aria-label={t('common.actions.remove', '移除')}
+                      onClick={() => handleRemoveItem(item.id)}
+                    />
+                  </Tooltip>
                 </List.Item>
-              );
-            }}
-          />
-        )}
-        </div>
-
+              )}
+            />
+          )}
+        </section>
       </div>
     </ConsoleDrawer>
   );

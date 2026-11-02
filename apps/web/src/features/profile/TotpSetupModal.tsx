@@ -1,5 +1,6 @@
-import { CheckOutlined, CopyOutlined, KeyOutlined, SafetyOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Modal, Tooltip } from 'antd';
+import { ConsoleModal } from '../../components/ui';
+import { CheckOutlined, CopyOutlined, KeyOutlined } from '@ant-design/icons';
+import { Button, Form, Input, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
@@ -33,20 +34,13 @@ export function TotpSetupModal({
   const { t } = useTranslation();
 
   return (
-    <Modal
-      title={
-        <div className="profile-totp-modal-title">
-          <span className="profile-totp-modal-icon">
-            <SafetyOutlined />
-          </span>
-          <span>{t('profile.security.management.totpTitle')}</span>
-        </div>
-      }
+    <ConsoleModal
+      title={t('profile.security.management.totpTitle')}
       open={open}
       okText={t('profile.security.management.confirmTotp')}
       cancelText={t('common.actions.cancel')}
       confirmLoading={submitting}
-      width={500}
+      variant="form"
       className="profile-totp-modal"
       onCancel={onCancel}
       onOk={onSubmit}
@@ -149,6 +143,6 @@ export function TotpSetupModal({
           </div>
         </div>
       ) : null}
-    </Modal>
+    </ConsoleModal>
   );
 }

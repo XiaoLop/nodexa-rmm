@@ -16,7 +16,6 @@ import {
   Modal,
   Progress,
   Space,
-  Table,
   Tag,
   Tooltip,
   message,
@@ -35,7 +34,7 @@ import {
   type UiPermission,
 } from '@meshcentral/control-client';
 import { createCollator, useFormatters } from '../i18n';
-import { FilterBar, PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/devices.css';
 
 function nameCategory(name: string) {
@@ -409,7 +408,7 @@ export function DeviceGroupsPage() {
             {t('common.actions.refresh')}
           </Button>
         </FilterBar>
-        <Table
+        <ConsoleTable
           rowKey="id"
           columns={columns}
           dataSource={filteredGroups}

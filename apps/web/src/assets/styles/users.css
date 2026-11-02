@@ -23,13 +23,7 @@
   box-shadow: inset 0 0 0 2px var(--color-brand);
 }
 
-.users-toolbar > .ant-input-affix-wrapper {
-  width: 240px;
-}
 
-.users-toolbar > .ant-select {
-  width: 144px;
-}
 
 .user-group-filter-select {
   width: 150px;

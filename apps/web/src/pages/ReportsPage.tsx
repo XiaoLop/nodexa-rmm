@@ -26,7 +26,6 @@ import {
   Empty,
   Select,
   Switch,
-  Table,
   Tag,
   Typography,
 } from 'antd';
@@ -41,7 +40,7 @@ import { MeshCentralRequestTimeoutError } from '@meshcentral/control-client';
 import dayjs, { type Dayjs } from 'dayjs';
 import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PageHeader, Panel, StatusBadge } from '../components/ui';
+import { ConsoleTable, PageHeader, Panel, StatusBadge } from '../components/ui';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import {
@@ -438,7 +437,7 @@ export function ReportsPage() {
               style={{ backgroundColor: '#2563eb' }}
             />
           </div>
-          <Table<ReportEntry>
+          <ConsoleTable<ReportEntry>
             rowKey={(_, index) => `${key}-${index}`}
             columns={columns}
             dataSource={entries}

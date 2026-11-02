@@ -44,7 +44,6 @@ import {
   Modal,
   Progress,
   Space,
-  Table,
   Tag,
   Tooltip,
   Typography,
@@ -55,7 +54,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { FilterBar, PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../components/ui';
 import { ServerFileDestinationDialog } from '../features/server-files/ServerFileDestinationDialog';
 import { ServerFileViewerModal } from '../features/server-files/ServerFileViewerModal';
 import { ServerFileUploadDrawer } from '../features/server-files/ServerFileUploadDrawer';
@@ -1095,7 +1094,7 @@ export function FilesPage() {
 
           <div className="server-files-table-wrapper">
             {controller.currentSpace ? (
-              <Table<ServerFileEntry>
+              <ConsoleTable<ServerFileEntry>
                 size="middle"
                 rowKey={(entry) => entry.path.join('\u0000')}
                 columns={columns}

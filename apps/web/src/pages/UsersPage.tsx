@@ -20,7 +20,6 @@ import {
   Modal,
   Select,
   Space,
-  Table,
   Tag,
   message,
   type TableColumnsType,
@@ -34,7 +33,7 @@ import { filterManagedUsers, type UserFilter } from '../features/users/userFilte
 import { isCurrentUser, isLastActiveAdministrator } from '../features/users/userProtection';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n';
-import { FilterBar, PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/users.css';
 
 export function UsersPage() {
@@ -410,7 +409,7 @@ export function UsersPage() {
             {t('common.actions.refresh')}
           </Button>
         </FilterBar>
-        <Table
+        <ConsoleTable
           className="users-table"
           rowKey="id"
           columns={columns}

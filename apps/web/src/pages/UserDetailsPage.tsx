@@ -5,7 +5,7 @@ import {
   LaptopOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Alert } from 'antd';
+import { Alert, Tabs } from 'antd';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -87,7 +87,6 @@ export function UserDetailsPage() {
   }
   if (!user) return <UserDetailsMissingState onBack={() => navigate('/admin/users')} />;
 
-  const activeTitle = tabs.find((tab) => tab.key === activeTab)?.labelKey;
   const handleAddAccess = () => {
     if (deviceGroupManagementDisabled) return;
     if (activeTab === 'device-groups') details.setPermissionEditor('new');
@@ -125,35 +124,32 @@ export function UserDetailsPage() {
         <UserDetailsMeta user={user} sessionCount={sessionCount} online={online} />
       </section>
 
-      <nav className="user-detail-tabs">
-        {tabs.map((tab) => (
-          <button key={tab.key} className={activeTab === tab.key ? 'active' : ''} onClick={() => setActiveTab(tab.key)}>
-            {tab.icon}<span>{t(tab.labelKey)}</span>
-          </button>
-        ))}
-      </nav>
-
-      {activeTab === 'overview' ? (
-        <UserDetailsOverviewTab
-          deviceGroupRows={deviceGroupRows}
-          userGroupRows={userGroupRows}
-          sharedDeviceRows={sharedDeviceRows}
-          events={events}
-          devices={devices}
-        />
-      ) : activeTab === 'logs' ? (
-        <UserDetailsLogsTab events={events} devices={devices} />
-      ) : (
-        <UserDetailsAccessTab
-          tab={activeTab}
-          titleKey={activeTitle}
-          rows={activeTab === 'device-groups' ? deviceGroupRows : activeTab === 'user-groups' ? userGroupRows : sharedDeviceRows}
-          managementDisabled={deviceGroupManagementDisabled}
-          onAdd={handleAddAccess}
-          onEdit={handleEditAccess}
-          onRemove={activeTab === 'device-groups' ? details.confirmDeviceGroupRemoval : details.confirmDevicePermissionRemoval}
-        />
-      )}
+      <Tabs
+        className="console-tabs"
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as DetailTab)}
+        destroyOnHidden
+        items={tabs.map((tab) => ({
+          key: tab.key,
+          label: t(tab.labelKey),
+          icon: tab.icon,
+          children: tab.key === 'overview' ? (
+            <div className="user-detail-overview">
+              <UserDetailsOverviewTab deviceGroupRows={deviceGroupRows} userGroupRows={userGroupRows} sharedDeviceRows={sharedDeviceRows} events={events} devices={devices} />
+            </div>
+          ) : tab.key === 'logs' ? (
+            <UserDetailsLogsTab events={events} devices={devices} />
+          ) : (
+            <UserDetailsAccessTab
+              tab={tab.key} titleKey={tab.labelKey}
+              rows={tab.key === 'device-groups' ? deviceGroupRows : tab.key === 'user-groups' ? userGroupRows : sharedDeviceRows}
+              managementDisabled={deviceGroupManagementDisabled}
+              onAdd={handleAddAccess} onEdit={handleEditAccess}
+              onRemove={tab.key === 'device-groups' ? details.confirmDeviceGroupRemoval : details.confirmDevicePermissionRemoval}
+            />
+          ),
+        }))}
+      />
 
       <DeviceGroupPermissionModal
         open={Boolean(details.permissionEditor) && !deviceGroupManagementDisabled}

@@ -1,3 +1,4 @@
+import { ConsoleModal } from '../ui';
 import {
   IdcardOutlined,
   KeyOutlined,
@@ -6,21 +7,10 @@ import {
   PhoneOutlined,
   PlusOutlined,
   ThunderboltOutlined,
-  UserAddOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import type { UserCreateOptions } from '@meshcentral/control-client';
-import {
-  Alert,
-  Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Segmented,
-  Typography,
-} from 'antd';
+import { Alert, Button, Col, Form, Input, Row, Segmented, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -53,16 +43,10 @@ function SectionHeader({
   subtitle?: string;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 4 }}>
-      <span style={{ color: '#2f80ff', fontSize: 14, display: 'flex', alignItems: 'center' }}>
-        {icon}
-      </span>
-      <Text style={{ fontSize: 13, fontWeight: 600, color: '#dbe5f0' }}>{title}</Text>
-      {subtitle && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          ({subtitle})
-        </Text>
-      )}
+    <div className="console-form-section-heading">
+      <span className="console-form-section-icon">{icon}</span>
+      <Text strong>{title}</Text>
+      {subtitle && <Text type="secondary">({subtitle})</Text>}
     </div>
   );
 }
@@ -94,41 +78,14 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
   };
 
   return (
-    <Modal
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 4 }}>
-          <div
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 8,
-              display: 'grid',
-              placeItems: 'center',
-              background: 'linear-gradient(135deg, #162b48 0%, #0d1928 100%)',
-              border: '1px solid #23436b',
-              color: '#3c8bff',
-              fontSize: 18,
-              flexShrink: 0,
-            }}
-          >
-            <UserAddOutlined />
-          </div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#f1f5fb', lineHeight: 1.3 }}>
-              {t('users.modal.createTitle')}
-            </div>
-            <div style={{ fontSize: 12, color: '#8c9bb0', fontWeight: 400, marginTop: 2 }}>
-              {t('users.modal.createSubtitle')}
-            </div>
-          </div>
-        </div>
-      }
+    <ConsoleModal
+      title={t('users.modal.createTitle')}
+      description={t('users.modal.createSubtitle')}
       open={open}
       onCancel={onCancel}
-      width={560}
       destroyOnHidden
       footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
+        <div className="console-drawer-actions">
           <Button onClick={onCancel} disabled={submitting}>
             {t('common.actions.cancel')}
           </Button>
@@ -151,7 +108,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
         initialValues={{
           passwordMode: 'manual',
         }}
-        style={{ marginTop: 16 }}
+        className="console-form"
       >
         {/* 账号与登录凭据 */}
         <SectionHeader icon={<LockOutlined />} title={t('users.modal.accountAndCredentials')} />
@@ -163,7 +120,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
           style={{ marginBottom: 14 }}
         >
           <Input
-            prefix={<UserOutlined style={{ color: '#6e84a3' }} />}
+            prefix={<UserOutlined className="console-form-field-icon" />}
             placeholder={t('users.modal.usernamePlaceholder')}
             maxLength={128}
             autoComplete="off"
@@ -194,21 +151,23 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
 
         {passwordMode === 'manual' ? (
           <Row gutter={12}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="password"
                 label={t('users.modal.password')}
-                rules={[{ required: true, whitespace: true, message: t('users.modal.passwordRequired') }]}
+                rules={[
+                  { required: true, whitespace: true, message: t('users.modal.passwordRequired') },
+                ]}
                 style={{ marginBottom: 16 }}
               >
                 <Input.Password
-                  prefix={<LockOutlined style={{ color: '#6e84a3' }} />}
+                  prefix={<LockOutlined className="console-form-field-icon" />}
                   placeholder={t('users.modal.passwordPlaceholder')}
                   autoComplete="new-password"
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="confirmPassword"
                 label={t('users.modal.confirmPassword')}
@@ -226,7 +185,7 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
                 style={{ marginBottom: 16 }}
               >
                 <Input.Password
-                  prefix={<LockOutlined style={{ color: '#6e84a3' }} />}
+                  prefix={<LockOutlined className="console-form-field-icon" />}
                   placeholder={t('users.modal.confirmPasswordPlaceholder')}
                   autoComplete="new-password"
                 />
@@ -239,32 +198,36 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
             type="info"
             title={t('users.modal.randomPasswordNoticeTitle')}
             description={t('users.modal.randomPasswordNoticeDesc')}
-            style={{
-              marginBottom: 16,
-              backgroundColor: '#0c1a2d',
-              border: '1px solid #1c365d',
-            }}
+            className="console-form-notice"
           />
         )}
 
         {/* 个人与联系信息 */}
-        <SectionHeader icon={<IdcardOutlined />} title={t('users.modal.personalInfo')} subtitle={t('users.modal.optional')} />
+        <SectionHeader
+          icon={<IdcardOutlined />}
+          title={t('users.modal.personalInfo')}
+          subtitle={t('users.modal.optional')}
+        />
 
         <Row gutter={12}>
-          <Col span={12}>
-            <Form.Item name="realName" label={t('users.modal.realName')} style={{ marginBottom: 14 }}>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              name="realName"
+              label={t('users.modal.realName')}
+              style={{ marginBottom: 14 }}
+            >
               <Input
-                prefix={<IdcardOutlined style={{ color: '#6e84a3' }} />}
+                prefix={<IdcardOutlined className="console-form-field-icon" />}
                 placeholder={t('users.modal.realNamePlaceholder')}
                 maxLength={256}
                 autoComplete="off"
               />
             </Form.Item>
           </Col>
-          <Col span={12}>
+          <Col xs={24} sm={12}>
             <Form.Item name="phone" label={t('users.modal.phone')} style={{ marginBottom: 14 }}>
               <Input
-                prefix={<PhoneOutlined style={{ color: '#6e84a3' }} />}
+                prefix={<PhoneOutlined className="console-form-field-icon" />}
                 placeholder={t('users.modal.phonePlaceholder')}
                 maxLength={64}
                 autoComplete="off"
@@ -281,15 +244,13 @@ export function UserCreateModal({ open, submitting, onCancel, onSubmit }: UserCr
         >
           <Input
             type="email"
-            prefix={<MailOutlined style={{ color: '#6e84a3' }} />}
+            prefix={<MailOutlined className="console-form-field-icon" />}
             placeholder={t('users.modal.emailPlaceholder')}
             maxLength={256}
             autoComplete="off"
           />
         </Form.Item>
-
       </Form>
-    </Modal>
+    </ConsoleModal>
   );
 }
-

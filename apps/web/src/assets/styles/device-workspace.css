@@ -757,7 +757,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-1);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
@@ -783,11 +783,12 @@
   padding: 0 4px;
 }
 .device-file-upload-list {
-  max-height: 240px;
+  max-height: min(360px, 45dvh);
+  scrollbar-width: thin;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #0b1420;
+  background: var(--color-surface-1);
   display: flex;
   flex-direction: column;
 }
@@ -795,15 +796,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
   font-size: 12px;
 }
 .device-file-upload-item:last-child {
   border-bottom: none;
 }
 .device-file-upload-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-surface-3);
 }
 .device-file-item-info {
   display: flex;
@@ -813,7 +814,7 @@
   flex: 1;
 }
 .device-file-icon {
-  color: #60a5fa;
+  color: var(--color-brand-hover);
   flex-shrink: 0;
 }
 .device-file-name {
@@ -1106,7 +1107,7 @@
   border-color: var(--border);
 }
 .timeline-summary-tags strong {
-  color: var(--text);
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 .timeline-summary-tags span {
@@ -1173,4 +1174,11 @@
     align-items: flex-start;
     gap: 8px;
   }
+}
+@media (max-width: 620px) {
+  .device-file-upload-meta-item { flex-wrap: wrap; min-width: 0; }
+  .device-file-upload-list-header { flex-wrap: wrap; gap: var(--space-2); }
+  .device-file-upload-item { flex-wrap: wrap; gap: var(--space-2); }
+  .device-file-item-info { flex-basis: 100%; }
+  .device-file-item-meta { margin-left: auto; }
 }

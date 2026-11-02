@@ -2,12 +2,6 @@
 .devices-table-card {
   overflow: hidden;
 }
-.devices-toolbar > .ant-input-affix-wrapper {
-  width: min(360px, 34vw);
-}
-.devices-toolbar > .ant-select {
-  width: 140px;
-}
 .device-workspace-link {
   width: fit-content;
   max-width: 100%;
@@ -108,7 +102,7 @@
 }
 .batch-upload-header-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 1.8fr) minmax(220px, 1.2fr) minmax(130px, 0.9fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.2fr) minmax(0, 0.9fr);
   gap: 16px;
   align-items: start;
   padding: 14px 16px 4px 16px;
@@ -126,9 +120,9 @@
   justify-content: center;
   gap: 10px;
   padding: 24px 20px;
-  border: 2px dashed var(--color-border-strong);
-  border-radius: var(--radius-feature);
-  background: var(--color-surface-2);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-1);
   text-align: center;
   cursor: pointer;
   transition: all var(--motion-normal) ease;
@@ -137,14 +131,14 @@
 .batch-upload-dropzone.is-dragging {
   border-color: var(--color-brand);
   background: var(--color-brand-soft);
-  box-shadow: 0 0 12px var(--color-brand-soft);
+  box-shadow: none;
 }
 .batch-upload-dropzone:hover {
   border-color: var(--color-brand-hover);
   background: var(--color-surface-hover);
 }
 .batch-upload-dropzone-icon {
-  font-size: 38px;
+  font-size: 28px;
   color: var(--color-brand);
 }
 .batch-upload-dropzone-title {
@@ -186,7 +180,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 12px;
+  padding: var(--space-3);
   border-bottom: 1px solid var(--color-border-subtle);
   font-size: 13px;
   transition: background var(--motion-fast) ease;
@@ -225,7 +219,7 @@
 }
 .batch-upload-summary {
   display: grid;
-  grid-template-columns: repeat(7, minmax(90px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
 }
 .batch-upload-summary .ant-statistic {
@@ -336,4 +330,16 @@
   min-height: calc(100vh - 105px);
   display: grid;
   place-items: center;
+}
+
+@media (max-width: 980px) {
+  .batch-upload-header-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .batch-upload-dropzone-actions { flex-wrap: wrap; justify-content: center; }
+  .batch-upload-files-header { flex-wrap: wrap; gap: var(--space-2); }
+  .batch-upload-file-item { flex-wrap: wrap; gap: var(--space-2); }
+  .batch-upload-file-info { flex-basis: 100%; }
+  .batch-upload-file-meta { margin-left: auto; }
+  .batch-upload-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

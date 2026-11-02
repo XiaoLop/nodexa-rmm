@@ -217,9 +217,9 @@
 .reports-result-group {
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   background: var(--color-surface-1);
-  box-shadow: var(--shadow-surface);
+  box-shadow: var(--shadow-panel);
 }
 
 .reports-group-heading {
@@ -427,7 +427,7 @@
   justify-content: center;
   padding: 40px 20px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   background: var(--color-surface-1);
 }
 

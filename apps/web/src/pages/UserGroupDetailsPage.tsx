@@ -115,6 +115,7 @@ export function UserGroupDetailsPage() {
         ) : null}
       </UserGroupHeader>
       <Tabs
+        className="console-tabs"
         activeKey={details.activeTab}
         onChange={details.setActiveTab}
         items={[

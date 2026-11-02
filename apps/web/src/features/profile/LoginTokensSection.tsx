@@ -1,3 +1,4 @@
+import { ConsoleModal } from '../../components/ui';
 import {
   ClockCircleOutlined,
   CopyOutlined,
@@ -236,7 +237,7 @@ export function LoginTokensSection({
         </div>
       )}
 
-      <Modal
+      <ConsoleModal
         open={createModalOpen}
         title={t('profile.loginTokens.create')}
         okText={t('profile.loginTokens.create')}
@@ -282,9 +283,9 @@ export function LoginTokensSection({
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </ConsoleModal>
 
-      <Modal
+      <ConsoleModal
         open={Boolean(createdToken)}
         title={t('profile.loginTokens.createdTitle')}
         okText={t('common.actions.close')}
@@ -307,7 +308,7 @@ export function LoginTokensSection({
             suffix={<Button type="text" icon={<CopyOutlined />} aria-label={t('common.actions.copy')} onClick={() => void copyValue(createdToken?.tokenPass ?? '')} />}
           />
         </div>
-      </Modal>
+      </ConsoleModal>
     </section>
   );
 }

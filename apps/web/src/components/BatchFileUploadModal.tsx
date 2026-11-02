@@ -1,3 +1,4 @@
+import { ConsoleModal, ConsoleTable } from './ui';
 import {
   ClearOutlined,
   CloseCircleOutlined,
@@ -22,7 +23,6 @@ import {
   Radio,
   Space,
   Statistic,
-  Table,
   Tag,
   Typography,
   message,
@@ -377,7 +377,7 @@ export function BatchFileUploadModal({
   return (
     <>
       {messageContextHolder}
-      <Modal
+      <ConsoleModal
         open={open}
         title={
           <Space>
@@ -385,7 +385,7 @@ export function BatchFileUploadModal({
             {t('batchUpload.modalTitle', { count: devices.length })}
           </Space>
         }
-        width={1180}
+        variant="wide"
         onCancel={closeModal}
         destroyOnHidden={false}
         footer={
@@ -620,7 +620,7 @@ export function BatchFileUploadModal({
                   description={t('batchUpload.gatewayDisconnectedDesc')}
                 />
               )}
-              <Table<BatchUploadTask>
+              <ConsoleTable<BatchUploadTask>
                 rowKey="id"
                 size="small"
                 columns={columns}
@@ -631,7 +631,7 @@ export function BatchFileUploadModal({
             </>
           )}
         </div>
-      </Modal>
+      </ConsoleModal>
     </>
   );
 }

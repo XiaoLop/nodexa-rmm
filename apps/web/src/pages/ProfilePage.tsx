@@ -676,10 +676,10 @@ export function ProfilePage() {
 
   // Nav items definition
   const NAV_ITEMS = [
-    { key: 'profile' as const, label: '基本信息', icon: <UserOutlined /> },
-    { key: 'security' as const, label: '账户安全', icon: <LockOutlined /> },
-    { key: 'devices' as const, label: '登录令牌', icon: <KeyOutlined /> },
-    { key: 'activity' as const, label: '账号活动', icon: <GlobalOutlined /> },
+    { key: 'profile' as const, label: t('profile.basic.title'), icon: <UserOutlined /> },
+    { key: 'security' as const, label: t('profile.security.title'), icon: <LockOutlined /> },
+    { key: 'devices' as const, label: t('profile.loginTokens.title'), icon: <KeyOutlined /> },
+    { key: 'activity' as const, label: t('profile.logins.title'), icon: <GlobalOutlined /> },
   ];
 
   const scrollToSection = (key: NavTabKey) => {
@@ -688,7 +688,7 @@ export function ProfilePage() {
 
     setActiveNav(key);
     scrollingToSection.current = true;
-    const targetTop = window.scrollY + section.getBoundingClientRect().top - 20;
+    const targetTop = window.scrollY + section.getBoundingClientRect().top - 88;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: 'auto' });
     window.setTimeout(() => {
       scrollingToSection.current = false;
@@ -737,7 +737,7 @@ export function ProfilePage() {
   );
 
   return (
-    <div className="profile-page">
+    <div className="profile-page page-stack">
       {messageContextHolder}
       {modalContextHolder}
 
@@ -772,8 +772,8 @@ export function ProfilePage() {
                     <button
                       type="button"
                       className="profile-sidebar-camera-badge"
-                      title="上传或更换头像"
-                      aria-label="上传或更换头像"
+                      title={t('profile.selectAvatar')}
+                      aria-label={t('profile.selectAvatar')}
                     >
                       <CameraOutlined />
                     </button>
@@ -782,18 +782,18 @@ export function ProfilePage() {
               </div>
 
               <div className="profile-sidebar-name">{userInfo.name ?? userInfo.id}</div>
-              <Tag className="profile-sidebar-role-tag">
-                {isFullAdministrator(userInfo.siteadmin ?? 0) ? '系统管理员' : '标准用户'}
+              <Tag color="blue" className="profile-sidebar-role-tag">
+                {isFullAdministrator(userInfo.siteadmin ?? 0) ? t('profile.siteAdministrator') : t('profile.standardUser')}
               </Tag>
 
               <div className="profile-sidebar-meta-list">
                 <div className="profile-sidebar-meta-item">
                   <MailOutlined className="profile-sidebar-meta-icon" />
-                  <span>{userInfo.email || 'admin@xmail.com'}</span>
+                  <span>{userInfo.email || t('userDetails.missingEmail')}</span>
                 </div>
                 <div className="profile-sidebar-meta-item">
                   <ClockCircleOutlined className="profile-sidebar-meta-icon" />
-                  <span>最后登录: {formatDate(userInfo.lastLoginAt)}</span>
+                  <span>{t('profile.account.lastLogin')}: {formatDate(userInfo.lastLoginAt)}</span>
                 </div>
               </div>
 
@@ -806,29 +806,31 @@ export function ProfilePage() {
                     disabled={!connected}
                     onClick={() => void saveAvatar()}
                   >
-                    保存头像
+                    {t('profile.saveAvatar')}
                   </Button>
                   <Button size="small" onClick={handleCancelAvatarPreview}>
-                    取消
+                    {t('common.actions.cancel')}
                   </Button>
                 </div>
               )}
             </div>
 
             {/* Navigation Menu */}
-            <nav className="profile-sidebar-nav" role="tablist">
+            <nav className="profile-sidebar-nav" aria-label={t('profile.title')}>
               {NAV_ITEMS.map((item) => (
-                <button
+                <a
                   key={item.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeNav === item.key}
+                  href={`#profile-section-${item.key}`}
+                  aria-current={activeNav === item.key ? 'location' : undefined}
                   className={`profile-sidebar-nav-item ${activeNav === item.key ? 'is-active' : ''}`}
-                  onClick={() => scrollToSection(item.key)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    scrollToSection(item.key);
+                  }}
                 >
                   <span className="profile-sidebar-nav-icon">{item.icon}</span>
                   <span className="profile-sidebar-nav-label">{item.label}</span>
-                </button>
+                </a>
               ))}
             </nav>
 
@@ -865,20 +867,21 @@ export function ProfilePage() {
                     sectionRefs.current.profile = node;
                   }}
                   className="profile-content-card profile-scroll-section"
+                  id="profile-section-profile"
                   data-profile-section="profile"
                 >
                   <div className="profile-card-header">
                     <div className="profile-card-title-group">
                       <span className="profile-card-icon"><UserOutlined /></span>
                       <div>
-                        <h3>基本信息</h3>
-                        <p>这是您在系统中的基本信息。</p>
+                        <h3>{t('profile.basic.title')}</h3>
+                        <p>{t('profile.basic.description')}</p>
                       </div>
                     </div>
                     {isEditingBasic ? (
                       <Space>
                         <Button size="small" onClick={handleCancelBasicEdit}>
-                          取消
+                          {t('common.actions.cancel')}
                         </Button>
                         <Button
                           size="small"
@@ -964,13 +967,14 @@ export function ProfilePage() {
                     sectionRefs.current.security = node;
                   }}
                   className="profile-content-card profile-scroll-section"
+                  id="profile-section-security"
                   data-profile-section="security"
                 >
                   <div className="profile-card-header">
                     <div className="profile-card-title-group">
                       <span className="profile-card-icon"><SafetyCertificateOutlined /></span>
                       <div>
-                        <h3>账户安全</h3>
+                        <h3>{t('profile.security.title')}</h3>
                         <p>管理您的账户安全设置。</p>
                       </div>
                     </div>
@@ -1093,6 +1097,7 @@ export function ProfilePage() {
                 sectionRefs.current.devices = node;
               }}
               className="profile-tab-section-stack profile-scroll-section"
+              id="profile-section-devices"
               data-profile-section="devices"
             >
               {renderTokensSection()}
@@ -1103,21 +1108,22 @@ export function ProfilePage() {
                 sectionRefs.current.activity = node;
               }}
               className="profile-content-card profile-scroll-section"
+              id="profile-section-activity"
               data-profile-section="activity"
             >
               <div className="profile-card-header">
                 <div className="profile-card-title-group">
                   <span className="profile-card-icon"><GlobalOutlined /></span>
                   <div>
-                    <h3>账号活动</h3>
-                    <p>最近的登录记录和操作日志。</p>
+                    <h3>{t('profile.logins.title')}</h3>
+                    <p>{t('profile.logins.description')}</p>
                   </div>
                 </div>
               </div>
               <div className="profile-card-body profile-activity-card-body">
                 {previousLoginsLoading ? (
                   <div className="profile-activity-loading">
-                    <Spin size="small" /> 正在加载活动记录...
+                    <Spin size="small" /> {t('profile.logins.loading')}
                   </div>
                 ) : previousLogins.length > 0 ? (
                   <div className="profile-activity-list">

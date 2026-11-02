@@ -1419,6 +1419,11 @@ export const zhCN = {
       nameConflict: '目标目录中已存在同名项目。',
     },
     upload: {
+      fileList: '文件清单',
+      statuses: {
+        queued: '等待上传', hashing: '校验中', uploading: '上传中', merging: '合并中',
+        completed: '已完成', skipped: '已跳过', error: '上传失败', canceled: '已取消',
+      },
       drawerTitle: '上传文件与文件夹',
       destination: '目标路径',
       startUploadWithCount: '开始上传 ({{count}})',

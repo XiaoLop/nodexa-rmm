@@ -1,4 +1,5 @@
-import { Alert, Form, Input, Modal } from 'antd';
+import { ConsoleModal } from '../../components/ui';
+import { Alert, Form, Input } from 'antd';
 import type { FormInstance } from 'antd';
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +27,7 @@ export function PasswordChangeModal({
   const { t } = useTranslation();
 
   return (
-    <Modal
+    <ConsoleModal
       title={t('profile.password.title')}
       open={open}
       okText={t('profile.password.submit')}
@@ -70,6 +71,6 @@ export function PasswordChangeModal({
           <Input.Password autoComplete="new-password" />
         </Form.Item>
       </Form>
-    </Modal>
+    </ConsoleModal>
   );
 }

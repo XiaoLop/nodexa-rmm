@@ -1,10 +1,10 @@
+import { ConsoleModal } from '../../components/ui';
 import {
   CheckOutlined,
   CopyOutlined,
   DownloadOutlined,
-  SafetyCertificateOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Modal, Tag, Tooltip } from 'antd';
+import { Alert, Button, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { BackupCode } from './twoFactorManagement';
 
@@ -40,18 +40,11 @@ export function BackupCodesModal({
   const usedCount = codes.length - availableCount;
 
   return (
-    <Modal
-      title={
-        <div className="profile-backup-codes-modal-title">
-          <span className="profile-backup-codes-modal-icon">
-            <SafetyCertificateOutlined />
-          </span>
-          <span>{t('profile.security.management.backupCodesTitle')}</span>
-        </div>
-      }
+    <ConsoleModal
+      title={t('profile.security.management.backupCodesTitle')}
       open={open}
       onCancel={onCancel}
-      width={560}
+      variant="form"
       className="profile-backup-codes-modal"
       footer={
         <div className="profile-backup-codes-footer">
@@ -178,6 +171,6 @@ export function BackupCodesModal({
           })}
         </div>
       </div>
-    </Modal>
+    </ConsoleModal>
   );
 }

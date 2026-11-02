@@ -1,5 +1,6 @@
+import { ConsoleModal } from '../../components/ui';
 import { DeleteOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Alert, Button, Empty, Form, Input, List, Modal, Spin, Tag } from 'antd';
+import { Alert, Button, Empty, Form, Input, List, Spin, Tag } from 'antd';
 import type { FormInstance } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { SecurityKey } from './twoFactorManagement';
@@ -38,18 +39,11 @@ export function SecurityKeysModal({
   const { t } = useTranslation();
 
   return (
-    <Modal
-      title={
-        <div className="profile-security-keys-modal-title">
-          <span className="profile-security-keys-modal-icon">
-            <SafetyCertificateOutlined />
-          </span>
-          <span>{t('profile.securityKeys.title')}</span>
-        </div>
-      }
+    <ConsoleModal
+      title={t('profile.securityKeys.title')}
       open={open}
       onCancel={onCancel}
-      width={600}
+      variant="form"
       footer={null}
     >
       <div className="profile-security-keys-container">
@@ -152,6 +146,6 @@ export function SecurityKeysModal({
           />
         )}
       </div>
-    </Modal>
+    </ConsoleModal>
   );
 }

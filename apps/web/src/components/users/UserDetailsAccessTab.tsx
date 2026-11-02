@@ -1,3 +1,4 @@
+import { ConsoleTable, Panel } from '../ui';
 import {
   ApartmentOutlined,
   DeleteOutlined,
@@ -6,7 +7,7 @@ import {
   PlusOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Button, Empty, Space, Tooltip } from 'antd';
+import { Button, Empty, Space, Tooltip, type TableColumnsType } from 'antd';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AccessRow } from '../../features/users/accessRows';
@@ -43,31 +44,93 @@ export function AccessCard({
 }: AccessCardProps) {
   const { t } = useTranslation();
   const resolvedDisabledReason = disabledReason ?? t('userDetails.actions.unavailable');
+  const columns: TableColumnsType<AccessRow> = [
+    {
+      title: t('userDetails.columns.name'),
+      dataIndex: 'name',
+      key: 'name',
+      width: '35%',
+      ellipsis: true,
+    },
+    {
+      title: t('userDetails.columns.permission'),
+      dataIndex: 'permission',
+      key: 'permission',
+      ellipsis: true,
+    },
+  ];
+  if (editable)
+    columns.push({
+      title: t('userDetails.columns.actions'),
+      key: 'actions',
+      width: 172,
+      align: 'right',
+      render: (_, row) => (
+        <Space size={0}>
+          <Tooltip title={editDisabled ? resolvedDisabledReason : undefined}>
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              disabled={editDisabled}
+              onClick={() => onEdit?.(row)}
+            >
+              {t('common.actions.edit')}
+            </Button>
+          </Tooltip>
+          <Tooltip title={editDisabled ? resolvedDisabledReason : undefined}>
+            <Button
+              type="link"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              disabled={editDisabled}
+              onClick={() => onRemove?.(row)}
+            >
+              {t('userDetails.actions.remove')}
+            </Button>
+          </Tooltip>
+        </Space>
+      ),
+    });
   return (
-    <article className={`user-detail-access-card${constrained ? ' constrained' : ''}`}>
-      <header>
-        <h2><span className={tone}>{icon}</span>{title}</h2>
-        {editable ? <Button type="link" size="small" icon={<PlusOutlined />} disabled={addDisabled} onClick={onAdd}>{t('userDetails.actions.add')}</Button> : <span>{t('userDetails.itemsCount', { count: rows.length })}</span>}
-      </header>
-      <div className={`user-detail-access-head${editable ? ' editable' : ''}`}><span>{t('userDetails.columns.name')}</span><span>{t('userDetails.columns.permission')}</span>{editable ? <span>{t('userDetails.columns.actions')}</span> : null}</div>
-      <div className="user-detail-access-body">
-        {rows.length ? rows.map((row) => (
-          <div className={`user-detail-access-row${editable ? ' editable' : ''}`} key={row.id}>
-            <span>{row.name}</span><span>{row.permission}</span>
-            {editable ? (
-              <Space size={0}>
-                <Tooltip title={editDisabled ? resolvedDisabledReason : undefined}>
-                  <Button type="link" size="small" icon={<EditOutlined />} disabled={editDisabled} onClick={() => onEdit?.(row)}>{t('common.actions.edit')}</Button>
-                </Tooltip>
-                <Tooltip title={editDisabled ? resolvedDisabledReason : undefined}>
-                  <Button type="link" danger size="small" icon={<DeleteOutlined />} disabled={editDisabled} onClick={() => onRemove?.(row)}>{t('userDetails.actions.remove')}</Button>
-                </Tooltip>
-              </Space>
-            ) : null}
-          </div>
-        )) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('userDetails.empty.access', { title })} />}
-      </div>
-    </article>
+    <Panel
+      className="user-detail-data-panel"
+      title={
+        <>
+          <span className={tone}>{icon}</span>
+          {title}
+        </>
+      }
+      tools={
+        editable ? (
+          <Button size="small" icon={<PlusOutlined />} disabled={addDisabled} onClick={onAdd}>
+            {t('userDetails.actions.add')}
+          </Button>
+        ) : (
+          <span className="panel-item-count">
+            {t('userDetails.itemsCount', { count: rows.length })}
+          </span>
+        )
+      }
+    >
+      <ConsoleTable<AccessRow>
+        rowKey="id"
+        columns={columns}
+        dataSource={rows}
+        size={constrained ? 'small' : 'middle'}
+        pagination={constrained ? false : undefined}
+        scroll={constrained ? { y: 180 } : { x: 600 }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={t('userDetails.empty.access', { title })}
+            />
+          ),
+        }}
+      />
+    </Panel>
   );
 }
 
@@ -117,7 +180,9 @@ export function UserDetailsAccessTab({
       tone={tone}
       addDisabled={managementDisabled}
       editDisabled={managementDisabled}
-      disabledReason={tab === 'shared-devices' ? t('userDetails.errors.cannotEditCurrentDevices') : undefined}
+      disabledReason={
+        tab === 'shared-devices' ? t('userDetails.errors.cannotEditCurrentDevices') : undefined
+      }
       onAdd={onAdd}
       onEdit={onEdit}
       onRemove={onRemove}

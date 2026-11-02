@@ -26,7 +26,6 @@ import {
   Modal,
   Select,
   Space,
-  Table,
   Tag,
   Tooltip,
   message,
@@ -38,7 +37,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMeshCentralControlData } from '../features/gateway';
 import { createCollator } from '../i18n';
 import { useFormatters } from '../i18n/formatters';
-import { FilterBar, PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/users.css';
 
 type EditorMode = 'create' | 'edit' | 'clone';
@@ -428,7 +427,7 @@ export function UserGroupsPage() {
           </Button>
         </FilterBar>
 
-        <Table
+        <ConsoleTable
           rowKey="id"
           columns={columns}
           dataSource={filteredGroups}
