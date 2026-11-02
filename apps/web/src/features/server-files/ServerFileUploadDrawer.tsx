@@ -1,3 +1,4 @@
+import { ConsoleDrawer } from '../../components/ui';
 import { useRef, useState } from 'react';
 import {
   ClearOutlined,
@@ -11,7 +12,6 @@ import {
 } from '@ant-design/icons';
 import {
   Button,
-  Drawer,
   Empty,
   List,
   Progress,
@@ -136,44 +136,14 @@ export function ServerFileUploadDrawer({
   };
 
   return (
-    <Drawer
+    <ConsoleDrawer
       open={open}
-      title={
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>
-            {t('serverFiles.upload.drawerTitle', '上传文件与文件夹')}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {t('serverFiles.upload.destination', '目标路径')}:
-            </Typography.Text>
-            <span
-              style={{
-                fontFamily: 'monospace',
-                fontSize: 12,
-                color: token.colorPrimary,
-                backgroundColor: token.colorFillAlter,
-                border: `1px solid ${token.colorBorderSecondary}`,
-                padding: '1px 8px',
-                borderRadius: token.borderRadiusSM,
-                maxWidth: 380,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-              title={targetPathDisplay}
-            >
-              {targetPathDisplay}
-            </span>
-          </div>
-        </div>
-      }
+      title={t('serverFiles.upload.drawerTitle', '上传文件与文件夹')}
       placement="right"
-      width={560}
       onClose={onClose}
       destroyOnHidden={false}
       footer={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="console-drawer-actions">
           <Button onClick={onClose}>{t('common.actions.cancel', '取消')}</Button>
           <Button
             type="primary"
@@ -190,14 +160,13 @@ export function ServerFileUploadDrawer({
         </div>
       }
     >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          minHeight: 'calc(100vh - 190px)',
-        }}
-      >
+      <div className="server-upload-content">
+        <div className="server-upload-destination">
+          <Typography.Text type="secondary">
+            {t('serverFiles.upload.destination', '目标路径')}
+          </Typography.Text>
+          <code title={targetPathDisplay}>{targetPathDisplay}</code>
+        </div>
         {/* 隐藏的 input 输入控件 */}
         <input
           ref={fileInputRef}
@@ -525,6 +494,6 @@ export function ServerFileUploadDrawer({
         </div>
 
       </div>
-    </Drawer>
+    </ConsoleDrawer>
   );
 }

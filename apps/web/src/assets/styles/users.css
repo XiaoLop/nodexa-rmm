@@ -24,11 +24,11 @@
 }
 
 .users-toolbar > .ant-input-affix-wrapper {
-  width: min(360px, 34vw);
+  width: 240px;
 }
 
 .users-toolbar > .ant-select {
-  width: 160px;
+  width: 144px;
 }
 
 .user-group-filter-select {

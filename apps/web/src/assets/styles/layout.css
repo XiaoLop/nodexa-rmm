@@ -153,17 +153,17 @@
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 10px;
   padding: 12px;
-  border: 1px solid #243348;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
-  background: #0e1825;
+  background: var(--color-surface-1);
 }
 .task-list-icon {
   display: grid;
   place-items: center;
   width: 32px;
   height: 32px;
-  color: #62a6ff;
-  background: #17263a;
+  color: var(--color-brand-hover);
+  background: var(--color-brand-soft);
   border-radius: 6px;
 }
 .task-list-content,
@@ -192,8 +192,8 @@
   max-height: 160px;
   overflow: auto;
   padding: 10px;
-  background: #09111d;
-  border: 1px solid #243348;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -1,3 +1,4 @@
+import { MetricCard } from '../ui';
 import {
   ApartmentOutlined,
   ApiOutlined,
@@ -10,19 +11,9 @@ import {
 } from '@ant-design/icons';
 import type { ManagedUser } from '@meshcentral/control-client';
 import { Tooltip } from 'antd';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '../../i18n/formatters';
 import { summarizeSiteRights } from '../../features/users/sitePermissions';
-
-function SummaryCard({ icon, title, value, tone }: { icon: ReactNode; title: string; value: number; tone: string }) {
-  return (
-    <article className="user-detail-summary-card">
-      <span className={`user-detail-summary-icon ${tone}`}>{icon}</span>
-      <span><small>{title}</small><strong>{value}</strong></span>
-    </article>
-  );
-}
 
 interface UserDetailsSummaryCardsProps {
   deviceGroupCount: number;
@@ -39,9 +30,9 @@ export function UserDetailsSummaryCards({
   const { t } = useTranslation();
   return (
     <section className="user-detail-summary-grid">
-      <SummaryCard icon={<ApartmentOutlined />} title={t('userDetails.tabs.deviceGroups')} value={deviceGroupCount} tone="blue" />
-      <SummaryCard icon={<TeamOutlined />} title={t('userDetails.tabs.userGroups')} value={userGroupCount} tone="purple" />
-      <SummaryCard icon={<DesktopOutlined />} title={t('userDetails.tabs.sharedDevices')} value={sharedDeviceCount} tone="green" />
+      <MetricCard icon={<ApartmentOutlined />} label={t('userDetails.tabs.deviceGroups')} value={deviceGroupCount} />
+      <MetricCard icon={<TeamOutlined />} label={t('userDetails.tabs.userGroups')} value={userGroupCount} />
+      <MetricCard icon={<DesktopOutlined />} label={t('userDetails.tabs.sharedDevices')} value={sharedDeviceCount} tone="success" />
     </section>
   );
 }

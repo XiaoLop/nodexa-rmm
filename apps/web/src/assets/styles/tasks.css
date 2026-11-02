@@ -1,65 +1,8 @@
 /* Tasks Page */
 .tasks-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
-}
-
-.tasks-metric-card {
-  padding: 16px 20px;
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-panel);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: var(--shadow-panel);
-}
-
-.tasks-metric-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-feature);
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-}
-
-.tasks-metric-icon.total {
-  background: var(--color-brand-soft);
-  color: var(--color-brand-hover);
-}
-
-.tasks-metric-icon.running {
-  background: var(--color-brand-soft);
-  color: var(--color-brand);
-}
-
-.tasks-metric-icon.completed {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-
-.tasks-metric-icon.failed {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-}
-
-.tasks-metric-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.tasks-metric-label {
-  font-size: 12px;
-  color: var(--color-text-tertiary);
-}
-
-.tasks-metric-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  line-height: 1.2;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .task-command-output-box {
@@ -101,7 +44,7 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border, #223147);
+  border-bottom: 1px solid var(--color-border-subtle);
   margin-bottom: 10px;
 }
 
@@ -113,8 +56,8 @@
 
 .task-popover-item {
   padding: 10px 12px;
-  background: var(--component-bg, #0e1825);
-  border: 1px solid var(--border, #223147);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
 }
 
@@ -139,5 +82,9 @@
 .task-popover-footer {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--border, #223147);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+@media (max-width: 480px) {
+  .tasks-metrics-grid { grid-template-columns: 1fr; }
 }

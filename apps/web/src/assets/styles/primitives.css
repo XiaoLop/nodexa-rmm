@@ -76,6 +76,113 @@
   border-color: var(--color-border-default);
 }
 
+.console-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  min-height: 88px;
+}
+
+.console-metric-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-control);
+  font-size: 16px;
+}
+
+.console-metric-icon-info {
+  color: var(--color-brand-hover);
+  background: var(--color-brand-soft);
+}
+
+.console-metric-icon-success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.console-metric-icon-danger {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.console-metric-content {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.console-metric-label {
+  color: var(--color-text-secondary);
+  font-size: var(--metric-label-size);
+}
+
+.console-metric-value {
+  color: var(--color-text-primary);
+  font-size: var(--metric-value-size);
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.console-drawer .ant-drawer-header {
+  min-height: 64px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.console-drawer .ant-drawer-title {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.console-drawer .ant-drawer-body {
+  padding: var(--space-5);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.console-drawer .ant-drawer-footer {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface-1);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.console-drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.server-upload-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.server-upload-destination {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-1);
+  font-size: 12px;
+}
+
+.server-upload-destination code {
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
 .card-header {
   min-height: 52px;
   padding: var(--space-3) var(--space-4);
@@ -115,7 +222,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
-  padding: 10px var(--space-3);
+  padding: 10px var(--space-4);
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-surface-1);
 }
@@ -125,7 +232,7 @@
 }
 
 .table-toolbar > .ant-select {
-  width: 128px;
+  width: 144px;
 }
 
 .toolbar-spacer {

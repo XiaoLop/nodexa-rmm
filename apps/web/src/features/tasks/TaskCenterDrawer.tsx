@@ -1,3 +1,4 @@
+import { ConsoleDrawer } from '../../components/ui';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -9,7 +10,7 @@ import {
   RetweetOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
-import { Button, Drawer, Empty, Progress, Space, Tag, Typography } from 'antd';
+import { Button, Empty, Progress, Space, Tag, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBatchTasks } from './BatchTaskContext';
@@ -42,10 +43,10 @@ export function TaskCenterDrawer({ open, onClose }: TaskCenterDrawerProps) {
   };
 
   return (
-    <Drawer
+    <ConsoleDrawer
       open={open}
       title={selectedTask ? selectedTask.title : t('taskCenter.title')}
-      width={selectedTask ? 760 : 460}
+      variant={selectedTask ? 'details' : 'compact'}
       onClose={() => {
         if (selectedTask) setSelectedTaskId(undefined);
         else onClose();
@@ -126,6 +127,6 @@ export function TaskCenterDrawer({ open, onClose }: TaskCenterDrawerProps) {
       ) : (
         <Empty description={t('taskCenter.empty')} />
       )}
-    </Drawer>
+    </ConsoleDrawer>
   );
 }

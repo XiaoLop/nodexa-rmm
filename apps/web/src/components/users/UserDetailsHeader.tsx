@@ -82,12 +82,11 @@ export function UserDetailsHeader({
           </span>
         </div>
         <div className="user-detail-actions">
-          <Button size="small" icon={<EditOutlined />} onClick={onEditProfile}>
+          <Button type="primary" icon={<EditOutlined />} onClick={onEditProfile}>
             {t('userDetails.actions.editProfile')}
           </Button>
           <Tooltip title={isViewingCurrentUser ? t('userDetails.errors.cannotEditCurrentPermissions') : undefined}>
             <Button
-              size="small"
               icon={<SafetyCertificateOutlined />}
               disabled={!connected || isViewingCurrentUser}
               onClick={onOpenSitePermissions}
@@ -97,7 +96,6 @@ export function UserDetailsHeader({
           </Tooltip>
           <Tooltip title={isViewingCurrentUser ? t('userDetails.errors.cannotEditCurrentPermissions') : undefined}>
             <Button
-              size="small"
               icon={<SettingOutlined />}
               disabled={!connected || isViewingCurrentUser}
               onClick={onOpenFeatureRestrictions}
@@ -106,7 +104,6 @@ export function UserDetailsHeader({
             </Button>
           </Tooltip>
           <Button
-            size="small"
             danger={!user.locked}
             icon={user.locked ? <UnlockOutlined /> : <LockOutlined />}
             disabled={!connected || isViewingCurrentUser}
@@ -115,7 +112,6 @@ export function UserDetailsHeader({
             {user.locked ? t('common.actions.enable') : t('common.actions.disable')}
           </Button>
           <Button
-            size="small"
             danger
             icon={<DeleteOutlined />}
             disabled={!connected || isViewingCurrentUser}

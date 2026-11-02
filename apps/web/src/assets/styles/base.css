@@ -54,11 +54,13 @@
   --radius-feature: 8px;
   --radius-pill: 999px;
 
-  --shadow-panel: 0 10px 28px rgba(0, 0, 0, 0.2);
+  --shadow-panel: none;
   --shadow-overlay: 0 20px 48px rgba(0, 0, 0, 0.34);
   --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.24);
   --motion-fast: 140ms;
   --motion-normal: 220ms;
+  --metric-value-size: 24px;
+  --metric-label-size: 12px;
 
   /* Standard console palette aliases */
   --bg: var(--color-canvas);

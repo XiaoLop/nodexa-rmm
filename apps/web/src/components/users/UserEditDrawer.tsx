@@ -1,6 +1,7 @@
+import { ConsoleDrawer } from '../ui';
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ManagedUser, UserUpdate } from '@meshcentral/control-client';
-import { Button, Drawer, Form, Input, Space, Upload, message } from 'antd';
+import { Button, Form, Input, Space, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,14 +71,13 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
   };
 
   return (
-    <Drawer
+    <ConsoleDrawer
       title={user ? t('users.editDrawer.title', { name: user.name }) : t('users.editDrawer.titleDefault')}
       open={Boolean(user)}
-      size="min(520px, 100vw)"
       onClose={onClose}
       destroyOnHidden
-      extra={
-        <Space>
+      footer={
+        <Space className="console-drawer-actions">
           <Button onClick={onClose}>{t('common.actions.cancel')}</Button>
           <Button
             type="primary"
@@ -128,6 +128,6 @@ export function UserEditDrawer({ user, submitting, onClose, onSubmit }: UserEdit
           <Input maxLength={64} />
         </Form.Item>
       </Form>
-    </Drawer>
+    </ConsoleDrawer>
   );
 }

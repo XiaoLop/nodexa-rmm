@@ -15,7 +15,6 @@ import {
 } from '@ant-design/icons';
 import {
   Button,
-  Drawer,
   Empty,
   Input,
   Progress,
@@ -34,15 +33,15 @@ import { TaskDetailsView } from '../features/tasks/TaskDetailsView';
 import type { BatchTask, BatchTaskKind, BatchTaskStatus } from '../features/tasks/types';
 import { isActiveBatchTaskStatus } from '../features/tasks/types';
 import { useFormatters } from '../i18n';
-import { FilterBar, PageHeader, Panel } from '../components/ui';
+import { ConsoleDrawer, FilterBar, MetricCard, PageHeader, Panel } from '../components/ui';
 import '../assets/styles/devices.css';
 import '../assets/styles/tasks.css';
 
 const kindIcons: Record<BatchTaskKind, React.ReactNode> = {
-  'file-upload': <CloudUploadOutlined style={{ color: '#2f80ff' }} />,
-  command: <ToolOutlined style={{ color: '#fa8c16' }} />,
-  'move-group': <RetweetOutlined style={{ color: '#13c2c2' }} />,
-  power: <PoweroffOutlined style={{ color: '#eb2f96' }} />,
+  'file-upload': <CloudUploadOutlined style={{ color: 'var(--color-brand-hover)' }} />,
+  command: <ToolOutlined style={{ color: 'var(--color-warning)' }} />,
+  'move-group': <RetweetOutlined style={{ color: 'var(--color-success)' }} />,
+  power: <PoweroffOutlined style={{ color: 'var(--color-text-secondary)' }} />,
 };
 
 const statusColors: Record<BatchTaskStatus, string> = {
@@ -311,52 +310,34 @@ export function TasksPage() {
         }
       />
 
-      {/* Metrics summary cards */}
       <div className="tasks-metrics-grid">
-        <div className="tasks-metric-card">
-          <div className="tasks-metric-icon total">
-            <ProfileOutlined />
-          </div>
-          <div className="tasks-metric-content">
-            <span className="tasks-metric-label">{t('taskCenter.metrics.total')}</span>
-            <span className="tasks-metric-value">{stats.total}</span>
-          </div>
-        </div>
-
-        <div className="tasks-metric-card">
-          <div className="tasks-metric-icon running">
-            <SyncOutlined spin={stats.running > 0} />
-          </div>
-          <div className="tasks-metric-content">
-            <span className="tasks-metric-label">{t('taskCenter.metrics.running')}</span>
-            <span className="tasks-metric-value">{stats.running}</span>
-          </div>
-        </div>
-
-        <div className="tasks-metric-card">
-          <div className="tasks-metric-icon completed">
-            <CheckCircleOutlined />
-          </div>
-          <div className="tasks-metric-content">
-            <span className="tasks-metric-label">{t('taskCenter.metrics.completed')}</span>
-            <span className="tasks-metric-value">{stats.completed}</span>
-          </div>
-        </div>
-
-        <div className="tasks-metric-card">
-          <div className="tasks-metric-icon failed">
-            <CloseCircleOutlined />
-          </div>
-          <div className="tasks-metric-content">
-            <span className="tasks-metric-label">{t('taskCenter.metrics.failed')}</span>
-            <span className="tasks-metric-value">{stats.failed}</span>
-          </div>
-        </div>
+        <MetricCard
+          icon={<ProfileOutlined />}
+          label={t('taskCenter.metrics.total')}
+          value={stats.total}
+        />
+        <MetricCard
+          icon={<SyncOutlined spin={stats.running > 0} />}
+          label={t('taskCenter.metrics.running')}
+          value={stats.running}
+        />
+        <MetricCard
+          icon={<CheckCircleOutlined />}
+          label={t('taskCenter.metrics.completed')}
+          value={stats.completed}
+          tone="success"
+        />
+        <MetricCard
+          icon={<CloseCircleOutlined />}
+          label={t('taskCenter.metrics.failed')}
+          value={stats.failed}
+          tone="danger"
+        />
       </div>
 
       {/* Main Table Card */}
       <Panel className="devices-table-card">
-        <FilterBar className="devices-toolbar">
+        <FilterBar>
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -404,14 +385,14 @@ export function TasksPage() {
       </Panel>
 
       {/* Task Details Drawer */}
-      <Drawer
+      <ConsoleDrawer
         title={selectedTask ? selectedTask.title : t('taskCenter.details')}
-        width={760}
+        variant="details"
         open={Boolean(selectedTask)}
         onClose={() => setSelectedTaskId(undefined)}
       >
         {selectedTask && <TaskDetailsView task={selectedTask} />}
-      </Drawer>
+      </ConsoleDrawer>
     </div>
   );
 }
