@@ -31,13 +31,14 @@
 
 ## 快速开始
 
+浏览器先通过同源 `/api/auth/` 下的登录接口建立会话，再创建控制客户端：
+
 ```ts
 import { MeshCentralClient } from '@meshcentral/control-client';
 
-const client = new MeshCentralClient({
-  url: 'wss://gateway.example.com/control',
-  getAccessToken: async () => loadShortLivedToken(),
-});
+const controlUrl = new URL('/api/control.ashx', window.location.origin);
+controlUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const client = new MeshCentralClient({ url: controlUrl.toString() });
 
 const unsubscribe = client.on('connection', ({ current }) => {
   console.log('control channel:', current);
@@ -60,16 +61,11 @@ try {
 
 ## 鉴权
 
-如果网关通过 WebSocket URL 接收认证参数，应在创建客户端前组装 URL：
+当前 Web 通过同源 `/api/auth/` 下的接口登录，由服务端建立原生 Session Cookie。连接 `/api/control.ashx` 时，浏览器自动携带 Cookie，服务端通过 Cookie 验证会话。
 
-```ts
-const authParam = encodeURIComponent('encoded-credentials');
-const client = new MeshCentralClient({
-  url: `wss://gateway.example.com/control?x-meshauth=${authParam}`,
-});
-```
+`MeshCentralClient` 客户端无需读取 Cookie，也无需在 WebSocket URL 中添加凭据；当前 Web 不需要配置 `getAccessToken`。登录与二次验证流程见 `apps/web/src/features/gateway/GatewayProvider.tsx`，接口地址见 `apps/web/src/config/gateway.ts`。
 
-如果网关要求在 WebSocket 打开后发送认证消息，可以配置 `getAccessToken`。令牌存在时，客户端会发送 `{ "type": "authenticate", "token": "..." }`。
+Node.js、React Native 或自定义网关的会话传递方式应按目标运行环境另行配置，不直接套用浏览器自动携带 Cookie 的行为。
 
 不要把密码、长期令牌或 Cookie 写入日志、错误消息或公共前端环境变量。
 
@@ -98,7 +94,7 @@ client.destroy();
 | `client.commands`   | 命令提交和带输出跟踪的命令执行                         | 脚本执行、批量诊断   |
 | `client.groups`     | 设备组增删改查、用户权限                               | 分组管理、授权       |
 | `client.events`     | 全局、设备或用户历史事件                               | 审计记录、活动时间线 |
-| `client.server`     | 服务器统计、管理控制台、全局跟踪、错误日志               | 运行状态监控与管理   |
+| `client.server`     | 服务器统计、管理控制台、全局跟踪、错误日志             | 运行状态监控与管理   |
 | `client.userGroups` | 用户组列表                                             | 权限配置界面         |
 | `client.users`      | 用户、锁定状态、会话数和账号维护                       | 管理员用户管理       |
 
@@ -200,19 +196,19 @@ const unsubscribeDiagnostic = client.on('diagnostic', (diagnostic) => {
 
 订阅通道：
 
-| 通道          | 内容                             | 适合做什么                       |
-| ------------- | -------------------------------- | -------------------------------- |
-| `connection`  | 连接状态转换、重连次数和相关错误 | 更新在线状态、禁用依赖连接的操作 |
-| `event`       | 标准化后的领域事件               | 增量更新设备、审计和任务状态     |
-| `userInfo`    | 当前登录用户信息                 | 初始化身份、权限和个人资料       |
-| `serverInfo`  | 服务器能力和功能开关             | 初始化功能可用性                 |
-| `serverStats` | 标准化后的服务器运行统计         | 更新服务器监控界面               |
-| `serverConsole` | `{ text, tag?, receivedAt }` | 持续消费服务器控制台输出 |
-| `traceSources` | `readonly string[]` | 全局跟踪设置变更 |
-| `trace` | `{ source, args, time }` | 跟踪数据 |
-| `message`     | 每一条已解析的原始控制通道消息   | 调试协议、实现尚未标准化的功能   |
-| `error`       | 连接、请求、协议和服务端错误     | 统一错误提示和日志上报           |
-| `diagnostic`  | 无效、未知、歧义响应和监听器异常 | 开发期排错和兼容性监控           |
+| 通道            | 内容                             | 适合做什么                       |
+| --------------- | -------------------------------- | -------------------------------- |
+| `connection`    | 连接状态转换、重连次数和相关错误 | 更新在线状态、禁用依赖连接的操作 |
+| `event`         | 标准化后的领域事件               | 增量更新设备、审计和任务状态     |
+| `userInfo`      | 当前登录用户信息                 | 初始化身份、权限和个人资料       |
+| `serverInfo`    | 服务器能力和功能开关             | 初始化功能可用性                 |
+| `serverStats`   | 标准化后的服务器运行统计         | 更新服务器监控界面               |
+| `serverConsole` | `{ text, tag?, receivedAt }`     | 持续消费服务器控制台输出         |
+| `traceSources`  | `readonly string[]`              | 全局跟踪设置变更                 |
+| `trace`         | `{ source, args, time }`         | 跟踪数据                         |
+| `message`       | 每一条已解析的原始控制通道消息   | 调试协议、实现尚未标准化的功能   |
+| `error`         | 连接、请求、协议和服务端错误     | 统一错误提示和日志上报           |
+| `diagnostic`    | 无效、未知、歧义响应和监听器异常 | 开发期排错和兼容性监控           |
 
 `event` 通道当前会产生 `deviceOnline`、`deviceOffline`、`deviceChanged`、`deviceRemoved`、`relayLog`、`agentLog`、`manualOperation`、`commandExecution`、`batchUpload` 和 `userSessionCount`。每种事件的来源、字段和建议处理方式见 [docs/events.md](docs/events.md)。
 

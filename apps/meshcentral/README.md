@@ -17,8 +17,8 @@ Additional command-line arguments are forwarded to MeshCentral.
 pnpm --filter @meshcentral/server dev -- --help
 ```
 
-The upstream `1.1.54` npm archive currently omits `exeHandler.js`, so the server image restores
-that upstream runtime file during the Docker build before this launcher can start MeshCentral.
+The server image contains `exeHandler.js`. The Docker build checks that this file resolves from
+the installed, pinned MeshCentral package; no separate download or restoration step is required.
 
 ## YAML Overrides
 

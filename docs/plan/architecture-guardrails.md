@@ -7,13 +7,13 @@
 
 根 `eslint.config.mjs` 现在会拦截下列越界依赖，违反时 `pnpm lint` 直接失败：
 
-| 包 | 禁止依赖 | 原因 |
-| --- | --- | --- |
+| 包                        | 禁止依赖                                                                                   | 原因                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------- |
 | `packages/control-client` | `react`、`react-dom`、`antd`、`zustand`、`@meshcentral/shared-state`、`@meshcentral/relay` | 纯协议/传输层，可被 Node、测试和其他前端复用 |
-| `packages/shared-state` | `react-dom`、`antd`、`@meshcentral/relay`、`expo`、`react-native` | 状态绑定层，只允许 React 绑定，不承载 DOM UI |
-| `packages/relay` | `@meshcentral/control-client`、`@meshcentral/shared-state`、`react`、`react-dom`、`antd` | 独立中继客户端，不感知应用状态 |
-| `apps/web` | `@meshcentral/app`、`expo`、`react-native` | 两个交付目标互不引用 |
-| `apps/app` | `@meshcentral/web` | 同上 |
+| `packages/shared-state`   | `react-dom`、`antd`、`@meshcentral/relay`、`expo`、`react-native`                          | 状态绑定层，只允许 React 绑定，不承载 DOM UI |
+| `packages/relay`          | `@meshcentral/control-client`、`@meshcentral/shared-state`、`react`、`react-dom`、`antd`   | 独立中继客户端，不感知应用状态               |
+| `apps/web`                | `@meshcentral/app`、`expo`、`react-native`                                                 | 两个交付目标互不引用                         |
+| `apps/app`                | `@meshcentral/web`                                                                         | 同上                                         |
 
 另外，`control-client`、`shared-state`、`relay` 的 `src`（测试与 `testing/` 除外）禁止出现
 汉字字面量。这是把“SDK 只产出结构化数据，文案留在应用层”从约定变成失败门禁。
@@ -39,11 +39,11 @@ components/<domain>/Foo*.tsx     视图、Tab、弹窗，props in / events out
 
 已完成的拆分（本次）：
 
-| 页面 | 之前 | 之后 | 新增模块 |
-| --- | --- | --- | --- |
-| `DevicesPage` | 1180 行 | 148 行 | `features/devices`（列表查询、动作、展示映射、批量上传管理器）、`components/devices`（表头动作、工具栏、列、表格、弹窗） |
+| 页面                   | 之前    | 之后   | 新增模块                                                                                                                      |
+| ---------------------- | ------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `DevicesPage`          | 1180 行 | 148 行 | `features/devices`（列表查询、动作、展示映射、批量上传管理器）、`components/devices`（表头动作、工具栏、列、表格、弹窗）      |
 | `UserGroupDetailsPage` | 1334 行 | 220 行 | `features/user-groups`（详情 Hook、过滤纯函数）、`components/user-groups`（头部、概览、三个 Tab、三个弹窗、权限弹窗、骨架屏） |
-| `UserDetailsPage` | 902 行 | 200 行 | `features/users`（详情 Hook、访问行、权限摘要）、`components/users`（头部、概要、访问 Tab、概览、日志、状态页） |
+| `UserDetailsPage`      | 902 行  | 200 行 | `features/users`（详情 Hook、访问行、权限摘要）、`components/users`（头部、概要、访问 Tab、概览、日志、状态页）               |
 
 仍超标的页面（下一步）：`ProfilePage`（1217 行）、`FilesPage`（1331 行）、
 `DashboardPage`（812 行）。暂未加 `max-lines` 门禁，避免存量页面立即失败；等这三页拆完后
@@ -68,7 +68,7 @@ components/<domain>/Foo*.tsx     视图、Tab、弹窗，props in / events out
 
 - 根 `pnpm-workspace.yaml` 用 `catalog:` 统一共享依赖；`apps/site` 因跟随 Next.js 平台，
   单独使用 `catalogs.next`。改版本只改 catalog，再跑一次 `pnpm install`。
-- `apps/site/pnpm-workspace.yaml` 已废弃，需用 `git rm` 删除；`sharp` / `unrs-resolver` 的
+- 已移除废弃的 `apps/site/pnpm-workspace.yaml`；`sharp` / `unrs-resolver` 的
   构建策略统一放在根 `allowBuilds`。
 - `meshcentral` 依赖必须是精确版本（当前 `1.1.54`）。Dockerfile 从
   `apps/meshcentral/package.json` 读取版本并与已安装包断言，不再从 GitHub 拉取

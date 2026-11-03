@@ -2,14 +2,14 @@
 
 本项目以 [MeshCentral](https://github.com/Ylianst/MeshCentral) 为基础进行二次开发，目标是在保留其远程设备管理能力的基础上，重新设计客户端界面，并逐步完善适合实际业务场景的管理与远程控制功能。
 
-目前项目仍处于早期开发阶段，已基于 MeshCentral 原生控制通道实现 Web 管理页面重设计，现有页面和功能尚未完善。React Native 移动端、共享状态包及相关 SDK 目前主要作为后续开发的工程骨架，不代表已经具备完整可用的业务能力。
+目前项目仍处于持续开发阶段，已基于 MeshCentral 原生控制通道实现 Web 管理页面重设计。控制客户端、共享状态及 Relay 包已有实现与测试，Web 已接入远程桌面、终端和文件相关能力；这不代表所有场景均已完成真实设备验收。React Native 移动端仍待完善。
 
 ## 当前进度
 
 - 已搭建 Web、React Native 和共享包的 Monorepo 工程结构
 - 已接入 MeshCentral 原生认证、控制和 Relay 通道，并开始重新设计 Web 管理页面
 - Web 页面及业务功能仍在持续完善
-- 移动端、远程会话及其他扩展能力尚处于规划或基础建设阶段
+- 控制、共享状态和远程会话 SDK 已有实现；移动端与其他扩展能力仍待完善
 
 ## 设备工作台远程桌面
 
@@ -24,19 +24,24 @@
 apps/
   web/                  Vite + React + React Router + Ant Design
   app/                  React Native + Expo + Expo Router
+  site/                 Next.js 官网（独立于 Web 管理端）
+  meshcentral/          上游 MeshCentral 启动器与 YAML 配置合并
   mcp/                  stdio MCP Server（只读工具、CLI 子命令）
 packages/
   mcp-core/             MCP 能力层：会话、连接、查询投影、审计与只读工具
   control-client/       无框架依赖的控制 WebSocket SDK 与资源 API
   shared-state/         Zustand store、React Hook 与 Client-Store Binding
   relay/                远程会话中继 SDK
-docs/                   MeshCentral 内部协议与未来服务端网关参考
+  meshcentral-plugins/  jsonauth、chunkuploader、mcp、utils 等服务端插件
+test/                   跨包集成测试与真实环境手动采集
+deploy/                 容器、配置、品牌资源与部署说明
+docs/                   开发规范、协议证据与阶段计划
 ```
 
 ## 环境要求
 
 - Node.js 22+
-- pnpm 10.33+
+- pnpm 10.33.4（以根 package.json 的 packageManager 为准）
 - Android 开发需要 Android Studio、模拟器或 Expo Go 真机
 
 ## 安装与运行
@@ -69,11 +74,11 @@ pnpm build:mcp
 
 Web 使用同源 `/api/auth/*` 接口登录，由 MeshCentral 内的 `jsonauth` 插件建立原生 Session Cookie；随后通过同源 `/api/control.ashx` 连接 MeshCentral 控制 WebSocket，浏览器会在握手中自动携带 Cookie。现有 `VITE_GATEWAY_WS_URL` 和 `EXPO_PUBLIC_GATEWAY_WS_URL` 名称仅作为历史兼容配置。Android 模拟器访问宿主机时通常使用 `10.0.2.2`，真机需要使用开发机的局域网地址。
 
-Cookie 会话应由服务端设置 `HttpOnly`、`Secure` 和适当的 `SameSite` 属性。浏览器端不会把用户名、密码或认证 Cookie 写入 Web Storage，也不会把认证信息拼接到 WebSocket URL。
+Cookie 会话应由服务端设置 `HttpOnly`、`Secure` 和适当的 `SameSite` 属性。服务端通过 Cookie 验证会话，`MeshCentralClient` 客户端无需读取 Cookie，也无需在 WebSocket URL 中添加凭据。浏览器端不会把用户名、密码或认证 Cookie 写入 Web Storage。
 
 ## 控制客户端与状态
 
-规划中，`@meshcentral/control-client` 用于承载 WebSocket、鉴权、心跳、退避重连、请求响应关联、协议标准化以及 `devices`、`groups`、`events` 等资源 API。它不依赖 React 或 Zustand。
+`@meshcentral/control-client` 已承载 WebSocket、鉴权、心跳、退避重连、请求响应关联、协议标准化以及 `devices`、`groups`、`events` 等资源 API。它不依赖 React 或 Zustand。
 
 `@meshcentral/shared-state` 用于承载缓存、selector、React Hook 和客户端状态绑定。相关能力仍会随 Web 页面和业务功能的开发持续调整与完善。
 
@@ -86,3 +91,14 @@ Nest Gateway 保留为未来业务聚合层，当前不参与浏览器认证、�
 ## Expo Monorepo
 
 Expo SDK 57 会自动识别 pnpm workspace 并配置 Metro，因此没有手动添加旧式 `watchFolders` 或 `nodeModulesPaths`。如果第三方原生包在 pnpm isolated 安装下出现解析问题，再考虑将 `nodeLinker: hoisted` 加入根 `pnpm-workspace.yaml`。
+
+## 文档入口
+
+- [AI 协作指引](AGENTS.md)与[开发规范](docs/development.md)
+- [阶段计划](docs/plan/README.md)与[架构护栏](docs/plan/architecture-guardrails.md)
+- [MeshCentral 协议资料](docs/meshcentral/README.md)
+- [控制客户端](packages/control-client/README.md)、[共享状态](packages/shared-state/README.md)、[Relay](packages/relay/README.md)
+- [插件开发](packages/meshcentral-plugins/docs/plugin-development.md)、[MCP](apps/mcp/README.md)
+- [部署说明](deploy/README.md)与[集成测试](test/README.md)
+
+阶段计划描述目标与历史进度，实际能力需结合源码、测试及目标服务端验证；已发现的资料差异见开发规范的待确认事项。
