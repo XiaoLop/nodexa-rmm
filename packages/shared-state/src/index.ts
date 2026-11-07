@@ -1,5 +1,6 @@
 export { bindMeshCentralClient, type MeshCentralClientBinding } from './binding';
 export { useMeshCentralControlStore } from './react';
+export { useRmmQuery } from './rmm';
 export { createMeshCentralControlStore, meshCentralControlSelectors, type MeshCentralControlStore } from './store';
 export {
   getGreetingPeriod,

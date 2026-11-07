@@ -58,6 +58,7 @@ export { CommandExecution } from './resources/CommandExecution';
 export { GroupsResource } from './resources/groups';
 export { NotificationsResource } from './resources/notifications';
 export { ReportsResource } from './resources/reports';
+export * from './resources/rmm';
 export { ServerFilesResource } from './resources/serverFiles';
 export { ServerResource } from './resources/server';
 export { EventsResource } from './resources/events';

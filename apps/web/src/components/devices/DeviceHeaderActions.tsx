@@ -18,11 +18,13 @@ interface DeviceHeaderActionsProps {
   selectedDeviceIdCount: number;
   fileTargetCount: number;
   canCommand: boolean;
+  canScript: boolean;
   canWake: boolean;
   canPower: boolean;
   canUninstall: boolean;
   onMove: () => void;
   onCommand: () => void;
+  onScript: () => void;
   onPowerAction: (action: PowerAction) => void;
   onUninstallAgents: () => void;
   onBatchUpload: () => void;
@@ -38,11 +40,13 @@ export function DeviceHeaderActions({
   selectedDeviceIdCount,
   fileTargetCount,
   canCommand,
+  canScript,
   canWake,
   canPower,
   canUninstall,
   onMove,
   onCommand,
+  onScript,
   onPowerAction,
   onUninstallAgents,
   onBatchUpload,
@@ -63,6 +67,7 @@ export function DeviceHeaderActions({
               label: t('devices.actions.executeCommand'),
               disabled: !canCommand,
             },
+            { key: 'script', label: t('rmm.execute'), disabled: !canScript },
             { type: 'divider' },
             {
               key: 'wake',
@@ -96,6 +101,7 @@ export function DeviceHeaderActions({
           onClick: ({ key }) => {
             if (key === 'move') onMove();
             else if (key === 'command') onCommand();
+            else if (key === 'script') onScript();
             else if (key === 'uninstallAgent') onUninstallAgents();
             else onPowerAction(key as PowerAction);
           },

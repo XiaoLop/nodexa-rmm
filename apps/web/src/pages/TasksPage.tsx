@@ -21,12 +21,14 @@ import {
   Select,
   Space,
   Tag,
+  Tabs,
   Typography,
   type TableColumnsType,
 } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ScriptTasks } from '../features/rmm/ScriptTasks';
 import { useBatchTasks } from '../features/tasks/BatchTaskContext';
 import { TaskDetailsView } from '../features/tasks/TaskDetailsView';
 import type { BatchTask, BatchTaskKind, BatchTaskStatus } from '../features/tasks/types';
@@ -55,6 +57,19 @@ const statusColors: Record<BatchTaskStatus, string> = {
 };
 
 export function TasksPage() {
+  const { t } = useTranslation();
+  const [params, setParams] = useSearchParams();
+  const active = params.get('tab') === 'rmm' ? 'rmm' : 'local';
+  const select = (task?: string) => setParams(task ? { tab: 'rmm', task } : { tab: 'rmm' });
+  return <Tabs activeKey={active} onChange={(key) => key === 'rmm' ? select() : setParams({})}
+    items={[
+      { key: 'local', label: t('rmm.localTasks'), children: <LocalTasks /> },
+      { key: 'rmm', label: t('rmm.scriptTasks'), children: active === 'rmm' &&
+          <ScriptTasks taskId={params.get('task') ?? undefined} onSelect={select} /> },
+    ]} />;
+}
+
+function LocalTasks() {
   const { t } = useTranslation();
   const formatters = useFormatters();
   const navigate = useNavigate();

@@ -1,0 +1,9 @@
+{
+  "name": "MeshCentral RMM",
+  "shortName": "rmm",
+  "version": "0.1.0",
+  "description": "Versioned scripts and durable execution for MeshCentral 1.1.54.",
+  "author": "MeshCentral Web",
+  "meshCentralCompat": ">=1.1.54 <1.1.55",
+  "hasAdminPanel": false
+}

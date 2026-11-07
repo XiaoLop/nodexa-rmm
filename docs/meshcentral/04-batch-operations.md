@@ -47,6 +47,8 @@
 
 响应可能是普通结果，也可能通过 `msg type=runcommands` 返回。封装时需要按 `responseid` 和 `nodeid` 聚合结果。
 
+RMM 插件使用 Windows PowerShell 包装器发送结构化结果。MeshCentral 1.1.54 的原生 Agent 最终消息只有合并输出和关联标识，插件据已认证的 Agent 设备身份和执行 ID 匹配记录，并用包装器提供的退出码判定成功或失败。真实设备验证见 [RMM-005 部署与验收](../../test/rmm-005.md)。
+
 ## 批量发送 Toast
 
 ```json

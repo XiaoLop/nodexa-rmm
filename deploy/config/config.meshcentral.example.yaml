@@ -71,6 +71,8 @@ settings:
       - jsonauth
       # 本项目的 utils 插件，具体功能以插件实现为准。
       - utils
+      # 脚本库与批量执行插件。
+      - rmm
 
 # 域级配置；这里的域是 MeshCentral 的逻辑租户，不等同于 DNS 域名。
 domains:

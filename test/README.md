@@ -16,6 +16,10 @@ pnpm --filter @meshcentral/test test:watch
 pnpm --filter @meshcentral/test typecheck
 ```
 
+## RMM 脚本执行
+
+真实 Windows Agent 脚本任务的部署和验收步骤见 [RMM-005 部署与验收](rmm-005.md)。
+
 ## 手动采集远程终端数据
 
 复制 `test/.env.example` 为被 Git 忽略的 `test/.env`，填入目标测试环境。真实认证值只能放在 `.env`，不得提交到仓库。

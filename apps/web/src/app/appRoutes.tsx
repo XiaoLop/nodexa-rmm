@@ -97,6 +97,16 @@ export const appRoutes: readonly AppRouteDefinition[] = [
     },
   },
   {
+    path: '/devices/scripts',
+    component: lazyPage(() => import('../pages/ScriptLibraryPage'), 'ScriptLibraryPage'),
+    titleKeys: ['navigation.deviceManagement', 'rmm.library'],
+    navigation: {
+      labelKey: 'rmm.library',
+      icon: <ProfileOutlined />,
+      group: 'navigation.deviceManagement',
+    },
+  },
+  {
     path: '/devices/tasks',
     component: lazyPage(() => import('../pages/TasksPage'), 'TasksPage'),
     titleKeys: ['navigation.deviceManagement', 'navigation.taskCenter'],

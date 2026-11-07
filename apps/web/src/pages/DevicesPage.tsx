@@ -1,5 +1,5 @@
 import type { Device } from '@meshcentral/shared-state';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeviceHeaderActions } from '../components/devices/DeviceHeaderActions';
@@ -10,6 +10,7 @@ import { PageHeader, Panel } from '../components/ui';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { useDeviceActions } from '../features/devices/useDeviceActions';
 import { useDeviceList } from '../features/devices/useDeviceList';
+import { ExecuteScriptModal } from '../features/rmm/ExecuteScriptModal';
 import '../assets/styles/commands.css';
 import '../assets/styles/device-details.css';
 import '../assets/styles/devices.css';
@@ -17,6 +18,7 @@ import '../assets/styles/devices.css';
 export function DevicesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [scriptTargets, setScriptTargets] = useState<string[]>();
   const applicationCapabilities = useApplicationUiCapabilities();
   const {
     data: {
@@ -68,6 +70,7 @@ export function DevicesPage() {
     <>
       {actions.context.messageContextHolder}
       {actions.context.modalContextHolder}
+      {scriptTargets && <ExecuteScriptModal selected={scriptTargets} onClose={() => setScriptTargets(undefined)} />}
       <div className="page-stack devices-page">
         <PageHeader
           title={t('devices.title')}
@@ -82,6 +85,7 @@ export function DevicesPage() {
               selectedDeviceIdCount={selection.selectedDeviceIds.length}
               fileTargetCount={fileTargets.length}
               canCommand={commandTargets.length > 0}
+              canScript={selectedCapabilities.every(({ capabilities }) => capabilities.command.visible)}
               canWake={selectedCapabilities.some(({ capabilities }) => capabilities.wake.enabled)}
               canPower={selectedCapabilities.some(({ capabilities }) => capabilities.power.enabled)}
               canUninstall={selectedCapabilities.some(
@@ -89,6 +93,7 @@ export function DevicesPage() {
               )}
               onMove={actions.handlers.openBatchMove}
               onCommand={() => actions.handlers.openCommand(commandTargets)}
+              onScript={() => setScriptTargets(selectedDevices.map((device) => device.id))}
               onPowerAction={actions.handlers.confirmBatchPowerAction}
               onUninstallAgents={actions.handlers.confirmBatchAgentUninstall}
               onBatchUpload={actions.handlers.openBatchUpload}

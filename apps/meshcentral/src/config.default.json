@@ -47,7 +47,8 @@
                 "jsonauth",
                 "utils",
                 "chunkuploader",
-                "mcp"
+                "mcp",
+                "rmm"
             ]
         }
     },

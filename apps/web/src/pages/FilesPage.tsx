@@ -75,6 +75,8 @@ import {
   sortServerFileEntries,
 } from '../features/server-files/serverFileViewModel';
 import { useServerFiles } from '../features/server-files/useServerFiles';
+import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
+import { decodeScript, maxScriptBytes, ScriptEditor } from '../features/rmm/ScriptEditor';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useFormatters } from '../i18n/formatters';
 import '../assets/styles/server-files.css';
@@ -135,6 +137,8 @@ export function FilesPage() {
   const { dateTime } = useFormatters();
   const [searchParams, setSearchParams] = useSearchParams();
   const data = useMeshCentralControlData();
+  const { siteAdmin } = useApplicationUiCapabilities();
+  const [scriptImport, setScriptImport] = useState<{ name: string; body: string }>();
   const controller = useServerFiles({
     client: data.client,
     connected: data.status === 'connected',
@@ -294,6 +298,15 @@ export function FilesPage() {
         content:
           downloadError instanceof Error ? downloadError.message : String(downloadError),
       });
+    }
+  };
+
+  const importScript = async (entry: ServerFileEntry) => {
+    try {
+      const body = decodeScript(entry.name, await controller.readFile(entry));
+      setScriptImport({ name: entry.name.slice(0, -4), body });
+    } catch {
+      modal.error({ title: t('rmm.error', { code: 'INVALID_SCRIPT' }) });
     }
   };
 
@@ -664,6 +677,12 @@ export function FilesPage() {
                 />
               </Tooltip>
             )}
+            {siteAdmin && canDownload && /\.ps1$/i.test(entry.name) && (entry.size ?? 0) <= maxScriptBytes && (
+              <Button type="text" size="small" disabled={disabled} onClick={(event) => {
+                event.stopPropagation();
+                void importScript(entry);
+              }}>{t('rmm.importToLibrary')}</Button>
+            )}
             <Dropdown
               menu={{ items: getRowMenuItems(entry) }}
               trigger={['click']}
@@ -782,6 +801,9 @@ export function FilesPage() {
   return (
     <div className="page-stack server-files-page">
       {modalContextHolder}
+      {scriptImport && siteAdmin && data.client && <ScriptEditor client={data.client}
+        imported={scriptImport} onClose={() => setScriptImport(undefined)}
+        onSaved={() => setScriptImport(undefined)} />}
 
       <PageHeader
         title={t('serverFiles.title')}

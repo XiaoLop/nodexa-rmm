@@ -19,6 +19,7 @@ import { EventsResource } from '../resources/events';
 import { GroupsResource } from '../resources/groups';
 import { NotificationsResource } from '../resources/notifications';
 import { ReportsResource } from '../resources/reports';
+import { RmmResource } from '../resources/rmm';
 import { ServerFilesResource } from '../resources/serverFiles';
 import { ServerResource } from '../resources/server';
 import { UserGroupsResource } from '../resources/userGroups';
@@ -46,6 +47,7 @@ export class MeshCentralClient {
   readonly notifications: NotificationsResource;
   readonly events: EventsResource;
   readonly reports: ReportsResource;
+  readonly rmm: RmmResource;
   readonly files: ServerFilesResource;
   readonly server: ServerResource;
   readonly userGroups: UserGroupsResource;
@@ -82,6 +84,7 @@ export class MeshCentralClient {
     this.notifications = new NotificationsResource(this);
     this.events = new EventsResource(this);
     this.reports = new ReportsResource(this);
+    this.rmm = new RmmResource(this);
     this.files = new ServerFilesResource(this);
     this.server = new ServerResource(this);
     this.userGroups = new UserGroupsResource(this);

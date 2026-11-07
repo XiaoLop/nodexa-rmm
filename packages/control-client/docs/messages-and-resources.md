@@ -208,6 +208,14 @@ unsubscribe();
 
 `intervalMs` 必须是正整数。取消函数只移除当前客户端的本地监听器；原始推送仍可通过 `message` 通道观察。
 
+## RMM 脚本与服务端任务
+
+`client.rmm` 通过同源控制连接发送 `action: "plugin"`、`plugin: "rmm"` 消息，以 `requestId` 和 `subAction` 关联响应。该资源需要服务端启用 RMM 插件。
+
+- `listScripts()`、`saveScript()` 和 `archiveScript()` 管理脚本及版本。
+- `preview()` 返回设备快照和预计跳过原因。`submit()` 使用预览 ID、幂等键和参数提交任务。确认响应丢失时，使用原幂等键查询同一次提交结果。
+- `listTasks()` 和 `getTask()` 查询当前用户有权限查看的任务和逐设备结果。服务端持久化任务，客户端断开不会取消已受理的任务。
+
 ## 客户端内部消息
 
 除了资源 action，客户端还会发送：

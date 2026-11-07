@@ -103,6 +103,11 @@ export type MeshCentralHttpHandler = (
 ) => void;
 
 export interface MeshCentralDatabase {
+  GetAllTypeNoTypeField?(
+    type: string,
+    domain: string,
+    callback: (error: unknown, documents: unknown[]) => void,
+  ): void;
   Get?(id: string, callback: (error: unknown, documents: unknown[]) => void): void;
   Set?(document: Record<string, unknown>): void;
   Remove?(id: string, callback?: (error?: unknown) => void): void;
@@ -160,6 +165,14 @@ export interface MeshCentralHttpApplication {
 
 export interface MeshCentralWebServer {
   app: MeshCentralHttpApplication;
+  wsagents?: Record<string, MeshCentralAgentConnection>;
+  GetMeshRights?(user: string, meshId: string): number;
+  GetNodeWithRights?(
+    domain: MeshCentralDomain,
+    user: string,
+    nodeId: string,
+    callback: (node: { agent?: { id?: number }; name?: string } | null, rights: number, visible: boolean) => void,
+  ): void;
   bodyParser?: {
     json(...args: unknown[]): unknown;
     urlencoded(...args: unknown[]): unknown;
@@ -196,6 +209,8 @@ export interface MeshCentralWebServer {
 }
 
 export interface MeshCentralAgentConnection extends MeshCentralConnection {
+  authenticated?: number;
+  agentInfo?: unknown;
   dbMeshKey?: string;
   dbNodeKey?: string;
   remoteaddrport?: string;
