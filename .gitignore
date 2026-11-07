@@ -1,5 +1,4 @@
 .worktree
-.codex
 
 node_modules/
 .pnpm-store/
