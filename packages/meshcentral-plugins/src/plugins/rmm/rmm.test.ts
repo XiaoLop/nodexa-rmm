@@ -156,6 +156,30 @@ afterEach(() => {
 });
 
 describe('persistent device occupancy', () => {
+  it('only shows a busy waiting reason for queued work, retaining occupancy on running work', async () => {
+    const first = await submit();
+    await core.tick();
+    const next = await submit();
+    const running = (await detail(first.id)).results[0]!;
+    expect(running).toMatchObject({
+      status: 'running',
+      occupiedBy: sent[0]!.command.responseid,
+      canRelease: false,
+    });
+    expect(running).not.toHaveProperty('waitingReason');
+    expect((await detail(next.id)).results[0]).toMatchObject({
+      status: 'queued',
+      occupiedBy: running.executionId,
+      waitingReason: 'DEVICE_BUSY',
+      canRelease: false,
+    });
+    receipt(0);
+    await core.tick();
+    const dispatched = (await detail(next.id)).results[0]!;
+    expect(dispatched).toMatchObject({ status: 'running', occupiedBy: dispatched.executionId });
+    expect(dispatched).not.toHaveProperty('waitingReason');
+  });
+
   it('dispatches five different devices, serializes same-device work and fills freed slots', async () => {
     await submit([node(0)]);
     await submit([node(0)]);

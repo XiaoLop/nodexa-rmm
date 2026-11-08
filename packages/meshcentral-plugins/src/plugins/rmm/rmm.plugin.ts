@@ -478,7 +478,9 @@ export class RmmPlugin {
       )?.status === 'running';
     return {
       occupiedBy: String(occupied.execution_id),
-      waitingReason: running ? 'DEVICE_BUSY' : 'REMOTE_STATE_UNKNOWN',
+      ...(row.status === 'running'
+        ? {}
+        : { waitingReason: running ? 'DEVICE_BUSY' : 'REMOTE_STATE_UNKNOWN' }),
       canRelease:
         !running && this.server.webserver?.users?.[context.actor]?.siteadmin === 0xffffffff,
     };
