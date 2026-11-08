@@ -763,6 +763,7 @@ export const zhCN = {
     serverFiles: '文件管理',
     fileBrowser: '服务端文件',
     deviceManagement: '设备管理',
+    automationManagement: '自动化管理',
     allDevices: '所有设备',
     deviceGroups: '设备分组',
     taskCenter: '任务中心',

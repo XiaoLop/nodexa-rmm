@@ -787,6 +787,7 @@ export const enUS = {
     serverFiles: 'Files',
     fileBrowser: 'Server files',
     deviceManagement: 'Device management',
+    automationManagement: 'Automation management',
     allDevices: 'All devices',
     deviceGroups: 'Device groups',
     taskCenter: 'Task Center',

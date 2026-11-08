@@ -17,6 +17,7 @@ type AppPageComponent = LazyExoticComponent<ComponentType>;
 
 export type AppNavigationGroup =
   | 'navigation.deviceManagement'
+  | 'navigation.automationManagement'
   | 'navigation.monitoringAndEvents'
   | 'navigation.administration';
 
@@ -99,21 +100,21 @@ export const appRoutes: readonly AppRouteDefinition[] = [
   {
     path: '/devices/scripts',
     component: lazyPage(() => import('../pages/ScriptLibraryPage'), 'ScriptLibraryPage'),
-    titleKeys: ['navigation.deviceManagement', 'rmm.library'],
+    titleKeys: ['navigation.automationManagement', 'rmm.library'],
     navigation: {
       labelKey: 'rmm.library',
       icon: <ProfileOutlined />,
-      group: 'navigation.deviceManagement',
+      group: 'navigation.automationManagement',
     },
   },
   {
     path: '/devices/tasks',
     component: lazyPage(() => import('../pages/TasksPage'), 'TasksPage'),
-    titleKeys: ['navigation.deviceManagement', 'navigation.taskCenter'],
+    titleKeys: ['navigation.automationManagement', 'navigation.taskCenter'],
     navigation: {
       labelKey: 'navigation.taskCenter',
       icon: <ProfileOutlined />,
-      group: 'navigation.deviceManagement',
+      group: 'navigation.automationManagement',
     },
   },
   {
@@ -182,6 +183,7 @@ export const appRoutes: readonly AppRouteDefinition[] = [
 
 export const appNavigationGroups: readonly AppNavigationGroup[] = [
   'navigation.deviceManagement',
+  'navigation.automationManagement',
   'navigation.monitoringAndEvents',
   'navigation.administration',
 ];
