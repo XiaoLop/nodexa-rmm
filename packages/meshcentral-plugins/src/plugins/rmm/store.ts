@@ -33,6 +33,13 @@ export class RmmStore {
         domain TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL,
         created INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS device_occupancy (
+        node_id TEXT PRIMARY KEY, execution_id TEXT NOT NULL UNIQUE,
+        domain TEXT NOT NULL, created INTEGER NOT NULL
+      );
+      INSERT OR IGNORE INTO device_occupancy
+        SELECT e.node_id, e.id, t.domain, t.created FROM executions e
+        JOIN tasks t ON t.id = e.task_id WHERE e.status = 'running';
       UPDATE executions SET status = 'unknown', reason = 'SERVER_RESTART' WHERE status = 'running';
     `);
   }

@@ -49,6 +49,27 @@
 
 RMM 插件使用 Windows PowerShell 包装器发送结构化结果。MeshCentral 1.1.54 的原生 Agent 最终消息只有合并输出和关联标识，插件据已认证的 Agent 设备身份和执行 ID 匹配记录，并用包装器提供的退出码判定成功或失败。真实设备验证见 [RMM-005 部署与验收](../../test/rmm-005.md)。
 
+### RMM 设备占用扩展
+
+以下为本仓库插件协议，不是上游原生接口。控制帧沿用 `action: plugin`、`plugin: rmm`、`subAction`、`requestId`，响应回显关联字段并返回 `data` 或 `error`。
+
+- `getTask` 的逐设备结果新增可选字段：`executionId`（本条执行）、`occupiedBy`（当前占用执行）、`waitingReason`（`DEVICE_BUSY` 或 `REMOTE_STATE_UNKNOWN`）、`canRelease`（当前用户能否解除）。新 Web 可兼容未返回这些字段的旧插件；解除功能须同步部署新插件。
+- `releaseDevice` 请求携带 `nodeId`、`executionId`、`reason`。仅站点管理员且当前仍有该域设备远程命令权限可调用；原因须为非空字符串，最多 1,000 字符。返回 `data: {}`。
+- 预期执行与当前占用不符返回 `OCCUPANCY_CONFLICT`；运行中返回 `EXECUTION_RUNNING`；权限或输入不合规则返回 `ACCESS_DENIED` / `INVALID_INPUT`。占用已消失时重复解除不产生第二条审计。解除不终止进程、不重试脚本。
+- 占用在 SQLite 独立保存，未解除占用计入全局五个名额。超时、发送不确定、重启、Agent 重连均不会释放。可信迟到回执只释放对应占用，不覆盖已保存的终态。任务清理不级联删除占用。
+
+实现依据：`packages/meshcentral-plugins/src/plugins/rmm/` 与 `packages/control-client/src/resources/rmm.ts`；本地模拟覆盖不等同于真实 Agent 验收。
+
+### RMM Linux 执行扩展
+
+脚本草稿及版本支持可选 `platform: 'windows' | 'linux'`，缺省按 Windows 解释。脚本列表返回版本平台，任务查询返回实际保存版本的平台；无需改写既有数据库版本数据。Linux 只匹配固定上游版本中已核实的 Linux Agent 架构，不将 Android、macOS 或 BSD 视为 Linux。
+
+插件对 Linux Agent 下发原生 `runcommands type: 3`，以 Agent 服务身份启动 `/bin/sh`；Windows 仍为 `type: 2`。依据为已安装的 MeshCentral 1.1.54 `agents/meshcore.js` 的 `runcommands` 分支，以及 `meshcentral.js` 的 `meshAgentsArchitectureNumbers`。Agent 忙时只发普通控制台消息，不产生结构化完成回执，因此两平台都必须保留占用直到可信结束或管理员解除。
+
+Linux 包装器在权限受限的临时目录保存正文，参数通过 Base64 解码成 `RMM_PARAM_<原参数名>` 环境变量，不拼接为可执行表达式。字符串保留末尾换行，布尔值为 `true` / `false`，整数为十进制，NUL 字节被拒绝；源文件的 CRLF 规范化为 LF。脚本无交互输入。所需 Linux 工具及验收例子见 [部署与验收](../../test/rmm-005.md#linux-验收本轮新增)。
+
+标准输出与错误输出合并，经有界捕获后继续排空超限输出，防止管道提前关闭改变脚本退出结果。仍使用同一结构化回执与 32 KiB 截断、五分钟超时、独立占用规则；脚本退出不等于其自行启动的后台进程也已退出。
+
 ## 批量发送 Toast
 
 ```json

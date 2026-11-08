@@ -92,7 +92,9 @@ export function ExecuteScriptModal({
             {script.name} v{script.version}
           </Typography.Text>
         )}
-        <Typography.Text>{t('rmm.identity')}</Typography.Text>
+        <Typography.Text>
+          {t(script?.platform === 'linux' ? 'rmm.linuxIdentity' : 'rmm.identity')}
+        </Typography.Text>
         <Select
           mode="multiple"
           placeholder={t('rmm.devices')}

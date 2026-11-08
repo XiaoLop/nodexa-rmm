@@ -11,15 +11,22 @@ import { useServerFiles } from '../server-files/useServerFiles';
 
 export const maxScriptBytes = 64 * 1024;
 
+export function scriptPlatformForFile(name: string): 'windows' | 'linux' {
+  if (/\.ps1$/i.test(name)) return 'windows';
+  if (/\.sh$/i.test(name)) return 'linux';
+  throw new Error('INVALID_SCRIPT');
+}
+
 export function decodeScript(name: string, bytes: ArrayBuffer | Uint8Array): string {
-  if (!/\.ps1$/i.test(name) || bytes.byteLength > maxScriptBytes) throw new Error('INVALID_SCRIPT');
+  scriptPlatformForFile(name);
+  if (bytes.byteLength > maxScriptBytes) throw new Error('INVALID_SCRIPT');
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
 type EditorProps = {
   client: MeshCentralClient;
   current?: RmmScript;
-  imported?: Pick<RmmScriptDraft, 'name' | 'body'>;
+  imported?: Pick<RmmScriptDraft, 'name' | 'body' | 'platform'>;
   canBrowse?: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -35,6 +42,7 @@ export function ScriptEditor({
 }: EditorProps) {
   const { t } = useTranslation();
   const [form] = Form.useForm<RmmScriptDraft>();
+  const platform = Form.useWatch('platform', form) ?? 'windows';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [browse, setBrowse] = useState(false);
@@ -44,7 +52,11 @@ export function ScriptEditor({
     setError(undefined);
     try {
       const body = decodeScript(name, await read());
-      form.setFieldsValue({ body, name: form.getFieldValue('name') || name.slice(0, -4) });
+      form.setFieldsValue({
+        body,
+        platform: scriptPlatformForFile(name),
+        name: form.getFieldValue('name') || name.replace(/\.(ps1|sh)$/i, ''),
+      });
       setBrowse(false);
     } catch {
       setError('INVALID_SCRIPT');
@@ -66,7 +78,10 @@ export function ScriptEditor({
       <Form
         form={form}
         layout="vertical"
-        initialValues={current ?? { ...imported, description: '', parameters: [] }}
+        initialValues={{
+          platform: 'windows',
+          ...(current ?? { ...imported, description: '', parameters: [] }),
+        }}
         onFinish={async (draft) => {
           setBusy(true);
           setError(undefined);
@@ -85,7 +100,7 @@ export function ScriptEditor({
             {t('rmm.localImport')}{' '}
             <input
               type="file"
-              accept=".ps1"
+              accept=".ps1,.sh"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
@@ -112,7 +127,7 @@ export function ScriptEditor({
               <Button onClick={() => files.openPath(files.currentPath.slice(0, -1))}>..</Button>
             )}
             {files.entries
-              .filter((entry) => entry.kind === 'directory' || /\.ps1$/i.test(entry.name))
+              .filter((entry) => entry.kind === 'directory' || /\.(ps1|sh)$/i.test(entry.name))
               .map((entry) => (
                 <Button
                   key={entry.name}
@@ -133,7 +148,20 @@ export function ScriptEditor({
         <Form.Item label={t('rmm.description')} name="description">
           <Input maxLength={1000} />
         </Form.Item>
-        <Form.Item label="PowerShell" name="body" rules={[{ required: true }]}>
+        <Form.Item label={t('rmm.platform')} name="platform" rules={[{ required: true }]}>
+          <Select
+            options={[
+              { value: 'windows', label: 'Windows · PowerShell' },
+              { value: 'linux', label: 'Linux · /bin/sh' },
+            ]}
+          />
+        </Form.Item>
+        {platform === 'linux' && <Alert type="info" message={t('rmm.linuxParameters')} />}
+        <Form.Item
+          label={platform === 'linux' ? 'POSIX Shell' : 'PowerShell'}
+          name="body"
+          rules={[{ required: true }]}
+        >
           <Input.TextArea rows={10} />
         </Form.Item>
         <Form.List name="parameters">

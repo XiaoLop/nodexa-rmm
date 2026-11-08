@@ -1,6 +1,60 @@
 import type { MeshCentralCommand } from '../../types/meshcentral.types.js';
 import type { Script } from './script.js';
 
+// MeshCentral 1.1.54 meshAgentsArchitectureNumbers; exclude macOS, Android and BSD.
+const linuxAgents = new Set([
+  5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 24, 25, 26, 27, 28, 32, 33, 35, 36, 40, 41, 45,
+]);
+export function supportsAgent(script: Script, agentId: number): boolean {
+  return script.platform === 'linux' ? linuxAgents.has(agentId) : [1, 2, 3, 4].includes(agentId);
+}
+
+function buildLinuxCommand(
+  id: string,
+  actor: string,
+  script: Script,
+  values: Record<string, unknown>,
+) {
+  const encode = (value: string) => Buffer.from(value, 'utf8').toString('base64');
+  const error = encode('Unable to prepare Linux script execution');
+  const lines = [
+    '(',
+    'umask 077',
+    `rmm_fail() { printf '%s\\n' 'RMM-RESULT ${id} 1 0 ${error}'; exit 0; }`,
+    'for rmm_tool in mktemp base64 head cat wc tr rm; do command -v "$rmm_tool" >/dev/null 2>&1 || rmm_fail; done',
+    'rmm_dir=$(mktemp -d "${TMPDIR:-/tmp}/mesh-rmm.XXXXXXXX") || rmm_fail',
+    'trap \'rm -rf -- "$rmm_dir"\' 0',
+    `printf '%s' '${encode(script.body.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'))}' | base64 -d > "$rmm_dir/script.sh" || rmm_fail`,
+    ...script.parameters.flatMap(({ name }) => [
+      // The suffix preserves trailing newlines removed by shell command substitution.
+      `RMM_PARAM_${name}=$(printf '%s' '${encode(String(values[name]))}' | base64 -d; printf '.')`,
+      `RMM_PARAM_${name}=\${RMM_PARAM_${name}%.}; export RMM_PARAM_${name}`,
+    ]),
+    '(',
+    '  /bin/sh "$rmm_dir/script.sh" </dev/null',
+    '  printf \'%s\' "$?" > "$rmm_dir/code"',
+    ') 2>&1 | { head -c 32769 > "$rmm_dir/output" || exit 1; cat >/dev/null; } || rmm_fail',
+    'rmm_code=$(cat "$rmm_dir/code") || rmm_fail',
+    'rmm_size=$(wc -c < "$rmm_dir/output") || rmm_fail',
+    'rmm_truncated=0; if [ "$rmm_size" -gt 32768 ]; then rmm_truncated=1; fi',
+    'head -c 32768 "$rmm_dir/output" > "$rmm_dir/clipped" || rmm_fail',
+    'rmm_output=$(base64 < "$rmm_dir/clipped") || rmm_fail',
+    "rmm_output=$(printf '%s' \"$rmm_output\" | tr -d '\\r\\n') || rmm_fail",
+    `printf 'RMM-RESULT ${id} %s %s %s\\n' "$rmm_code" "$rmm_truncated" "$rmm_output"`,
+    ')',
+    '',
+  ];
+  return {
+    action: 'runcommands',
+    type: 3,
+    runAsUser: 0,
+    reply: true,
+    responseid: id,
+    sessionid: actor + '/rmm-' + id,
+    cmds: lines.join('\n'),
+  };
+}
+
 const runner = Buffer.from(
   [
     'param([string]$PayloadPath)',
@@ -30,6 +84,7 @@ export function buildCommand(
   script: Script,
   values: Record<string, unknown>,
 ) {
+  if (script.platform === 'linux') return buildLinuxCommand(id, actor, script, values);
   const body = Buffer.from('\uFEFF' + script.body, 'utf8').toString('base64');
   const payload = Buffer.from(JSON.stringify({ values }), 'utf8').toString('base64');
   const lines = [

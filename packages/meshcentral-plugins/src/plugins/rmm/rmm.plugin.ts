@@ -8,7 +8,7 @@ import type {
   MeshCentralDomain,
   MeshCentralServer,
 } from '../../types/meshcentral.types.js';
-import { buildCommand, readResult } from './execution.js';
+import { buildCommand, readResult, supportsAgent } from './execution.js';
 import { examples, object, parseScript, parseValues, RmmError, type Script } from './script.js';
 import { RmmStore } from './store.js';
 
@@ -178,11 +178,12 @@ export class RmmPlugin {
         });
       }
       case 'preview': {
-        this.script(domain, scriptId, version);
+        const script = this.script(domain, scriptId, version);
         const targets = await this.targets(
           context,
           stringList(command.nodeIds),
           stringList(command.groupIds),
+          script,
         );
         const id = randomUUID();
         for (const [key, preview] of this.previews) {
@@ -220,12 +221,13 @@ export class RmmPlugin {
           preview.expires < Date.now()
         )
           throw new RmmError('PREVIEW_EXPIRED');
+        const script = this.script(domain, preview.id, preview.version);
         const targets = await this.targets(
           context,
           preview.targets.map((target) => target.id),
           [],
+          script,
         );
-        const script = this.script(domain, preview.id, preview.version);
         const params = parseValues(script, command.params);
         return store.transaction(() => {
           const existing = previous();
@@ -290,6 +292,41 @@ export class RmmPlugin {
           before: rows.length === 25 ? rows[24]?.cursor : undefined,
         };
       }
+      case 'releaseDevice': {
+        const { nodeId, executionId, reason } = command;
+        if (!admin || typeof nodeId !== 'string' || !(await this.device(context, nodeId)))
+          throw new RmmError('ACCESS_DENIED');
+        if (
+          typeof executionId !== 'string' ||
+          typeof reason !== 'string' ||
+          !reason.trim() ||
+          reason.length > 1000
+        )
+          throw new RmmError('INVALID_INPUT');
+        return store.transaction(() => {
+          const occupied = db
+            .prepare('SELECT * FROM device_occupancy WHERE node_id = ?')
+            .get(nodeId);
+          if (!occupied) return {};
+          if (occupied.domain !== domain || occupied.execution_id !== executionId)
+            throw new RmmError('OCCUPANCY_CONFLICT');
+          const execution = db
+            .prepare('SELECT status FROM executions WHERE id = ?')
+            .get(executionId);
+          if (execution?.status === 'running') throw new RmmError('EXECUTION_RUNNING');
+          db.prepare('DELETE FROM device_occupancy WHERE node_id = ? AND execution_id = ?').run(
+            nodeId,
+            executionId,
+          );
+          store.audit(
+            domain,
+            actor,
+            'releaseDevice',
+            JSON.stringify({ nodeId, executionId, reason: reason.trim() }),
+          );
+          return {};
+        });
+      }
       default:
         throw new RmmError('UNKNOWN_ACTION');
     }
@@ -334,7 +371,12 @@ export class RmmPlugin {
     return agent?.authenticated === 2 && agent.agentInfo ? agent : undefined;
   }
 
-  private async targets(context: Context, nodes: string[], groups: string[]): Promise<Target[]> {
+  private async targets(
+    context: Context,
+    nodes: string[],
+    groups: string[],
+    script: Script,
+  ): Promise<Target[]> {
     const ids = new Set(nodes);
     if (groups.length) {
       if (groups.some((group) => !group.startsWith('mesh/' + context.domain.id + '/')))
@@ -362,7 +404,7 @@ export class RmmPlugin {
       [...ids].map(async (id) => {
         const device = await this.device(context, id);
         if (!device) throw new RmmError('ACCESS_DENIED');
-        const reason = ![1, 2, 3, 4].includes(device.agent?.id ?? 0)
+        const reason = !supportsAgent(script, device.agent?.id ?? 0)
           ? 'UNSUPPORTED_AGENT'
           : this.agent(id)
             ? undefined
@@ -403,12 +445,15 @@ export class RmmPlugin {
       scriptId: task.script_id,
       version: task.version,
       name: task.name,
+      platform: this.script(task.domain, task.script_id, task.version, true).platform ?? 'windows',
       created: task.created,
       counts,
       active: visible.some((row) => pending(row.status)),
       ...(detail
         ? {
             results: visible.map((row) => ({
+              executionId: row.id,
+              ...this.occupancyView(context, row),
               id: row.node_id,
               name: row.name,
               status: row.status,
@@ -419,6 +464,23 @@ export class RmmPlugin {
             })),
           }
         : {}),
+    };
+  }
+
+  private occupancyView(context: Context, row: Execution) {
+    const occupied = this.store!.db.prepare(
+      'SELECT execution_id FROM device_occupancy WHERE domain = ? AND node_id = ?',
+    ).get(context.domain.id, row.node_id);
+    if (!occupied || (row.status !== 'queued' && occupied.execution_id !== row.id)) return {};
+    const running =
+      this.store!.db.prepare('SELECT status FROM executions WHERE id = ?').get(
+        String(occupied.execution_id),
+      )?.status === 'running';
+    return {
+      occupiedBy: String(occupied.execution_id),
+      waitingReason: running ? 'DEVICE_BUSY' : 'REMOTE_STATE_UNKNOWN',
+      canRelease:
+        !running && this.server.webserver?.users?.[context.actor]?.siteadmin === 0xffffffff,
     };
   }
 
@@ -437,23 +499,25 @@ export class RmmPlugin {
       }
       if (process.env.MESHCENTRAL_RMM_PAUSED === '1') return;
       const active = Number(
-        db.prepare("SELECT COUNT(*) AS count FROM executions WHERE status = 'running'").get()
-          ?.count ?? 0,
+        db.prepare('SELECT COUNT(*) AS count FROM device_occupancy').get()?.count ?? 0,
       );
       const candidates = db
         .prepare(
-          "SELECT e.*, t.domain, t.actor, t.script_id, t.version, t.params FROM executions e JOIN tasks t ON t.id = e.task_id WHERE e.status = 'queued' AND NOT EXISTS (SELECT 1 FROM executions r WHERE r.node_id = e.node_id AND r.status = 'running') ORDER BY t.created, e.rowid LIMIT ?",
+          "SELECT e.*, t.domain, t.actor, t.script_id, t.version, t.params FROM executions e JOIN tasks t ON t.id = e.task_id WHERE e.status = 'queued' AND NOT EXISTS (SELECT 1 FROM device_occupancy o WHERE o.node_id = e.node_id) ORDER BY t.created, e.rowid",
         )
-        .all(Math.max(0, 5 - active)) as unknown as (Execution & Task)[];
+        .all() as unknown as (Execution & Task)[];
+      let slots = Math.max(0, 5 - active);
       for (const row of candidates) {
+        if (slots === 0) break;
         const domain = this.server.config?.domains?.[row.domain];
         const device = domain
           ? await this.device({ actor: row.actor, domain }, row.node_id)
           : undefined;
         const agent = this.agent(row.node_id);
+        const script = this.script(row.domain, row.script_id, row.version, true);
         const reason = !device
           ? 'ACCESS_DENIED'
-          : ![1, 2, 3, 4].includes(device.agent?.id ?? 0)
+          : !supportsAgent(script, device.agent?.id ?? 0)
             ? 'UNSUPPORTED_AGENT'
             : !agent
               ? 'AGENT_OFFLINE'
@@ -464,19 +528,28 @@ export class RmmPlugin {
           ).run(reason, row.id);
           continue;
         }
-        const script = this.script(row.domain, row.script_id, row.version, true);
         const command = buildCommand(
           row.id,
           row.actor,
           script,
           JSON.parse(row.params) as Record<string, unknown>,
         );
-        const changed = db
-          .prepare(
-            "UPDATE executions SET status = 'running', deadline = ? WHERE id = ? AND status = 'queued' AND NOT EXISTS (SELECT 1 FROM executions WHERE node_id = ? AND status = 'running')",
+        const acquired = this.store.transaction(() => {
+          if (
+            Number(db.prepare('SELECT COUNT(*) AS count FROM device_occupancy').get()?.count) >= 5
           )
-          .run(Date.now() + 300_000, row.id, row.node_id);
-        if (!changed.changes) continue;
+            return false;
+          const changed = db
+            .prepare('INSERT OR IGNORE INTO device_occupancy VALUES (?, ?, ?, ?)')
+            .run(row.node_id, row.id, row.domain, Date.now());
+          if (!changed.changes) return false;
+          db.prepare(
+            "UPDATE executions SET status = 'running', deadline = ? WHERE id = ? AND status = 'queued'",
+          ).run(Date.now() + 300_000, row.id);
+          return true;
+        });
+        if (!acquired) continue;
+        slots--;
         try {
           agent!.send(JSON.stringify(command));
         } catch {
@@ -498,19 +571,30 @@ export class RmmPlugin {
     const result = readResult(command);
     if (!result) return;
     try {
-      this.store.db
-        .prepare(
+      const received = Date.now();
+      this.store.transaction(() => {
+        const occupied = this.store!.db.prepare(
+          'SELECT execution_id FROM device_occupancy WHERE node_id = ? AND execution_id = ?',
+        ).get(agent.dbNodeKey!, result.id);
+        if (!occupied) return;
+        this.store!.db.prepare(
+          "UPDATE executions SET status = 'timeout', reason = 'NO_RECEIPT' WHERE id = ? AND status = 'running' AND deadline <= ?",
+        ).run(result.id, received);
+        this.store!.db.prepare(
           "UPDATE executions SET status = ?, exit_code = ?, output = ?, truncated = ? WHERE id = ? AND node_id = ? AND status = 'running' AND deadline > ?",
-        )
-        .run(
+        ).run(
           result.exitCode === 0 ? 'succeeded' : 'failed',
           result.exitCode,
           result.output,
           Number(result.truncated),
           result.id,
-          agent.dbNodeKey,
-          Date.now(),
+          agent.dbNodeKey!,
+          received,
         );
+        this.store!.db.prepare(
+          'DELETE FROM device_occupancy WHERE node_id = ? AND execution_id = ?',
+        ).run(agent.dbNodeKey!, result.id);
+      });
     } catch {
       console.error('[rmm] Unable to persist execution receipt');
     }

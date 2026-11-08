@@ -1,5 +1,14 @@
 export const zhCN = {
   rmm: {
+    platform: "执行平台",
+    linuxParameters: "Linux 参数通过 RMM_PARAM_<参数名> 环境变量传入，保留参数名大小写。布尔值为 true/false，整数为十进制；脚本中请用双引号引用变量。",
+    linuxIdentity: "执行身份：Linux Agent 服务账号；解释器：/bin/sh",
+
+    releaseDevice: "解除设备占用",
+    releaseWarning: "解除后允许派发后续脚本；此操作不会终止远端进程。",
+    releaseConfirmed: "我已核实远端进程结束",
+    releaseReason: "解除原因",
+
     refresh: '刷新',
     "library": "脚本库",
     "editor": "编辑脚本",
@@ -55,6 +64,8 @@ export const zhCN = {
       "AGENT_OFFLINE": "Agent 离线",
       "UNSUPPORTED_AGENT": "平台不支持",
       "ACCESS_DENIED": "执行权限已撤销",
+      DEVICE_BUSY: "等待设备当前任务结束",
+      REMOTE_STATE_UNKNOWN: "远端状态未知，后续任务等待确认",
       "NO_RECEIPT": "未收到回执，远端进程可能仍在运行",
       "SERVER_RESTART": "服务重启前未保存回执",
       "SEND_UNCERTAIN": "无法确认命令是否已下发"

@@ -3,7 +3,13 @@ type Parameter = {
   type: 'string' | 'integer' | 'boolean' | 'enum';
   options?: string[];
 };
-export type Script = { name: string; description: string; body: string; parameters: Parameter[] };
+export type Script = {
+  name: string;
+  description: string;
+  body: string;
+  parameters: Parameter[];
+  platform?: 'windows' | 'linux';
+};
 
 export class RmmError extends Error {}
 
@@ -14,7 +20,7 @@ export function object(value: unknown): Record<string, unknown> {
 }
 
 export function parseScript(input: unknown): Script {
-  const { name, description, body, parameters } = object(input);
+  const { name, description, body, parameters, platform = 'windows' } = object(input);
   if (
     typeof name !== 'string' ||
     !name.trim() ||
@@ -25,7 +31,9 @@ export function parseScript(input: unknown): Script {
     !body.trim() ||
     Buffer.byteLength(body) > 65536 ||
     !Array.isArray(parameters) ||
-    parameters.length > 20
+    parameters.length > 20 ||
+    (platform !== 'windows' && platform !== 'linux') ||
+    (platform === 'linux' && body.includes('\0'))
   )
     throw new RmmError('INVALID_SCRIPT');
   const names = new Set<string>();
@@ -52,6 +60,7 @@ export function parseScript(input: unknown): Script {
     return { name, type, options };
   });
   return {
+    platform,
     name: name.trim(),
     description,
     body: body.replace(/^\uFEFF/, ''),
@@ -66,6 +75,8 @@ export function parseValues(script: Script, input: unknown) {
   return Object.fromEntries(
     script.parameters.map(({ name, type, options }) => {
       const value = Object.hasOwn(values, name) ? values[name] : undefined;
+      if (script.platform === 'linux' && typeof value === 'string' && value.includes('\0'))
+        throw new RmmError('INVALID_PARAMETER');
       if (
         (type === 'string' && typeof value === 'string' && value.length <= 1024) ||
         (type === 'integer' &&
@@ -83,6 +94,13 @@ export function parseValues(script: Script, input: unknown) {
 }
 
 export const examples: Record<string, Script> = {
+  'linux-system-diagnostics': {
+    name: 'Linux system diagnostics',
+    description: 'Read Linux kernel version and uptime using /bin/sh.',
+    platform: 'linux',
+    body: 'uname -a\nuptime',
+    parameters: [],
+  },
   'service-status': {
     name: 'Service status',
     description: 'Check a Windows service by name.',

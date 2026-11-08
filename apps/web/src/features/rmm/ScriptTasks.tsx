@@ -1,6 +1,17 @@
 import type { RmmResource, RmmResult, RmmTask } from '@meshcentral/control-client';
 import { useRmmQuery } from '@meshcentral/shared-state';
-import { Alert, Button, Collapse, Space, Table, Tag, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Collapse,
+  Input,
+  Modal,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -8,7 +19,8 @@ import { useMeshCentralControlData } from '../gateway';
 import { useFormatters } from '../../i18n';
 
 const hasActiveTask = ({ tasks }: { tasks: RmmTask[] }) => tasks.some(({ active }) => active);
-const isActiveTask = ({ active }: RmmTask) => active;
+const isActiveTask = ({ active, results }: RmmTask & { results: RmmResult[] }) =>
+  active || results.some((row) => !!row.occupiedBy);
 
 export function ScriptTasks({
   taskId,
@@ -22,6 +34,11 @@ export function ScriptTasks({
   const { client, status } = useMeshCentralControlData();
   const [pages, setPages] = useState<number[]>([]);
   const [revision, setRevision] = useState(0);
+  const [release, setRelease] = useState<RmmResult>();
+  const [reason, setReason] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const [releaseError, setReleaseError] = useState<string>();
   const before = pages.at(-1);
   const list = useCallback((api: RmmResource) => api.listTasks(before), [before]);
   const get = useCallback((api: RmmResource) => api.getTask(taskId ?? ''), [taskId]);
@@ -37,6 +54,45 @@ export function ScriptTasks({
     ));
   return (
     <Space direction="vertical" style={{ display: 'flex' }}>
+      <Modal
+        open={!!release}
+        title={t('rmm.releaseDevice')}
+        onCancel={() => {
+          if (!releasing) setRelease(undefined);
+        }}
+        confirmLoading={releasing}
+        okButtonProps={{ disabled: !connected || !confirmed || !reason.trim() || releasing }}
+        onOk={async () => {
+          if (!client || !release?.occupiedBy || !confirmed || !reason.trim()) return;
+          setReleasing(true);
+          setReleaseError(undefined);
+          try {
+            await client.rmm.releaseDevice(release.id, release.occupiedBy, reason);
+            setRelease(undefined);
+            setRevision((value) => value + 1);
+          } catch (error) {
+            setReleaseError(error instanceof Error ? error.message : 'REQUEST_FAILED');
+          } finally {
+            setReleasing(false);
+          }
+        }}
+      >
+        <p>{t('rmm.releaseWarning')}</p>
+        <p>
+          {release?.name} · {release?.occupiedBy}
+        </p>
+        <Checkbox checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)}>
+          {t('rmm.releaseConfirmed')}
+        </Checkbox>
+        <Input.TextArea
+          aria-label={t('rmm.releaseReason')}
+          placeholder={t('rmm.releaseReason')}
+          value={reason}
+          maxLength={1000}
+          onChange={(event) => setReason(event.target.value)}
+        />
+        {releaseError && <Alert type="error" message={t('rmm.error', { code: releaseError })} />}
+      </Modal>
       <Button disabled={!connected} onClick={() => setRevision((value) => value + 1)}>
         {t('rmm.refresh')}
       </Button>
@@ -49,6 +105,9 @@ export function ScriptTasks({
               <Typography.Title level={4}>
                 {detail.result.name} v{detail.result.version}
               </Typography.Title>
+              <Tag>
+                {detail.result.platform === 'linux' ? 'Linux · /bin/sh' : 'Windows · PowerShell'}
+              </Tag>
               <Typography.Text>
                 {detail.result.actor} · {dateTime(new Date(detail.result.created).toISOString())}
               </Typography.Text>
@@ -71,6 +130,20 @@ export function ScriptTasks({
                       <>
                         {t('rmm.status.' + row.status)}
                         {row.reason && ' · ' + t('rmm.reason.' + row.reason)}
+                        {row.waitingReason && <div>{t('rmm.reason.' + row.waitingReason)}</div>}
+                        {row.canRelease && row.occupiedBy && (
+                          <Button
+                            disabled={!connected}
+                            onClick={() => {
+                              setRelease(row);
+                              setReason('');
+                              setConfirmed(false);
+                              setReleaseError(undefined);
+                            }}
+                          >
+                            {t('rmm.releaseDevice')}
+                          </Button>
+                        )}
                       </>
                     ),
                   },

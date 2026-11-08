@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ServerDiagnosticsPanel } from './ServerDiagnosticsPanel';
@@ -69,11 +69,14 @@ vi.mock('@xterm/addon-fit', () => ({
 }));
 
 beforeAll(() => {
-  vi.stubGlobal('ResizeObserver', class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  });
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
   window.matchMedia = vi.fn().mockImplementation(() => ({
     matches: false,
     addListener: vi.fn(),
@@ -96,7 +99,7 @@ describe('ServerDiagnosticsPanel', () => {
         <Routes>
           <Route path="/admin/server" element={<ServerDiagnosticsPanel />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole('navigation', { name: 'serverAdmin.diagnostics' })).toBeTruthy();
@@ -106,7 +109,10 @@ describe('ServerDiagnosticsPanel', () => {
     expect(container.querySelector('div[aria-label="serverAdmin.console"]')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'serverAdmin.trace' }));
-    expect(screen.getByText('serverAdmin.globalWarning')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'serverAdmin.trace' }).getAttribute('aria-current'),
+    ).toBe('page');
+    expect(screen.queryByText('serverAdmin.globalWarning')).toBeNull();
     // Inactive console container is preserved in DOM (keep-alive)
     expect(container.querySelector('div[aria-label="serverAdmin.console"]')).toBeTruthy();
 
@@ -117,16 +123,36 @@ describe('ServerDiagnosticsPanel', () => {
     expect(container.querySelector('div[aria-label="serverAdmin.console"]')).toBeTruthy();
   });
 
+  it('warns about global settings in the apply confirmation before sending', async () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/server?tab=trace']}>
+        <ServerDiagnosticsPanel />
+      </MemoryRouter>,
+    );
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'serverAdmin.globalCategories' }));
+    fireEvent.click(
+      (await screen.findAllByTitle('web')).find((element) =>
+        element.classList.contains('ant-select-item-option'),
+      )!,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'serverAdmin.apply' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('serverAdmin.globalWarning')).toBeTruthy();
+    expect(state.trace.client.server.setTraceSources).not.toHaveBeenCalled();
+  });
+
   it('respects the tab query parameter when opening the page', () => {
     render(
       <MemoryRouter initialEntries={['/admin/server?tab=logs']}>
         <Routes>
           <Route path="/admin/server" element={<ServerDiagnosticsPanel />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    expect(screen.getByRole('button', { name: 'serverAdmin.logs' }).getAttribute('aria-current')).toBe('page');
+    expect(
+      screen.getByRole('button', { name: 'serverAdmin.logs' }).getAttribute('aria-current'),
+    ).toBe('page');
     expect(screen.getByRole('button', { name: 'serverAdmin.clear' })).toBeTruthy();
   });
 });

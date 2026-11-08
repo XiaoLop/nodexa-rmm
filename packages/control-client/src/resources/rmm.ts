@@ -6,6 +6,7 @@ export type RmmParameter = {
   options?: string[];
 };
 export type RmmScriptDraft = {
+  platform?: 'windows' | 'linux';
   name: string;
   description: string;
   body: string;
@@ -23,6 +24,10 @@ export type RmmPreview = { id: string; targets: RmmTarget[] };
 export type RmmStatus =
   'queued' | 'running' | 'succeeded' | 'failed' | 'skipped' | 'timeout' | 'unknown';
 export type RmmResult = {
+  executionId?: string;
+  occupiedBy?: string;
+  waitingReason?: 'DEVICE_BUSY' | 'REMOTE_STATE_UNKNOWN';
+  canRelease?: boolean;
   id: string;
   name: string;
   status: RmmStatus;
@@ -32,6 +37,7 @@ export type RmmResult = {
   truncated: boolean;
 };
 export type RmmTask = {
+  platform?: 'windows' | 'linux';
   id: string;
   actor: string;
   scriptId: string;
@@ -80,6 +86,10 @@ export class RmmResource {
 
   getTask(taskId: string) {
     return this.request<RmmTask & { results: RmmResult[] }>('getTask', { taskId });
+  }
+
+  releaseDevice(nodeId: string, executionId: string, reason: string) {
+    return this.request<object>('releaseDevice', { nodeId, executionId, reason });
   }
 
   private request<T>(subAction: string, data: Record<string, unknown> = {}): Promise<T> {

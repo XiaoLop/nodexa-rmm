@@ -47,6 +47,11 @@ export function ScriptLibraryPage() {
             { title: t('rmm.description'), dataIndex: 'description' },
             { title: t('rmm.version'), dataIndex: 'version' },
             {
+              title: t('rmm.platform'),
+              render: (_value, script) =>
+                script.platform === 'linux' ? 'Linux · /bin/sh' : 'Windows · PowerShell',
+            },
+            {
               title: t('rmm.actions'),
               render: (_value, script) => (
                 <Space wrap>

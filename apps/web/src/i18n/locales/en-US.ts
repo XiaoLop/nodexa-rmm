@@ -1,5 +1,14 @@
 export const enUS = {
   rmm: {
+    platform: "Platform",
+    linuxParameters: "Linux parameters are environment variables named RMM_PARAM_<name>, preserving the parameter name. Boolean values are true/false; integers use decimal notation. Quote variable expansions in your script.",
+    linuxIdentity: "Execution identity: Linux Agent service account; interpreter: /bin/sh",
+
+    releaseDevice: "Release device",
+    releaseWarning: "This allows queued scripts to run. It does not stop any remote process.",
+    releaseConfirmed: "I verified that the remote process has ended",
+    releaseReason: "Reason for releasing device",
+
     refresh: 'Refresh',
     "library": "Script library",
     "editor": "Edit script",
@@ -55,6 +64,8 @@ export const enUS = {
       "AGENT_OFFLINE": "Agent offline",
       "UNSUPPORTED_AGENT": "Unsupported platform",
       "ACCESS_DENIED": "Execution permission revoked",
+      DEVICE_BUSY: "Waiting for the current device execution",
+      REMOTE_STATE_UNKNOWN: "Remote state unknown; queued scripts are waiting for confirmation",
       "NO_RECEIPT": "No receipt. The remote process may still be running.",
       "SERVER_RESTART": "Server restarted before a receipt was saved",
       "SEND_UNCERTAIN": "Dispatch could not be confirmed"
