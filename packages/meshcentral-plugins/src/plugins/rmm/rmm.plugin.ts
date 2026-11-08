@@ -130,6 +130,44 @@ export class RmmPlugin {
             ),
         ];
       }
+      case 'listScriptVersions':
+      case 'getScriptVersion': {
+        if (typeof scriptId !== 'string') throw new RmmError('INVALID_SCRIPT');
+        const builtin = Object.hasOwn(examples, scriptId);
+        const record = builtin
+          ? undefined
+          : db
+              .prepare('SELECT archived FROM scripts WHERE domain = ? AND id = ?')
+              .get(domain, scriptId);
+        if (!builtin && (!record || (record.archived && !admin)))
+          throw new RmmError('SCRIPT_UNAVAILABLE');
+        const archived = Boolean(record?.archived);
+        if (command.subAction === 'getScriptVersion') {
+          const script = this.script(domain, scriptId, version, admin);
+          return this.scriptView(scriptId, Number(version), archived, script, admin, builtin);
+        }
+        if (
+          command.before !== undefined &&
+          (typeof command.before !== 'number' ||
+            !Number.isSafeInteger(command.before) ||
+            command.before < 1)
+        )
+          throw new RmmError('INVALID_INPUT');
+        const before =
+          typeof command.before === 'number' ? command.before : Number.MAX_SAFE_INTEGER;
+        if (builtin) {
+          return { versions: before > 1 ? [{ version: 1 }] : [] };
+        }
+        const rows = db
+          .prepare(
+            'SELECT version, actor, created FROM versions WHERE domain = ? AND script_id = ? AND version < ? ORDER BY version DESC LIMIT 25',
+          )
+          .all(domain, scriptId, before);
+        return {
+          versions: rows,
+          before: rows.length === 25 ? rows[24]?.version : undefined,
+        };
+      }
       case 'saveScript': {
         if (!admin) throw new RmmError('ACCESS_DENIED');
         const script = parseScript(command.script);
@@ -263,9 +301,37 @@ export class RmmPlugin {
         });
       }
       case 'listTasks':
+      case 'searchTasks':
       case 'getTask': {
         const detail = command.subAction === 'getTask';
         if (detail && typeof command.taskId !== 'string') throw new RmmError('INVALID_INPUT');
+        if (
+          command.query !== undefined &&
+          (typeof command.query !== 'string' || command.query.length > 200)
+        )
+          throw new RmmError('INVALID_INPUT');
+        const statuses = [
+          'queued',
+          'running',
+          'succeeded',
+          'failed',
+          'skipped',
+          'timeout',
+          'unknown',
+        ];
+        if (
+          command.status !== undefined &&
+          (typeof command.status !== 'string' || !statuses.includes(command.status))
+        )
+          throw new RmmError('INVALID_INPUT');
+        if (
+          command.before !== undefined &&
+          (typeof command.before !== 'number' ||
+            !Number.isSafeInteger(command.before) ||
+            command.before < 1)
+        )
+          throw new RmmError('INVALID_INPUT');
+        const search = typeof command.query === 'string' ? command.query.trim() : '';
         const before =
           typeof command.before === 'number' && Number.isSafeInteger(command.before)
             ? command.before
@@ -276,9 +342,11 @@ export class RmmPlugin {
               .all(domain, String(command.taskId))
           : db
               .prepare(
-                'SELECT *, rowid AS cursor FROM tasks WHERE domain = ? AND rowid < ? ORDER BY rowid DESC LIMIT 25',
+                "SELECT *, rowid AS cursor FROM tasks WHERE domain = ? AND rowid < ? AND (? = '' OR instr(lower(name), lower(?)) > 0 OR instr(lower(actor), lower(?)) > 0 OR instr(lower(id), lower(?)) > 0) ORDER BY rowid DESC LIMIT 25",
               )
-              .all(domain, before)) as unknown as (Task & { cursor?: number })[];
+              .all(domain, before, search, search, search, search)) as unknown as (Task & {
+          cursor?: number;
+        })[];
         const rights = new Map<string, Promise<boolean>>();
         const views = await Promise.all(
           rows.map((row) => this.taskView(context, row, rights, detail)),
@@ -288,7 +356,9 @@ export class RmmPlugin {
           return views[0];
         }
         return {
-          tasks: views.filter(Boolean),
+          tasks: views.filter(
+            (view) => view && (!command.status || (view.counts[String(command.status)] ?? 0) > 0),
+          ),
           before: rows.length === 25 ? rows[24]?.cursor : undefined,
         };
       }

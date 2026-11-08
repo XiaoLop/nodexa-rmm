@@ -81,6 +81,7 @@ export function ScriptEditor({
         layout="vertical"
         initialValues={{
           platform: 'windows',
+          tags: [],
           ...(current ?? { ...imported, description: '', parameters: [] }),
         }}
         onFinish={async (draft) => {
@@ -148,6 +149,9 @@ export function ScriptEditor({
         </Form.Item>
         <Form.Item label={t('rmm.description')} name="description">
           <Input maxLength={1000} />
+        </Form.Item>
+        <Form.Item label={t('rmm.tags')} name="tags" extra={t('rmm.tagsHelp')}>
+          <Select mode="tags" maxCount={10} tokenSeparators={[',']} />
         </Form.Item>
         <Form.Item label={t('rmm.platform')} name="platform" rules={[{ required: true }]}>
           <Select

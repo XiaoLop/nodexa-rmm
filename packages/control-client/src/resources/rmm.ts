@@ -11,6 +11,7 @@ export type RmmScriptDraft = {
   description: string;
   body: string;
   parameters: RmmParameter[];
+  tags?: string[];
 };
 export type RmmScript = Omit<RmmScriptDraft, 'body'> & {
   id: string;
@@ -47,12 +48,25 @@ export type RmmTask = {
   counts: Partial<Record<RmmStatus, number>>;
   active: boolean;
 };
+export type RmmScriptVersion = { version: number; actor?: string; created?: number };
+export type RmmTaskFilters = { query?: string; status?: RmmStatus };
 
 export class RmmResource {
   constructor(private readonly client: MeshCentralClient) {}
 
   listScripts() {
     return this.request<RmmScript[]>('listScripts');
+  }
+
+  listScriptVersions(scriptId: string, before?: number) {
+    return this.request<{ versions: RmmScriptVersion[]; before?: number }>('listScriptVersions', {
+      scriptId,
+      before,
+    });
+  }
+
+  getScriptVersion(scriptId: string, version: number) {
+    return this.request<RmmScript>('getScriptVersion', { scriptId, version });
   }
 
   saveScript(script: RmmScriptDraft, current?: Pick<RmmScript, 'id' | 'version'>) {
@@ -82,6 +96,13 @@ export class RmmResource {
 
   listTasks(before?: number) {
     return this.request<{ tasks: RmmTask[]; before?: number }>('listTasks', { before });
+  }
+
+  searchTasks(before?: number, filters?: RmmTaskFilters) {
+    return this.request<{ tasks: RmmTask[]; before?: number }>('searchTasks', {
+      before,
+      ...filters,
+    });
   }
 
   getTask(taskId: string) {

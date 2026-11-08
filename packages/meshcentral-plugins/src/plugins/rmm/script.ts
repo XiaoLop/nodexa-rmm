@@ -9,6 +9,7 @@ export type Script = {
   body: string;
   parameters: Parameter[];
   platform?: 'windows' | 'linux';
+  tags?: string[];
 };
 
 export class RmmError extends Error {}
@@ -20,7 +21,7 @@ export function object(value: unknown): Record<string, unknown> {
 }
 
 export function parseScript(input: unknown): Script {
-  const { name, description, body, parameters, platform = 'windows' } = object(input);
+  const { name, description, body, parameters, platform = 'windows', tags = [] } = object(input);
   if (
     typeof name !== 'string' ||
     !name.trim() ||
@@ -33,8 +34,14 @@ export function parseScript(input: unknown): Script {
     !Array.isArray(parameters) ||
     parameters.length > 20 ||
     (platform !== 'windows' && platform !== 'linux') ||
-    (platform === 'linux' && body.includes('\0'))
+    (platform === 'linux' && body.includes('\0')) ||
+    !Array.isArray(tags) ||
+    tags.length > 10 ||
+    tags.some((tag: unknown) => typeof tag !== 'string' || !tag.trim() || tag.length > 30)
   )
+    throw new RmmError('INVALID_SCRIPT');
+  const normalizedTags = tags.map((tag: string) => tag.trim());
+  if (new Set(normalizedTags.map((tag) => tag.toLowerCase())).size !== normalizedTags.length)
     throw new RmmError('INVALID_SCRIPT');
   const names = new Set<string>();
   const definitions = parameters.map((input: unknown): Parameter => {
@@ -65,6 +72,7 @@ export function parseScript(input: unknown): Script {
     description,
     body: body.replace(/^\uFEFF/, ''),
     parameters: definitions,
+    tags: normalizedTags,
   };
 }
 

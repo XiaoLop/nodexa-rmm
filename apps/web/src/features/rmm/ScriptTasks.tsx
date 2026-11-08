@@ -54,24 +54,25 @@ export function ScriptTasks({
   const [releasing, setReleasing] = useState(false);
   const [releaseError, setReleaseError] = useState<string>();
   const [query, setQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<RmmStatus | 'all'>('all');
   const [resultFilter, setResultFilter] = useState<RmmStatus | 'all' | 'attention'>('all');
   const [deviceQuery, setDeviceQuery] = useState('');
   const [selectedOutput, setSelectedOutput] = useState<{ taskId: string; deviceId: string }>();
   const before = pages.at(-1);
-  const list = useCallback((api: RmmResource) => api.listTasks(before), [before]);
+  const list = useCallback(
+    (api: RmmResource) =>
+      api.searchTasks(before, {
+        query: appliedQuery || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      }),
+    [before, appliedQuery, statusFilter],
+  );
   const get = useCallback((api: RmmResource) => api.getTask(taskId ?? ''), [taskId]);
   const connected = status === 'connected';
   const tasks = useRmmQuery(client, connected && !taskId, list, hasActiveTask, revision);
   const detail = useRmmQuery(client, connected && !!taskId, get, isActiveTask, revision);
   const error = taskId ? detail.error : tasks.error;
-  const filteredTasks = (tasks.result?.tasks ?? []).filter((task) => {
-    const search = query.trim().toLowerCase();
-    return (
-      (!search || `${task.name} ${task.actor} ${task.id}`.toLowerCase().includes(search)) &&
-      (statusFilter === 'all' || (task.counts[statusFilter] ?? 0) > 0)
-    );
-  });
   const filteredResults = (detail.result?.results ?? []).filter((row) => {
     const search = deviceQuery.trim().toLowerCase();
     const matchesStatus =
@@ -281,17 +282,25 @@ export function ScriptTasks({
       ) : (
         <Panel className="devices-table-card">
           <FilterBar>
-            <Input
+            <Input.Search
               aria-label={t('rmm.searchTasks')}
               placeholder={t('rmm.searchTasks')}
               value={query}
+              maxLength={200}
               onChange={(event) => setQuery(event.target.value)}
+              onSearch={(value) => {
+                setPages([]);
+                setAppliedQuery(value.trim());
+              }}
               allowClear
             />
             <Select<RmmStatus | 'all'>
               aria-label={t('rmm.resultFilter')}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={(value) => {
+                setPages([]);
+                setStatusFilter(value);
+              }}
               options={[
                 { value: 'all', label: t('rmm.allResults') },
                 ...(
@@ -312,10 +321,10 @@ export function ScriptTasks({
               {t('rmm.refresh')}
             </Button>
           </FilterBar>
-          <Typography.Text type="secondary">{t('rmm.currentPageFilter')}</Typography.Text>
+          <Typography.Text type="secondary">{t('rmm.historyFilter')}</Typography.Text>
           <ConsoleTable<RmmTask>
             rowKey="id"
-            dataSource={filteredTasks}
+            dataSource={tasks.result?.tasks ?? []}
             pagination={false}
             loading={connected && !tasks.result && !tasks.error}
             scroll={{ x: 800 }}
@@ -323,7 +332,9 @@ export function ScriptTasks({
               emptyText: tasks.result && (
                 <Empty
                   description={t(
-                    tasks.result?.tasks.length ? 'rmm.noMatchingTasks' : 'rmm.noTasks',
+                    appliedQuery || statusFilter !== 'all' || tasks.result?.before !== undefined
+                      ? 'rmm.noMatchingTasks'
+                      : 'rmm.noTasks',
                   )}
                 />
               ),

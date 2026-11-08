@@ -60,6 +60,14 @@ RMM 插件使用 Windows PowerShell 包装器发送结构化结果。MeshCentral
 
 实现依据：`packages/meshcentral-plugins/src/plugins/rmm/` 与 `packages/control-client/src/resources/rmm.ts`；本地模拟覆盖不等同于真实 Agent 验收。
 
+### RMM 历史搜索与版本扩展
+
+以下均为本仓库插件接口，Web 和插件须同版部署。`searchTasks` 接受可选 `query`（最多 200 字符，匹配任务名称、发起人或 ID）和 `status`（设备结果状态），以及 `before` 行游标；每页最多检查 25 条候选任务。状态仅根据当前用户有权查看的设备结果判断，因此可出现空页但仍有下一页；不得根据隐藏设备状态推断结果。任务按原保留策略清理，搜索不覆盖已删除记录。大小写匹配遵循 SQLite `lower`，对非 ASCII 不保证大小写折叠。原 `listTasks` 接口保持可用。
+
+`listScriptVersions` 按版本倒序返回版本号、保存者和时间（内置脚本只有版本号），可用 `before` 版本号翻页，每页最多 25 条。`getScriptVersion` 返回指定版本元数据；正文仍仅站点管理员可获取，归档脚本仅管理员可查询。跨域或不可见脚本不可查询。Web 对比两个版本的元数据和可见正文，不提供执行旧版本入口。
+
+脚本草稿的 `tags` 为版本化字符串数组，最多 10 个，每个输入不超过 30 字符，去除首尾空格后非空且忽略大小写不得重复；旧版本缺省为空。保存标签创建新版本，不改变历史任务。旧插件不识别标签且会丢弃它们，回退前应备份数据库并停止编辑脚本；新 Web 遇到旧插件不支持历史接口会显示错误。
+
 ### RMM Linux 执行扩展
 
 脚本草稿及版本支持可选 `platform: 'windows' | 'linux'`，缺省按 Windows 解释。脚本列表返回版本平台，任务查询返回实际保存版本的平台；无需改写既有数据库版本数据。Linux 只匹配固定上游版本中已核实的 Linux Agent 架构，不将 Android、macOS 或 BSD 视为 Linux。

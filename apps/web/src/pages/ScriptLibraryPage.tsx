@@ -26,6 +26,7 @@ export function ScriptLibraryPage() {
   const [platform, setPlatform] = useState('all');
   const [archive, setArchive] = useState('active');
   const [source, setSource] = useState('all');
+  const [tag, setTag] = useState<string>();
   const refresh = () => setRevision((value) => value + 1);
   const connected = status === 'connected';
   const scripts = useRmmQuery(client, connected, listScripts, undefined, revision);
@@ -37,9 +38,10 @@ export function ScriptLibraryPage() {
         (!search || `${script.name} ${script.description}`.toLowerCase().includes(search)) &&
         (platform === 'all' || (script.platform ?? 'windows') === platform) &&
         (archive === 'all' || script.archived === (archive === 'archived')) &&
-        (source === 'all' || script.builtin === (source === 'builtin')),
+        (source === 'all' || script.builtin === (source === 'builtin')) &&
+        (!tag || script.tags?.includes(tag)),
     );
-  }, [scripts.result, query, platform, archive, source]);
+  }, [scripts.result, query, platform, archive, source, tag]);
   return (
     <div className="page-stack">
       <PageHeader
@@ -96,6 +98,17 @@ export function ScriptLibraryPage() {
               { value: 'custom', label: t('rmm.custom') },
             ]}
           />
+          <Select
+            aria-label={t('rmm.tags')}
+            placeholder={t('rmm.allTags')}
+            value={tag}
+            allowClear
+            style={{ minWidth: 150 }}
+            onChange={setTag}
+            options={[...new Set((scripts.result ?? []).flatMap((script) => script.tags ?? []))]
+              .sort()
+              .map((value) => ({ value, label: value }))}
+          />
           <div className="toolbar-spacer" />
           {scripts.result && (
             <Tag>
@@ -126,6 +139,11 @@ export function ScriptLibraryPage() {
             },
             { title: t('rmm.description'), dataIndex: 'description' },
             { title: t('rmm.version'), dataIndex: 'version' },
+            {
+              title: t('rmm.tags'),
+              render: (_value, script) =>
+                (script.tags ?? []).map((value) => <Tag key={value}>{value}</Tag>),
+            },
             {
               title: t('rmm.source'),
               render: (_value, script) => (
@@ -179,6 +197,7 @@ export function ScriptLibraryPage() {
       {selectedScript && (
         <ScriptDetails
           script={selectedScript}
+          client={client}
           connected={connected}
           canEdit={capabilities.siteAdmin}
           onClose={() => setDetailId(undefined)}

@@ -21,6 +21,8 @@ RMM 插件资源提供脚本库、预览、提交和任务查询。`client.rmm.r
 
 脚本草稿、脚本版本和任务查询支持可选 `platform`（`windows` / `linux`）；未设置的旧脚本仍按 Windows 处理。Linux 执行 `/bin/sh`，参数以 `RMM_PARAM_<参数名>` 环境变量传递，目标预览及派发均按版本平台校验。Web 与插件须同版部署，见 [Linux 执行扩展](../../docs/meshcentral/04-batch-operations.md#rmm-linux-执行扩展)。
 
+`searchTasks` 支持服务端历史搜索和可见设备状态筛选；`listScriptVersions` 与 `getScriptVersion` 提供分页版本历史及权限控制的版本详情，脚本标签随版本保存。分页及兼容性约束见 [历史搜索与版本扩展](../../docs/meshcentral/04-batch-operations.md#rmm-历史搜索与版本扩展)。
+
 ## 安装
 
 在当前 pnpm workspace 中添加依赖：

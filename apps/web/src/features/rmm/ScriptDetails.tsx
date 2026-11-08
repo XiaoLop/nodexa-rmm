@@ -1,11 +1,13 @@
-import type { RmmScript } from '@meshcentral/control-client';
+import type { MeshCentralClient, RmmScript } from '@meshcentral/control-client';
 import { Alert, Button, Descriptions, Space, Tag, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ConsoleDrawer } from '../../components/ui';
 import '../../assets/styles/tasks.css';
+import { ScriptHistory } from './ScriptHistory';
 
 export function ScriptDetails({
   script,
+  client,
   connected,
   canEdit,
   onClose,
@@ -13,6 +15,7 @@ export function ScriptDetails({
   onEdit,
 }: {
   script: RmmScript;
+  client?: MeshCentralClient;
   connected: boolean;
   canEdit: boolean;
   onClose: () => void;
@@ -54,6 +57,11 @@ export function ScriptDetails({
             <Tag>{t(script.builtin ? 'rmm.builtin' : 'rmm.custom')}</Tag>
             {script.archived && <Tag>{t('rmm.archived')}</Tag>}
           </Descriptions.Item>
+          <Descriptions.Item label={t('rmm.tags')}>
+            {(script.tags ?? []).map((tag) => (
+              <Tag key={tag}>{tag}</Tag>
+            ))}
+          </Descriptions.Item>
         </Descriptions>
         <div>
           <Typography.Title level={5}>{t('rmm.parametersTitle')}</Typography.Title>
@@ -83,6 +91,7 @@ export function ScriptDetails({
             </div>
           )}
         </div>
+        <ScriptHistory key={script.id} client={client} script={script} connected={connected} />
       </Space>
     </ConsoleDrawer>
   );

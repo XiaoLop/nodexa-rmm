@@ -14,8 +14,10 @@ const state = vi.hoisted(() => ({
   rmm: {
     saveScript: vi.fn(),
     listScripts: vi.fn(),
+    listScriptVersions: vi.fn(),
+    getScriptVersion: vi.fn(),
     getTask: vi.fn(),
-    listTasks: vi.fn(),
+    searchTasks: vi.fn(),
     releaseDevice: vi.fn(),
     preview: vi.fn(),
     submit: vi.fn(),
@@ -86,6 +88,7 @@ beforeEach(() => {
   };
   vi.clearAllMocks();
   state.rmm.listScripts.mockResolvedValue([]);
+  state.rmm.listScriptVersions.mockResolvedValue({ versions: [] });
   state.rmm.saveScript.mockResolvedValue({ id: 'script', version: 1 });
   state.files.readFile.mockResolvedValue(new TextEncoder().encode('\uFEFFWrite-Output "中文"'));
 });
@@ -248,6 +251,7 @@ describe('automation discovery and preview', () => {
       builtin: false,
       archived: false,
       parameters: [],
+      tags: ['ops'],
     },
     {
       id: 'old',
@@ -315,6 +319,53 @@ describe('automation discovery and preview', () => {
     );
   });
 
+  it('retains existing tags when saving an edited script', async () => {
+    const current: RmmScript = {
+      ...scripts[1]!,
+      body: 'echo hello',
+      tags: ['ops'],
+    };
+    const client = { rmm: state.rmm } as unknown as MeshCentralClient;
+    render(<ScriptEditor client={client} current={current} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.getByText('ops')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /rmm.saveVersion/ }));
+    await waitFor(() =>
+      expect(state.rmm.saveScript).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ['ops'], body: 'echo hello' }),
+        current,
+      ),
+    );
+  });
+
+  it('filters tags and compares saved versions without assuming body access', async () => {
+    state.admin = false;
+    state.rmm.listScripts.mockResolvedValue(scripts);
+    state.rmm.listScriptVersions.mockResolvedValue({ versions: [{ version: 2 }, { version: 1 }] });
+    state.rmm.getScriptVersion.mockImplementation(async (_id, version) => ({
+      ...scripts[1],
+      version,
+      name: `Revision ${version}`,
+    }));
+    render(
+      <MemoryRouter>
+        <ScriptLibraryPage />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Windows check');
+    fireEvent.mouseDown(screen.getByLabelText('rmm.tags'));
+    fireEvent.click(screen.getByTitle('ops'));
+    expect(screen.queryByText('Windows check')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Linux check' }));
+    const drawer = await screen.findByRole('dialog');
+    await within(drawer).findByText('v1');
+    fireEvent.click(within(drawer).getByRole('button', { name: 'rmm.compareVersions' }));
+    expect(await within(drawer).findByText('v1 · Revision 1')).toBeDefined();
+    expect(within(drawer).getByText('v2 · Revision 2')).toBeDefined();
+    expect(within(drawer).getAllByText('rmm.bodyUnavailable')).toHaveLength(3);
+    expect(state.rmm.getScriptVersion).toHaveBeenCalledWith('linux', 1);
+    expect(state.rmm.getScriptVersion).toHaveBeenCalledWith('linux', 2);
+  });
+
   it('shows unavailable body for non-admins and never offers edit in details', async () => {
     state.admin = false;
     state.rmm.listScripts.mockResolvedValue([scripts[1]]);
@@ -347,8 +398,8 @@ describe('automation discovery and preview', () => {
     expect(within(drawer).queryByRole('button', { name: 'rmm.editor' })).toBeNull();
   });
 
-  it('filters the current task page without hiding pagination', async () => {
-    state.rmm.listTasks.mockResolvedValue({
+  it('searches task history on the server and resets the cursor when filters change', async () => {
+    const tasks = {
       tasks: [
         {
           id: 'a',
@@ -370,23 +421,40 @@ describe('automation discovery and preview', () => {
         },
       ],
       before: 123,
-    });
+    };
+    state.rmm.searchTasks.mockImplementation(async (_before, filters) =>
+      filters.query || filters.status ? { tasks: [tasks.tasks[1]], before: 24 } : tasks,
+    );
     render(
       <MemoryRouter>
         <ScriptTasks onSelect={vi.fn()} />
       </MemoryRouter>,
     );
     await screen.findByText('Alpha v1');
+    fireEvent.click(screen.getByRole('button', { name: 'rmm.next' }));
+    await waitFor(() =>
+      expect(state.rmm.searchTasks).toHaveBeenLastCalledWith(123, expect.anything()),
+    );
     fireEvent.change(screen.getByLabelText('rmm.searchTasks'), { target: { value: 'operator' } });
-    expect(screen.queryByText('Alpha v1')).toBeNull();
-    expect(screen.getByText('Beta v2')).toBeDefined();
-    expect(screen.getByText('rmm.currentPageFilter')).toBeDefined();
+    fireEvent.keyDown(screen.getByLabelText('rmm.searchTasks'), { key: 'Enter', code: 'Enter' });
+    await waitFor(() =>
+      expect(state.rmm.searchTasks).toHaveBeenLastCalledWith(undefined, {
+        query: 'operator',
+        status: undefined,
+      }),
+    );
+    await waitFor(() => expect(screen.queryByText('Alpha v1')).toBeNull());
+    expect(await screen.findByText('Beta v2')).toBeDefined();
+    expect(screen.getByText('rmm.historyFilter')).toBeDefined();
     expect(screen.getByRole('button', { name: 'rmm.next' }).hasAttribute('disabled')).toBe(false);
-    fireEvent.change(screen.getByLabelText('rmm.searchTasks'), { target: { value: '' } });
     fireEvent.mouseDown(screen.getByLabelText('rmm.resultFilter'));
     fireEvent.click(screen.getByTitle('rmm.status.timeout'));
-    expect(screen.queryByText('Alpha v1')).toBeNull();
-    expect(screen.getByText('Beta v2')).toBeDefined();
+    await waitFor(() =>
+      expect(state.rmm.searchTasks).toHaveBeenLastCalledWith(undefined, {
+        query: 'operator',
+        status: 'timeout',
+      }),
+    );
   });
 
   it('summarizes preview exclusions and requires a new preview after editing', async () => {

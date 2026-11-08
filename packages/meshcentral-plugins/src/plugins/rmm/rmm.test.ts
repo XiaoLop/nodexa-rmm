@@ -155,6 +155,151 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+describe('script history and task search', () => {
+  it('preserves versioned tags, limits input, and keeps historical bodies admin-only', async () => {
+    const script = await rpc<{ id: string; version: number }>('saveScript', {
+      script: { ...draft, tags: [' ops ', '生产'] },
+    });
+    await rpc('saveScript', {
+      scriptId: script.id,
+      version: 1,
+      script: { ...draft, body: 'new body', tags: ['new'] },
+    });
+    expect(await rpc('listScriptVersions', { scriptId: script.id })).toMatchObject({
+      versions: [
+        { version: 2, actor },
+        { version: 1, actor },
+      ],
+    });
+    expect(await rpc('getScriptVersion', { scriptId: script.id, version: 1 })).toMatchObject({
+      body: draft.body,
+      tags: ['ops', '生产'],
+    });
+    expect(await rpc('getScriptVersion', { scriptId: script.id, version: 2 })).toMatchObject({
+      body: 'new body',
+      tags: ['new'],
+    });
+    await expect(
+      rpc('saveScript', { script: { ...draft, tags: ['ops', ' OPS '] } }),
+    ).rejects.toThrow('INVALID_SCRIPT');
+    await expect(
+      rpc('saveScript', { script: { ...draft, tags: Array(11).fill('x') } }),
+    ).rejects.toThrow('INVALID_SCRIPT');
+    admin = false;
+    expect(await rpc('getScriptVersion', { scriptId: script.id, version: 1 })).not.toHaveProperty(
+      'body',
+    );
+    admin = true;
+    await rpc('archiveScript', { scriptId: script.id });
+    expect(await rpc('getScriptVersion', { scriptId: script.id, version: 1 })).toHaveProperty(
+      'body',
+    );
+    admin = false;
+    await expect(rpc('listScriptVersions', { scriptId: script.id })).rejects.toThrow(
+      'SCRIPT_UNAVAILABLE',
+    );
+    await expect(rpc('getScriptVersion', { scriptId: script.id, version: 1 })).rejects.toThrow(
+      'SCRIPT_UNAVAILABLE',
+    );
+    await expect(rpc('listScriptVersions', { scriptId: 'missing' })).rejects.toThrow(
+      'SCRIPT_UNAVAILABLE',
+    );
+    expect(await rpc('listScriptVersions', { scriptId: 'service-status' })).toEqual({
+      versions: [{ version: 1 }],
+    });
+  });
+
+  it('searches older pages and filters statuses using only visible devices', async () => {
+    const script = await rpc<{ id: string; version: number }>('saveScript', { script: draft });
+    const first = await submit([node(0), node(1)], script);
+    core.store.db.prepare('UPDATE tasks SET name = ? WHERE id = ?').run('Older Match', first.id);
+    core.store.db
+      .prepare('UPDATE executions SET status = ? WHERE task_id = ? AND node_id = ?')
+      .run('failed', first.id, node(1));
+    for (let i = 0; i < 30; i++) await submit([node(0)], script);
+    const firstPage = await rpc<{ tasks: { id: string }[]; before?: number }>('searchTasks');
+    expect(firstPage.tasks).toHaveLength(25);
+    const nextPage = await rpc<{ tasks: { id: string }[] }>('searchTasks', {
+      before: firstPage.before,
+    });
+    expect(nextPage.tasks.some((task) => task.id === first.id)).toBe(true);
+    expect(
+      (await rpc<{ tasks: { id: string }[] }>('searchTasks', { query: 'older match' })).tasks,
+    ).toEqual([expect.objectContaining({ id: first.id })]);
+    allowed.delete(node(1));
+    expect(
+      (await rpc<{ tasks: unknown[] }>('searchTasks', { query: 'Older Match', status: 'failed' }))
+        .tasks,
+    ).toEqual([]);
+    expect(
+      (await rpc<{ tasks: unknown[] }>('searchTasks', { query: 'Older Match', status: 'queued' }))
+        .tasks,
+    ).toHaveLength(1);
+    core.store.db
+      .prepare('UPDATE executions SET status = ? WHERE task_id = ? AND node_id = ?')
+      .run('failed', first.id, node(0));
+    const emptyPage = await rpc<{ tasks: unknown[]; before?: number }>('searchTasks', {
+      status: 'failed',
+    });
+    expect(emptyPage.tasks).toEqual([]);
+    expect(emptyPage.before).toBeDefined();
+    expect(
+      (
+        await rpc<{ tasks: { id: string }[] }>('searchTasks', {
+          status: 'failed',
+          before: emptyPage.before,
+        })
+      ).tasks,
+    ).toEqual([expect.objectContaining({ id: first.id })]);
+    await expect(rpc('searchTasks', { status: 'bogus' })).rejects.toThrow('INVALID_INPUT');
+    await expect(rpc('searchTasks', { query: 'x'.repeat(201) })).rejects.toThrow('INVALID_INPUT');
+    await expect(rpc('searchTasks', { before: 0 })).rejects.toThrow('INVALID_INPUT');
+  });
+
+  it('paginates version history and never returns another domain’s versions or tasks', async () => {
+    const script = await rpc<{ id: string; version: number }>('saveScript', { script: draft });
+    for (let version = 1; version <= 25; version++) {
+      await rpc('saveScript', { scriptId: script.id, version, script: draft });
+    }
+    const page = await rpc<{ versions: { version: number }[]; before?: number }>(
+      'listScriptVersions',
+      { scriptId: script.id },
+    );
+    expect(page.versions).toHaveLength(25);
+    expect(page.versions[0]?.version).toBe(26);
+    expect(page.before).toBe(2);
+    expect(
+      await rpc('listScriptVersions', { scriptId: script.id, before: page.before }),
+    ).toMatchObject({ versions: [{ version: 1 }] });
+    core.store.db.prepare('INSERT INTO scripts(domain, id) VALUES (?, ?)').run('other', 'foreign');
+    core.store.db
+      .prepare('INSERT INTO versions VALUES (?, ?, ?, ?, ?, ?)')
+      .run('other', 'foreign', 1, actor, Date.now(), JSON.stringify(draft));
+    core.store.db
+      .prepare('INSERT INTO tasks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(
+        'foreign-task',
+        'other',
+        actor,
+        randomUUID(),
+        'foreign',
+        1,
+        'Foreign task',
+        Date.now(),
+        '{}',
+      );
+    await expect(rpc('getScriptVersion', { scriptId: 'foreign', version: 1 })).rejects.toThrow(
+      'SCRIPT_UNAVAILABLE',
+    );
+    await expect(rpc('listScriptVersions', { scriptId: 'foreign' })).rejects.toThrow(
+      'SCRIPT_UNAVAILABLE',
+    );
+    expect(
+      (await rpc<{ tasks: unknown[] }>('searchTasks', { query: 'Foreign task' })).tasks,
+    ).toEqual([]);
+  });
+});
+
 describe('persistent device occupancy', () => {
   it('only shows a busy waiting reason for queued work, retaining occupancy on running work', async () => {
     const first = await submit();

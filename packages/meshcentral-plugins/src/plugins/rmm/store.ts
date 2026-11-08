@@ -27,6 +27,7 @@ export class RmmStore {
         node_id TEXT NOT NULL, name TEXT NOT NULL, status TEXT NOT NULL, reason TEXT,
         deadline INTEGER, exit_code INTEGER, output TEXT, truncated INTEGER NOT NULL DEFAULT 0
       );
+      CREATE INDEX IF NOT EXISTS rmm_task_domain ON tasks(domain);
       CREATE INDEX IF NOT EXISTS rmm_execution_task ON executions(task_id);
       CREATE INDEX IF NOT EXISTS rmm_execution_state ON executions(status, node_id);
       CREATE TABLE IF NOT EXISTS audit (
