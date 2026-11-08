@@ -5,6 +5,7 @@ import {
   Button,
   Checkbox,
   Collapse,
+  Descriptions,
   Empty,
   Input,
   Modal,
@@ -22,6 +23,7 @@ import { useMeshCentralControlData } from '../gateway';
 import { useFormatters } from '../../i18n';
 import { ConsoleTable, FilterBar, PageHeader, Panel } from '../../components/ui';
 import { ResultOutput } from './ResultOutput';
+import './rmm-task-details.css';
 
 const hasActiveTask = ({ tasks }: { tasks: RmmTask[] }) => tasks.some(({ active }) => active);
 const isActiveTask = ({ active, results }: RmmTask & { results: RmmResult[] }) =>
@@ -97,7 +99,7 @@ export function ScriptTasks({
       </Tag>
     ));
   return (
-    <Space direction="vertical" style={{ display: 'flex' }}>
+    <Space direction="vertical" size={taskId ? 20 : 16} style={{ display: 'flex' }}>
       <PageHeader title={t('taskCenter.title')} description={t('rmm.serverTasksDescription')} />
       <Modal
         open={!!release}
@@ -142,7 +144,7 @@ export function ScriptTasks({
       {error && <Alert type="error" message={t('rmm.error', { code: error })} />}
       {taskId ? (
         <>
-          <Space wrap>
+          <div className="rmm-task-navigation">
             <Button
               onClick={() => {
                 setSelectedOutput(undefined);
@@ -154,124 +156,170 @@ export function ScriptTasks({
             <Button disabled={!connected} onClick={() => setRevision((value) => value + 1)}>
               {t('rmm.refresh')}
             </Button>
-          </Space>
+          </div>
           {connected && !detail.result && !detail.error && <Spin />}
           {detail.result && (
             <>
-              <Typography.Title level={4}>
-                {detail.result.name} v{detail.result.version}
-              </Typography.Title>
-              <Tag>
-                {detail.result.platform === 'linux' ? 'Linux · /bin/sh' : 'Windows · PowerShell'}
-              </Tag>
-              <Typography.Text>
-                {detail.result.actor} · {dateTime(new Date(detail.result.created).toISOString())}
-              </Typography.Text>
-              <Space wrap>{summary(detail.result)}</Space>
-              <Space wrap>
-                <Input
-                  aria-label={t('rmm.searchDevices')}
-                  placeholder={t('rmm.searchDevices')}
-                  value={deviceQuery}
-                  allowClear
-                  onChange={(event) => {
-                    setDeviceQuery(event.target.value);
-                    setSelectedOutput(undefined);
-                  }}
-                />
-                <Select<RmmStatus | 'all' | 'attention'>
-                  aria-label={t('rmm.resultFilter')}
-                  value={resultFilter}
-                  onChange={(value) => {
-                    setResultFilter(value);
-                    setSelectedOutput(undefined);
-                  }}
-                  style={{ minWidth: 180 }}
-                  options={[
-                    { value: 'all', label: t('rmm.allResults') },
-                    { value: 'attention', label: t('rmm.attentionResults') },
-                    ...(
-                      [
-                        'queued',
-                        'running',
-                        'succeeded',
-                        'failed',
-                        'skipped',
-                        'timeout',
-                        'unknown',
-                      ] as const
-                    ).map((value) => ({ value, label: t('rmm.status.' + value) })),
+              <section className="rmm-task-overview">
+                <div className="rmm-task-heading">
+                  <div>
+                    <Typography.Title level={3}>
+                      {detail.result.name} v{detail.result.version}
+                    </Typography.Title>
+                    <Tag>
+                      {detail.result.platform === 'linux'
+                        ? 'Linux · /bin/sh'
+                        : 'Windows · PowerShell'}
+                    </Tag>
+                  </div>
+                  <dl className="rmm-task-metadata">
+                    <div>
+                      <dt>{t('rmm.actor')}</dt>
+                      <dd>{detail.result.actor}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('rmm.created')}</dt>
+                      <dd>{dateTime(new Date(detail.result.created).toISOString())}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <div className="rmm-task-status-grid">
+                  {(Object.entries(detail.result.counts) as [RmmStatus, number][]).map(
+                    ([state, count]) => (
+                      <div className="rmm-task-status-card" key={state}>
+                        <Tag color={statusColors[state]}>{t('rmm.status.' + state)}</Tag>
+                        <strong>{count}</strong>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </section>
+              <Panel className="rmm-task-results" title={t('rmm.deviceResults')}>
+                <FilterBar className="rmm-task-result-filters">
+                  <Input
+                    aria-label={t('rmm.searchDevices')}
+                    placeholder={t('rmm.searchDevices')}
+                    value={deviceQuery}
+                    allowClear
+                    onChange={(event) => {
+                      setDeviceQuery(event.target.value);
+                      setSelectedOutput(undefined);
+                    }}
+                  />
+                  <Select<RmmStatus | 'all' | 'attention'>
+                    aria-label={t('rmm.resultFilter')}
+                    value={resultFilter}
+                    onChange={(value) => {
+                      setResultFilter(value);
+                      setSelectedOutput(undefined);
+                    }}
+                    style={{ minWidth: 180 }}
+                    options={[
+                      { value: 'all', label: t('rmm.allResults') },
+                      { value: 'attention', label: t('rmm.attentionResults') },
+                      ...(
+                        [
+                          'queued',
+                          'running',
+                          'succeeded',
+                          'failed',
+                          'skipped',
+                          'timeout',
+                          'unknown',
+                        ] as const
+                      ).map((value) => ({ value, label: t('rmm.status.' + value) })),
+                    ]}
+                  />
+                  <Typography.Text type="secondary">
+                    {filteredResults.length} / {detail.result.results.length}
+                  </Typography.Text>
+                </FilterBar>
+                <Table<RmmResult>
+                  rowKey="id"
+                  dataSource={filteredResults}
+                  scroll={{ x: 650 }}
+                  pagination={{ pageSize: 10, hideOnSinglePage: true }}
+                  locale={{ emptyText: <Empty description={t('rmm.noMatchingDevices')} /> }}
+                  columns={[
+                    {
+                      title: t('rmm.devices'),
+                      render: (_value, row) => (
+                        <Link to={'/devices/' + encodeURIComponent(row.id) + '/workspace'}>
+                          {row.name}
+                        </Link>
+                      ),
+                    },
+                    {
+                      title: t('rmm.result'),
+                      render: (_value, row) => (
+                        <div className="rmm-task-result-state">
+                          <Tag color={statusColors[row.status]}>
+                            {t('rmm.status.' + row.status)}
+                          </Tag>
+                          {row.reason && (
+                            <Typography.Text type="secondary">
+                              {t('rmm.reason.' + row.reason)}
+                            </Typography.Text>
+                          )}
+                          {row.waitingReason && (
+                            <Typography.Text type="secondary">
+                              {t('rmm.reason.' + row.waitingReason)}
+                            </Typography.Text>
+                          )}
+                          {row.canRelease && row.occupiedBy && (
+                            <Button
+                              disabled={!connected}
+                              onClick={() => {
+                                setRelease(row);
+                                setReason('');
+                                setConfirmed(false);
+                                setReleaseError(undefined);
+                              }}
+                            >
+                              {t('rmm.releaseDevice')}
+                            </Button>
+                          )}
+                        </div>
+                      ),
+                    },
+                    { title: t('rmm.exitCode'), dataIndex: 'exitCode' },
+                    {
+                      title: t('rmm.outputTitle'),
+                      render: (_value, row) => (
+                        <Button
+                          type="link"
+                          onClick={() => setSelectedOutput({ taskId, deviceId: row.id })}
+                        >
+                          {t('rmm.viewOutput')}
+                        </Button>
+                      ),
+                    },
                   ]}
                 />
-                <Typography.Text type="secondary">
-                  {filteredResults.length} / {detail.result.results.length}
-                </Typography.Text>
-              </Space>
-              <Table<RmmResult>
-                rowKey="id"
-                dataSource={filteredResults}
-                scroll={{ x: 650 }}
-                pagination={{ pageSize: 10, hideOnSinglePage: true }}
-                locale={{ emptyText: <Empty description={t('rmm.noMatchingDevices')} /> }}
-                columns={[
-                  {
-                    title: t('rmm.devices'),
-                    render: (_value, row) => (
-                      <Link to={'/devices/' + encodeURIComponent(row.id) + '/workspace'}>
-                        {row.name}
-                      </Link>
-                    ),
-                  },
-                  {
-                    title: t('rmm.result'),
-                    render: (_value, row) => (
-                      <>
-                        <Tag color={statusColors[row.status]}>{t('rmm.status.' + row.status)}</Tag>
-                        {row.reason && ' · ' + t('rmm.reason.' + row.reason)}
-                        {row.waitingReason && <div>{t('rmm.reason.' + row.waitingReason)}</div>}
-                        {row.canRelease && row.occupiedBy && (
-                          <Button
-                            disabled={!connected}
-                            onClick={() => {
-                              setRelease(row);
-                              setReason('');
-                              setConfirmed(false);
-                              setReleaseError(undefined);
-                            }}
-                          >
-                            {t('rmm.releaseDevice')}
-                          </Button>
-                        )}
-                      </>
-                    ),
-                  },
-                  { title: t('rmm.exitCode'), dataIndex: 'exitCode' },
-                  {
-                    title: t('rmm.outputTitle'),
-                    render: (_value, row) => (
-                      <Button
-                        type="link"
-                        onClick={() => setSelectedOutput({ taskId, deviceId: row.id })}
-                      >
-                        {t('rmm.viewOutput')}
-                      </Button>
-                    ),
-                  },
-                ]}
-              />
+              </Panel>
               {selectedResult && (
                 <ResultOutput key={`${taskId}:${selectedResult.id}`} result={selectedResult} />
               )}
               <Collapse
+                className="rmm-task-audit"
                 items={[
                   {
                     key: 'audit',
                     label: t('rmm.audit'),
                     children: (
-                      <Typography.Text>
-                        {detail.result.actor} · {detail.result.scriptId} v{detail.result.version} ·{' '}
-                        {detail.result.id}
-                      </Typography.Text>
+                      <Descriptions column={1} size="small" bordered>
+                        <Descriptions.Item label={t('rmm.actor')}>
+                          {detail.result.actor}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={t('rmm.scriptReference')}>
+                          <code>
+                            {detail.result.scriptId} v{detail.result.version}
+                          </code>
+                        </Descriptions.Item>
+                        <Descriptions.Item label={t('rmm.taskReference')}>
+                          <code>{detail.result.id}</code>
+                        </Descriptions.Item>
+                      </Descriptions>
                     ),
                   },
                 ]}

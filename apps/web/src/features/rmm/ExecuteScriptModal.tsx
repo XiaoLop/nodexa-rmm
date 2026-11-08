@@ -12,11 +12,13 @@ import {
   Space,
   Switch,
   Typography,
+  Tag,
 } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useMeshCentralControlData } from '../gateway';
+import './rmm-modals.css';
 
 type Values = Record<string, string | number | boolean>;
 const listScripts = (api: RmmResource) => api.listScripts();
@@ -49,6 +51,9 @@ export function ExecuteScriptModal({
   return (
     <Modal
       open
+      className="rmm-modal rmm-execute-modal"
+      width={760}
+      centered
       title={t('rmm.execute')}
       onCancel={() => {
         if (!busy) onClose();
@@ -93,10 +98,15 @@ export function ExecuteScriptModal({
         }
       }}
     >
-      <Space direction="vertical" style={{ display: 'flex' }}>
-        <Typography.Text type="secondary">
-          {t(confirmation ? 'rmm.previewStep' : 'rmm.configureStep')}
-        </Typography.Text>
+      <Space direction="vertical" size={20} style={{ display: 'flex' }}>
+        <div className="rmm-step-banner">
+          <span className="rmm-step-number" aria-hidden="true">
+            {confirmation ? '02' : '01'}
+          </span>
+          <Typography.Text strong>
+            {t(confirmation ? 'rmm.previewStep' : 'rmm.configureStep')}
+          </Typography.Text>
+        </div>
         {(error || scripts.error) && (
           <Alert type="error" message={t('rmm.error', { code: error ?? scripts.error })} />
         )}
@@ -115,35 +125,49 @@ export function ExecuteScriptModal({
           />
         )}
         {script && (
-          <Typography.Text strong>
-            {script.name} v{script.version}
-          </Typography.Text>
+          <div className="rmm-script-summary">
+            <div className="rmm-script-summary-heading">
+              <Typography.Text strong>{script.name}</Typography.Text>
+              <Tag>v{script.version}</Tag>
+            </div>
+            <Tag>{script.platform === 'linux' ? 'Linux · /bin/sh' : 'Windows · PowerShell'}</Tag>
+            <Typography.Text type="secondary">
+              {t(script.platform === 'linux' ? 'rmm.linuxIdentity' : 'rmm.identity')}
+            </Typography.Text>
+          </div>
         )}
-        {script && (
-          <Typography.Text>
-            {t(script.platform === 'linux' ? 'rmm.linuxIdentity' : 'rmm.identity')}
-          </Typography.Text>
-        )}
-        <Select
-          mode="multiple"
-          placeholder={t('rmm.devices')}
-          value={nodeIds}
-          onChange={setNodeIds}
-          disabled={Boolean(selected || confirmation) || busy}
-          optionFilterProp="label"
-          options={devices.map(({ id, name }) => ({ value: id, label: name }))}
-        />
-        {!selected && (
+        <div className="rmm-target-fields">
+          <label className="rmm-field-label" htmlFor="rmm-target-devices">
+            {t('rmm.devices')}
+          </label>
           <Select
+            id="rmm-target-devices"
             mode="multiple"
-            placeholder={t('rmm.groups')}
-            value={groupIds}
-            onChange={setGroupIds}
-            disabled={Boolean(confirmation) || busy}
+            placeholder={t('rmm.devices')}
+            value={nodeIds}
+            onChange={setNodeIds}
+            disabled={Boolean(selected || confirmation) || busy}
             optionFilterProp="label"
-            options={groups.map(({ id, name }) => ({ value: id, label: name }))}
+            options={devices.map(({ id, name }) => ({ value: id, label: name }))}
           />
-        )}
+          {!selected && (
+            <>
+              <label className="rmm-field-label" htmlFor="rmm-target-groups">
+                {t('rmm.groups')}
+              </label>
+              <Select
+                id="rmm-target-groups"
+                mode="multiple"
+                placeholder={t('rmm.groups')}
+                value={groupIds}
+                onChange={setGroupIds}
+                disabled={Boolean(confirmation) || busy}
+                optionFilterProp="label"
+                options={groups.map(({ id, name }) => ({ value: id, label: name }))}
+              />
+            </>
+          )}
+        </div>
         <Form
           form={form}
           layout="vertical"
@@ -210,11 +234,13 @@ export function ExecuteScriptModal({
                 </Typography.Text>
               ))}
             </Space>
-            <ul style={{ maxHeight: 220, overflow: 'auto' }}>
+            <ul className="rmm-target-preview">
               {confirmation.preview.targets.map((target) => (
                 <li key={target.id}>
-                  {target.name}
-                  {target.reason ? ' · ' + t('rmm.reason.' + target.reason) : ''}
+                  <span>{target.name}</span>
+                  <Tag color={target.reason ? 'default' : 'green'}>
+                    {target.reason ? t('rmm.reason.' + target.reason) : t('rmm.readyTarget')}
+                  </Tag>
                 </li>
               ))}
             </ul>

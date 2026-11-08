@@ -4,15 +4,16 @@ import { Alert, Button, Space, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../assets/styles/tasks.css';
+import './rmm-task-details.css';
 
 export function ResultOutput({ result }: { result: RmmResult }) {
   const { t } = useTranslation();
   const [copyState, setCopyState] = useState<'success' | 'error'>();
   const output = result.output;
   return (
-    <div className="task-command-output-box">
+    <div className="task-command-output-box rmm-task-output">
       <Space orientation="vertical" style={{ width: '100%' }}>
-        <Space wrap>
+        <div className="rmm-task-output-header">
           <Typography.Text strong>
             {result.name} · {t('rmm.outputTitle')}
           </Typography.Text>
@@ -33,7 +34,7 @@ export function ResultOutput({ result }: { result: RmmResult }) {
               {t('common.actions.copy')}
             </Button>
           )}
-        </Space>
+        </div>
         {result.truncated && <Alert type="warning" message={t('rmm.outputTruncatedNotice')} />}
         {copyState && (
           <Alert

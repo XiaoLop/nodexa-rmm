@@ -4,10 +4,11 @@ import type {
   RmmScript,
   RmmScriptDraft,
 } from '@meshcentral/control-client';
-import { Alert, Button, Form, Input, Modal, Select, Space } from 'antd';
+import { Alert, Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useServerFiles } from '../server-files/useServerFiles';
+import './rmm-modals.css';
 
 export const maxScriptBytes = 64 * 1024;
 
@@ -67,12 +68,14 @@ export function ScriptEditor({
   return (
     <Modal
       open
+      className="rmm-modal rmm-editor-modal"
       title={t('rmm.editor')}
       onCancel={onClose}
       onOk={() => form.submit()}
       okText={t('rmm.saveVersion')}
       confirmLoading={busy}
-      width={850}
+      width={1040}
+      centered
     >
       {error && <Alert type="error" message={t('rmm.error', { code: error })} />}
       {current && <Alert type="info" message={t('rmm.versionNotice')} />}
@@ -97,7 +100,7 @@ export function ScriptEditor({
           }
         }}
       >
-        <Space wrap>
+        <div className="rmm-import-bar">
           <label>
             {t('rmm.localImport')}{' '}
             <input
@@ -114,7 +117,8 @@ export function ScriptEditor({
             />
           </label>
           {canBrowse && <Button onClick={() => setBrowse(!browse)}>{t('rmm.serverImport')}</Button>}
-        </Space>
+          <Typography.Text type="secondary">.ps1 / .sh · UTF-8 · 64 KiB</Typography.Text>
+        </div>
         {browse && (
           <Space direction="vertical" style={{ display: 'flex' }}>
             {files.error && <Alert type="error" message={files.error} />}
@@ -144,73 +148,94 @@ export function ScriptEditor({
               ))}
           </Space>
         )}
-        <Form.Item label={t('rmm.name')} name="name" rules={[{ required: true, max: 100 }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item label={t('rmm.description')} name="description">
-          <Input maxLength={1000} />
-        </Form.Item>
-        <Form.Item label={t('rmm.tags')} name="tags" extra={t('rmm.tagsHelp')}>
-          <Select mode="tags" maxCount={10} tokenSeparators={[',']} />
-        </Form.Item>
-        <Form.Item label={t('rmm.platform')} name="platform" rules={[{ required: true }]}>
-          <Select
-            options={[
-              { value: 'windows', label: 'Windows · PowerShell' },
-              { value: 'linux', label: 'Linux · /bin/sh' },
-            ]}
-          />
-        </Form.Item>
-        {platform === 'linux' && <Alert type="info" message={t('rmm.linuxParameters')} />}
-        <Form.Item
-          label={platform === 'linux' ? 'POSIX Shell' : 'PowerShell'}
-          name="body"
-          rules={[{ required: true }]}
-        >
-          <Input.TextArea rows={10} />
-        </Form.Item>
-        <Form.List name="parameters">
-          {(fields, { add, remove }) => (
-            <Space direction="vertical" style={{ display: 'flex' }}>
-              {fields.map(({ key, name }) => (
-                <Space key={key} wrap align="start">
-                  <Form.Item
-                    name={[name, 'name']}
-                    rules={[{ required: true, pattern: /^[a-z][a-z0-9_]{0,39}$/i }]}
-                  >
-                    <Input placeholder={t('rmm.parameter')} />
-                  </Form.Item>
-                  <Form.Item name={[name, 'type']} rules={[{ required: true }]}>
-                    <Select<RmmParameter['type']>
-                      style={{ width: 130 }}
-                      options={(['string', 'integer', 'boolean', 'enum'] as const).map((value) => ({
-                        value,
-                        label: t('rmm.' + value),
-                      }))}
-                    />
-                  </Form.Item>
-                  <Form.Item noStyle shouldUpdate>
-                    {({ getFieldValue }) =>
-                      getFieldValue(['parameters', name, 'type']) === 'enum' && (
-                        <Form.Item name={[name, 'options']} rules={[{ required: true }]}>
-                          <Select
-                            mode="tags"
-                            placeholder={t('rmm.enumOptions')}
-                            style={{ minWidth: 220 }}
-                          />
-                        </Form.Item>
-                      )
-                    }
-                  </Form.Item>
-                  <Button onClick={() => remove(name)}>{t('rmm.remove')}</Button>
-                </Space>
-              ))}
-              <Button disabled={fields.length >= 20} onClick={() => add({ type: 'string' })}>
-                {t('rmm.addParameter')}
-              </Button>
-            </Space>
-          )}
-        </Form.List>
+        <div className="rmm-editor-grid">
+          <section className="rmm-section">
+            <div className="rmm-section-heading">{t('rmm.scriptInfo')}</div>
+            <Form.Item label={t('rmm.name')} name="name" rules={[{ required: true, max: 100 }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item label={t('rmm.description')} name="description">
+              <Input maxLength={1000} />
+            </Form.Item>
+            <Form.Item label={t('rmm.tags')} name="tags" extra={t('rmm.tagsHelp')}>
+              <Select mode="tags" maxCount={10} tokenSeparators={[',']} />
+            </Form.Item>
+            <Form.Item label={t('rmm.platform')} name="platform" rules={[{ required: true }]}>
+              <Select
+                options={[
+                  { value: 'windows', label: 'Windows · PowerShell' },
+                  { value: 'linux', label: 'Linux · /bin/sh' },
+                ]}
+              />
+            </Form.Item>
+          </section>
+          <section className="rmm-section rmm-code-section">
+            <div className="rmm-section-heading">
+              {platform === 'linux' ? 'POSIX Shell' : 'PowerShell'}
+              <span className="rmm-code-format">UTF-8</span>
+            </div>
+            {platform === 'linux' && <Alert type="info" message={t('rmm.linuxParameters')} />}
+            <Form.Item
+              label={platform === 'linux' ? 'POSIX Shell' : 'PowerShell'}
+              name="body"
+              rules={[{ required: true }]}
+            >
+              <Input.TextArea rows={14} spellCheck={false} className="rmm-code-input" />
+            </Form.Item>
+          </section>
+        </div>
+        <section className="rmm-section rmm-parameters-section">
+          <div className="rmm-section-heading">{t('rmm.parametersTitle')}</div>
+          <Form.List name="parameters">
+            {(fields, { add, remove }) => (
+              <Space direction="vertical" style={{ display: 'flex' }}>
+                {fields.map(({ key, name }) => (
+                  <Space key={key} wrap align="start" className="rmm-parameter-row">
+                    <Form.Item
+                      name={[name, 'name']}
+                      rules={[{ required: true, pattern: /^[a-z][a-z0-9_]{0,39}$/i }]}
+                    >
+                      <Input placeholder={t('rmm.parameter')} />
+                    </Form.Item>
+                    <Form.Item name={[name, 'type']} rules={[{ required: true }]}>
+                      <Select<RmmParameter['type']>
+                        style={{ width: 130 }}
+                        options={(['string', 'integer', 'boolean', 'enum'] as const).map(
+                          (value) => ({
+                            value,
+                            label: t('rmm.' + value),
+                          }),
+                        )}
+                      />
+                    </Form.Item>
+                    <Form.Item noStyle shouldUpdate>
+                      {({ getFieldValue }) =>
+                        getFieldValue(['parameters', name, 'type']) === 'enum' && (
+                          <Form.Item name={[name, 'options']} rules={[{ required: true }]}>
+                            <Select
+                              mode="tags"
+                              placeholder={t('rmm.enumOptions')}
+                              style={{ minWidth: 220 }}
+                            />
+                          </Form.Item>
+                        )
+                      }
+                    </Form.Item>
+                    <Button onClick={() => remove(name)}>{t('rmm.remove')}</Button>
+                  </Space>
+                ))}
+                <Button
+                  type="dashed"
+                  block
+                  disabled={fields.length >= 20}
+                  onClick={() => add({ type: 'string' })}
+                >
+                  {t('rmm.addParameter')}
+                </Button>
+              </Space>
+            )}
+          </Form.List>
+        </section>
       </Form>
     </Modal>
   );

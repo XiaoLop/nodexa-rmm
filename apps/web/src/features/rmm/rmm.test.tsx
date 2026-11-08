@@ -379,7 +379,10 @@ describe('automation discovery and preview', () => {
     expect(within(drawer).getByText('rmm.bodyUnavailable')).toBeDefined();
     expect(within(drawer).queryByRole('button', { name: 'rmm.editor' })).toBeNull();
     fireEvent.click(within(drawer).getByRole('button', { name: 'rmm.execute' }));
-    expect(await screen.findByText('Linux check v2')).toBeDefined();
+    const version = await screen.findByText('v2', { selector: '.rmm-script-summary .ant-tag' });
+    const summary = version.closest('.rmm-script-summary') as HTMLElement;
+    expect(within(summary).getByText('Linux check')).toBeDefined();
+    expect(within(summary).getByText('Linux · /bin/sh')).toBeDefined();
   });
 
   it('does not offer execution or editing for archived scripts in details', async () => {
@@ -633,7 +636,10 @@ describe('device occupancy recovery UI', () => {
     fireEvent.click(screen.getByTitle('rmm.status.succeeded'));
     expect(screen.getByText('Other device')).toBeDefined();
     expect(screen.queryByText('Device')).toBeNull();
-    expect(screen.getByText('rmm.status.timeout 1')).toBeDefined();
+    const timeoutSummary = screen
+      .getByText('rmm.status.timeout', { selector: '.rmm-task-status-card .ant-tag' })
+      .closest('.rmm-task-status-card') as HTMLElement;
+    expect(within(timeoutSummary).getByText('1')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'rmm.releaseDevice' })).toBeNull();
   });
 
