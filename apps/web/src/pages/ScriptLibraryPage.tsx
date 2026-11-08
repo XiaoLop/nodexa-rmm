@@ -1,13 +1,14 @@
 import type { RmmResource, RmmScript } from '@meshcentral/control-client';
 import { useRmmQuery } from '@meshcentral/shared-state';
-import { Alert, Button, Popconfirm, Space, Table, Tag } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Empty, Input, Popconfirm, Select, Space, Tag } from 'antd';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PageHeader, Panel } from '../components/ui';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../components/ui';
 import { useMeshCentralControlData } from '../features/gateway';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { ExecuteScriptModal } from '../features/rmm/ExecuteScriptModal';
 import { ScriptEditor } from '../features/rmm/ScriptEditor';
+import '../assets/styles/devices.css';
 
 const listScripts = (api: RmmResource) => api.listScripts();
 
@@ -19,13 +20,28 @@ export function ScriptLibraryPage() {
   const [executing, setExecuting] = useState<RmmScript>();
   const [error, setError] = useState<string>();
   const [revision, setRevision] = useState(0);
+  const [query, setQuery] = useState('');
+  const [platform, setPlatform] = useState('all');
+  const [archive, setArchive] = useState('active');
+  const [source, setSource] = useState('all');
   const refresh = () => setRevision((value) => value + 1);
   const connected = status === 'connected';
   const scripts = useRmmQuery(client, connected, listScripts, undefined, revision);
+  const filtered = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return (scripts.result ?? []).filter(
+      (script) =>
+        (!search || `${script.name} ${script.description}`.toLowerCase().includes(search)) &&
+        (platform === 'all' || (script.platform ?? 'windows') === platform) &&
+        (archive === 'all' || script.archived === (archive === 'archived')) &&
+        (source === 'all' || script.builtin === (source === 'builtin')),
+    );
+  }, [scripts.result, query, platform, archive, source]);
   return (
     <div className="page-stack">
       <PageHeader
         title={t('rmm.library')}
+        description={t('rmm.libraryDescription')}
         actions={
           capabilities.siteAdmin && (
             <Button type="primary" disabled={!connected} onClick={() => setEditing(true)}>
@@ -37,15 +53,75 @@ export function ScriptLibraryPage() {
       {(error || scripts.error) && (
         <Alert type="error" message={t('rmm.error', { code: error ?? scripts.error })} />
       )}
-      <Panel>
-        <Table
+      {!connected && <Alert type="warning" message={t('rmm.disconnected')} />}
+      <Panel className="devices-table-card">
+        <FilterBar>
+          <Input
+            aria-label={t('rmm.searchScripts')}
+            placeholder={t('rmm.searchScripts')}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            allowClear
+          />
+          <Select
+            aria-label={t('rmm.platform')}
+            value={platform}
+            onChange={setPlatform}
+            options={[
+              { value: 'all', label: t('rmm.allPlatforms') },
+              { value: 'windows', label: 'Windows · PowerShell' },
+              { value: 'linux', label: 'Linux · /bin/sh' },
+            ]}
+          />
+          <Select
+            aria-label={t('rmm.scriptState')}
+            value={archive}
+            onChange={setArchive}
+            options={[
+              { value: 'active', label: t('rmm.activeScripts') },
+              { value: 'archived', label: t('rmm.archived') },
+              { value: 'all', label: t('rmm.allScripts') },
+            ]}
+          />
+          <Select
+            aria-label={t('rmm.source')}
+            value={source}
+            onChange={setSource}
+            options={[
+              { value: 'all', label: t('rmm.allSources') },
+              { value: 'builtin', label: t('rmm.builtin') },
+              { value: 'custom', label: t('rmm.custom') },
+            ]}
+          />
+          <div className="toolbar-spacer" />
+          {scripts.result && (
+            <Tag>
+              {filtered.length} / {scripts.result.length}
+            </Tag>
+          )}
+        </FilterBar>
+        <ConsoleTable<RmmScript>
           rowKey="id"
-          dataSource={scripts.result ?? []}
+          dataSource={filtered}
           loading={connected && !scripts.result && !scripts.error}
+          scroll={{ x: 800 }}
+          locale={{
+            emptyText: scripts.result && (
+              <Empty
+                description={t(scripts.result?.length ? 'rmm.noMatchingScripts' : 'rmm.noScripts')}
+              />
+            ),
+          }}
           columns={[
             { title: t('rmm.name'), dataIndex: 'name' },
             { title: t('rmm.description'), dataIndex: 'description' },
             { title: t('rmm.version'), dataIndex: 'version' },
+            {
+              title: t('rmm.source'),
+              render: (_value, script) => (
+                <Tag>{t(script.builtin ? 'rmm.builtin' : 'rmm.custom')}</Tag>
+              ),
+            },
             {
               title: t('rmm.platform'),
               render: (_value, script) =>

@@ -307,7 +307,7 @@ function LocalTasks() {
     <div className="page-stack tasks-page">
       <PageHeader
         title={t('taskCenter.title')}
-        description={t('taskCenter.subtitle')}
+        description={t('rmm.localTasksDescription')}
         actions={
           <Space>
             <Button icon={<DesktopOutlined />} onClick={() => navigate('/devices')}>

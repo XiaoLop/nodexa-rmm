@@ -1,6 +1,17 @@
 import type { RmmPreview, RmmResource, RmmScript } from '@meshcentral/control-client';
 import { useRmmQuery } from '@meshcentral/shared-state';
-import { Alert, Form, Input, InputNumber, Modal, Select, Space, Switch, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+  Switch,
+  Typography,
+} from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -70,6 +81,9 @@ export function ExecuteScriptModal({
       }}
     >
       <Space direction="vertical" style={{ display: 'flex' }}>
+        <Typography.Text type="secondary">
+          {t(confirmation ? 'rmm.previewStep' : 'rmm.configureStep')}
+        </Typography.Text>
         {(error || scripts.error) && (
           <Alert type="error" message={t('rmm.error', { code: error ?? scripts.error })} />
         )}
@@ -92,9 +106,11 @@ export function ExecuteScriptModal({
             {script.name} v{script.version}
           </Typography.Text>
         )}
-        <Typography.Text>
-          {t(script?.platform === 'linux' ? 'rmm.linuxIdentity' : 'rmm.identity')}
-        </Typography.Text>
+        {script && (
+          <Typography.Text>
+            {t(script.platform === 'linux' ? 'rmm.linuxIdentity' : 'rmm.identity')}
+          </Typography.Text>
+        )}
         <Select
           mode="multiple"
           placeholder={t('rmm.devices')}
@@ -144,9 +160,27 @@ export function ExecuteScriptModal({
         </Form>
         {confirmation && (
           <>
+            <Alert type="info" message={t('rmm.previewMayChange')} />
             <Typography.Text strong>
               {t('rmm.targetCount', { count: confirmation.preview.targets.length })}
             </Typography.Text>
+            <Space wrap>
+              <Typography.Text>
+                {t('rmm.eligibleTargets', {
+                  count: confirmation.preview.targets.filter((target) => !target.reason).length,
+                })}
+              </Typography.Text>
+              {Object.entries(
+                confirmation.preview.targets.reduce<Record<string, number>>((counts, target) => {
+                  if (target.reason) counts[target.reason] = (counts[target.reason] ?? 0) + 1;
+                  return counts;
+                }, {}),
+              ).map(([reason, count]) => (
+                <Typography.Text key={reason}>
+                  {t('rmm.reason.' + reason)}: {count}
+                </Typography.Text>
+              ))}
+            </Space>
             <ul style={{ maxHeight: 220, overflow: 'auto' }}>
               {confirmation.preview.targets.map((target) => (
                 <li key={target.id}>
@@ -155,6 +189,15 @@ export function ExecuteScriptModal({
                 </li>
               ))}
             </ul>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setConfirmation(undefined);
+                setError(undefined);
+              }}
+            >
+              {t('rmm.editTargets')}
+            </Button>
           </>
         )}
       </Space>

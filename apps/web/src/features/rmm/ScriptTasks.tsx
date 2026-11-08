@@ -1,13 +1,16 @@
-import type { RmmResource, RmmResult, RmmTask } from '@meshcentral/control-client';
+import type { RmmResource, RmmResult, RmmStatus, RmmTask } from '@meshcentral/control-client';
 import { useRmmQuery } from '@meshcentral/shared-state';
 import {
   Alert,
   Button,
   Checkbox,
   Collapse,
+  Empty,
   Input,
   Modal,
+  Select,
   Space,
+  Spin,
   Table,
   Tag,
   Typography,
@@ -17,10 +20,20 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMeshCentralControlData } from '../gateway';
 import { useFormatters } from '../../i18n';
+import { ConsoleTable, FilterBar, PageHeader, Panel } from '../../components/ui';
 
 const hasActiveTask = ({ tasks }: { tasks: RmmTask[] }) => tasks.some(({ active }) => active);
 const isActiveTask = ({ active, results }: RmmTask & { results: RmmResult[] }) =>
   active || results.some((row) => !!row.occupiedBy);
+const statusColors: Record<RmmStatus, string> = {
+  queued: 'default',
+  running: 'processing',
+  succeeded: 'success',
+  failed: 'error',
+  skipped: 'default',
+  timeout: 'warning',
+  unknown: 'warning',
+};
 
 export function ScriptTasks({
   taskId,
@@ -39,6 +52,9 @@ export function ScriptTasks({
   const [confirmed, setConfirmed] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [releaseError, setReleaseError] = useState<string>();
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<RmmStatus | 'all'>('all');
+  const [resultFilter, setResultFilter] = useState<RmmStatus | 'all'>('all');
   const before = pages.at(-1);
   const list = useCallback((api: RmmResource) => api.listTasks(before), [before]);
   const get = useCallback((api: RmmResource) => api.getTask(taskId ?? ''), [taskId]);
@@ -46,14 +62,22 @@ export function ScriptTasks({
   const tasks = useRmmQuery(client, connected && !taskId, list, hasActiveTask, revision);
   const detail = useRmmQuery(client, connected && !!taskId, get, isActiveTask, revision);
   const error = taskId ? detail.error : tasks.error;
+  const filteredTasks = (tasks.result?.tasks ?? []).filter((task) => {
+    const search = query.trim().toLowerCase();
+    return (
+      (!search || `${task.name} ${task.actor} ${task.id}`.toLowerCase().includes(search)) &&
+      (statusFilter === 'all' || (task.counts[statusFilter] ?? 0) > 0)
+    );
+  });
   const summary = (task: RmmTask) =>
-    Object.entries(task.counts).map(([state, count]) => (
-      <Tag key={state}>
+    (Object.entries(task.counts) as [RmmStatus, number][]).map(([state, count]) => (
+      <Tag key={state} color={statusColors[state]}>
         {t('rmm.status.' + state)} {count}
       </Tag>
     ));
   return (
     <Space direction="vertical" style={{ display: 'flex' }}>
+      <PageHeader title={t('taskCenter.title')} description={t('rmm.serverTasksDescription')} />
       <Modal
         open={!!release}
         title={t('rmm.releaseDevice')}
@@ -93,13 +117,17 @@ export function ScriptTasks({
         />
         {releaseError && <Alert type="error" message={t('rmm.error', { code: releaseError })} />}
       </Modal>
-      <Button disabled={!connected} onClick={() => setRevision((value) => value + 1)}>
-        {t('rmm.refresh')}
-      </Button>
+      {!connected && <Alert type="warning" message={t('rmm.disconnected')} />}
       {error && <Alert type="error" message={t('rmm.error', { code: error })} />}
       {taskId ? (
         <>
-          <Button onClick={() => onSelect()}>{t('rmm.back')}</Button>
+          <Space wrap>
+            <Button onClick={() => onSelect()}>{t('rmm.back')}</Button>
+            <Button disabled={!connected} onClick={() => setRevision((value) => value + 1)}>
+              {t('rmm.refresh')}
+            </Button>
+          </Space>
+          {connected && !detail.result && !detail.error && <Spin />}
           {detail.result && (
             <>
               <Typography.Title level={4}>
@@ -112,9 +140,35 @@ export function ScriptTasks({
                 {detail.result.actor} · {dateTime(new Date(detail.result.created).toISOString())}
               </Typography.Text>
               <Space wrap>{summary(detail.result)}</Space>
+              <Select<RmmStatus | 'all'>
+                aria-label={t('rmm.resultFilter')}
+                value={resultFilter}
+                onChange={setResultFilter}
+                style={{ minWidth: 180 }}
+                options={[
+                  { value: 'all', label: t('rmm.allResults') },
+                  ...(
+                    [
+                      'queued',
+                      'running',
+                      'succeeded',
+                      'failed',
+                      'skipped',
+                      'timeout',
+                      'unknown',
+                    ] as const
+                  ).map((value) => ({
+                    value,
+                    label: t('rmm.status.' + value),
+                  })),
+                ]}
+              />
               <Table<RmmResult>
                 rowKey="id"
-                dataSource={detail.result.results}
+                dataSource={detail.result.results.filter(
+                  (row) => resultFilter === 'all' || row.status === resultFilter,
+                )}
+                scroll={{ x: 650 }}
                 columns={[
                   {
                     title: t('rmm.devices'),
@@ -128,7 +182,7 @@ export function ScriptTasks({
                     title: t('rmm.result'),
                     render: (_value, row) => (
                       <>
-                        {t('rmm.status.' + row.status)}
+                        <Tag color={statusColors[row.status]}>{t('rmm.status.' + row.status)}</Tag>
                         {row.reason && ' · ' + t('rmm.reason.' + row.reason)}
                         {row.waitingReason && <div>{t('rmm.reason.' + row.waitingReason)}</div>}
                         {row.canRelease && row.occupiedBy && (
@@ -186,12 +240,55 @@ export function ScriptTasks({
           )}
         </>
       ) : (
-        <>
-          <Table<RmmTask>
+        <Panel className="devices-table-card">
+          <FilterBar>
+            <Input
+              aria-label={t('rmm.searchTasks')}
+              placeholder={t('rmm.searchTasks')}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              allowClear
+            />
+            <Select<RmmStatus | 'all'>
+              aria-label={t('rmm.resultFilter')}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: t('rmm.allResults') },
+                ...(
+                  [
+                    'queued',
+                    'running',
+                    'succeeded',
+                    'failed',
+                    'skipped',
+                    'timeout',
+                    'unknown',
+                  ] as const
+                ).map((value) => ({ value, label: t('rmm.status.' + value) })),
+              ]}
+            />
+            <div className="toolbar-spacer" />
+            <Button disabled={!connected} onClick={() => setRevision((value) => value + 1)}>
+              {t('rmm.refresh')}
+            </Button>
+          </FilterBar>
+          <Typography.Text type="secondary">{t('rmm.currentPageFilter')}</Typography.Text>
+          <ConsoleTable<RmmTask>
             rowKey="id"
-            dataSource={tasks.result?.tasks ?? []}
+            dataSource={filteredTasks}
             pagination={false}
             loading={connected && !tasks.result && !tasks.error}
+            scroll={{ x: 800 }}
+            locale={{
+              emptyText: tasks.result && (
+                <Empty
+                  description={t(
+                    tasks.result?.tasks.length ? 'rmm.noMatchingTasks' : 'rmm.noTasks',
+                  )}
+                />
+              ),
+            }}
             columns={[
               {
                 title: t('rmm.name'),
@@ -229,7 +326,7 @@ export function ScriptTasks({
               {t('rmm.next')}
             </Button>
           </Space>
-        </>
+        </Panel>
       )}
     </Space>
   );

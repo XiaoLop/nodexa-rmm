@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import type { MeshCentralClient } from '@meshcentral/control-client';
+import type { MeshCentralClient, RmmScript } from '@meshcentral/control-client';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FilesPage } from '../../pages/FilesPage';
 import { ScriptLibraryPage } from '../../pages/ScriptLibraryPage';
 import { decodeScript, maxScriptBytes, ScriptEditor } from './ScriptEditor';
+import { ExecuteScriptModal } from './ExecuteScriptModal';
 import { ScriptTasks } from './ScriptTasks';
 
 const state = vi.hoisted(() => ({
@@ -16,6 +17,8 @@ const state = vi.hoisted(() => ({
     getTask: vi.fn(),
     listTasks: vi.fn(),
     releaseDevice: vi.fn(),
+    preview: vi.fn(),
+    submit: vi.fn(),
   },
   files: {
     connected: true,
@@ -35,14 +38,19 @@ const state = vi.hoisted(() => ({
   },
 }));
 vi.mock('../gateway', () => {
-  const data = { status: 'connected', client: { rmm: state.rmm } };
+  const data = { status: 'connected', client: { rmm: state.rmm }, devices: [], groups: [] };
   return { useMeshCentralControlData: () => data };
 });
 vi.mock('../permissions/useUiCapabilities', () => ({
   useApplicationUiCapabilities: () => ({ siteAdmin: state.admin, serverFiles: true }),
 }));
 vi.mock('../server-files/useServerFiles', () => ({ useServerFiles: () => state.files }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: { count?: number }) =>
+      key === 'rmm.eligibleTargets' ? `${key}:${values?.count}` : key,
+  }),
+}));
 vi.mock('../../i18n', () => ({ useFormatters: () => ({ dateTime: (value: string) => value }) }));
 vi.mock('../../i18n/formatters', () => ({
   useFormatters: () => ({ dateTime: (value: string) => value }),
@@ -220,6 +228,149 @@ describe('script import', () => {
   });
 });
 
+describe('automation discovery and preview', () => {
+  const scripts: RmmScript[] = [
+    {
+      id: 'win',
+      name: 'Windows check',
+      description: 'Disk health',
+      version: 1,
+      builtin: true,
+      archived: false,
+      parameters: [],
+    },
+    {
+      id: 'linux',
+      name: 'Linux check',
+      description: 'System health',
+      version: 2,
+      platform: 'linux',
+      builtin: false,
+      archived: false,
+      parameters: [],
+    },
+    {
+      id: 'old',
+      name: 'Archived check',
+      description: '',
+      version: 1,
+      builtin: false,
+      archived: true,
+      parameters: [],
+    },
+  ];
+
+  it('filters scripts by text, platform, source and archive state', async () => {
+    state.rmm.listScripts.mockResolvedValue(scripts);
+    render(
+      <MemoryRouter>
+        <ScriptLibraryPage />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Windows check');
+    expect(screen.queryByText('Archived check')).toBeNull();
+    fireEvent.change(screen.getByLabelText('rmm.searchScripts'), { target: { value: 'disk' } });
+    expect(screen.getByText('Windows check')).toBeDefined();
+    expect(screen.queryByText('Linux check')).toBeNull();
+    fireEvent.change(screen.getByLabelText('rmm.searchScripts'), { target: { value: '' } });
+    fireEvent.mouseDown(screen.getByLabelText('rmm.platform'));
+    fireEvent.click(screen.getByTitle('Linux · /bin/sh'));
+    expect(screen.getByText('Linux check')).toBeDefined();
+    expect(screen.queryByText('Windows check')).toBeNull();
+    fireEvent.mouseDown(screen.getByLabelText('rmm.source'));
+    fireEvent.click(screen.getByTitle('rmm.builtin'));
+    expect(screen.getByText('rmm.noMatchingScripts')).toBeDefined();
+    fireEvent.mouseDown(screen.getByLabelText('rmm.scriptState'));
+    fireEvent.click(screen.getByTitle('rmm.archived'));
+    fireEvent.mouseDown(screen.getByLabelText('rmm.platform'));
+    fireEvent.click(screen.getByTitle('rmm.allPlatforms'));
+    fireEvent.mouseDown(screen.getByLabelText('rmm.source'));
+    fireEvent.click(screen.getByTitle('rmm.custom'));
+    expect(screen.getByText('Archived check')).toBeDefined();
+    expect(screen.queryByText('Linux check')).toBeNull();
+  });
+
+  it('filters the current task page without hiding pagination', async () => {
+    state.rmm.listTasks.mockResolvedValue({
+      tasks: [
+        {
+          id: 'a',
+          name: 'Alpha',
+          actor: 'admin',
+          version: 1,
+          created: Date.now(),
+          counts: { succeeded: 1 },
+          active: false,
+        },
+        {
+          id: 'b',
+          name: 'Beta',
+          actor: 'operator',
+          version: 2,
+          created: Date.now(),
+          counts: { timeout: 1 },
+          active: false,
+        },
+      ],
+      before: 123,
+    });
+    render(
+      <MemoryRouter>
+        <ScriptTasks onSelect={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Alpha v1');
+    fireEvent.change(screen.getByLabelText('rmm.searchTasks'), { target: { value: 'operator' } });
+    expect(screen.queryByText('Alpha v1')).toBeNull();
+    expect(screen.getByText('Beta v2')).toBeDefined();
+    expect(screen.getByText('rmm.currentPageFilter')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'rmm.next' }).hasAttribute('disabled')).toBe(false);
+    fireEvent.change(screen.getByLabelText('rmm.searchTasks'), { target: { value: '' } });
+    fireEvent.mouseDown(screen.getByLabelText('rmm.resultFilter'));
+    fireEvent.click(screen.getByTitle('rmm.status.timeout'));
+    expect(screen.queryByText('Alpha v1')).toBeNull();
+    expect(screen.getByText('Beta v2')).toBeDefined();
+  });
+
+  it('summarizes preview exclusions and requires a new preview after editing', async () => {
+    state.rmm.preview.mockResolvedValue({
+      id: 'preview',
+      targets: [
+        { id: 'one', name: 'Online' },
+        { id: 'two', name: 'Offline', reason: 'AGENT_OFFLINE' },
+        { id: 'three', name: 'Unsupported', reason: 'UNSUPPORTED_AGENT' },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <ExecuteScriptModal initial={scripts[0]!} onClose={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'rmm.preview' }));
+    await screen.findByText('rmm.previewMayChange');
+    expect(screen.getByText('rmm.eligibleTargets:1')).toBeDefined();
+    expect(screen.getByText('rmm.reason.AGENT_OFFLINE: 1')).toBeDefined();
+    expect(screen.getByText('rmm.reason.UNSUPPORTED_AGENT: 1')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'rmm.editTargets' }));
+    expect(screen.queryByText('rmm.previewMayChange')).toBeNull();
+    expect(screen.getByRole('button', { name: /rmm.preview/ })).toBeDefined();
+    expect(state.rmm.submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /rmm.preview/ }));
+    await screen.findByText('rmm.previewMayChange');
+    expect(state.rmm.preview).toHaveBeenCalledTimes(2);
+    state.rmm.submit.mockResolvedValue({ id: 'task' });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /rmm.confirm/ }).hasAttribute('disabled')).toBe(
+        false,
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /rmm.confirm/ }));
+    await waitFor(() =>
+      expect(state.rmm.submit).toHaveBeenCalledWith('preview', expect.any(String), {}),
+    );
+  });
+});
+
 describe('device occupancy recovery UI', () => {
   beforeEach(() => {
     state.rmm.getTask.mockResolvedValue({
@@ -286,6 +437,33 @@ describe('device occupancy recovery UI', () => {
       </MemoryRouter>,
     );
     await screen.findByText('rmm.reason.REMOTE_STATE_UNKNOWN');
+    expect(screen.queryByRole('button', { name: 'rmm.releaseDevice' })).toBeNull();
+  });
+
+  it('filters device results without changing the task summary', async () => {
+    const value = await state.rmm.getTask();
+    value.counts.succeeded = 1;
+    value.results.push({
+      id: 'node//other',
+      name: 'Other device',
+      status: 'succeeded',
+      reason: null,
+      exitCode: 0,
+      output: 'done',
+      truncated: false,
+    });
+    state.rmm.getTask.mockResolvedValue(value);
+    render(
+      <MemoryRouter>
+        <ScriptTasks taskId="task" onSelect={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Other device');
+    fireEvent.mouseDown(screen.getByLabelText('rmm.resultFilter'));
+    fireEvent.click(screen.getByTitle('rmm.status.succeeded'));
+    expect(screen.getByText('Other device')).toBeDefined();
+    expect(screen.queryByText('Device')).toBeNull();
+    expect(screen.getByText('rmm.status.timeout 1')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'rmm.releaseDevice' })).toBeNull();
   });
 });
