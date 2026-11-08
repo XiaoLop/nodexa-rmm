@@ -290,6 +290,63 @@ describe('automation discovery and preview', () => {
     expect(screen.queryByText('Linux check')).toBeNull();
   });
 
+  it('shows script details and opens the editor with the current version', async () => {
+    state.rmm.listScripts.mockResolvedValue([
+      {
+        ...scripts[1],
+        body: 'printf "hello"',
+        parameters: [{ name: 'Mode', type: 'enum', options: ['check', 'report'] }],
+      },
+    ]);
+    render(
+      <MemoryRouter>
+        <ScriptLibraryPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Linux check' }));
+    const drawer = await screen.findByRole('dialog');
+    expect(within(drawer).getByText('printf "hello"')).toBeDefined();
+    expect(within(drawer).getByText('check, report')).toBeDefined();
+    expect(within(drawer).getByText('v2')).toBeDefined();
+    fireEvent.click(within(drawer).getByRole('button', { name: 'rmm.editor' }));
+    expect(await screen.findByText('rmm.versionNotice')).toBeDefined();
+    expect((screen.getByLabelText('POSIX Shell') as HTMLTextAreaElement).value).toBe(
+      'printf "hello"',
+    );
+  });
+
+  it('shows unavailable body for non-admins and never offers edit in details', async () => {
+    state.admin = false;
+    state.rmm.listScripts.mockResolvedValue([scripts[1]]);
+    render(
+      <MemoryRouter>
+        <ScriptLibraryPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Linux check' }));
+    const drawer = await screen.findByRole('dialog');
+    expect(within(drawer).getByText('rmm.bodyUnavailable')).toBeDefined();
+    expect(within(drawer).queryByRole('button', { name: 'rmm.editor' })).toBeNull();
+    fireEvent.click(within(drawer).getByRole('button', { name: 'rmm.execute' }));
+    expect(await screen.findByText('Linux check v2')).toBeDefined();
+  });
+
+  it('does not offer execution or editing for archived scripts in details', async () => {
+    state.rmm.listScripts.mockResolvedValue([scripts[2]]);
+    render(
+      <MemoryRouter>
+        <ScriptLibraryPage />
+      </MemoryRouter>,
+    );
+    await screen.findByText('rmm.noMatchingScripts');
+    fireEvent.mouseDown(screen.getByLabelText('rmm.scriptState'));
+    fireEvent.click(screen.getByTitle('rmm.archived'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Archived check' }));
+    const drawer = await screen.findByRole('dialog');
+    expect(within(drawer).queryByRole('button', { name: 'rmm.execute' })).toBeNull();
+    expect(within(drawer).queryByRole('button', { name: 'rmm.editor' })).toBeNull();
+  });
+
   it('filters the current task page without hiding pagination', async () => {
     state.rmm.listTasks.mockResolvedValue({
       tasks: [
@@ -341,6 +398,7 @@ describe('automation discovery and preview', () => {
         { id: 'three', name: 'Unsupported', reason: 'UNSUPPORTED_AGENT' },
       ],
     });
+
     render(
       <MemoryRouter>
         <ExecuteScriptModal initial={scripts[0]!} onClose={vi.fn()} />
@@ -368,6 +426,50 @@ describe('automation discovery and preview', () => {
     await waitFor(() =>
       expect(state.rmm.submit).toHaveBeenCalledWith('preview', expect.any(String), {}),
     );
+  });
+  it('preserves the idempotency key after an uncertain submission and displays parameter values', async () => {
+    const script: RmmScript = { ...scripts[0]!, parameters: [{ name: 'Code', type: 'integer' }] };
+    state.rmm.preview.mockResolvedValue({
+      id: 'preview-1',
+      targets: [{ id: 'node', name: 'Node' }],
+    });
+    state.rmm.submit
+      .mockRejectedValueOnce(new Error('REQUEST_FAILED'))
+      .mockResolvedValueOnce({ id: 'task' });
+    render(
+      <MemoryRouter>
+        <ExecuteScriptModal initial={script} onClose={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'rmm.preview' }));
+    await screen.findByText('rmm.previewMayChange');
+    expect(screen.getByText('7')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /rmm.confirm/ }));
+    await screen.findByText('rmm.submissionUncertain');
+    expect(screen.getByRole('button', { name: 'rmm.editTargets' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /rmm.confirm/ }));
+    await waitFor(() => expect(state.rmm.submit).toHaveBeenCalledTimes(2));
+    expect(state.rmm.submit.mock.calls[0]).toEqual(state.rmm.submit.mock.calls[1]);
+    expect(state.rmm.submit.mock.calls[0]?.[2]).toEqual({ Code: 7 });
+  });
+
+  it('returns to configuration when the server rejects an expired preview', async () => {
+    state.rmm.preview.mockResolvedValue({ id: 'expired', targets: [{ id: 'node', name: 'Node' }] });
+    state.rmm.submit.mockRejectedValueOnce(new Error('PREVIEW_EXPIRED'));
+    render(
+      <MemoryRouter>
+        <ExecuteScriptModal initial={scripts[0]!} onClose={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'rmm.preview' }));
+    await screen.findByText('rmm.previewMayChange');
+    fireEvent.click(screen.getByRole('button', { name: /rmm.confirm/ }));
+    await waitFor(() => expect(screen.queryByText('rmm.previewMayChange')).toBeNull());
+    expect(screen.queryByText('rmm.submissionUncertain')).toBeNull();
+    expect(screen.getByRole('button', { name: /rmm.preview/ })).toBeDefined();
   });
 });
 
@@ -465,5 +567,111 @@ describe('device occupancy recovery UI', () => {
     expect(screen.queryByText('Device')).toBeNull();
     expect(screen.getByText('rmm.status.timeout 1')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'rmm.releaseDevice' })).toBeNull();
+  });
+
+  it('shows selected output, distinguishes null and empty output and hides filtered results', async () => {
+    const value = await state.rmm.getTask();
+    value.counts.succeeded = 2;
+    value.results.push(
+      {
+        id: 'node//other',
+        name: 'Other device',
+        status: 'succeeded',
+        reason: null,
+        exitCode: 0,
+        output: 'line 1\nline 2',
+        truncated: true,
+      },
+      {
+        id: 'node//empty',
+        name: 'Empty device',
+        status: 'succeeded',
+        reason: null,
+        exitCode: 0,
+        output: '',
+        truncated: false,
+      },
+    );
+    state.rmm.getTask.mockResolvedValue(value);
+    render(
+      <MemoryRouter>
+        <ScriptTasks taskId="task" onSelect={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Other device');
+    fireEvent.click(
+      within(screen.getByText('Device').closest('tr')!).getByRole('button', {
+        name: 'rmm.viewOutput',
+      }),
+    );
+    expect(screen.getByText('rmm.outputUnavailable')).toBeDefined();
+    fireEvent.click(
+      within(screen.getByText('Other device').closest('tr')!).getByRole('button', {
+        name: 'rmm.viewOutput',
+      }),
+    );
+    expect(screen.getByText('line 1 line 2')).toBeDefined();
+    expect(screen.getByText('rmm.outputTruncatedNotice')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('rmm.searchDevices'), { target: { value: 'Empty' } });
+    expect(screen.queryByText('line 1 line 2')).toBeNull();
+    fireEvent.click(
+      within(screen.getByText('Empty device').closest('tr')!).getByRole('button', {
+        name: 'rmm.viewOutput',
+      }),
+    );
+    expect(screen.getByText('rmm.outputEmpty')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('rmm.searchDevices'), { target: { value: '' } });
+    fireEvent.mouseDown(screen.getByLabelText('rmm.resultFilter'));
+    fireEvent.click(screen.getByTitle('rmm.attentionResults'));
+    expect(screen.getByText('Device')).toBeDefined();
+    expect(screen.queryByText('Other device')).toBeNull();
+    expect(screen.queryByText('rmm.outputEmpty')).toBeNull();
+  });
+
+  it('reports clipboard failures without claiming a successful copy', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    try {
+      const value = await state.rmm.getTask();
+      value.results[0].output = 'output';
+      state.rmm.getTask.mockResolvedValue(value);
+      render(
+        <MemoryRouter>
+          <ScriptTasks taskId="task" onSelect={vi.fn()} />
+        </MemoryRouter>,
+      );
+      fireEvent.click(await screen.findByRole('button', { name: 'rmm.viewOutput' }));
+      fireEvent.click(screen.getByRole('button', { name: /common.actions.copy/ }));
+      expect(await screen.findByText('rmm.copyFailed')).toBeDefined();
+      expect(screen.queryByText('rmm.outputCopied')).toBeNull();
+    } finally {
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  });
+
+  it('removes previously selected output when a refreshed task no longer exposes the device', async () => {
+    const value = await state.rmm.getTask();
+    value.results[0].output = 'sensitive result';
+    state.rmm.getTask.mockReset();
+    state.rmm.getTask.mockResolvedValueOnce(value).mockResolvedValueOnce({
+      ...value,
+      counts: {},
+      results: [],
+    });
+    render(
+      <MemoryRouter>
+        <ScriptTasks taskId="task" onSelect={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'rmm.viewOutput' }));
+    expect(screen.getByText('sensitive result')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'rmm.refresh' }));
+    await waitFor(() => expect(state.rmm.getTask).toHaveBeenCalledTimes(2));
+    await screen.findByText('rmm.noMatchingDevices');
+    expect(screen.queryByText('sensitive result')).toBeNull();
   });
 });

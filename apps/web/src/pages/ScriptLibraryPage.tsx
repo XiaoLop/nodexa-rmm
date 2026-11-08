@@ -8,6 +8,7 @@ import { useMeshCentralControlData } from '../features/gateway';
 import { useApplicationUiCapabilities } from '../features/permissions/useUiCapabilities';
 import { ExecuteScriptModal } from '../features/rmm/ExecuteScriptModal';
 import { ScriptEditor } from '../features/rmm/ScriptEditor';
+import { ScriptDetails } from '../features/rmm/ScriptDetails';
 import '../assets/styles/devices.css';
 
 const listScripts = (api: RmmResource) => api.listScripts();
@@ -18,6 +19,7 @@ export function ScriptLibraryPage() {
   const capabilities = useApplicationUiCapabilities();
   const [editing, setEditing] = useState<RmmScript | true>();
   const [executing, setExecuting] = useState<RmmScript>();
+  const [detailId, setDetailId] = useState<string>();
   const [error, setError] = useState<string>();
   const [revision, setRevision] = useState(0);
   const [query, setQuery] = useState('');
@@ -27,6 +29,7 @@ export function ScriptLibraryPage() {
   const refresh = () => setRevision((value) => value + 1);
   const connected = status === 'connected';
   const scripts = useRmmQuery(client, connected, listScripts, undefined, revision);
+  const selectedScript = scripts.result?.find((script) => script.id === detailId);
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
     return (scripts.result ?? []).filter(
@@ -113,7 +116,14 @@ export function ScriptLibraryPage() {
             ),
           }}
           columns={[
-            { title: t('rmm.name'), dataIndex: 'name' },
+            {
+              title: t('rmm.name'),
+              render: (_value, script) => (
+                <Button type="link" onClick={() => setDetailId(script.id)}>
+                  {script.name}
+                </Button>
+              ),
+            },
             { title: t('rmm.description'), dataIndex: 'description' },
             { title: t('rmm.version'), dataIndex: 'version' },
             {
@@ -166,6 +176,22 @@ export function ScriptLibraryPage() {
           ]}
         />
       </Panel>
+      {selectedScript && (
+        <ScriptDetails
+          script={selectedScript}
+          connected={connected}
+          canEdit={capabilities.siteAdmin}
+          onClose={() => setDetailId(undefined)}
+          onExecute={(script) => {
+            setDetailId(undefined);
+            setExecuting(script);
+          }}
+          onEdit={(script) => {
+            setDetailId(undefined);
+            setEditing(script);
+          }}
+        />
+      )}
       {editing && client && capabilities.siteAdmin && (
         <ScriptEditor
           client={client}

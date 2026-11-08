@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { useMeshCentralControlData } from '../gateway';
 import { useFormatters } from '../../i18n';
 import { ConsoleTable, FilterBar, PageHeader, Panel } from '../../components/ui';
+import { ResultOutput } from './ResultOutput';
 
 const hasActiveTask = ({ tasks }: { tasks: RmmTask[] }) => tasks.some(({ active }) => active);
 const isActiveTask = ({ active, results }: RmmTask & { results: RmmResult[] }) =>
@@ -54,7 +55,9 @@ export function ScriptTasks({
   const [releaseError, setReleaseError] = useState<string>();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<RmmStatus | 'all'>('all');
-  const [resultFilter, setResultFilter] = useState<RmmStatus | 'all'>('all');
+  const [resultFilter, setResultFilter] = useState<RmmStatus | 'all' | 'attention'>('all');
+  const [deviceQuery, setDeviceQuery] = useState('');
+  const [selectedOutput, setSelectedOutput] = useState<{ taskId: string; deviceId: string }>();
   const before = pages.at(-1);
   const list = useCallback((api: RmmResource) => api.listTasks(before), [before]);
   const get = useCallback((api: RmmResource) => api.getTask(taskId ?? ''), [taskId]);
@@ -69,6 +72,23 @@ export function ScriptTasks({
       (statusFilter === 'all' || (task.counts[statusFilter] ?? 0) > 0)
     );
   });
+  const filteredResults = (detail.result?.results ?? []).filter((row) => {
+    const search = deviceQuery.trim().toLowerCase();
+    const matchesStatus =
+      resultFilter === 'all' ||
+      (resultFilter === 'attention'
+        ? row.status === 'failed' ||
+          row.status === 'skipped' ||
+          row.status === 'timeout' ||
+          row.status === 'unknown' ||
+          !!row.waitingReason
+        : row.status === resultFilter);
+    return matchesStatus && (!search || `${row.name} ${row.id}`.toLowerCase().includes(search));
+  });
+  const selectedResult =
+    selectedOutput && selectedOutput.taskId === taskId
+      ? filteredResults.find((row) => row.id === selectedOutput.deviceId)
+      : undefined;
   const summary = (task: RmmTask) =>
     (Object.entries(task.counts) as [RmmStatus, number][]).map(([state, count]) => (
       <Tag key={state} color={statusColors[state]}>
@@ -122,7 +142,14 @@ export function ScriptTasks({
       {taskId ? (
         <>
           <Space wrap>
-            <Button onClick={() => onSelect()}>{t('rmm.back')}</Button>
+            <Button
+              onClick={() => {
+                setSelectedOutput(undefined);
+                onSelect();
+              }}
+            >
+              {t('rmm.back')}
+            </Button>
             <Button disabled={!connected} onClick={() => setRevision((value) => value + 1)}>
               {t('rmm.refresh')}
             </Button>
@@ -140,35 +167,51 @@ export function ScriptTasks({
                 {detail.result.actor} · {dateTime(new Date(detail.result.created).toISOString())}
               </Typography.Text>
               <Space wrap>{summary(detail.result)}</Space>
-              <Select<RmmStatus | 'all'>
-                aria-label={t('rmm.resultFilter')}
-                value={resultFilter}
-                onChange={setResultFilter}
-                style={{ minWidth: 180 }}
-                options={[
-                  { value: 'all', label: t('rmm.allResults') },
-                  ...(
-                    [
-                      'queued',
-                      'running',
-                      'succeeded',
-                      'failed',
-                      'skipped',
-                      'timeout',
-                      'unknown',
-                    ] as const
-                  ).map((value) => ({
-                    value,
-                    label: t('rmm.status.' + value),
-                  })),
-                ]}
-              />
+              <Space wrap>
+                <Input
+                  aria-label={t('rmm.searchDevices')}
+                  placeholder={t('rmm.searchDevices')}
+                  value={deviceQuery}
+                  allowClear
+                  onChange={(event) => {
+                    setDeviceQuery(event.target.value);
+                    setSelectedOutput(undefined);
+                  }}
+                />
+                <Select<RmmStatus | 'all' | 'attention'>
+                  aria-label={t('rmm.resultFilter')}
+                  value={resultFilter}
+                  onChange={(value) => {
+                    setResultFilter(value);
+                    setSelectedOutput(undefined);
+                  }}
+                  style={{ minWidth: 180 }}
+                  options={[
+                    { value: 'all', label: t('rmm.allResults') },
+                    { value: 'attention', label: t('rmm.attentionResults') },
+                    ...(
+                      [
+                        'queued',
+                        'running',
+                        'succeeded',
+                        'failed',
+                        'skipped',
+                        'timeout',
+                        'unknown',
+                      ] as const
+                    ).map((value) => ({ value, label: t('rmm.status.' + value) })),
+                  ]}
+                />
+                <Typography.Text type="secondary">
+                  {filteredResults.length} / {detail.result.results.length}
+                </Typography.Text>
+              </Space>
               <Table<RmmResult>
                 rowKey="id"
-                dataSource={detail.result.results.filter(
-                  (row) => resultFilter === 'all' || row.status === resultFilter,
-                )}
+                dataSource={filteredResults}
                 scroll={{ x: 650 }}
+                pagination={{ pageSize: 10, hideOnSinglePage: true }}
+                locale={{ emptyText: <Empty description={t('rmm.noMatchingDevices')} /> }}
                 columns={[
                   {
                     title: t('rmm.devices'),
@@ -202,26 +245,22 @@ export function ScriptTasks({
                     ),
                   },
                   { title: t('rmm.exitCode'), dataIndex: 'exitCode' },
-                ]}
-                expandable={{
-                  rowExpandable: (row) => row.output !== null,
-                  expandedRowRender: (row) => (
-                    <>
-                      {row.truncated && <Tag>{t('rmm.truncated')}</Tag>}
-                      <pre
-                        style={{
-                          whiteSpace: 'pre-wrap',
-                          overflowWrap: 'anywhere',
-                          maxHeight: 400,
-                          overflow: 'auto',
-                        }}
+                  {
+                    title: t('rmm.outputTitle'),
+                    render: (_value, row) => (
+                      <Button
+                        type="link"
+                        onClick={() => setSelectedOutput({ taskId, deviceId: row.id })}
                       >
-                        {row.output}
-                      </pre>
-                    </>
-                  ),
-                }}
+                        {t('rmm.viewOutput')}
+                      </Button>
+                    ),
+                  },
+                ]}
               />
+              {selectedResult && (
+                <ResultOutput key={`${taskId}:${selectedResult.id}`} result={selectedResult} />
+              )}
               <Collapse
                 items={[
                   {

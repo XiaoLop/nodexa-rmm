@@ -3,6 +3,7 @@ import { useRmmQuery } from '@meshcentral/shared-state';
 import {
   Alert,
   Button,
+  Descriptions,
   Form,
   Input,
   InputNumber,
@@ -44,11 +45,17 @@ export function ExecuteScriptModal({
   }>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [submissionUncertain, setSubmissionUncertain] = useState(false);
   return (
     <Modal
       open
       title={t('rmm.execute')}
-      onCancel={onClose}
+      onCancel={() => {
+        if (!busy) onClose();
+      }}
+      closable={!busy}
+      maskClosable={!busy}
+      keyboard={!busy}
       confirmLoading={busy}
       okButtonProps={{ disabled: !script || !client || status !== 'connected' }}
       okText={t(confirmation ? 'rmm.confirm' : 'rmm.preview')}
@@ -71,9 +78,15 @@ export function ExecuteScriptModal({
             setConfirmation({ preview, values, key: crypto.randomUUID() });
           }
         } catch (error) {
+          if (confirmation) setSubmissionUncertain(true);
           if (error instanceof Error) {
             setError(error.message);
-            if (error.message === 'PREVIEW_EXPIRED') setConfirmation(undefined);
+            if (error.message === 'PREVIEW_EXPIRED') {
+              setConfirmation(undefined);
+              setSubmissionUncertain(false);
+            }
+          } else if (confirmation) {
+            setError('REQUEST_FAILED');
           }
         } finally {
           setBusy(false);
@@ -161,6 +174,22 @@ export function ExecuteScriptModal({
         {confirmation && (
           <>
             <Alert type="info" message={t('rmm.previewMayChange')} />
+            {submissionUncertain && <Alert type="warning" message={t('rmm.submissionUncertain')} />}
+            {script && (
+              <Descriptions size="small" bordered column={1}>
+                <Descriptions.Item label={t('rmm.name')}>
+                  {script.name} v{script.version}
+                </Descriptions.Item>
+                <Descriptions.Item label={t('rmm.platform')}>
+                  {script.platform === 'linux' ? 'Linux · /bin/sh' : 'Windows · PowerShell'}
+                </Descriptions.Item>
+                {script.parameters.map((parameter) => (
+                  <Descriptions.Item key={parameter.name} label={parameter.name}>
+                    {String(confirmation.values[parameter.name] ?? '')}
+                  </Descriptions.Item>
+                ))}
+              </Descriptions>
+            )}
             <Typography.Text strong>
               {t('rmm.targetCount', { count: confirmation.preview.targets.length })}
             </Typography.Text>
@@ -190,7 +219,7 @@ export function ExecuteScriptModal({
               ))}
             </ul>
             <Button
-              disabled={busy}
+              disabled={busy || submissionUncertain}
               onClick={() => {
                 setConfirmation(undefined);
                 setError(undefined);

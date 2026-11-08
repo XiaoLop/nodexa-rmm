@@ -75,6 +75,7 @@ export function ScriptEditor({
       width={850}
     >
       {error && <Alert type="error" message={t('rmm.error', { code: error })} />}
+      {current && <Alert type="info" message={t('rmm.versionNotice')} />}
       <Form
         form={form}
         layout="vertical"
