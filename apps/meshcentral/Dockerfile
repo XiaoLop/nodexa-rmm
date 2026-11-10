@@ -58,6 +58,14 @@ RUN mkdir -p \
     && chmod +x /usr/local/bin/meshcentral-entrypoint \
     && chown -R node:node /run/config /var/lib/meshcentral /opt/meshcentral-plugins
 
+# Verify resolution after copying into the final image, using the runtime user and
+# the launcher's module location rather than an absolute builder-stage path.
+USER node
+RUN node -e "const { createRequire } = require('node:module'); const r = createRequire('/app/dist/main.js'); const expected = r('/app/package.json').dependencies.meshcentral; if (r('meshcentral/package.json').version !== expected) throw new Error('MeshCentral version mismatch'); console.log(r.resolve('meshcentral/meshcentral.js')); r.resolve('meshcentral/exeHandler.js');" \
+    && node -e "const fs = require('node:fs'); const path = require('node:path'); const entry = require.resolve('meshcentral/meshcentral.js'); const root = path.resolve(path.dirname(entry), '../..'); for (const [name, version] of Object.entries({'image-size':'2.0.2', 'mongodb':'4.17.2', '@mongodb-js/saslprep':'1.3.1'})) { const pkg = JSON.parse(fs.readFileSync(path.join(root, 'node_modules', name, 'package.json'), 'utf8')); if (pkg.version !== version) throw new Error(name + ' version mismatch'); }" \
+    && node dist/main.js --help
+USER root
+
 EXPOSE 8443
 
 ENTRYPOINT ["meshcentral-entrypoint", "node", "dist/main.js"]

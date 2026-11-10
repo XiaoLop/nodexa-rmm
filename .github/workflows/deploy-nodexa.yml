@@ -176,6 +176,8 @@ jobs:
 
             docker compose -f compose.nodexa.prod.yaml config --quiet
             docker compose -f compose.nodexa.prod.yaml pull
+            # Check the pulled image with deployment mounts before replacing the running service.
+            docker compose -f compose.nodexa.prod.yaml run --rm --no-deps --entrypoint node meshcentral dist/main.js --help
             docker compose -f compose.nodexa.prod.yaml up -d
             docker compose -f compose.nodexa.prod.yaml ps
             docker image prune -f

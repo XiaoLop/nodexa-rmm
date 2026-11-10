@@ -12,6 +12,18 @@ installation, back up persistent data and configuration, then verify plugin auth
 control messages, desktop, terminal, file transfers and Agent updates against real devices.
 Protocol evidence recorded against 1.1.54 retains that version until revalidated.
 
+MeshCentral 1.3.1 checks optional dependency versions using a filesystem fallback when a package
+does not export `package.json`. The root workspace `packageExtensions` declares `image-size`,
+`mongodb` and `@mongodb-js/saslprep` directly on MeshCentral so this fallback works with pnpm's
+isolated layout. Without it, startup can misidentify installed dependencies as missing and run
+`npm install` inside pnpm's virtual store, removing MeshCentral files. Subsequent restarts can
+then report `Cannot find module 'meshcentral/meshcentral.js'`.
+
+The final image checks these fallback paths as the runtime `node` user and runs the launcher
+with `--help`. After applying the fix, rebuild/load the image and recreate the container;
+restarting a damaged container does not restore its dependencies. Persistent data mounts are
+retained. Do not mount over `/app` or `/app/node_modules`.
+
 ## Development
 
 ```text

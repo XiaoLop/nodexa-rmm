@@ -33,8 +33,6 @@ services:
     build:
       context: ../..
       dockerfile: apps/meshcentral/Dockerfile
-      args:
-        MESHCENTRAL_VERSION: 1.1.54
     image: nodexa-rmm:development
     restart: unless-stopped
     environment:
