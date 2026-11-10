@@ -36,7 +36,7 @@ control-client 不依赖 React、Zustand 或 relay；relay 不依赖控制客户
 
 - Node.js 要求及 pnpm 精确版本以根 package.json 为准；在仓库根目录执行 pnpm，内部包通过 `workspace:*` 引用。
 - 共享版本使用根 workspace 的 `catalog:`；官网使用 `catalog:next`。保留合理的模块专用版本，不强制把所有依赖收进 catalog。版本变更同步锁文件。
-- MeshCentral 当前精确固定为 1.1.54；升级需核对插件、控制及 Relay 协议兼容性。
+- MeshCentral 当前精确固定为 1.3.1；升级需核对插件、控制及 Relay 协议兼容性。协议文档中基于 1.1.54 的源码证据保留原版本，不能视为已通过 1.3.1 的真实设备验收。
 - Web 与 APP 从各自 `.env.example` 建立本地配置；Web 开发时核对 `MESHCENTRAL_PROXY_TARGET`，不能假定默认代理就是自己的测试服务端。
 - 不提交真实环境变量、Cookie、Token、账号或采集中的业务数据；公共前端变量仅承载非秘密配置。日志和错误输出脱敏。非浏览器运行环境的会话传递需单独配置。
 - 插件修改遵循 [插件开发指南](../packages/meshcentral-plugins/docs/plugin-development.md)。运行数据和构建产物不作为源码手工维护。

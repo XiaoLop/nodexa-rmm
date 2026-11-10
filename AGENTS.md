@@ -26,7 +26,7 @@
 - 协议与资源 API 放在 control-client；状态绑定放在 shared-state；远程数据通道放在 relay；页面负责呈现与交互。遵循根 ESLint 的依赖限制。
 - 浏览器通过同源 `/api/auth/` 接口建立会话，服务端通过 Cookie 验证；MeshCentralClient 无需读取 Cookie 或在 WebSocket URL 中添加凭据。
 - 变更协议先核实 `docs/meshcentral/` 的版本、证据及目标模块测试，不将规划或示例当作已实现接口。
-- 依赖与版本遵循根 workspace catalog 和锁文件；MeshCentral 当前精确固定为 1.1.54。
+- 依赖与版本遵循根 workspace catalog 和锁文件；MeshCentral 当前精确固定为 1.3.1。
 - 不手工修改 node_modules、构建产物或运行数据。插件产物由构建脚本生成，修改插件源码与构建配置。
 - 保留人工文档与既有决策；发现冲突记录证据，未经验证不将计划阶段标为完成。
 

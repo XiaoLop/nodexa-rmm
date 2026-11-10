@@ -2,7 +2,7 @@
 
 > 本目录作为服务端业务网关或 Node.js SDK 的实现参考。当前 `apps/web` 与 `apps/app` 客户端不应携带 MeshCentral 管理凭据直连这些内部接口，而应连接具备鉴权、授权和审计能力的业务网关。
 
-本文档基于当前项目依赖的 MeshCentral `1.1.54`，主要参考 `meshctrl.js`、浏览器端 `meshcentral.js`、`agent-redir-ws-0.1.1.js` 以及服务端 `meshuser.js`、`webserver.js` 中使用的协议。
+本文档的协议证据基线为 MeshCentral `1.1.54`，主要参考 `meshctrl.js`、浏览器端 `meshcentral.js`、`agent-redir-ws-0.1.1.js` 以及服务端 `meshuser.js`、`webserver.js` 中使用的协议。当前项目依赖已升级为 `1.3.1`；原有版本标注与行号保留作为历史证据，不代表已完成新版本的真实设备兼容性验收。
 
 MeshCentral 的管理能力主要不是标准 REST API，而是通过 WebSocket 内部协议暴露：
 

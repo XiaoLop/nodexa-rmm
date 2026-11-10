@@ -2,8 +2,15 @@
 
 Workspace application that pins and runs the upstream MeshCentral package.
 
-The upstream dependency is pinned to version `1.1.54` so server upgrades remain explicit and
+The upstream dependency is pinned to version `1.3.1` so server upgrades remain explicit and
 repeatable.
+
+The 1.3.1 upgrade follows the npm `latest` release checked on 2026-11-10. See the
+[upstream release notes](https://github.com/Ylianst/MeshCentral/releases/tag/1.3.1).
+Rebuild the server image to deploy this dependency change. Before deploying to an existing
+installation, back up persistent data and configuration, then verify plugin authentication,
+control messages, desktop, terminal, file transfers and Agent updates against real devices.
+Protocol evidence recorded against 1.1.54 retains that version until revalidated.
 
 ## Development
 
