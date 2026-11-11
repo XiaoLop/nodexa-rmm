@@ -39,6 +39,9 @@ services:
       - /var/lib/meshcentral/data
     expose:
       - "8443"
+    # 供宿主机 Nginx 代理原生后台，仅绑定本机回环地址。
+    ports:
+      - "127.0.0.1:8443:8443"
     volumes:
       - type: bind
         source: ${MESHCENTRAL_CONFIG_FILE:-./config/config.meshcentral.prod.yaml}
