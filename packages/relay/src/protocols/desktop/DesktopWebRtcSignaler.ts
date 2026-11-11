@@ -72,8 +72,7 @@ export class DesktopWebRtcSignaler {
 
       dc.onclose = () => {
         if (this.disposed) return;
-        this.active = false;
-        this.events.fallback();
+        this.close();
       };
 
       dc.onerror = () => {
@@ -172,6 +171,7 @@ export class DesktopWebRtcSignaler {
     const wasActive = this.active;
     this.active = false;
     this.webSwitchOk = false;
+    this.transition('closed');
     if (this.dataChannel) {
       try {
         this.dataChannel.close();
@@ -188,7 +188,6 @@ export class DesktopWebRtcSignaler {
       }
       this.pc = undefined;
     }
-    this.transition('closed');
     if (wasActive) {
       this.events.fallback();
     }
@@ -196,8 +195,8 @@ export class DesktopWebRtcSignaler {
 
   dispose(): void {
     if (this.disposed) return;
-    this.disposed = true;
     this.close();
+    this.disposed = true;
   }
 
   private trySwitchTraffic(): void {

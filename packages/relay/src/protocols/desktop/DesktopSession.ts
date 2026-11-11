@@ -5,7 +5,7 @@ import { DesktopProtocolParser } from './DesktopProtocolParser';
 import { DesktopWebRtcSignaler } from './DesktopWebRtcSignaler';
 import { createDesktopRttMessage, parseDesktopControlMessage } from './controlMessages';
 import { createCadMessage, createCompressionMessage, createKeyMessage, createMouseButtonMessage, createMouseDoubleClickMessage, createMouseMoveMessage, createMouseWheelMessage, createUnicodeMessage, parseDisplayGeometry, parseScreenSize, parseTile } from './commands';
-import { DesktopSessionError, type DesktopCompressionOptions, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionState, type DesktopTile, type DesktopTransportType, type DesktopWebRtcState } from './types';
+import { DesktopSessionError, type DesktopCompressionOptions, type DesktopControlMessage, type DesktopDisplayGeometry, type DesktopKeyPhase, type DesktopMouseButton, type DesktopPoint, type DesktopProtocolCommand, type DesktopScreenSize, type DesktopSessionOptions, type DesktopSessionStats, type DesktopSessionState, type DesktopTile, type DesktopTransportType, type DesktopWebRtcState } from './types';
 
 function inboundSize(data: RelayInboundData): number {
   if (typeof data === 'string') return new TextEncoder().encode(data).byteLength;
@@ -25,6 +25,25 @@ export class DesktopSession {
   private transportTypeValue: DesktopTransportType = 'websocket';
   private disposed = false;
   private pendingBytes = 0;
+  private receivedBytes = 0;
+  private receivedTiles = 0;
+  private readonly statsListeners = new Set<(stats: DesktopSessionStats) => void>();
+  get stats(): DesktopSessionStats {
+    return Object.freeze({
+      receivedBytes: this.receivedBytes,
+      receivedTiles: this.receivedTiles,
+      pendingProtocolBytes: this.pendingBytes,
+    });
+  }
+  onStats(listener: (stats: DesktopSessionStats) => void): () => void {
+    this.statsListeners.add(listener);
+    return () => {
+      this.statsListeners.delete(listener);
+    };
+  }
+  private emitStats(): void {
+    if (!this.disposed) for (const listener of this.statsListeners) listener(this.stats);
+  }
   private inboundQueue = Promise.resolve();
   private rttTimer?: ReturnType<typeof setInterval>;
   private rttTimeout?: ReturnType<typeof setTimeout>;
@@ -137,6 +156,8 @@ export class DesktopSession {
     if (this.disposed) return;
     const size = inboundSize(data);
     this.pendingBytes += size;
+    this.receivedBytes += size;
+    this.emitStats();
     const limit = this.options.maxPendingProtocolBytes ?? 8 * 1024 * 1024;
     if (this.pendingBytes > limit) {
       this.fail(new DesktopSessionError('Desktop inbound data exceeded its pending limit.', 'output-overflow'));
@@ -147,7 +168,7 @@ export class DesktopSession {
       this.options.onUnhandledMessage?.(data);
       this.fail(error instanceof DesktopSessionError ? error : new DesktopSessionError('Desktop protocol processing failed.', 'protocol', { cause: error }));
       this.relay.close(4002, 'Desktop protocol processing failed.');
-    }).finally(() => { this.pendingBytes -= size; });
+    }).finally(() => { this.pendingBytes = Math.max(0, this.pendingBytes - size); this.emitStats(); });
   }
 
   private async handle(data: RelayInboundData): Promise<void> {
@@ -181,6 +202,7 @@ export class DesktopSession {
       } else if (command.command === 3) {
         const tile = parseTile(command);
         if (tile.imageFormat === 'unknown') throw new DesktopSessionError('Unsupported desktop image format.', 'unsupported-image');
+        this.receivedTiles += 1;
         for (const listener of this.tileListeners) listener(tile);
       } else if (command.command === 82) {
         const geometry = parseDisplayGeometry(command);
@@ -233,6 +255,8 @@ export class DesktopSession {
     if (this.rttTimer) clearInterval(this.rttTimer);
     if (this.rttTimeout) clearTimeout(this.rttTimeout);
     this.signaler?.dispose();
+    this.pendingBytes = 0;
+    this.statsListeners.clear();
     for (const remove of this.removeListeners.splice(0)) remove();
     for (const listener of this.stateListeners) listener(state);
   }

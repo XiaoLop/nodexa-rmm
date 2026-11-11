@@ -1182,3 +1182,21 @@
   .device-file-item-info { flex-basis: 100%; }
   .device-file-item-meta { margin-left: auto; }
 }
+
+.remote-performance summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.remote-performance dl {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+.remote-performance dt { color: var(--muted); }
+.remote-performance dd {
+  margin: 0 0 6px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}

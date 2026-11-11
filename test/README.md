@@ -77,3 +77,5 @@ pnpm --filter @meshcentral/test test:desktop-captures
 `connection-basic` 在 `c/cr` 后只发送文本协议号 `"2"`。如果没有画面，应按计划分别运行 `connection-with-refresh`、`connection-with-unpause`、`connection-with-compression`，最后才运行 `connection-with-full-startup`。控制和输入场景使用固定环境参数；当前入口已覆盖刷新、暂停/恢复、压缩、显示器、输入锁、基础鼠标、基础键盘、Unicode 和 CAD 候选消息。
 
 `DESKTOP_READY_AFTER_TILES` 默认为 `0`，因此采集器不会把第一条图块误判为完整桌面。只有固定测试桌面的图块覆盖条件已知时，才把它设为形成完整可见桌面所需的图块数量。画面内容属于敏感原始数据，采集目录被 Git 忽略，分享前必须人工审核。
+
+远程桌面流畅度对照采集、性能统计语义及未验收项见 [流畅度验收](desktop-performance.md)。

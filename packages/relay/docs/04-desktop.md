@@ -157,3 +157,9 @@ desktop.close();   // 同时关闭底层 relay
 - `src/protocols/desktop/commands.ts`
 - `src/protocols/desktop/controlMessages.ts`
 - `src/protocols/desktop/*.test.ts`
+
+## 性能统计补充
+
+`DesktopSession.stats` / `onStats()` 提供累计应用消息接收字节、累计图块和当前协议待处理字节；关闭时清理订阅。接口语义见 [Relay README](../README.md#桌面性能统计)。该统计不包含应用绘制队列，也不表示远端帧率。
+
+命令 5 的请求间隔和 scaling 仍需按目标 Agent 验证；Web 当前独立处理显示缩放并固定传输 scaling=1024。详见 [流畅度验收](../../../test/desktop-performance.md)。

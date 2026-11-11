@@ -1,3 +1,4 @@
+import type { DesktopPreset } from './desktop/desktopSettings';
 import { Button, Modal, Select, Slider, Switch } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ConnectionSparkline } from './ConnectionSparkline';
@@ -8,6 +9,8 @@ export interface WorkspaceSettingsValue {
   screenInput: boolean;
   resolution: string;
   colorDepth: number;
+  preset?: DesktopPreset;
+  transportScale?: 100 | 75 | 50;
   quality: number;
   imageFormat: 'jpeg' | 'png' | 'webp';
   frameTimer: number;
@@ -33,7 +36,7 @@ export function WorkspaceSettings({
   latencyTimedOut: boolean;
 }) {
   const { t } = useTranslation();
-  const set = <Key extends keyof WorkspaceSettingsValue>(key: Key, next: WorkspaceSettingsValue[Key]) => onChange({ ...value, [key]: next });
+  const set = <Key extends keyof WorkspaceSettingsValue>(key: Key, next: WorkspaceSettingsValue[Key]) => onChange({ ...value, [key]: next, ...(key === 'quality' ? { preset: 'custom' as const } : {}) });
   return (
     <aside className="workspace-right-column">
       <section className="console-card workspace-panel">

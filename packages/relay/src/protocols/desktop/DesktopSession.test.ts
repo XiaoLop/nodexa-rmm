@@ -61,3 +61,19 @@ describe('DesktopSession input', () => {
     desktop.close();
   });
 });
+
+ describe('DesktopSession statistics', () => {
+  it('counts messages and tiles, provides frozen snapshots and removes subscriptions', async () => {
+    const { socket, desktop } = await createDesktopSession(false, { webrtc: { enabled: false } });
+    const listener = vi.fn(); const remove = desktop.onStats(listener);
+    const bytes = new Uint8Array([0,3,0,11,0,0,0,0,255,216,255]);
+    socket.message(bytes.buffer);
+    await vi.waitFor(() => expect(desktop.stats).toEqual({receivedBytes:11,receivedTiles:1,pendingProtocolBytes:0}));
+    expect(Object.isFrozen(desktop.stats)).toBe(true);
+    remove(); const calls = listener.mock.calls.length; socket.message('ignored');
+    await vi.waitFor(() => expect(desktop.stats.receivedBytes).toBe(18));
+    expect(listener).toHaveBeenCalledTimes(calls);
+    desktop.close(); expect(desktop.stats.pendingProtocolBytes).toBe(0);
+    socket.message(bytes.buffer); expect(desktop.stats.receivedBytes).toBe(18);
+  });
+ });

@@ -102,6 +102,8 @@ export function DeviceWorkspacePage() {
     screenInput: false,
     resolution: '1280 × 720',
     colorDepth: 32,
+    preset: 'custom',
+    transportScale: 100,
     quality: 58,
     imageFormat: 'webp',
     frameTimer: 100,

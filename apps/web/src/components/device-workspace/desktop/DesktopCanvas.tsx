@@ -1,3 +1,4 @@
+import { DesktopRenderQueue, type DesktopRenderStats } from './DesktopRenderQueue';
 import type {
   DesktopMouseButton,
   DesktopScreenSize,
@@ -20,6 +21,7 @@ export interface DesktopCanvasHandle {
   clear(): void;
   drawTile(tile: DesktopTile): void;
   releaseInput(): void;
+  getStats(): DesktopRenderStats | undefined;
 }
 
 interface DesktopCanvasProps {
@@ -29,6 +31,7 @@ interface DesktopCanvasProps {
   mouseEnabled: boolean;
   onReady?: () => void;
   onDecodeError?: (error: Error) => void;
+  onOverflow?: () => void;
 }
 
 interface CoverageRect {
@@ -37,8 +40,6 @@ interface CoverageRect {
   right: number;
   bottom: number;
 }
-
-const MAX_CONCURRENT_DECODES = 3;
 
 function unionArea(rectangles: CoverageRect[]): number {
   const xs = [...new Set(rectangles.flatMap((rect) => [rect.left, rect.right]))].sort(
@@ -182,18 +183,69 @@ function mouseButton(button: number): DesktopMouseButton | undefined {
 
 export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>(
   function DesktopCanvas(
-    { scale, session, keyboardEnabled, mouseEnabled, onReady, onDecodeError },
+    { scale, session, keyboardEnabled, mouseEnabled, onReady, onDecodeError, onOverflow },
     ref,
   ) {
     const { t } = useTranslation();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const screenRef = useRef<DesktopScreenSize | undefined>(undefined);
-    const drawQueue = useRef(Promise.resolve());
-    const decodeLanesRef = useRef(
-      Array.from({ length: MAX_CONCURRENT_DECODES }, () => Promise.resolve()),
+    const queueRef = useRef<DesktopRenderQueue<ImageBitmap | HTMLImageElement> | undefined>(
+      undefined,
     );
-    const nextDecodeLaneRef = useRef(0);
-    const generationRef = useRef(0);
+    const callbacksRef = useRef({ onReady, onDecodeError, onOverflow });
+    callbacksRef.current = { onReady, onDecodeError, onOverflow };
+    const resetQueue = () => {
+      queueRef.current?.dispose();
+      queueRef.current = undefined;
+    };
+    const getQueue = () =>
+      (queueRef.current ??= new DesktopRenderQueue<ImageBitmap | HTMLImageElement>({
+        async decode(tile) {
+          const bytes = Uint8Array.from(tile.image);
+          const mime = tile.imageFormat === 'jpeg' ? 'image/jpeg' : 'image/' + tile.imageFormat;
+          const blob = new Blob([bytes], { type: mime });
+          if ('createImageBitmap' in window) return createImageBitmap(blob);
+          const url = URL.createObjectURL(blob);
+          try {
+            return await new Promise<HTMLImageElement>((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve(image);
+              image.onerror = () => reject(new Error('Desktop image decode failed.'));
+              image.src = url;
+            });
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        },
+        draw(decoded, tile) {
+          const canvas = canvasRef.current;
+          const screen = screenRef.current;
+          if (!canvas || !screen) return;
+          canvas.getContext('2d')?.drawImage(decoded, tile.x, tile.y);
+          if (!readyRef.current) {
+            const left = Math.max(0, tile.x),
+              top = Math.max(0, tile.y);
+            const right = Math.min(screen.width, tile.x + decoded.width);
+            const bottom = Math.min(screen.height, tile.y + decoded.height);
+            if (right > left && bottom > top)
+              coverageRef.current.push({ left, top, right, bottom });
+            if (unionArea(coverageRef.current) >= screen.width * screen.height) {
+              readyRef.current = true;
+              coverageRef.current = [];
+              callbacksRef.current.onReady?.();
+            }
+          }
+        },
+        error: (error) => callbacksRef.current.onDecodeError?.(error),
+        overflow: () => callbacksRef.current.onOverflow?.(),
+      }));
+    useEffect(
+      () => () => {
+        resetQueue();
+        if (moveFrameRef.current !== undefined) cancelAnimationFrame(moveFrameRef.current);
+      },
+      [],
+    );
     const coverageRef = useRef<CoverageRect[]>([]);
     const readyRef = useRef(false);
     const pressedKeysRef = useRef(new Map<string, { keyCode: number; extended: boolean }>());
@@ -220,7 +272,14 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
     };
 
     const releaseInput = () => {
-      if (session?.state === 'closed' || session?.state === 'error') return;
+      if (moveFrameRef.current !== undefined) cancelAnimationFrame(moveFrameRef.current);
+      moveFrameRef.current = undefined;
+      pendingMoveRef.current = undefined;
+      if (session?.state === 'closed' || session?.state === 'error') {
+        pressedKeysRef.current.clear();
+        pressedButtonsRef.current.clear();
+        return;
+      }
       for (const { keyCode, extended } of pressedKeysRef.current.values())
         session?.sendKey(keyCode, 'up', extended);
       pressedKeysRef.current.clear();
@@ -265,7 +324,7 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
           if (current?.width === screen.width && current.height === screen.height) return;
           const canvas = canvasRef.current;
           screenRef.current = { ...screen };
-          generationRef.current += 1;
+          resetQueue();
           coverageRef.current = [];
           readyRef.current = false;
           if (!canvas) return;
@@ -277,7 +336,7 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
         clear() {
           releaseInput();
           const canvas = canvasRef.current;
-          generationRef.current += 1;
+          resetQueue();
           coverageRef.current = [];
           readyRef.current = false;
           screenRef.current = undefined;
@@ -286,64 +345,10 @@ export const DesktopCanvas = forwardRef<DesktopCanvasHandle, DesktopCanvasProps>
           canvas.height = 0;
         },
         drawTile(tile) {
-          const generation = generationRef.current;
-          const mime = tile.imageFormat === 'jpeg' ? 'image/jpeg' : `image/${tile.imageFormat}`;
-          const imageBytes =
-            tile.image.buffer instanceof ArrayBuffer
-              ? new Uint8Array(tile.image.buffer, tile.image.byteOffset, tile.image.byteLength)
-              : Uint8Array.from(tile.image);
-          const blob = new Blob([imageBytes], { type: mime });
-          const lane = nextDecodeLaneRef.current;
-          nextDecodeLaneRef.current = (lane + 1) % MAX_CONCURRENT_DECODES;
-          let objectUrl: string | undefined;
-          const decode = decodeLanesRef.current[lane]!.then(
-            async (): Promise<ImageBitmap | HTMLImageElement> => {
-              if ('createImageBitmap' in window) return createImageBitmap(blob);
-              return new Promise<HTMLImageElement>((resolve, reject) => {
-                objectUrl = URL.createObjectURL(blob);
-                const image = new Image();
-                image.onload = () => resolve(image);
-                image.onerror = () => reject(new Error('Desktop image decode failed.'));
-                image.src = objectUrl;
-              });
-            },
-          );
-          decodeLanesRef.current[lane] = decode.then(
-            () => undefined,
-            () => undefined,
-          );
-
-          drawQueue.current = drawQueue.current
-            .then(async () => {
-              const canvas = canvasRef.current;
-              const screen = screenRef.current;
-              let decoded: ImageBitmap | HTMLImageElement | undefined;
-              try {
-                decoded = await decode;
-                if (!canvas || !screen || generation !== generationRef.current) return;
-                canvas.getContext('2d')?.drawImage(decoded, tile.x, tile.y);
-                if (!readyRef.current) {
-                  const left = Math.max(0, tile.x);
-                  const top = Math.max(0, tile.y);
-                  const right = Math.min(screen.width, tile.x + decoded.width);
-                  const bottom = Math.min(screen.height, tile.y + decoded.height);
-                  if (right > left && bottom > top)
-                    coverageRef.current.push({ left, top, right, bottom });
-                  if (unionArea(coverageRef.current) >= screen.width * screen.height) {
-                    readyRef.current = true;
-                    onReady?.();
-                  }
-                }
-              } finally {
-                if (decoded instanceof ImageBitmap) decoded.close();
-                if (objectUrl) URL.revokeObjectURL(objectUrl);
-              }
-            })
-            .catch((error: unknown) =>
-              onDecodeError?.(
-                error instanceof Error ? error : new Error('Desktop image decode failed.'),
-              ),
-            );
+          getQueue().enqueue(tile);
+        },
+        getStats() {
+          return queueRef.current?.stats;
         },
         releaseInput,
       }),

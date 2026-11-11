@@ -1,3 +1,6 @@
+import { useDesktopCompression } from './desktop/useDesktopCompression';
+import { DESKTOP_PRESETS, desktopCompression, type DesktopPreset } from './desktop/desktopSettings';
+import type { DesktopRenderStats } from './desktop/DesktopRenderQueue';
 import {
   AppstoreOutlined,
   CameraOutlined,
@@ -23,6 +26,7 @@ import {
   RelayCancelledError,
   RelayClient,
   type DesktopSessionState,
+  type DesktopSessionStats,
 } from '@meshcentral/relay';
 import type { Device } from '@meshcentral/shared-state';
 import {
@@ -36,7 +40,7 @@ import {
   Tooltip,
   message,
 } from 'antd';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useCallback, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MESH_CENTRAL_RELAY_URL } from '../../config/gateway';
 import type { DeviceWorkspaceModel } from '../../features/device-workspace/types';
@@ -126,6 +130,10 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   const [screen, setScreen] = useState<{ width: number; height: number }>();
   const [recorded, setRecorded] = useState(false);
   const [transport, setTransport] = useState<'websocket' | 'webrtc'>('websocket');
+  const samplesRef = useRef<Array<Record<string, unknown>>>([]);
+  const [performanceStats, setPerformanceStats] = useState<{
+    relay: DesktopSessionStats; render?: DesktopRenderStats; webrtc?: string; bytesPerSecond: number;
+  }>();
   const [desktopSession, setDesktopSession] = useState<DesktopSession>();
   const [fullscreen, setFullscreen] = useState(false);
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
@@ -133,6 +141,12 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
   const [manualPasteRequired, setManualPasteRequired] = useState(false);
   const [pasteSubmitting, setPasteSubmitting] = useState(false);
   const [currentLatency, setCurrentLatency] = useState<number>();
+  const settingsRefForStats = useRef(settings);
+  settingsRefForStats.current = settings;
+  const latencyRef = useRef(currentLatency);
+  latencyRef.current = currentLatency;
+  const screenRefForStats = useRef(screen);
+  screenRefForStats.current = screen;
   const shellRef = useRef<HTMLDivElement>(null);
   const screenContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<DesktopCanvasHandle>(null);
@@ -183,24 +197,44 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  const onCompressionError = useCallback((compressionError: unknown) => {
+    void messageApi.error(compressionError instanceof Error ? compressionError.message : t('deviceWorkspace.remoteDesktop.qualityUpdateFailed'));
+  }, [messageApi, t]);
+  useDesktopCompression(desktopSession, !!screen, settings, onCompressionError);
+
   useEffect(() => {
-    if (!desktopSession || !screen) return;
-    const timeout = window.setTimeout(() => {
-      try {
-        desktopSession.setCompression({
-          imageFormat: settings.imageFormat,
-          quality: settings.quality,
-          scaling: Math.round((Number(scale) || 100) * 10.24),
-          frameTimer: settings.frameTimer,
-        });
-      } catch (compressionError) {
-        if (sessionRef.current === desktopSession) {
-          void messageApi.error(compressionError instanceof Error ? compressionError.message : t('deviceWorkspace.remoteDesktop.qualityUpdateFailed'));
-        }
-      }
-    }, 150);
-    return () => window.clearTimeout(timeout);
-  }, [desktopSession, messageApi, settings.quality, settings.imageFormat, settings.frameTimer, scale, screen]);
+    setPerformanceStats(undefined);
+    samplesRef.current = [];
+    if (!desktopSession) return;
+    let latest = desktopSession.stats;
+    let previousBytes = latest.receivedBytes;
+    let previousTime = performance.now();
+    const started = previousTime;
+    const remove = desktopSession.onStats(stats => { latest = stats; });
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+      const render = canvasRef.current?.getStats();
+      setPerformanceStats({ relay: latest, render,
+        webrtc: desktopSession.webrtcState,
+        bytesPerSecond: (latest.receivedBytes - previousBytes) * 1000 / Math.max(1, now - previousTime) });
+      samplesRef.current.push({ elapsedMs: now - started, received: latest,
+        render, transport: desktopSession.transport, webrtc: desktopSession.webrtcState,
+        rttMs: latencyRef.current, screen: screenRefForStats.current,
+        compression: desktopCompression(settingsRefForStats.current) });
+      if (samplesRef.current.length > 300) samplesRef.current.shift();
+      previousBytes = latest.receivedBytes;
+      previousTime = now;
+    }, 1000);
+    return () => { remove(); window.clearInterval(timer); };
+  }, [desktopSession]);
+
+  const exportPerformance = () => {
+    const blob = new Blob([JSON.stringify({ schemaVersion: 1, samples: samplesRef.current }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'desktop-performance.json';
+    link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const connect = async () => {
     if (CONNECTING_STATES.has(status) || status === 'connected') return;
@@ -267,6 +301,8 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
         if (next === 'screen-known') setStatus('waiting-screen');
         if (next === 'desktop-ready') setStatus('connected');
         if (next === 'closed' || next === 'error') {
+          canvasRef.current?.clear();
+          setScreen(undefined);
           setStatus(next);
           setDesktopSession(undefined);
           setCurrentLatency(undefined);
@@ -378,7 +414,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
     <div>
       <div>{t(`deviceWorkspace.remoteDesktop.status.${STATUS_KEYS[status]}`)}</div>
       {screen && <div>{screen.width} × {screen.height}</div>}
-      {desktopSession && <div>{transport === 'webrtc' ? t('deviceWorkspace.remoteDesktop.webrtcP2p') : t('deviceWorkspace.remoteDesktop.websocketRelay')}</div>}
+      {desktopSession && <div>{transport === 'webrtc' ? 'WebRTC DataChannel' : t('deviceWorkspace.remoteDesktop.websocketRelay')}</div>}
       {recorded && <div>{t('deviceWorkspace.remoteDesktop.recorded')}</div>}
       {desktopAccess === 'view-only' && <div>{t('deviceWorkspace.remoteDesktop.viewOnly')}</div>}
     </div>
@@ -547,7 +583,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                       desktopSession?.setCompression({
                         imageFormat: settings.imageFormat,
                         quality: settings.quality,
-                        scaling: Math.round((Number(scale) || 100) * 10.24),
+                        scaling: 1024,
                         frameTimer: settings.frameTimer,
                       });
                       void messageApi.success(t('deviceWorkspace.remoteDesktop.qualityUpdateFailed', '画面刷新指令已发送'));
@@ -592,6 +628,23 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             <div className="remote-toolbar-card-header">{t('deviceWorkspace.remoteDesktop.displayCardTitle')}</div>
             <div className="remote-settings-compact">
               <div className="remote-setting-item">
+                <span>{t('deviceWorkspace.remoteDesktop.preset')}</span>
+                <Select size="small" value={settings.preset ?? 'custom'} style={{ width: 110 }}
+                  onChange={(preset: DesktopPreset) => onSettingsChange({ ...settings, preset,
+                    ...(preset === 'custom' ? {} : DESKTOP_PRESETS[preset]) })}
+                  options={(['smooth', 'balanced', 'clear', 'custom'] as const).map(value => ({ value,
+                    label: t('deviceWorkspace.remoteDesktop.presets.' + value) }))} />
+              </div>
+              <div className="remote-setting-item">
+                <Tooltip title={t('deviceWorkspace.remoteDesktop.scaleUnverified')}>
+                  <span>{t('deviceWorkspace.remoteDesktop.transportScale')}</span>
+                </Tooltip>
+                <Select size="small" value={100} style={{ width: 110 }} disabled options={[
+                  { value: 100, label: '100%' }, { value: 75, label: '75%', disabled: true },
+                  { value: 50, label: '50%', disabled: true },
+                ]} />
+              </div>
+              <div className="remote-setting-item">
                 <span>{t('deviceWorkspace.remoteDesktop.scaleMode')}</span>
                 <Select
                   size="small"
@@ -614,7 +667,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                   value={settings.imageFormat}
                   style={{ width: 110 }}
                   onChange={(imageFormat: WorkspaceSettingsValue['imageFormat']) =>
-                    onSettingsChange({ ...settings, imageFormat })
+                    onSettingsChange({ ...settings, imageFormat, preset: 'custom' })
                   }
                   options={[
                     { value: 'webp', label: 'WebP' },
@@ -624,17 +677,17 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                 />
               </div>
               <div className="remote-setting-item">
-                <span>{t('deviceWorkspace.remoteDesktop.frameRate')}</span>
+                <span>{t('deviceWorkspace.remoteDesktop.requestInterval')}</span>
                 <Select
                   size="small"
                   value={settings.frameTimer}
                   style={{ width: 110 }}
-                  onChange={(frameTimer: number) => onSettingsChange({ ...settings, frameTimer })}
+                  onChange={(frameTimer: number) => onSettingsChange({ ...settings, frameTimer, preset: 'custom' })}
                   options={[
-                    { value: 17, label: '60 FPS' },
-                    { value: 33, label: '30 FPS' },
-                    { value: 50, label: '20 FPS' },
-                    { value: 100, label: '10 FPS' },
+                    { value: 17, label: '17 ms' },
+                    { value: 33, label: '33 ms' },
+                    { value: 50, label: '50 ms' },
+                    { value: 100, label: '100 ms' },
                   ]}
                 />
               </div>
@@ -647,7 +700,7 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
                   min={10}
                   max={100}
                   value={settings.quality}
-                  onChange={(val) => onSettingsChange({ ...settings, quality: val })}
+                  onChange={(val) => onSettingsChange({ ...settings, quality: val, preset: 'custom' })}
                 />
               </div>
             </div>
@@ -685,6 +738,23 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
             </div>
           </div>
 
+          <details className="remote-toolbar-card remote-performance">
+            <summary>{t('deviceWorkspace.remoteDesktop.performance')}</summary>
+            <Button size="small" disabled={!performanceStats} onClick={exportPerformance}>{t('deviceWorkspace.remoteDesktop.exportPerformance')}</Button>
+            <dl>
+              <dt>{t('deviceWorkspace.remoteDesktop.actualTransport')}</dt><dd>{desktopSession ? (transport === 'webrtc' ? 'WebRTC DataChannel' : 'WS Relay') : '—'}</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.rtcState')}</dt><dd>{performanceStats?.webrtc ? t('deviceWorkspace.remoteDesktop.rtcStates.' + performanceStats.webrtc) : '—'}</dd>
+              <dt>RTT</dt><dd>{currentLatency === undefined ? '—' : currentLatency + ' ms'}</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.received')}</dt><dd>{performanceStats?.relay.receivedBytes ?? 0} B / {Math.round(performanceStats?.bytesPerSecond ?? 0)} B/s</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.tiles')}</dt><dd>{performanceStats?.relay.receivedTiles ?? 0}</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.protocolPending')}</dt><dd>{performanceStats?.relay.pendingProtocolBytes ?? 0} B</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.renderPending')}</dt><dd>{performanceStats?.render?.pendingTiles ?? 0} / {performanceStats?.render?.pendingBytes ?? 0} B</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.drawBatches')}</dt><dd>{performanceStats?.render?.drawBatches ?? 0}</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.decodeMean')}</dt><dd>{((performanceStats?.render?.decodeMs ?? 0) / Math.max(1, performanceStats?.render?.decodedTiles ?? 0)).toFixed(1)} ms</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.waitMean')}</dt><dd>{((performanceStats?.render?.waitMs ?? 0) / Math.max(1, performanceStats?.render?.drawnTiles ?? 0)).toFixed(1)} ms</dd>
+              <dt>{t('deviceWorkspace.remoteDesktop.waitP95')}</dt><dd>{(performanceStats?.render?.waitP95Ms ?? 0).toFixed(1)} ms</dd>
+            </dl>
+          </details>
           {/* 6. 底部常驻全屏操作 */}
           <div className="remote-footer-actions">
             <Button
@@ -720,7 +790,8 @@ export const RemoteDesktopPanel = forwardRef<RemoteDesktopPanelHandle, RemoteDes
               keyboardEnabled={settings.keyboard && desktopAccess !== 'denied' && desktopAccess !== 'view-only'}
               mouseEnabled={settings.mouse && desktopAccess !== 'denied' && desktopAccess !== 'view-only'}
               onReady={() => setStatus('connected')}
-              onDecodeError={(decodeError) => setError(decodeError.message)}
+              onDecodeError={(decodeError) => { disconnect(); setError(decodeError.message); setStatus('error'); }}
+              onOverflow={() => { disconnect('Desktop render queue overflow.'); setError(t('deviceWorkspace.remoteDesktop.renderOverflow')); setStatus('error'); }}
             />
             {!screen && (
               <div className="remote-empty">

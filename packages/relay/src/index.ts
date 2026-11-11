@@ -46,6 +46,7 @@ export {
   type DesktopSessionErrorCode,
   type DesktopSessionOptions,
   type DesktopSessionState,
+  type DesktopSessionStats,
   type DesktopTile,
 } from './protocols/desktop';
 export {

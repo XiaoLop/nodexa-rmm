@@ -360,3 +360,17 @@ pnpm --filter @meshcentral/relay typecheck
 pnpm --filter @meshcentral/relay test
 pnpm --filter @meshcentral/relay build
 ```
+
+## 桌面性能统计
+
+`desktop.stats` 返回冻结的 `DesktopSessionStats` 快照，字段为累计 `receivedBytes`、累计 `receivedTiles` 及当前 `pendingProtocolBytes`。字节统计覆盖进入桌面会话的应用消息，包含文本控制消息，不包含线协议开销；不等同于图像字节或远端帧率。`desktop.onStats(listener)` 在接收和处理完成时通知，返回解除监听函数。关闭会话后清理订阅、停止通知，待处理协议字节归零；累计值保留。绘制统计由应用层负责，不计入此 API。
+
+```ts
+const removeStats = desktop.onStats((stats) => {
+  // Cache the latest snapshot; throttle UI updates in the application.
+  console.debug(stats.receivedBytes, stats.receivedTiles, stats.pendingProtocolBytes);
+});
+removeStats();
+```
+
+Web 的对照采集和未验收项见 [远程桌面流畅度验收](../../test/desktop-performance.md)。

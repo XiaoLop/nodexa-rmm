@@ -1,3 +1,4 @@
+import { DesktopWebRtcSignaler } from './DesktopWebRtcSignaler';
 import { describe, expect, it, vi } from 'vitest';
 import { RelayConnection } from '../../RelayConnection';
 import { RelaySession } from '../../RelaySession';
@@ -170,5 +171,23 @@ describe('DesktopSession WebRTC integration', () => {
     dc.close();
     expect(session.transport).toBe('websocket');
     expect(transports.at(-1)).toBe('websocket');
+    expect(session.webrtcState).toBe('closed');
+    expect(pc.iceConnectionState).toBe('closed');
+    session.close();
+  });
+});
+
+describe('DesktopWebRtcSignaler lifecycle', () => {
+  it('closes the peer and data channel on disposal during negotiation', async () => {
+    const pc = new FakeRTCPeerConnection();
+    const signaler = new DesktopWebRtcSignaler({ peerConnectionFactory: () => pc as unknown as RTCPeerConnection }, {
+      stateChange: vi.fn(), sendSignal: vi.fn(), message: vi.fn(), switched: vi.fn(), fallback: vi.fn(),
+    });
+    signaler.start();
+    await vi.waitFor(() => expect(pc.localDescription).not.toBeNull());
+    signaler.dispose();
+    expect(pc.dataChannel?.readyState).toBe('closed');
+    expect(pc.iceConnectionState).toBe('closed');
+    expect(signaler.state).toBe('closed');
   });
 });

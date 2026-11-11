@@ -27,6 +27,7 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
 afterEach(cleanup);
 
 function renderPanel(access: 'control' | 'view-only' = 'control') {
@@ -58,7 +59,7 @@ describe('RemoteDesktopPanel layout', () => {
     expect(toolbar.parentElement).toBe(canvas.closest('.remote-desktop-card'));
     expect(container.querySelector('.remote-floating-capsule')).toBeNull();
     expect(within(toolbar).getAllByRole('switch')).toHaveLength(2);
-    expect(within(toolbar).getAllByRole('combobox')).toHaveLength(3);
+    expect(within(toolbar).getAllByRole('combobox')).toHaveLength(5);
     expect(within(toolbar).getByRole('slider')).toBeDefined();
     fireEvent.mouseLeave(toolbar);
     expect(toolbar.hidden).toBe(false);
@@ -77,6 +78,17 @@ describe('RemoteDesktopPanel layout', () => {
     const toolbarWheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 });
     screen.getByRole('complementary').dispatchEvent(toolbarWheel);
     expect(toolbarWheel.defaultPrevented).toBe(false);
+  });
+
+  it('applies presets without changing transport scale and labels manual edits custom', async () => {
+    const { onSettingsChange } = renderPanel();
+    fireEvent.mouseDown(screen.getAllByRole('combobox')[0]!);
+    fireEvent.click(await screen.findByText('流畅'));
+    expect(onSettingsChange).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'smooth', quality: 45, frameTimer: 50, imageFormat: 'webp' }));
+    expect(onSettingsChange.mock.calls.at(-1)![0].transportScale).toBeUndefined();
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight', keyCode: 39 });
+    expect(onSettingsChange).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'custom' }));
+    expect(screen.getAllByRole('combobox')[1]!.getAttribute('disabled')).not.toBeNull();
   });
 
   it('preserves settings changes and view-only restrictions', () => {

@@ -123,3 +123,10 @@ export interface DesktopPoint {
 
 export type DesktopMouseButton = 'left' | 'right' | 'middle';
 export type DesktopKeyPhase = 'down' | 'up';
+
+/** Cumulative application-message counters, excluding wire overhead. */
+export interface DesktopSessionStats {
+  readonly receivedBytes: number;
+  readonly receivedTiles: number;
+  readonly pendingProtocolBytes: number;
+}

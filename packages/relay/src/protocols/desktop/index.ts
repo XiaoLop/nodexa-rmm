@@ -44,6 +44,7 @@ export {
   type DesktopSessionErrorCode,
   type DesktopSessionOptions,
   type DesktopSessionState,
+  type DesktopSessionStats,
   type DesktopTile,
 } from './types';
 
