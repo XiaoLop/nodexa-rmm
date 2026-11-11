@@ -54,8 +54,8 @@
     },
     "domains": {
         "": {
-            "title": "Mesh Console Dev",
-            "title2": "Local development",
+            "title": "Nodexa",
+            "title2": "RMM",
             "newAccounts": false,
             "geoLocation": true,
             "ipLocation": true,

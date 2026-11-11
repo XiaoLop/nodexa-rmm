@@ -5,6 +5,7 @@ settings:
   aliasPort: 443
   tlsOffload: false
   mongoDbName: meshcentral
+  trustedProxy: 172.23.0.0/16
   agentPing: 30
   agentPong: 60
   webRTC: true
