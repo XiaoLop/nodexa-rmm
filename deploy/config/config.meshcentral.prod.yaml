@@ -13,6 +13,10 @@ settings:
 domains:
   '':
     certUrl: "https://mesh.xiaonext.com"
+    # WebSocket Origin 白名单仅填写主机名，同时保留自定义 Web 与原生后台入口。
+    allowedOrigin:
+      - mesh.xiaonext.com
+      - mesh-admin.xiaonext.com
     title: MeshCentral
     title2: Device management
     newAccounts: false
