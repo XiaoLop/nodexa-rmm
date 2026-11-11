@@ -5,7 +5,6 @@ settings:
   aliasPort: 443
   tlsOffload: false
   mongoDbName: meshcentral
-  trustedProxy: 172.23.0.0/16
   agentPing: 30
   agentPong: 60
   webRTC: true
@@ -13,6 +12,7 @@ settings:
 domains:
   '':
     certUrl: "https://mesh.xiaonext.com"
+    trustedProxy: 172.23.0.0/16
     # WebSocket Origin 白名单仅填写主机名，同时保留自定义 Web 与原生后台入口。
     allowedOrigin:
       - mesh.xiaonext.com
