@@ -1241,8 +1241,8 @@ export const enUS = {
       deleteTitle: 'Delete device',
       deleteContent:
         'Are you sure you want to delete device "{{name}}"? This action cannot be undone.',
-      deleteAgentFirst:
-        'Uninstall the agent first, then delete the device after confirming the agent has been removed.',
+      deleteAgentNotice:
+        'Only the server device record will be deleted. The agent will remain installed and the device may reappear when it reconnects.',
       deleteOk: 'Delete device',
       uninstallAgentTitle: 'Uninstall agent',
       uninstallAgentContent: 'Are you sure you want to uninstall the agent from "{{name}}"?',

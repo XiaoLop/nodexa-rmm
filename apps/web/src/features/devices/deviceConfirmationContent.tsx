@@ -5,7 +5,7 @@ export function deleteDeviceConfirmationContent(t: TFunction, name: string): Rea
   return (
     <div>
       <p>{t('devices.confirm.deleteContent', { name })}</p>
-      <p>{t('devices.confirm.deleteAgentFirst')}</p>
+      <p>{t('devices.confirm.deleteAgentNotice')}</p>
     </div>
   );
 }

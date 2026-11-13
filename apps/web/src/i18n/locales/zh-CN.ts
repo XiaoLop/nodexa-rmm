@@ -1210,7 +1210,7 @@ export const zhCN = {
       powerOk: '确认{{action}}',
       deleteTitle: '删除设备',
       deleteContent: '确定要删除设备「{{name}}」吗？此操作不可撤销。',
-      deleteAgentFirst: '请先对该设备执行“删除代理”，确认代理已卸载后再删除设备。',
+      deleteAgentNotice: '仅删除服务端设备记录，不会卸载代理。代理再次连接时，设备可能重新出现。',
       deleteOk: '删除设备',
       uninstallAgentTitle: '删除代理',
       uninstallAgentContent: '确定要删除设备「{{name}}」上的代理吗？',

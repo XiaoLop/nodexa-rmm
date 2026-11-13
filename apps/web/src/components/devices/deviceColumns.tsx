@@ -297,10 +297,10 @@ export function createDeviceColumns({
             icon: <DeleteOutlined />,
             label: t('common.actions.delete'),
             danger: true,
-            disabled: !capabilities.uninstall.enabled,
-            title: capabilities.uninstall.enabled
+            disabled: !capabilities.remove.enabled,
+            title: capabilities.remove.enabled
               ? undefined
-              : (capabilities.uninstall.message ?? t('devices.messages.permissionDeleteDenied')),
+              : (capabilities.remove.message ?? t('devices.messages.permissionDeleteDenied')),
           },
           { type: 'divider' as const },
           {

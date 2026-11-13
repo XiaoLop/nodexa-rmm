@@ -176,6 +176,10 @@ if (rights !== undefined) {
 
 普通设备终端和目标设备文件传输都以 `MeshRight.RemoteControl` 为基础，并分别受 `NoTerminal`、`NoFiles` 限制。`AgentConsole` 与 `ServerFiles` 是不同功能，不应代替上述能力判断。
 
+`getDeviceUiCapabilities()` 的 `remove` 表示删除设备记录，仅要求控制通道连接；
+`uninstall` 表示卸载代理，另要求代理在线。两者沿用 MeshCentral 1.3.1 的 `MeshRight.Uninstall`
+权限检查（`meshuser.js` 的 `removedevices` 分支），删除记录不要求先卸载代理，代理重连后设备可能重新出现。
+
 客户端权限 API 只用于标准化、界面控制和授权编辑。服务端仍是最终安全边界；调用方不应通过遍历 `ManagedUser.links` 自行重算完整有效权限。完整说明见 [权限 API](docs/permissions.md)。
 
 完整方法、底层 action、返回值和使用场景见 [docs/messages-and-resources.md](docs/messages-and-resources.md)。

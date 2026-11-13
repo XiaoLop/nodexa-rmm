@@ -153,7 +153,7 @@ export function useDeviceActions({
 
   const confirmDeviceDeletion = useCallback(
     (device: Device) => {
-      const permission = deviceCapabilities(device).uninstall;
+      const permission = deviceCapabilities(device).remove;
       if (!client || !permission.enabled) {
         void messageApi.warning(
           (permission.reason

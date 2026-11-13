@@ -21,6 +21,7 @@ function capabilities(overrides: Partial<DeviceUiCapabilities> = {}): DeviceUiCa
     wake: hidden,
     guestShare: hidden,
     uninstall: hidden,
+    remove: hidden,
     edit: hidden,
     ...overrides,
   };

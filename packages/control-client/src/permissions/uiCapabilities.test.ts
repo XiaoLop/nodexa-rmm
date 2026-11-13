@@ -16,6 +16,37 @@ const onlineRuntime = {
 };
 
 describe('getDeviceUiCapabilities', () => {
+  it('allows deleting offline devices without allowing offline agent uninstall', () => {
+    const capabilities = getDeviceUiCapabilities(MeshRight.Uninstall, {
+      ...onlineRuntime,
+      agentOnline: false,
+      agentCapabilities: undefined,
+    });
+
+    expect(capabilities.remove).toMatchObject({ visible: true, enabled: true });
+    expect(capabilities.uninstall).toMatchObject({ enabled: false, reason: 'device-offline' });
+  });
+
+  it('requires deletion rights and a control connection to delete a device', () => {
+    expect(getDeviceUiCapabilities(MeshRight.ManageComputers, onlineRuntime).remove).toEqual({
+      visible: false,
+      enabled: false,
+    });
+    expect(getDeviceUiCapabilities(undefined, onlineRuntime).remove).toMatchObject({
+      enabled: false,
+      reason: 'permission-unknown',
+    });
+    expect(
+      getDeviceUiCapabilities(MeshRight.Uninstall, {
+        ...onlineRuntime,
+        controlConnected: false,
+      }).remove,
+    ).toMatchObject({ enabled: false, reason: 'gateway-disconnected' });
+    expect(getDeviceUiCapabilities(MeshRight.Administrator, onlineRuntime).remove.enabled).toBe(
+      true,
+    );
+  });
+
   it('hides operations without the required device rights', () => {
     const capabilities = getDeviceUiCapabilities(MeshRight.RemoteControl, onlineRuntime);
 

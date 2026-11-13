@@ -44,6 +44,7 @@ export interface DeviceUiCapabilities {
   wake: UiPermission;
   guestShare: UiPermission;
   uninstall: UiPermission;
+  remove: UiPermission;
   edit: UiPermission;
 }
 
@@ -129,6 +130,7 @@ export function getDeviceUiCapabilities(
       wake: unknown,
       guestShare: unknown,
       uninstall: unknown,
+      remove: unknown,
       edit: unknown,
     };
   }
@@ -212,6 +214,10 @@ export function getDeviceUiCapabilities(
             administrator || hasMeshRight(normalized, MeshRight.GuestSharing),
             runtime.controlConnected,
           ),
+    remove: gatewayPermission(
+      administrator || hasMeshRight(normalized, MeshRight.Uninstall),
+      runtime.controlConnected,
+    ),
     uninstall: runtimePermission(
       administrator || hasMeshRight(normalized, MeshRight.Uninstall),
       runtime,
