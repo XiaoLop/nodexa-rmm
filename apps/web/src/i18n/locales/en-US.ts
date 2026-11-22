@@ -1333,12 +1333,12 @@ export const enUS = {
         '* For Headless servers or SSH remote terminal deployment (Universal binary).',
       powershellDeployNote:
         '* For Windows Server Core or remote silent deployment (PowerShell one-liner, x86-64).',
+      mobilePairingUnavailable: 'The server did not provide Android pairing information.',
       mobileScanTip: 'Scan the QR code with the Nodexa Android app to pair.',
       downloadAndroidApk: 'Download Android APK',
       assistantTip: 'Nodexa Assistant is an on-demand user session app.',
-      uninstallTip: 'Download and run the uninstaller as administrator.',
-      macosUninstallTip:
-        'Run the following command as root in macOS Terminal to uninstall the MeshAgent daemon and service.',
+      uninstallTip: 'Download the Agent installer, run it as administrator, and select uninstall.',
+      macosUninstallTip: 'Extract the downloaded archive and run Uninstall.command.',
       binaryInstaller: 'Binary installer',
       mobileDevices: 'Mobile devices',
       mshFile: 'Mesh Agent config file (.msh)',

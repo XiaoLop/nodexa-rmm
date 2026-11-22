@@ -309,3 +309,9 @@ MongoDB 初始化变量仅对空数据目录生效，更改密码需在数据库
 按需备份录制内容。不能把运行中的 WiredTiger 文件简单复制当作可靠备份。
 仅备份 YAML 不足以恢复设备身份；恢复流程必须验证 Agent 重连。
 从旧部署迁移时先停止写入并备份，明确源卷与目标卷后再恢复，不要直接替换数据路径。
+
+### Web Agent 下载
+
+Web 管理端默认使用当前站点的 `/meshagents`。目标设备需要能访问该地址。独立下载入口或非默认域可在构建 Web 时设置 `VITE_MESH_AGENTS_URL`，例如 `https://mesh.example.com/tenant/meshagents`。安装脚本还需要访问同一域路径下的 `/meshsettings`，macOS 安装包使用 `/meshosxagent`。Agent 的实际回连地址由 MeshCentral 的 Agent 对外地址配置生成。
+
+安装命令通过 HTTPS 下载时使用系统的证书信任配置。使用私有 CA 的环境应先在目标设备安装相应的信任链。Android 配对二维码使用控制通道返回的 Agent 地址及证书哈希。

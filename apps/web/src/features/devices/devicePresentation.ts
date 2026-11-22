@@ -1,3 +1,4 @@
+import type { ServerInfo } from '@meshcentral/control-client';
 import type { Device, DeviceGroup } from '@meshcentral/shared-state';
 import { deviceLocationSearchValues } from '../device-location/formatDeviceLocation';
 import { deviceDescription, deviceTags } from '../../utils/device';
@@ -14,10 +15,9 @@ export interface DeviceFilterValues {
 }
 
 export interface DeviceInviteServerInfo {
-  name: string;
-  port: number;
-  https: boolean;
-  magenturl: string;
+  agentUrl: string;
+  magenturl?: string;
+  agentCertHash?: string;
 }
 
 export function rawString(device: Device, key: string): string | undefined {
@@ -73,12 +73,17 @@ export function matchesDeviceFilters(
   return matchesQuery && matchesGroup && matchesOnline && matchesPlatform;
 }
 
-export function buildDeviceInviteServerInfo(meshAgentsUrl: string): DeviceInviteServerInfo {
+export function buildDeviceInviteServerInfo(
+  meshAgentsUrl: string,
+  serverInfo?: ServerInfo,
+): DeviceInviteServerInfo {
   const url = new URL(meshAgentsUrl);
+  const path = url.pathname.replace(/\/+$/, '');
+  url.pathname = path.endsWith('/meshagents') ? path : path + '/meshagents';
+  url.hash = '';
   return {
-    name: url.hostname,
-    port: Number(url.port) || (url.protocol === 'https:' ? 443 : 80),
-    https: url.protocol === 'https:',
-    magenturl: meshAgentsUrl,
+    agentUrl: url.toString(),
+    magenturl: serverInfo?.magenturl,
+    agentCertHash: serverInfo?.agentCertHash,
   };
 }

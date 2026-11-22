@@ -21,15 +21,15 @@ export default defineConfig(({ mode }) => {
           ws: true,
           rewriteWsOrigin: true,
         },
-        '/agent.ashx': {
+        '^/(?:[^/]+/)?agent[.]ashx(?:[?]|$)': {
           target: meshcentralTarget,
           changeOrigin: true,
           ws: true,
         },
-        '/meshagents': {
+        '^/(?:[^/]+/)?(?:meshagents|meshsettings|meshosxagent)(?:[?]|$)': {
           target: meshcentralTarget,
-          changeOrigin: true
-        }
+          changeOrigin: true,
+        },
       },
     },
   };

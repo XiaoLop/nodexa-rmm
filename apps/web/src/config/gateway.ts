@@ -16,11 +16,11 @@ export const MESH_CENTRAL_RELAY_URL = buildGatewayEndpoint('/meshrelay.ashx');
 
 function buildMeshAgentsUrl(): string {
   const configuredUrl = import.meta.env.VITE_MESH_AGENTS_URL?.trim();
-  if (configuredUrl) return configuredUrl.replace(/\/+$/, '');
+  if (configuredUrl) return new URL(configuredUrl, window.location.origin).href;
 
   const controlUrl = new URL(MESH_CENTRAL_CONTROL_URL);
   controlUrl.protocol = controlUrl.protocol === 'wss:' ? 'https:' : 'http:';
-  controlUrl.pathname = `${API_PREFIX}/meshagents`;
+  controlUrl.pathname = '/meshagents';
   controlUrl.search = '';
   controlUrl.hash = '';
   return controlUrl.toString().replace(/\/$/, '');

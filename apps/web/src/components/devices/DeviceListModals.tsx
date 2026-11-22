@@ -13,8 +13,6 @@ import { CommandExecutionModal } from '../CommandExecutionModal';
 import { DeviceEditModal } from '../DeviceEditModal';
 import { DeviceInviteModal } from '../DeviceInviteModal';
 
-const deviceInviteServerInfo = buildDeviceInviteServerInfo(MESH_AGENTS_URL);
-
 interface DeviceListModalsProps {
   client?: MeshCentralClient;
   connected: boolean;
@@ -62,13 +60,13 @@ export function DeviceListModals({
           onSaved={onSaved}
         />
       )}
-      {inviteOpen && (
+      {inviteOpen && groups.length > 0 && (
         <DeviceInviteModal
           isOpen
           meshId={groups[0]?.id ?? ''}
           meshName={groups[0]?.name ?? t('common.status.defaultGroup')}
           groups={groups}
-          serverInfo={deviceInviteServerInfo}
+          serverInfo={buildDeviceInviteServerInfo(MESH_AGENTS_URL, serverInfo)}
           onClose={handlers.closeInvite}
         />
       )}

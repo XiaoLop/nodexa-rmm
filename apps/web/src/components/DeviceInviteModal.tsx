@@ -14,15 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import type { DeviceGroup } from '@meshcentral/shared-state';
-
-export interface ServerInfo {
-  name: string;
-  port: number;
-  https: boolean;
-  magenturl?: string;
-  agentCertHash?: string;
-  tlshash?: string;
-}
+import type { DeviceInviteServerInfo } from '../features/devices/devicePresentation';
 
 export interface AddAgentModalProps {
   isOpen: boolean;
@@ -30,7 +22,7 @@ export interface AddAgentModalProps {
   meshId: string;
   meshName: string;
   groups?: DeviceGroup[];
-  serverInfo: ServerInfo;
+  serverInfo: DeviceInviteServerInfo;
   isLanMode?: boolean;
   urlKey?: string;
   debugMode?: boolean;
@@ -85,14 +77,29 @@ export function buildAgentDownloadUrl(
   return url.toString();
 }
 
-function getOrigin(info: ServerInfo): string {
-  const protocol = info.https ? 'https' : 'http';
-  const defaultPort = info.https ? 443 : 80;
-  return `${protocol}://${info.name}${info.port === defaultPort ? '' : `:${info.port}`}`;
+function agentEndpoint(agentUrl: string, endpoint: string): string {
+  const url = new URL(agentUrl);
+  url.pathname = url.pathname.replace(/[^/]+$/, endpoint);
+  return url.toString();
 }
 
-function cleanMeshId(meshId: string): string {
-  return meshId.replace(/^mesh\/\//, '');
+function shellQuote(value: string): string {
+  return "'" + value.replaceAll("'", "'\"'\"'") + "'";
+}
+
+function unixDownloadCommand(url: string, filename: string, run: (path: string) => string): string {
+  const path = './' + filename;
+  const source = shellQuote(url);
+  return [
+    '(',
+    '  dir=$(mktemp -d) || exit 1',
+    '  trap \'rm -rf -- "$dir"\' EXIT',
+    '  cd "$dir" || exit 1',
+    '  (curl -fLSs ' + source + ' -o ' + path + ' || wget -O ' + path + ' ' + source + ') &&',
+    '  chmod 700 ' + path + ' &&',
+    '  if [ "$(id -u)" -eq 0 ]; then ' + run(path) + '; else sudo ' + run(path) + '; fi',
+    ')',
+  ].join('\n');
 }
 
 function CopyButton({ value, label }: { value: string; label?: string }) {
@@ -160,14 +167,20 @@ function CommandView({ command, note }: { command: string; note?: string }) {
 
 interface ViewProps {
   agentUrl: string;
-  origin: string;
+  scriptBaseUrl: string;
   meshId: string;
   installFlags: number;
-  serverInfo: ServerInfo;
+  serverInfo: DeviceInviteServerInfo;
   urlKey?: string;
 }
 
-function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: ViewProps & { debugMode: boolean }) {
+function WindowsView({
+  agentUrl,
+  meshId,
+  installFlags,
+  urlKey,
+  debugMode,
+}: ViewProps & { debugMode: boolean }) {
   const { t } = useTranslation();
   const items: ReadonlyArray<readonly [string, number]> = [
     ['Windows x86-32 (.exe)', 3],
@@ -180,7 +193,16 @@ function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: View
     installflags: installFlags,
     key: urlKey,
   });
-  const psCommand = `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('${win64Url}', \\"$env:TEMP\\meshagent.exe\\"); Start-Process \\"$env:TEMP\\meshagent.exe\\" -ArgumentList '-install' -Wait"`;
+  const psCommand = [
+    "$agent = Join-Path ([IO.Path]::GetTempPath()) ('meshagent-' + [guid]::NewGuid() + '.exe')",
+    'try {',
+    `  Invoke-WebRequest -UseBasicParsing -Uri '${win64Url.replaceAll("'", "''")}' -OutFile $agent -ErrorAction Stop`,
+    "  $process = Start-Process -FilePath $agent -ArgumentList '-install' -Wait -PassThru -ErrorAction Stop",
+    '  if ($process.ExitCode -ne 0) { throw "Mesh Agent installer exited with code $($process.ExitCode)" }',
+    '} finally {',
+    '  Remove-Item -LiteralPath $agent -ErrorAction SilentlyContinue',
+    '}',
+  ].join('\n');
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -203,29 +225,52 @@ function WindowsView({ agentUrl, meshId, installFlags, urlKey, debugMode }: View
       {debugMode && (
         <DownloadRow
           label={t('devices.inviteModal.mshFile')}
-          url={buildAgentDownloadUrl(agentUrl, { meshid: meshId, key: urlKey })}
+          url={buildAgentDownloadUrl(agentEndpoint(agentUrl, 'meshsettings'), {
+            id: meshId,
+            installflags: installFlags,
+            key: urlKey,
+          })}
         />
       )}
     </Space>
   );
 }
 
-function ScriptView({ agentUrl, origin, meshId, urlKey, uninstall = false }: ViewProps & { uninstall?: boolean }) {
+function ScriptView({
+  agentUrl,
+  scriptBaseUrl,
+  meshId,
+  urlKey,
+  uninstall = false,
+}: ViewProps & { uninstall?: boolean }) {
   const url = buildAgentDownloadUrl(agentUrl, { script: 1, key: urlKey });
-  const runTarget = uninstall ? `uninstall ${origin} '${meshId}'` : `${origin} '${meshId}'`;
-  const command = `(wget "${url}" --no-check-certificate -O ./meshinstall.sh || wget "${url}" --no-proxy --no-check-certificate -O ./meshinstall.sh) && chmod 755 ./meshinstall.sh && sudo -E ./meshinstall.sh ${runTarget} || ./meshinstall.sh ${runTarget}`;
-  return <CommandView command={command} note={uninstall ? undefined : '* For BSD, run "pkg install wget sudo bash" beforehand.'} />;
+  const args = [uninstall ? 'uninstall' : '', shellQuote(scriptBaseUrl), shellQuote(meshId)]
+    .filter(Boolean)
+    .join(' ');
+  const command = unixDownloadCommand(url, 'meshinstall.sh', (path) => path + ' ' + args);
+  return (
+    <CommandView
+      command={command}
+      note={uninstall ? undefined : '* For BSD, run "pkg install wget sudo bash" beforehand.'}
+    />
+  );
 }
 
-function BinaryView({ agentUrl, meshId, installFlags, urlKey, systemType }: ViewProps & { systemType: number }) {
+function BinaryView({
+  agentUrl,
+  meshId,
+  installFlags,
+  urlKey,
+  systemType,
+}: ViewProps & { systemType: number }) {
   const { t } = useTranslation();
   const url = buildAgentDownloadUrl(agentUrl, {
-    id: systemType,
-    meshid: meshId,
+    id: meshId,
+    meshinstall: systemType,
     installflags: installFlags,
     key: urlKey,
   });
-  const command = `(wget "${url}" --no-check-certificate -O ./meshagent || wget "${url}" --no-proxy --no-check-certificate -O ./meshagent) && chmod 755 ./meshagent && (sudo ./meshagent -install || ./meshagent -install)`;
+  const command = unixDownloadCommand(url, 'meshagent', (path) => path + ' -install');
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <DownloadRow label={t('devices.inviteModal.downloadBinary')} url={url} />
@@ -245,12 +290,12 @@ function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
     ['macOS (Universal)', 10005],
   ];
   const universalUrl = buildAgentDownloadUrl(agentUrl, {
-    id: 10005,
-    meshid: meshId,
+    id: meshId,
+    meshinstall: 10005,
     installflags: installFlags,
     key: urlKey,
   });
-  const macCommand = `(curl -k -fsSL "${universalUrl}" -o ./meshagent || wget "${universalUrl}" --no-check-certificate -O ./meshagent) && chmod 755 ./meshagent && (xattr -r -d com.apple.quarantine ./meshagent 2>/dev/null || true) && (sudo ./meshagent -install || ./meshagent -install)`;
+  const macCommand = unixDownloadCommand(universalUrl, 'meshagent', (path) => path + ' -install');
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -258,7 +303,7 @@ function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
         <DownloadRow
           key={id}
           label={label}
-          url={buildAgentDownloadUrl(agentUrl, {
+          url={buildAgentDownloadUrl(agentEndpoint(agentUrl, 'meshosxagent'), {
             id,
             meshid: meshId,
             installflags: installFlags,
@@ -277,15 +322,18 @@ function MacView({ agentUrl, meshId, installFlags, urlKey }: ViewProps) {
   );
 }
 
-function MacosUninstallView() {
+function MacosUninstallView({ agentUrl, meshId, urlKey }: ViewProps) {
   const { t } = useTranslation();
-  const uninstallCommand = 'sudo /usr/local/mesh/meshagent -uninstall || sudo ./meshagent -uninstall';
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Typography.Paragraph>{t('devices.inviteModal.macosUninstallTip')}</Typography.Paragraph>
-      <CommandView
-        command={uninstallCommand}
-        note="* Run this command in macOS Terminal to remove the MeshAgent daemon and service."
+      <DownloadRow
+        label="macOS (Universal)"
+        url={buildAgentDownloadUrl(agentEndpoint(agentUrl, 'meshosxagent'), {
+          id: 10005,
+          meshid: meshId,
+          key: urlKey,
+        })}
       />
     </Space>
   );
@@ -293,12 +341,22 @@ function MacosUninstallView() {
 
 function MobileView({ agentUrl, meshId, serverInfo, urlKey }: ViewProps) {
   const { t } = useTranslation();
-  const pairing = `${serverInfo.magenturl ?? getOrigin(serverInfo)},${serverInfo.agentCertHash ?? serverInfo.tlshash ?? ''},${meshId}`;
-  const apk = buildAgentDownloadUrl(agentUrl, { id: 14, meshid: meshId, key: urlKey });
+  const { magenturl, agentCertHash } = serverInfo;
+  const pairing =
+    magenturl?.startsWith('mc://') && agentCertHash && meshId
+      ? [magenturl, agentCertHash, meshId].join(',')
+      : undefined;
+  const apk = buildAgentDownloadUrl(agentUrl, { id: 14, key: urlKey });
   return (
     <Flex vertical align="center" gap={16}>
-      <Typography.Paragraph>{t('devices.inviteModal.mobileScanTip')}</Typography.Paragraph>
-      <QRCodeSVG value={pairing} size={176} includeMargin />
+      <Typography.Paragraph>
+        {t(
+          pairing
+            ? 'devices.inviteModal.mobileScanTip'
+            : 'devices.inviteModal.mobilePairingUnavailable',
+        )}
+      </Typography.Paragraph>
+      {pairing && <QRCodeSVG value={pairing} size={176} includeMargin />}
       <Space wrap>
         <Button href="https://play.google.com/store/apps/details?id=com.meshcentral.agent2" target="_blank">
           Google Play
@@ -314,12 +372,17 @@ function MobileView({ agentUrl, meshId, serverInfo, urlKey }: ViewProps) {
   );
 }
 
-function AssistantView({ agentUrl, meshId, urlKey, assistantType }: ViewProps & { assistantType: number }) {
+function AssistantView({
+  agentUrl,
+  meshId,
+  urlKey,
+  assistantType,
+}: ViewProps & { assistantType: number }) {
   const { t } = useTranslation();
   const url = buildAgentDownloadUrl(agentUrl, {
-    id: 10003,
+    id: 10006,
     meshid: meshId,
-    installflags: assistantType,
+    ac: assistantType,
     key: urlKey,
   });
   return (
@@ -336,8 +399,8 @@ function WindowsUninstallView({ agentUrl, meshId, urlKey }: ViewProps) {
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Typography.Paragraph>{t('devices.inviteModal.uninstallTip')}</Typography.Paragraph>
       <DownloadRow
-        label="Windows Agent Uninstaller (.exe)"
-        url={buildAgentDownloadUrl(agentUrl, { id: 4, meshid: meshId, uninstall: 1, key: urlKey })}
+        label="Windows x86-64 (.exe)"
+        url={buildAgentDownloadUrl(agentUrl, { id: 4, meshid: meshId, key: urlKey })}
       />
     </Space>
   );
@@ -359,11 +422,14 @@ export function DeviceInviteModal({
   const [installFlags, setInstallFlags] = useState(0);
   const [assistantType, setAssistantType] = useState(2);
   const [selectedMeshId, setSelectedMeshId] = useState(meshId);
-  const origin = useMemo(() => getOrigin(serverInfo), [serverInfo]);
-  const agentMeshId = cleanMeshId(selectedMeshId);
+  const agentUrl = new URL(serverInfo.agentUrl);
+  const scriptBaseUrl = agentUrl.origin + agentUrl.pathname.replace(/\/meshagents$/, '');
+  const agentMeshId = selectedMeshId.startsWith('mesh/')
+    ? (selectedMeshId.split('/')[2] ?? '')
+    : selectedMeshId;
   const common: ViewProps = {
-    agentUrl: `${origin}/meshagents`,
-    origin,
+    agentUrl: agentUrl.toString(),
+    scriptBaseUrl,
     meshId: agentMeshId,
     installFlags,
     serverInfo,
@@ -396,19 +462,47 @@ export function DeviceInviteModal({
       children: [
         { key: OperatingSystem.Windows.toString(), icon: <WindowsOutlined />, label: 'Windows' },
         { key: OperatingSystem.LinuxBsd.toString(), icon: <CodeOutlined />, label: 'Linux / BSD' },
-        { key: OperatingSystem.BinaryInstaller.toString(), icon: <DesktopOutlined />, label: t('devices.inviteModal.binaryInstaller') },
+        {
+          key: OperatingSystem.BinaryInstaller.toString(),
+          icon: <DesktopOutlined />,
+          label: t('devices.inviteModal.binaryInstaller'),
+        },
         { key: OperatingSystem.Macos.toString(), icon: <AppleOutlined />, label: 'macOS' },
-        ...(isLanMode ? [] : [{ key: OperatingSystem.Mobile.toString(), icon: <MobileOutlined />, label: t('devices.inviteModal.mobileDevices') }]),
-        { key: OperatingSystem.Assistant.toString(), icon: <AppstoreOutlined />, label: 'Mesh Assistant' },
+        ...(isLanMode
+          ? []
+          : [
+              {
+                key: OperatingSystem.Mobile.toString(),
+                icon: <MobileOutlined />,
+                label: t('devices.inviteModal.mobileDevices'),
+              },
+            ]),
+        {
+          key: OperatingSystem.Assistant.toString(),
+          icon: <AppstoreOutlined />,
+          label: 'Mesh Assistant',
+        },
       ],
     },
     {
       type: 'group' as const,
       label: t('devices.inviteModal.groupUninstall'),
       children: [
-        { key: OperatingSystem.WindowsUninstall.toString(), icon: <DeleteOutlined />, label: 'Windows' },
-        { key: OperatingSystem.LinuxBsdUninstall.toString(), icon: <DeleteOutlined />, label: 'Linux / BSD' },
-        { key: OperatingSystem.MacosUninstall.toString(), icon: <DeleteOutlined />, label: 'macOS' },
+        {
+          key: OperatingSystem.WindowsUninstall.toString(),
+          icon: <DeleteOutlined />,
+          label: 'Windows',
+        },
+        {
+          key: OperatingSystem.LinuxBsdUninstall.toString(),
+          icon: <DeleteOutlined />,
+          label: 'Linux / BSD',
+        },
+        {
+          key: OperatingSystem.MacosUninstall.toString(),
+          icon: <DeleteOutlined />,
+          label: 'macOS',
+        },
       ],
     },
   ];
@@ -423,7 +517,7 @@ export function DeviceInviteModal({
   else if (os === OperatingSystem.Assistant)
     content = <AssistantView {...common} assistantType={assistantType} />;
   else if (os === OperatingSystem.WindowsUninstall) content = <WindowsUninstallView {...common} />;
-  else if (os === OperatingSystem.MacosUninstall) content = <MacosUninstallView />;
+  else if (os === OperatingSystem.MacosUninstall) content = <MacosUninstallView {...common} />;
   else content = <ScriptView {...common} uninstall />;
 
   return (

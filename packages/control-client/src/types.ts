@@ -160,6 +160,8 @@ export interface UserInfoLink {
 }
 
 export interface ServerInfo {
+  magenturl?: string;
+  agentCertHash?: string;
   features?: number;
   features2?: number;
   features3?: number;

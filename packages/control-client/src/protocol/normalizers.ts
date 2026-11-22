@@ -367,6 +367,8 @@ export function normalizeServerInfo(value: unknown): ServerInfo | undefined {
   const boolean = (field: unknown): boolean | undefined =>
     typeof field === 'boolean' ? field : typeof field === 'number' ? field !== 0 : undefined;
   return {
+    ...(typeof raw.magenturl === 'string' && { magenturl: raw.magenturl }),
+    ...(typeof raw.agentCertHash === 'string' && { agentCertHash: raw.agentCertHash }),
     features: numeric(raw.features),
     features2: numeric(raw.features2),
     features3: numeric(raw.features3),

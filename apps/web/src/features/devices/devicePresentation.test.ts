@@ -61,22 +61,23 @@ describe('device presentation helpers', () => {
     expect(nameCategory('-dash')).toBe(2);
   });
 
-  it('builds invite server info from the agents URL', () => {
-    expect(buildDeviceInviteServerInfo('https://mesh.example.com')).toEqual({
-      name: 'mesh.example.com',
-      port: 443,
-      https: true,
-      magenturl: 'https://mesh.example.com',
-    });
-    expect(buildDeviceInviteServerInfo('http://mesh.example.com:8080/meshagents')).toEqual({
-      name: 'mesh.example.com',
-      port: 8080,
-      https: false,
-      magenturl: 'http://mesh.example.com:8080/meshagents',
-    });
-    expect(buildDeviceInviteServerInfo('http://mesh.example.com')).toMatchObject({
-      port: 80,
-      https: false,
+  it('normalizes the default Agent download path', () => {
+    expect(buildDeviceInviteServerInfo('https://mesh.example.com').agentUrl).toBe(
+      'https://mesh.example.com/meshagents',
+    );
+  });
+
+  it('preserves the Agent download URL and uses the server pairing data', () => {
+    const agentUrl = 'https://mesh.example.com:8443/tenant/meshagents?key=example';
+    expect(
+      buildDeviceInviteServerInfo(agentUrl, {
+        magenturl: 'mc://agent.example.com/tenant',
+        agentCertHash: 'agent-cert-hash',
+      }),
+    ).toEqual({
+      agentUrl,
+      magenturl: 'mc://agent.example.com/tenant',
+      agentCertHash: 'agent-cert-hash',
     });
   });
 
@@ -128,7 +129,11 @@ describe('device presentation helpers', () => {
       ),
     ).toBe(true);
     expect(
-      matchesDeviceFilters(target, { ...defaults, query: 'absent' }, new Map<string, DeviceGroup>()),
+      matchesDeviceFilters(
+        target,
+        { ...defaults, query: 'absent' },
+        new Map<string, DeviceGroup>(),
+      ),
     ).toBe(false);
   });
 
@@ -143,9 +148,9 @@ describe('device presentation helpers', () => {
       matchesDeviceFilters(device({ groupId: 'g2' }), { ...defaults, groupId: 'g1' }, groups),
     ).toBe(false);
 
-    expect(matchesDeviceFilters(device(), { ...defaults, groupId: UNGROUPED_GROUP_ID }, groups)).toBe(
-      true,
-    );
+    expect(
+      matchesDeviceFilters(device(), { ...defaults, groupId: UNGROUPED_GROUP_ID }, groups),
+    ).toBe(true);
     expect(
       matchesDeviceFilters(
         device({ groupId: 'unknown' }),
@@ -153,9 +158,9 @@ describe('device presentation helpers', () => {
         groups,
       ),
     ).toBe(true);
-    expect(
-      matchesDeviceFilters(target, { ...defaults, groupId: UNGROUPED_GROUP_ID }, groups),
-    ).toBe(false);
+    expect(matchesDeviceFilters(target, { ...defaults, groupId: UNGROUPED_GROUP_ID }, groups)).toBe(
+      false,
+    );
 
     expect(matchesDeviceFilters(target, { ...defaults, online: 'online' }, groups)).toBe(true);
     expect(matchesDeviceFilters(target, { ...defaults, online: 'offline' }, groups)).toBe(false);
@@ -163,11 +168,7 @@ describe('device presentation helpers', () => {
       matchesDeviceFilters(device({ online: false }), { ...defaults, online: 'offline' }, groups),
     ).toBe(true);
     expect(matchesDeviceFilters(device({ platform: 'Linux' }), defaults, groups)).toBe(true);
-    expect(
-      matchesDeviceFilters(target, { ...defaults, platform: 'Linux' }, groups),
-    ).toBe(false);
-    expect(
-      matchesDeviceFilters(target, { ...defaults, platform: 'Windows' }, groups),
-    ).toBe(true);
+    expect(matchesDeviceFilters(target, { ...defaults, platform: 'Linux' }, groups)).toBe(false);
+    expect(matchesDeviceFilters(target, { ...defaults, platform: 'Windows' }, groups)).toBe(true);
   });
 });
