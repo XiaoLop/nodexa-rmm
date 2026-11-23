@@ -1,6 +1,6 @@
 # MeshCentral 部署
 
-当前仅部署 MeshCentral 与 MongoDB，不包含自定义 Web、Nginx 或 Gateway。
+本文介绍 MeshCentral 与 MongoDB 的独立部署。
 MeshCentral 自己提供 HTTPS 和原生管理页面。需要 Docker Engine / Docker Desktop
 （Linux 容器模式）以及 Docker Compose v2。以下命令从仓库根目录执行。
 
@@ -62,9 +62,6 @@ localhost 不能作为远程设备连接地址。不要把开发密码环境直�
 修改初始化密码不会修改已经存在的 MongoDB 用户。默认插件每次启动从镜像同步；
 插件源码更改后需要重建镜像。
 
-快捷命令：`pnpm dev:meshcentral:rebuild`、`pnpm dev:meshcentral:status`、
-`pnpm dev:meshcentral:logs`、`pnpm dev:meshcentral:down`。
-
 ## 生产快速部署
 
 生产部署分为两步：在源码仓库中构建并导出 MeshCentral 镜像，再从仓库 `deploy/` 中选择
@@ -73,12 +70,11 @@ localhost 不能作为远程设备连接地址。不要把开发密码环境直�
 
 ### 1. 构建容器镜像
 
-在源码仓库根目录执行：
+镜像使用 [服务端工作区](../apps/meshcentral/package.json) 固定的 MeshCentral 版本。在源码仓库根目录执行：
 
 ```bash
 docker build \
   -f apps/meshcentral/Dockerfile \
-  --build-arg MESHCENTRAL_VERSION=1.1.54 \
   -t nodexa-rmm:production \
   .
 ```

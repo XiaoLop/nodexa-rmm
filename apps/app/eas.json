@@ -5,9 +5,6 @@
   },
   "build": {
     "preview": {
-      "env": {
-        "EXPO_PUBLIC_GATEWAY_WS_URL": "wss://mesh.xiaonext.com/control"
-      },
       "distribution": "internal",
       "android": {
         "buildType": "apk"

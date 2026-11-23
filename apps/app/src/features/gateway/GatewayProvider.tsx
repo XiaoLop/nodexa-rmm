@@ -21,7 +21,7 @@ import { encode as btoa } from 'base-64';
 import { router, useSegments } from 'expo-router';
 
 const AUTH_STORAGE_KEY = '@mesh_auth';
-const DEFAULT_GATEWAY_URL = 'wss://mesh.xiaonext.com/control';
+const gatewayUrl = process.env.EXPO_PUBLIC_GATEWAY_WS_URL?.trim();
 
 interface MeshCentralCredentials {
   authParam: string;
@@ -43,7 +43,7 @@ const MeshCentralControlContext = createContext<MeshCentralControlContextValue |
 export function MeshCentralControlProvider({ children }: PropsWithChildren) {
   const store = useMemo(() => createMeshCentralControlStore(), []);
   const [client, setClient] = useState<MeshCentralClient | undefined>();
-  const [configured, setConfigured] = useState(false);
+  const configured = Boolean(gatewayUrl);
   const [username, setUsername] = useState<string | undefined>();
   const segments = useSegments();
   const clientRef = useRef<MeshCentralClient | undefined>(undefined);
@@ -65,15 +65,16 @@ export function MeshCentralControlProvider({ children }: PropsWithChildren) {
 
   const connectClient = useCallback(
     async (credentials: MeshCentralCredentials, validateLogin = false) => {
-      const url = process.env.EXPO_PUBLIC_GATEWAY_WS_URL?.trim() || DEFAULT_GATEWAY_URL;
-      setConfigured(Boolean(url));
+      if (!gatewayUrl) {
+        throw new Error('请先配置 EXPO_PUBLIC_GATEWAY_WS_URL');
+      }
       credentialsRef.current = credentials;
       setUsername(credentials.username);
       destroyClient();
       store.getState().reset();
 
-      const separator = url.includes('?') ? '&' : '?';
-      const wsUrl = `${url}${separator}x-meshauth=${credentials.authParam}`;
+      const separator = gatewayUrl.includes('?') ? '&' : '?';
+      const wsUrl = `${gatewayUrl}${separator}x-meshauth=${credentials.authParam}`;
 
       const newClient = new MeshCentralClient({
         url: wsUrl,
@@ -141,6 +142,10 @@ export function MeshCentralControlProvider({ children }: PropsWithChildren) {
   }, [connectClient]);
 
   useEffect(() => {
+    if (!gatewayUrl) {
+      if (segmentsRef.current[0] !== 'login') router.replace('/login');
+      return;
+    }
     let cancelled = false;
     void AsyncStorage.getItem(AUTH_STORAGE_KEY).then((storedAuth) => {
       if (cancelled) return;
@@ -210,11 +215,16 @@ export function MeshCentralControlProvider({ children }: PropsWithChildren) {
     [store, client, configured, username, login, logout, reconnect],
   );
 
-  return <MeshCentralControlContext.Provider value={value}>{children}</MeshCentralControlContext.Provider>;
+  return (
+    <MeshCentralControlContext.Provider value={value}>
+      {children}
+    </MeshCentralControlContext.Provider>
+  );
 }
 
 export function useMeshCentralControl() {
   const value = useContext(MeshCentralControlContext);
-  if (!value) throw new Error('useMeshCentralControl must be used inside MeshCentralControlProvider.');
+  if (!value)
+    throw new Error('useMeshCentralControl must be used inside MeshCentralControlProvider.');
   return value;
 }
