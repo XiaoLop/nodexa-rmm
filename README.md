@@ -2,6 +2,20 @@
 
 Nodexa RMM 是基于 [MeshCentral](https://github.com/Ylianst/MeshCentral) 的远程设备管理项目，提供独立的 Web 管理端，复用 MeshCentral 的认证、设备控制与远程会话能力。仓库也包含服务端启动器、配套插件、共享 SDK、移动端和 MCP 服务。
 
+## Web 管理端截图
+
+### 仪表盘
+
+![仪表盘，展示设备在线状态、状态趋势和服务器连接信息](apps/site/public/product/dashboard-zh-CN.png)
+
+### 登录
+
+![Web 管理端登录界面](apps/site/public/product/login-zh-CN.png)
+
+### 服务端文件管理
+
+![服务端文件管理页面及上传文件与文件夹的面板](apps/site/public/product/files-zh-CN.png)
+
 ## 功能与进度
 
 - Web 管理端支持设备和设备组管理，并在设备工作台中提供远程桌面、终端和文件操作。
