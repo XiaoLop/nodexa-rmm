@@ -5,6 +5,7 @@ WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/meshcentral/patches ./apps/meshcentral/patches/
 COPY apps/site/package.json ./apps/site/
 RUN pnpm install --frozen-lockfile --filter @meshcentral/site...
 

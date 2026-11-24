@@ -10,6 +10,7 @@ WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/meshcentral/patches ./apps/meshcentral/patches/
 COPY apps/meshcentral/package.json apps/meshcentral/tsconfig.json apps/meshcentral/tsconfig.build.json ./apps/meshcentral/
 COPY packages/meshcentral-plugins/package.json packages/meshcentral-plugins/tsconfig.json ./packages/meshcentral-plugins/
 
