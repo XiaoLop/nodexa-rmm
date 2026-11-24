@@ -96,9 +96,7 @@ overrides:
   js-yaml@4.3.1: 4.3.2
   undici@8.10.0: 8.12.2
   brace-expansion@5.0.9: 5.0.12
-  node-forge@1.4.0: 1.4.3
   source-map-js@>=1.0.0 <1.2.2: 1.2.2
-  compression@<1.8.2: 1.8.2
   ip-address@<=10.7.3: 10.7.4
   body-parser@2.3.0: 2.4.0
   fast-uri@3.1.8: 3.1.9
@@ -106,11 +104,6 @@ overrides:
   hono@4.13.13: 4.13.16
 
 packageExtensionsChecksum: sha256-aEeCCaUI1tbSLJ5g8HVS1qNiIeHhy/64Y6hjdBK54cA=
-
-patchedDependencies:
-  meshcentral@1.3.1:
-    hash: 2d8db7b8805d76e967cc5f5e2fac1d0e9304c37cacf17357367d1fac0cafbc6c
-    path: apps/meshcentral/patches/meshcentral@1.3.1.patch
 
 importers:
 
@@ -261,7 +254,7 @@ importers:
         version: 2.0.2
       meshcentral:
         specifier: 1.3.1
-        version: 1.3.1(patch_hash=2d8db7b8805d76e967cc5f5e2fac1d0e9304c37cacf17357367d1fac0cafbc6c)
+        version: 1.3.1
       mongodb:
         specifier: 4.17.2
         version: 4.17.2
@@ -3596,6 +3589,10 @@ packages:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
     engines: {node: '>= 0.6'}
 
+  compression@1.8.1:
+    resolution: {integrity: sha512-9mAqGPHLakhCLeNyxPkK4xVo746zQ/czLH1Ky+vkitMnWfWZps8r0qXuwhwizagCRttsL4lfG4pIOvaWLpAP0w==}
+    engines: {node: '>= 0.8.0'}
+
   compression@1.8.2:
     resolution: {integrity: sha512-o8vI5RE5A6EVVOd9o41jKp41aJom+QTEO/Bx8MYNjexMo/Bv2WOjUfZr+aL0WnYSgymUy6zeguqLTsIhV0gMvQ==}
     engines: {node: '>= 0.8.0'}
@@ -5318,6 +5315,10 @@ packages:
     peerDependenciesMeta:
       encoding:
         optional: true
+
+  node-forge@1.4.0:
+    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+    engines: {node: '>= 6.13.0'}
 
   node-forge@1.4.3:
     resolution: {integrity: sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==}
@@ -10381,6 +10382,18 @@ snapshots:
     dependencies:
       mime-db: 1.54.0
 
+  compression@1.8.1:
+    dependencies:
+      bytes: 3.1.2
+      compressible: 2.0.18
+      debug: 2.6.9
+      negotiator: 0.6.4
+      on-headers: 1.1.0
+      safe-buffer: 5.2.1
+      vary: 1.1.2
+    transitivePeerDependencies:
+      - supports-color
+
   compression@1.8.2:
     dependencies:
       bytes: 3.1.2
@@ -12134,13 +12147,13 @@ snapshots:
 
   merge2@1.4.1: {}
 
-  meshcentral@1.3.1(patch_hash=2d8db7b8805d76e967cc5f5e2fac1d0e9304c37cacf17357367d1fac0cafbc6c):
+  meshcentral@1.3.1:
     dependencies:
       '@mongodb-js/saslprep': 1.3.1
       '@seald-io/nedb': 4.1.2
       '@zip.js/zip.js': 2.8.26
       cbor: 5.2.0
-      compression: 1.8.2
+      compression: 1.8.1
       cookie-session: 2.1.1
       express: 4.22.2
       express-handlebars: 7.1.3
@@ -12150,7 +12163,7 @@ snapshots:
       minimist: 1.2.8
       mongodb: 4.17.2
       multiparty: 4.3.0
-      node-forge: 1.4.3
+      node-forge: 1.4.0
       otplib: 13.4.1
       ua-client-hints-js: 0.1.2
       ua-parser-js: 1.0.40
@@ -12468,6 +12481,8 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+
+  node-forge@1.4.0: {}
 
   node-forge@1.4.3: {}
 
