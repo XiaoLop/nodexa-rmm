@@ -19,10 +19,6 @@ isolated layout. Without it, startup can misidentify installed dependencies as m
 `npm install` inside pnpm's virtual store, removing MeshCentral files. Subsequent restarts can
 then report `Cannot find module 'meshcentral/meshcentral.js'`.
 
-The pnpm patch for MeshCentral 1.3.1 aligns its startup checks with the patched
-`compression` and `node-forge` versions in the workspace lockfile. Review the patch when
-changing either override or upgrading MeshCentral.
-
 The final image checks these fallback paths as the runtime `node` user and runs the launcher
 with `--help`. After applying the fix, rebuild/load the image and recreate the container;
 restarting a damaged container does not restore its dependencies. Persistent data mounts are
